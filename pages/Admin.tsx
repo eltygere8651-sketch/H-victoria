@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { UserRole, User, UploadedFile, Product } from '../types';
 import { storageService, OrderBatch } from '../services/storageService';
-import { Download, Users, Package, Trash2, Edit2, Key, X, Save, Shield, Eye, FileDown, Upload, Database, AlertTriangle, Loader2, Image as ImageIcon, FileText, ZoomIn, ZoomOut, Maximize } from 'lucide-react';
+import { Download, Users, Package, Trash2, Edit2, Key, X, Save, Shield, Eye, FileDown, Upload, Database, AlertTriangle, Loader2, Image as ImageIcon, FileText, ZoomIn, ZoomOut, Maximize, Printer } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { Logo } from '../components/Logo';
 
@@ -60,14 +60,24 @@ const Admin: React.FC<AdminProps> = ({ currentUser }) => {
     }
 
     setIsGeneratingPdf(true);
+    // Give UI a moment to update button state
     await new Promise(resolve => setTimeout(resolve, 100));
 
     const element = document.getElementById('print-area');
     const opt = {
-      margin: [10, 10, 10, 10],
+      margin: [10, 10, 10, 10], // mm
       filename: `Pedido_${selectedOrder.batchId}_${selectedOrder.department}.pdf`,
-      image: { type: 'png', quality: 0.98 },
-      html2canvas: { scale: 4, useCORS: true, logging: false, backgroundColor: '#ffffff', windowWidth: 1200, letterRendering: true },
+      image: { type: 'png', quality: 1.0 }, // PNG for lossless text sharpness
+      html2canvas: { 
+        scale: 4, // High resolution (approx 300-400 DPI)
+        useCORS: true, 
+        logging: false, 
+        backgroundColor: '#ffffff', 
+        letterRendering: true,
+        scrollX: 0, // CRITICAL: Fixes left-cropping issues
+        scrollY: 0, // CRITICAL: Fixes top-cropping issues
+        // windowWidth removed to allow auto-detection and prevent centering offsets
+      },
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
       pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
     };
@@ -257,12 +267,26 @@ const Admin: React.FC<AdminProps> = ({ currentUser }) => {
       {selectedOrder && (
         <div className="fixed inset-0 z-[70] bg-gray-900/95 flex flex-col items-center justify-start p-0 md:p-6 overflow-y-auto animate-fade-in" onClick={() => setSelectedOrder(null)}>
            <div className="w-full max-w-3xl flex justify-between items-center p-4 sticky top-0 bg-gray-900/80 backdrop-blur-md z-20" onClick={e => e.stopPropagation()}>
-             <button onClick={handleDownloadPDF} disabled={isGeneratingPdf} className="bg-red-600 text-white px-6 py-3 rounded-xl font-bold shadow-lg flex items-center gap-2">{isGeneratingPdf ? '...' : 'Descargar PDF'}</button>
+             <button onClick={handleDownloadPDF} disabled={isGeneratingPdf} className="bg-red-600 text-white px-6 py-3 rounded-xl font-bold shadow-lg flex items-center gap-2 disabled:bg-gray-600">{isGeneratingPdf ? 'Generando...' : 'Descargar PDF'}</button>
              <button onClick={() => setSelectedOrder(null)} className="bg-white text-gray-900 px-4 py-3 rounded-xl font-bold"><X size={24} /></button>
            </div>
-           <div id="print-area" className="bg-white p-6 md:p-12 shadow-2xl max-w-3xl w-full h-auto relative overflow-visible" style={{ backgroundColor: '#ffffff', color: '#000000' }} onClick={e => e.stopPropagation()}>
-              <div className="flex justify-between items-center border-b-2 border-black pb-6 mb-6"><div className="flex items-center gap-6"><Logo size="lg" solid={true} /><div><h1 className="text-3xl font-black uppercase text-black">Hotel Victoria</h1></div></div><h2 className="text-xl font-mono font-bold text-black">#{selectedOrder.batchId}</h2></div>
+           
+           {/* Printable Area */}
+           <div 
+             id="print-area" 
+             className="bg-white text-black p-6 md:p-12 shadow-2xl max-w-3xl w-full h-auto relative overflow-visible" 
+             style={{ backgroundColor: '#ffffff', color: '#000000' }} 
+             onClick={e => e.stopPropagation()}
+           >
+              <div className="flex justify-between items-center border-b-2 border-black pb-6 mb-6">
+                <div className="flex items-center gap-6"><Logo size="lg" solid={true} /><div><h1 className="text-3xl font-black uppercase text-black">Hotel Victoria</h1></div></div>
+                <h2 className="text-xl font-mono font-bold text-black">#{selectedOrder.batchId}</h2>
+              </div>
               <table className="w-full"><thead><tr className="border-b-2 border-black"><th className="text-left py-4 text-black font-black">Producto</th><th className="text-center py-4 text-black font-black">Cant.</th></tr></thead><tbody>{selectedOrder.items.map((item, idx) => (<tr key={idx} className="border-b border-gray-200"><td className="py-4 font-bold text-black">{item.productName}</td><td className="py-4 text-center text-black font-black bg-gray-100 rounded-lg">{item.quantity}</td></tr>))}</tbody></table>
+              
+              <div className="mt-12 pt-8 border-t-2 border-gray-100 text-center">
+                 <p className="text-xs text-gray-400 font-bold uppercase">Generado el {new Date().toLocaleString()}</p>
+              </div>
            </div>
         </div>
       )}
