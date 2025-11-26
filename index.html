@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0, viewport-fit=cover" />
+    <meta name="theme-color" content="#dc2626" />
+    <meta name="description" content="Gestión de Pedidos Internos - Hotel Victoria" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <title>Hotel Victoria</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <!-- PDF Generation Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Inter', 'sans-serif'],
+            },
+            colors: {
+              // Soft dark mode palette overrides
+            },
+            boxShadow: {
+              'soft': '0 4px 20px -2px rgba(0, 0, 0, 0.05)',
+              'glow': '0 0 15px rgba(220, 38, 38, 0.3)', 
+            }
+          }
+        }
+      }
+    </script>
+
+    <style>
+      body {
+        font-family: 'Inter', sans-serif;
+        -webkit-tap-highlight-color: transparent;
+      }
+      
+      /* Hide scrollbar */
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+      /* Animations */
+      @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+      @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+      
+      .animate-fade-in { animation: fadeIn 0.2s ease-out; }
+      .animate-slide-up { animation: slideUp 0.3s ease-out; }
+
+      /* Print Styles & Force Light Mode for PDF/Preview */
+      @media print {
+        body * { visibility: hidden; }
+        #print-area, #print-area * { visibility: visible; }
+        #print-area {
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: 100%;
+          min-height: 100%;
+          padding: 0;
+          margin: 0;
+          background-color: white !important;
+          color: black !important;
+        }
+        .no-print { display: none !important; }
+      }
+
+      /* AGGRESSIVE RESET FOR ALBARAN PREVIEW & PDF */
+      .force-light-mode {
+        background-color: #ffffff !important;
+        color: #000000 !important;
+        /* Font Smoothing for better PDF Text Quality */
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        text-rendering: optimizeLegibility;
+      }
+      
+      .force-light-mode * {
+        box-shadow: none !important; /* Prevents black artifacts in PDF */
+        filter: none !important;
+      }
+      
+      /* PROTECT LOGO COLORS IN PDF */
+      /* This ensures the logo V stays white even when everything else is forced black */
+      .force-light-mode .logo-path {
+        fill: #ffffff !important;
+        color: #ffffff !important;
+        stroke: none !important;
+      }
+
+      /* Allow SVG fills to pass through the color forcing */
+      .force-light-mode svg rect {
+        /* This ensures the red gradient background isn't overwritten by black/white text rules */
+        color: inherit;
+      }
+      
+      /* Force Text Colors for Print */
+      .force-light-mode h1, .force-light-mode h2, .force-light-mode h3 { color: #000000 !important; }
+      .force-light-mode p, .force-light-mode span, .force-light-mode td { color: #1f2937 !important; } /* Gray-800 */
+      
+      /* Force Table readability */
+      .force-light-mode tr { background-color: #ffffff !important; }
+      .force-light-mode tr:nth-child(even) { background-color: #f9fafb !important; } 
+      .force-light-mode td, .force-light-mode th { border-bottom-color: #e5e7eb !important; }
+      
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.555.0",
+    "recharts": "https://aistudiocdn.com/recharts@^3.5.0"
+  }
+}
+</script>
+</head>
+  <body class="bg-gray-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 antialiased selection:bg-red-100 dark:selection:bg-red-900/50 transition-colors duration-300">
+    <div id="root"></div>
+  </body>
+</html>
