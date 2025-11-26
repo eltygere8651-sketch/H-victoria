@@ -14,9 +14,10 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     
-    <!-- PDF Generation Library -->
+    <!-- PDF Generation Library (Keep CDN for ease or use npm import in component) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
+    <!-- Tailwind CDN (Keep for simplicity, though npm is better for production) -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
@@ -89,24 +90,19 @@
       }
       
       /* PROTECT LOGO COLORS IN PDF */
-      /* This ensures the logo V stays white even when everything else is forced black */
       .force-light-mode .logo-path {
         fill: #ffffff !important;
         color: #ffffff !important;
         stroke: none !important;
       }
 
-      /* Allow SVG fills to pass through the color forcing */
       .force-light-mode svg rect {
-        /* This ensures the red gradient background isn't overwritten by black/white text rules */
         color: inherit;
       }
       
-      /* Force Text Colors for Print */
       .force-light-mode h1, .force-light-mode h2, .force-light-mode h3 { color: #000000 !important; }
-      .force-light-mode p, .force-light-mode span, .force-light-mode td { color: #1f2937 !important; } /* Gray-800 */
+      .force-light-mode p, .force-light-mode span, .force-light-mode td { color: #1f2937 !important; }
       
-      /* Force Table readability */
       .force-light-mode tr { background-color: #ffffff !important; }
       .force-light-mode tr:nth-child(even) { background-color: #f9fafb !important; } 
       .force-light-mode td, .force-light-mode th { border-bottom-color: #e5e7eb !important; }
@@ -115,10 +111,13 @@
   <script type="importmap">
 {
   "imports": {
+    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.1",
+    "firebase/": "https://aistudiocdn.com/firebase@^12.6.0/",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
     "react/": "https://aistudiocdn.com/react@^19.2.0/",
     "react": "https://aistudiocdn.com/react@^19.2.0",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
     "lucide-react": "https://aistudiocdn.com/lucide-react@^0.555.0",
+    "vite": "https://aistudiocdn.com/vite@^7.2.4",
     "recharts": "https://aistudiocdn.com/recharts@^3.5.0"
   }
 }
@@ -126,5 +125,6 @@
 </head>
   <body class="bg-gray-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 antialiased selection:bg-red-100 dark:selection:bg-red-900/50 transition-colors duration-300">
     <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
   </body>
 </html>

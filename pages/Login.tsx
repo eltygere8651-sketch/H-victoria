@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Logo } from '../components/Logo';
 import { storageService } from '../services/storageService';
 import { User } from '../types';
+import { Loader2 } from 'lucide-react';
 
 interface LoginProps {
   onLogin: (user: User) => void;
@@ -11,10 +12,16 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const [username, setUsername] = useState('');
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    const user = storageService.login(username, pin);
+    setLoading(true);
+    setError('');
+    
+    const user = await storageService.login(username, pin);
+    setLoading(false);
+    
     if (user) {
       onLogin(user);
     } else {
@@ -45,6 +52,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                 className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-slate-600/50 focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none transition-all bg-gray-50 dark:bg-slate-700/50 dark:text-white focus:bg-white dark:focus:bg-slate-700 placeholder-gray-400 dark:placeholder-slate-500"
                 placeholder="Ej. Admin"
                 required
+                disabled={loading}
               />
             </div>
             
@@ -57,6 +65,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                 className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-slate-600/50 focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none transition-all bg-gray-50 dark:bg-slate-700/50 dark:text-white focus:bg-white dark:focus:bg-slate-700 placeholder-gray-400 dark:placeholder-slate-500"
                 placeholder="••••"
                 required
+                disabled={loading}
               />
             </div>
 
@@ -68,9 +77,10 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
 
             <button
               type="submit"
-              className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-4 rounded-xl transition-all shadow-lg shadow-red-200 dark:shadow-none active:scale-[0.98]"
+              disabled={loading}
+              className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-4 rounded-xl transition-all shadow-lg shadow-red-200 dark:shadow-none active:scale-[0.98] flex items-center justify-center gap-2"
             >
-              Iniciar Sesión
+              {loading ? <Loader2 className="animate-spin" /> : 'Iniciar Sesión'}
             </button>
           </form>
 

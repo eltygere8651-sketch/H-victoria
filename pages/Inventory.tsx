@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Product, UserRole, User } from '../types';
 import { storageService } from '../services/storageService';
-import { Search, Plus, Minus, AlertTriangle, Edit2, Trash2, X, Check, Save } from 'lucide-react';
+import { Search, Plus, Minus, AlertTriangle, Edit2, Trash2, X, Save, Loader2 } from 'lucide-react';
 
 interface InventoryProps {
   currentUser: User;
@@ -9,41 +9,45 @@ interface InventoryProps {
 
 const Inventory: React.FC<InventoryProps> = ({ currentUser }) => {
   const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   
-  // Modal States
   const [showEditModal, setShowEditModal] = useState(false);
   const [editForm, setEditForm] = useState<Partial<Product>>({});
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
 
   useEffect(() => {
-    loadProducts();
+    // Subscribe to realtime updates
+    const unsubscribe = storageService.subscribeToProducts((data) => {
+      setProducts(data);
+      setLoading(false);
+    });
+    return () => unsubscribe();
   }, []);
 
-  const loadProducts = () => {
-    setProducts(storageService.getProducts());
-  };
-
-  const handleWithdraw = (productId: string) => {
-    storageService.updateStock(productId, -1);
-    loadProducts();
+  const handleWithdraw = async (productId: string) => {
+    // Find product to check current quantity
+    const p = products.find(prod => prod.id === productId);
+    if (p && p.quantity > 0) {
+      await storageService.saveProduct({ ...p, quantity: p.quantity - 1 });
+    }
   };
 
   const handleDeleteClick = (product: Product) => {
     setProductToDelete(product);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (productToDelete) {
-      storageService.deleteProduct(productToDelete.id);
+      await storageService.deleteProduct(productToDelete.id);
       setProductToDelete(null);
-      loadProducts();
     }
   };
 
-  const handleSaveProduct = () => {
+  const handleSaveProduct = async () => {
     if (editForm.name && editForm.quantity !== undefined) {
-      storageService.saveProduct({
+      setLoading(true);
+      await storageService.saveProduct({
         id: editForm.id || `p_${Date.now()}`,
         name: editForm.name,
         category: editForm.category || 'General',
@@ -53,7 +57,7 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser }) => {
       } as Product);
       setShowEditModal(false);
       setEditForm({});
-      loadProducts();
+      setLoading(false);
     }
   };
 
@@ -72,9 +76,12 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser }) => {
     p.category.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  if (loading && products.length === 0) {
+    return <div className="flex h-full items-center justify-center"><Loader2 size={40} className="animate-spin text-red-600" /></div>;
+  }
+
   return (
     <div className="pb-24 md:pb-6 font-sans">
-      {/* Header & Controls */}
       <div className="sticky top-0 z-10 bg-white/95 dark:bg-slate-900/95 backdrop-blur pt-6 pb-4 px-4 md:px-6 border-b border-gray-200 dark:border-slate-800 transition-colors duration-300">
         <div className="flex justify-between items-center mb-5">
           <h2 className="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">Inventario</h2>
@@ -100,7 +107,6 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser }) => {
         </div>
       </div>
 
-      {/* Edit / New Product Modal */}
       {showEditModal && (
         <div className="fixed inset-0 bg-black/60 dark:bg-slate-900/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
           <div className="bg-white dark:bg-slate-800 rounded-3xl w-full max-w-lg shadow-2xl p-8 animate-slide-up border border-transparent dark:border-slate-700/50">
@@ -178,7 +184,6 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser }) => {
         </div>
       )}
 
-      {/* Delete Confirmation Modal */}
       {productToDelete && (
         <div className="fixed inset-0 bg-black/60 dark:bg-slate-900/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
           <div className="bg-white dark:bg-slate-800 rounded-3xl w-full max-w-sm shadow-2xl p-6 animate-slide-up border border-transparent dark:border-slate-700/50 text-center">
@@ -187,7 +192,7 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser }) => {
             </div>
             <h3 className="text-xl font-black text-gray-900 dark:text-white mb-2">¿Eliminar Producto?</h3>
             <p className="text-gray-500 dark:text-slate-400 mb-6">
-              Estás a punto de eliminar <strong className="text-gray-800 dark:text-slate-200">{productToDelete.name}</strong> del inventario. Esta acción no se puede deshacer.
+              Estás a punto de eliminar <strong className="text-gray-800 dark:text-slate-200">{productToDelete.name}</strong> del inventario.
             </p>
             <div className="flex gap-3">
               <button 
@@ -207,7 +212,6 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser }) => {
         </div>
       )}
 
-      {/* Product List */}
       <div className="p-4 md:p-6 space-y-4">
         {filteredProducts.map(product => (
           <div key={product.id} className="bg-white dark:bg-slate-800 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-slate-700/50 flex items-center justify-between hover:shadow-md dark:hover:border-slate-600 transition-all">
@@ -254,11 +258,6 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser }) => {
             </div>
           </div>
         ))}
-        {filteredProducts.length === 0 && (
-          <div className="text-center text-gray-400 dark:text-slate-600 py-20">
-            <p className="text-xl font-medium">No se encontraron productos</p>
-          </div>
-        )}
       </div>
     </div>
   );

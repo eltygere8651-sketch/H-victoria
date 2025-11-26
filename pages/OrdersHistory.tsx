@@ -13,12 +13,9 @@ const OrdersHistory: React.FC<OrdersHistoryProps> = ({ currentUser }) => {
   const [selectedOrder, setSelectedOrder] = useState<OrderBatch | null>(null);
 
   useEffect(() => {
-    loadOrders();
+    const unsubscribe = storageService.subscribeToBatches(setOrders);
+    return () => unsubscribe();
   }, []);
-
-  const loadOrders = () => {
-    setOrders(storageService.getBatches());
-  };
 
   const handlePrint = () => {
     window.print();
@@ -30,7 +27,9 @@ const OrdersHistory: React.FC<OrdersHistoryProps> = ({ currentUser }) => {
       if (selectedOrder?.batchId === batchId) {
         setSelectedOrder(null);
       }
-      loadOrders();
+      
+      // Manually update state for local storage fallback as subscription is not live for local edits in this service implementation
+      setOrders(prev => prev.filter(o => o.batchId !== batchId));
     }
   };
 
