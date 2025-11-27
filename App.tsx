@@ -7,7 +7,7 @@ import Admin from './pages/Admin';
 import Documents from './pages/Documents';
 import { storageService } from './services/storageService';
 import { Logo } from './components/Logo';
-import { LayoutGrid, ClipboardList, ShieldCheck, LogOut, Moon, Sun, FileText } from 'lucide-react';
+import { LayoutGrid, ClipboardList, ShieldCheck, LogOut, Moon, Sun, FileText, Download, Smartphone, Share, PlusSquare, X } from 'lucide-react';
 
 const App: React.FC = () => {
   // Initialize user from persisted session
@@ -30,6 +30,47 @@ const App: React.FC = () => {
     }
     return false;
   });
+
+  // PWA Install Logic
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [isInstalled, setIsInstalled] = useState(false);
+  const [isIOS, setIsIOS] = useState(false);
+  const [showIOSPrompt, setShowIOSPrompt] = useState(false);
+
+  useEffect(() => {
+    // Check if already installed
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+      setIsInstalled(true);
+    }
+
+    // Check if iOS
+    const userAgent = window.navigator.userAgent.toLowerCase();
+    const ios = /iphone|ipad|ipod/.test(userAgent);
+    setIsIOS(ios);
+
+    // Capture install prompt (Chrome/Android)
+    const handler = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (isIOS) {
+      setShowIOSPrompt(true);
+    } else if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        setDeferredPrompt(null);
+      }
+    } else {
+      // Fallback for browsers that don't support programmatic install but aren't iOS
+      alert("Para instalar: \n1. Abre el menú del navegador (tres puntos).\n2. Selecciona 'Instalar aplicación' o 'Añadir a pantalla de inicio'.");
+    }
+  };
 
   useEffect(() => {
     if (darkMode) {
@@ -61,6 +102,36 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex flex-col md:flex-row font-sans text-gray-900 dark:text-slate-200 transition-colors duration-300">
+      
+      {/* iOS Install Instructions Modal */}
+      {showIOSPrompt && (
+        <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-end md:items-center justify-center p-4 animate-fade-in" onClick={() => setShowIOSPrompt(false)}>
+           <div className="bg-white dark:bg-slate-800 w-full max-w-sm rounded-3xl p-6 shadow-2xl relative animate-slide-up" onClick={e => e.stopPropagation()}>
+              <button onClick={() => setShowIOSPrompt(false)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-900 dark:hover:text-white"><X size={24} /></button>
+              <div className="text-center">
+                 <div className="w-16 h-16 bg-gray-100 dark:bg-slate-700 rounded-2xl mx-auto mb-4 flex items-center justify-center shadow-sm">
+                    <Logo size="md" />
+                 </div>
+                 <h3 className="text-xl font-extrabold text-gray-900 dark:text-white mb-2">Instalar en iPhone</h3>
+                 <p className="text-sm text-gray-500 dark:text-slate-400 mb-6">Sigue estos pasos para añadir la App a tu inicio:</p>
+                 
+                 <div className="space-y-4 text-left bg-gray-50 dark:bg-slate-900/50 p-4 rounded-xl">
+                    <div className="flex items-center gap-3">
+                       <Share className="text-blue-500" />
+                       <span className="text-sm font-bold dark:text-slate-200">1. Pulsa el botón "Compartir"</span>
+                    </div>
+                    <div className="w-full h-px bg-gray-200 dark:bg-slate-700"></div>
+                    <div className="flex items-center gap-3">
+                       <PlusSquare className="text-gray-900 dark:text-white" />
+                       <span className="text-sm font-bold dark:text-slate-200">2. Selecciona "Añadir a Inicio"</span>
+                    </div>
+                 </div>
+                 <button onClick={() => setShowIOSPrompt(false)} className="w-full mt-6 bg-red-600 text-white font-bold py-3 rounded-xl">Entendido</button>
+              </div>
+           </div>
+        </div>
+      )}
+
       {/* Desktop Sidebar */}
       <aside className="hidden md:flex flex-col w-72 bg-white dark:bg-slate-800 border-r border-gray-200 dark:border-slate-700/50 h-screen sticky top-0 p-6 z-30 shadow-sm transition-colors duration-300">
         <div className="flex flex-col items-center gap-4 mb-10 pb-8 border-b border-gray-100 dark:border-slate-700/50">
@@ -101,6 +172,17 @@ const App: React.FC = () => {
                 label="Administración" 
               />
             </>
+          )}
+
+          {/* Install PWA Button Desktop - Always show if not installed */}
+          {!isInstalled && (
+            <button
+              onClick={handleInstallClick}
+              className="w-full flex items-center gap-4 px-5 py-4 mt-6 rounded-2xl transition-all duration-200 bg-red-600 text-white hover:bg-red-700 shadow-lg shadow-red-200 dark:shadow-none animate-pulse"
+            >
+              <Download size={22} />
+              <span className="text-base font-bold">Instalar App</span>
+            </button>
           )}
         </nav>
 
@@ -144,6 +226,11 @@ const App: React.FC = () => {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {!isInstalled && (
+              <button onClick={handleInstallClick} className="bg-red-600 text-white p-2 rounded-full shadow-md animate-pulse">
+                <Download size={20} />
+              </button>
+            )}
             <button onClick={toggleTheme} className="text-gray-400 dark:text-slate-400 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-slate-700">
                {darkMode ? <Sun size={20} /> : <Moon size={20} />}
             </button>

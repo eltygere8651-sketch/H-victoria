@@ -7,6 +7,10 @@
     <meta name="description" content="Gestión de Pedidos Internos - Hotel Victoria" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json" />
+
     <title>Hotel Victoria</title>
     
     <!-- Fonts -->
@@ -14,10 +18,10 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     
-    <!-- PDF Generation Library (Keep CDN for ease or use npm import in component) -->
+    <!-- PDF Generation Library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
-    <!-- Tailwind CDN (Keep for simplicity, though npm is better for production) -->
+    <!-- Tailwind CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
@@ -56,7 +60,7 @@
       .animate-fade-in { animation: fadeIn 0.2s ease-out; }
       .animate-slide-up { animation: slideUp 0.3s ease-out; }
 
-      /* Print Styles & Force Light Mode for PDF/Preview */
+      /* Print Styles */
       @media print {
         body * { visibility: hidden; }
         #print-area, #print-area * { visibility: visible; }
@@ -74,22 +78,20 @@
         .no-print { display: none !important; }
       }
 
-      /* AGGRESSIVE RESET FOR ALBARAN PREVIEW & PDF */
+      /* PDF Generation Helpers */
       .force-light-mode {
         background-color: #ffffff !important;
         color: #000000 !important;
-        /* Font Smoothing for better PDF Text Quality */
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
         text-rendering: optimizeLegibility;
       }
       
       .force-light-mode * {
-        box-shadow: none !important; /* Prevents black artifacts in PDF */
+        box-shadow: none !important;
         filter: none !important;
       }
       
-      /* PROTECT LOGO COLORS IN PDF */
       .force-light-mode .logo-path {
         fill: #ffffff !important;
         color: #ffffff !important;
@@ -112,13 +114,15 @@
 {
   "imports": {
     "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.1",
-    "firebase/": "https://aistudiocdn.com/firebase@^12.6.0/",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
-    "react/": "https://aistudiocdn.com/react@^19.2.0/",
-    "react": "https://aistudiocdn.com/react@^19.2.0",
-    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.555.0",
-    "vite": "https://aistudiocdn.com/vite@^7.2.4",
-    "recharts": "https://aistudiocdn.com/recharts@^3.5.0"
+    "firebase/app": "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js",
+    "firebase/firestore": "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^18.2.0/",
+    "react/": "https://aistudiocdn.com/react@^18.2.0/",
+    "react": "https://aistudiocdn.com/react@^18.2.0",
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.344.0",
+    "vite": "https://aistudiocdn.com/vite@^5.1.4",
+    "recharts": "https://aistudiocdn.com/recharts@^2.12.0",
+    "firebase/": "https://aistudiocdn.com/firebase@^12.6.0/"
   }
 }
 </script>
@@ -126,5 +130,17 @@
   <body class="bg-gray-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 antialiased selection:bg-red-100 dark:selection:bg-red-900/50 transition-colors duration-300">
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
+    <script>
+      // Register Service Worker for PWA
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').then(registration => {
+            console.log('SW registered: ', registration);
+          }).catch(registrationError => {
+            console.log('SW registration failed: ', registrationError);
+          });
+        });
+      }
+    </script>
   </body>
 </html>
