@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import * as React from 'react';
+import { useState } from 'react';
 import { Logo } from '../components/Logo';
 import { storageService } from '../services/storageService';
 import { User } from '../types';

@@ -1,4 +1,5 @@
-import React, { useState, useRef } from 'react';
+import * as React from 'react';
+import { useState, useRef } from 'react';
 import { User, UploadedFile } from '../types';
 import { storageService } from '../services/storageService';
 import { Upload, CheckCircle2, Files, Loader2 } from 'lucide-react';

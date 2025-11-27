@@ -1,23 +1,25 @@
-import React, { useState, useEffect } from 'react';
+import * as React from 'react';
+import { useState, useEffect } from 'react';
 import { User, UserRole } from './types';
 import Login from './pages/Login';
 import Inventory from './pages/Inventory';
 import Replenishment from './pages/Replenishment';
 import Admin from './pages/Admin';
 import Documents from './pages/Documents';
+import OrdersHistory from './pages/OrdersHistory';
 import { storageService } from './services/storageService';
 import { Logo } from './components/Logo';
-import { LayoutGrid, ClipboardList, ShieldCheck, LogOut, Moon, Sun, FileText, Download, Smartphone, Share, PlusSquare, X } from 'lucide-react';
+import { LayoutGrid, ClipboardList, ShieldCheck, LogOut, Moon, Sun, FileText, Download, Smartphone, Share, PlusSquare, X, History } from 'lucide-react';
 
 const App: React.FC = () => {
   // Initialize user from persisted session
   const [user, setUser] = useState<User | null>(storageService.getSession());
   
   // Initialize view from last saved state or default to inventory
-  const [view, setView] = useState<'inventory' | 'replenish' | 'admin' | 'documents'>(() => {
+  const [view, setView] = useState<'inventory' | 'replenish' | 'history' | 'admin' | 'documents'>(() => {
      const lastView = storageService.getLastView();
-     if (lastView === 'inventory' || lastView === 'replenish' || lastView === 'admin' || lastView === 'documents') {
-       return lastView;
+     if (lastView === 'inventory' || lastView === 'replenish' || lastView === 'history' || lastView === 'admin' || lastView === 'documents') {
+       return lastView as any;
      }
      return 'inventory';
   });
@@ -38,23 +40,50 @@ const App: React.FC = () => {
   const [showIOSPrompt, setShowIOSPrompt] = useState(false);
 
   useEffect(() => {
-    // Check if already installed
-    if (window.matchMedia('(display-mode: standalone)').matches) {
-      setIsInstalled(true);
-    }
+    // 1. Check if already installed (Standalone mode)
+    // Supports standard display-mode check and legacy iOS 'navigator.standalone'
+    const checkIsInstalled = () => {
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                           (window.navigator as any).standalone === true;
+      setIsInstalled(isStandalone);
+    };
 
-    // Check if iOS
+    // Initial check
+    checkIsInstalled();
+
+    // Listener for changes (in case they install while app is open)
+    window.matchMedia('(display-mode: standalone)').addEventListener('change', (e) => {
+      setIsInstalled(e.matches);
+    });
+
+    // 2. Check Device Type
     const userAgent = window.navigator.userAgent.toLowerCase();
     const ios = /iphone|ipad|ipod/.test(userAgent);
     setIsIOS(ios);
 
-    // Capture install prompt (Chrome/Android)
-    const handler = (e: any) => {
+    // 3. Listen for the native install prompt (Chrome/Android/Desktop)
+    const handleBeforeInstallPrompt = (e: any) => {
+      // Prevent the mini-infobar from appearing on mobile
       e.preventDefault();
+      // Stash the event so it can be triggered later.
       setDeferredPrompt(e);
     };
-    window.addEventListener('beforeinstallprompt', handler);
-    return () => window.removeEventListener('beforeinstallprompt', handler);
+
+    // 4. Listen for the 'appinstalled' event
+    // This fires immediately after the user successfully installs the app
+    const handleAppInstalled = () => {
+      setIsInstalled(true);
+      setDeferredPrompt(null);
+      console.log('PWA was installed');
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    window.addEventListener('appinstalled', handleAppInstalled);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('appinstalled', handleAppInstalled);
+    };
   }, []);
 
   const handleInstallClick = async () => {
@@ -65,9 +94,11 @@ const App: React.FC = () => {
       const { outcome } = await deferredPrompt.userChoice;
       if (outcome === 'accepted') {
         setDeferredPrompt(null);
+        // We also wait for the 'appinstalled' event to fire to update state
       }
     } else {
       // Fallback for browsers that don't support programmatic install but aren't iOS
+      // or if the prompt was already dismissed/not ready
       alert("Para instalar: \n1. Abre el menú del navegador (tres puntos).\n2. Selecciona 'Instalar aplicación' o 'Añadir a pantalla de inicio'.");
     }
   };
@@ -156,6 +187,12 @@ const App: React.FC = () => {
             label="Realizar Pedido" 
           />
           <NavButton 
+            active={view === 'history'} 
+            onClick={() => setView('history')} 
+            icon={<History size={22} />} 
+            label="Historial" 
+          />
+          <NavButton 
             active={view === 'documents'} 
             onClick={() => setView('documents')} 
             icon={<FileText size={22} />} 
@@ -174,7 +211,7 @@ const App: React.FC = () => {
             </>
           )}
 
-          {/* Install PWA Button Desktop - Always show if not installed */}
+          {/* Install PWA Button Desktop - Only show if NOT installed */}
           {!isInstalled && (
             <button
               onClick={handleInstallClick}
@@ -226,6 +263,7 @@ const App: React.FC = () => {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {/* Mobile Install Button - Only show if NOT installed */}
             {!isInstalled && (
               <button onClick={handleInstallClick} className="bg-red-600 text-white p-2 rounded-full shadow-md animate-pulse">
                 <Download size={20} />
@@ -242,6 +280,7 @@ const App: React.FC = () => {
 
         {view === 'inventory' && <Inventory currentUser={user} />}
         {view === 'replenish' && <Replenishment currentUser={user} />}
+        {view === 'history' && <OrdersHistory currentUser={user} />}
         {view === 'documents' && <Documents currentUser={user} />}
         {view === 'admin' && <Admin currentUser={user} />}
       </main>
@@ -259,6 +298,12 @@ const App: React.FC = () => {
           onClick={() => setView('replenish')} 
           icon={<ClipboardList size={24} />} 
           label="Pedidos" 
+        />
+        <MobileNavButton 
+          active={view === 'history'} 
+          onClick={() => setView('history')} 
+          icon={<History size={24} />} 
+          label="Historial" 
         />
         <MobileNavButton 
           active={view === 'documents'} 

@@ -1,4 +1,5 @@
-import React, { useMemo } from 'react';
+import * as React from 'react';
+import { useMemo } from 'react';
 
 export const Logo: React.FC<{ size?: 'sm' | 'md' | 'lg' | 'xl', className?: string, solid?: boolean }> = ({ size = 'md', className = '', solid = false }) => {
   // Explicit pixel sizes are crucial for PDF generation tools to render correctly

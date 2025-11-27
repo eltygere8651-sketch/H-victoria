@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import * as React from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { UserRole, User, UploadedFile, Product } from '../types';
 import { storageService, OrderBatch } from '../services/storageService';
-import { Download, Users, Package, Trash2, Edit2, Key, X, Save, Shield, Eye, FileDown, Upload, Database, AlertTriangle, Loader2, Image as ImageIcon, FileText, ZoomIn, ZoomOut, Maximize, Printer } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { Download, Users, Package, Trash2, Edit2, Key, X, Save, Shield, Eye, FileDown, Upload, Database, AlertTriangle, Loader2, Image as ImageIcon, FileText, ZoomIn, ZoomOut, Maximize, Printer, Zap } from 'lucide-react';
 import { Logo } from '../components/Logo';
 
 interface AdminProps {
@@ -17,6 +17,7 @@ const Admin: React.FC<AdminProps> = ({ currentUser }) => {
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isGeneratingData, setIsGeneratingData] = useState(false);
   
   const [newUser, setNewUser] = useState({ name: '', role: UserRole.STAFF, pin: '' });
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -26,8 +27,6 @@ const Admin: React.FC<AdminProps> = ({ currentUser }) => {
   const [zoomLevel, setZoomLevel] = useState(1);
   const [batchToDelete, setBatchToDelete] = useState<string | null>(null);
   const [fileToDelete, setFileToDelete] = useState<string | null>(null);
-
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     // Realtime subscriptions
@@ -131,12 +130,41 @@ const Admin: React.FC<AdminProps> = ({ currentUser }) => {
     }
   };
 
+  const handleGenerateStock = async () => {
+    if (!window.confirm("Esto añadirá más de 60 productos de prueba (Bar/Cocina Hotel) a la base de datos. ¿Continuar?")) return;
+    
+    setIsGeneratingData(true);
+    try {
+      await storageService.generateDemoData();
+      alert("¡Stock masivo generado correctamente!");
+    } catch (e: any) {
+      console.error(e);
+      alert(`Error al generar stock: ${e.message}`);
+    } finally {
+      setIsGeneratingData(false);
+    }
+  };
+  
+  const handleClearDemoStock = async () => {
+    if (!window.confirm("¿Seguro que quieres borrar todos los productos de demostración? Los productos creados manualmente se conservarán.")) return;
+    setIsGeneratingData(true);
+    try {
+      await storageService.clearDemoData();
+      alert("Productos de prueba eliminados.");
+    } catch (e: any) {
+      console.error(e);
+      alert(`Error al limpiar: ${e.message}`);
+    } finally {
+      setIsGeneratingData(false);
+    }
+  };
+
   // Calculated from state instead of sync call
   const lowStockData = products
     .filter(p => p.quantity <= p.minThreshold * 2)
     .map(p => ({ name: p.name, stock: p.quantity, min: p.minThreshold }))
     .sort((a, b) => a.stock - b.stock)
-    .slice(0, 10);
+    .slice(0, 8); // Top 8 critical items
 
   if (currentUser.role !== UserRole.ADMIN) return <div className="p-8 text-center text-red-600">Acceso Denegado</div>;
   if (loading) return <div className="flex h-full items-center justify-center"><Loader2 size={40} className="animate-spin text-red-600" /></div>;
@@ -234,18 +262,71 @@ const Admin: React.FC<AdminProps> = ({ currentUser }) => {
         )}
 
         {activeTab === 'data' && (
-           <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700/50">
-             <h3 className="text-lg font-bold mb-4 text-gray-800 dark:text-white">Stock Crítico</h3>
-             <div className="h-64 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={lowStockData}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" opacity={0.3} />
-                    <XAxis dataKey="name" hide />
-                    <YAxis stroke="#94a3b8" />
-                    <Tooltip contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '12px', color: '#fff' }} />
-                    <Bar dataKey="stock" radius={[4, 4, 0, 0]}><Cell fill="#ef4444" /></Bar>
-                  </BarChart>
-                </ResponsiveContainer>
+           <div className="space-y-6">
+             <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700/50">
+               <h3 className="text-lg font-bold mb-6 text-gray-800 dark:text-white">Stock Crítico (Top 8)</h3>
+               
+               {/* Custom CSS Bar Chart - Robust and Crash Free */}
+               {lowStockData.length > 0 ? (
+                 <div className="w-full h-64 flex items-end gap-2 md:gap-4 border-b border-gray-200 dark:border-slate-700 pb-2 overflow-x-auto">
+                    {lowStockData.map((item, i) => (
+                      <div key={i} className="flex-1 min-w-[40px] flex flex-col justify-end group relative h-full">
+                         <div className="text-center text-[10px] md:text-xs text-red-600 dark:text-red-400 font-bold mb-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            {item.stock} uds
+                         </div>
+                         <div 
+                           className="w-full bg-red-500/80 hover:bg-red-500 dark:bg-red-600/80 dark:hover:bg-red-600 rounded-t-lg transition-all relative shadow-sm"
+                           style={{ height: `${Math.max(10, Math.min(100, (item.stock / 20) * 100))}%` }} 
+                         >
+                         </div>
+                         <div className="text-center mt-2">
+                           <p className="text-[10px] text-gray-500 dark:text-slate-400 font-bold truncate w-full max-w-[60px] mx-auto" title={item.name}>{item.name}</p>
+                         </div>
+                      </div>
+                    ))}
+                 </div>
+               ) : (
+                  <div className="h-32 flex items-center justify-center text-gray-400 italic">Todo el stock está en niveles seguros.</div>
+               )}
+             </div>
+
+             <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700/50">
+                <h3 className="text-lg font-bold mb-4 text-gray-800 dark:text-white flex items-center gap-2">
+                  <Database size={20} className="text-blue-500" />
+                  Gestión de Datos
+                </h3>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-100 dark:border-blue-900/30">
+                    <h4 className="font-bold text-blue-800 dark:text-blue-300 text-sm mb-1">Prueba de Carga (Demo)</h4>
+                    <p className="text-xs text-blue-600 dark:text-blue-400 mb-3">
+                      Genera automáticamente +60 productos de prueba (Bar, Cocina, Limpieza...) para testear el app.
+                    </p>
+                    <button 
+                      onClick={handleGenerateStock}
+                      disabled={isGeneratingData}
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-xl font-bold text-sm shadow-md flex items-center gap-2 disabled:opacity-50 disabled:cursor-wait w-full justify-center"
+                    >
+                      {isGeneratingData ? <Loader2 className="animate-spin" size={18} /> : <Zap size={18} />}
+                      Generar Stock
+                    </button>
+                  </div>
+
+                  <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-100 dark:border-red-900/30">
+                    <h4 className="font-bold text-red-800 dark:text-red-300 text-sm mb-1">Limpiar Datos Demo</h4>
+                    <p className="text-xs text-red-600 dark:text-red-400 mb-3">
+                      Elimina solo los productos generados automáticamente, manteniendo tus datos manuales.
+                    </p>
+                    <button 
+                      onClick={handleClearDemoStock}
+                      disabled={isGeneratingData}
+                      className="bg-red-600 hover:bg-red-700 text-white px-4 py-3 rounded-xl font-bold text-sm shadow-md flex items-center gap-2 disabled:opacity-50 disabled:cursor-wait w-full justify-center"
+                    >
+                      {isGeneratingData ? <Loader2 className="animate-spin" size={18} /> : <Trash2 size={18} />}
+                      Limpiar Demo
+                    </button>
+                  </div>
+                </div>
              </div>
            </div>
         )}
