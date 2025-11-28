@@ -8,10 +8,8 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     
-    <!-- PWA Manifest & Icons -->
+    <!-- PWA Manifest -->
     <link rel="manifest" href="/manifest.json" />
-    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
-    <link rel="apple-touch-icon" href="/icon.svg" />
 
     <title>Hotel Victoria</title>
     
@@ -39,7 +37,22 @@
             boxShadow: {
               'soft': '0 4px 20px -2px rgba(0, 0, 0, 0.05)',
               'glow': '0 0 15px rgba(220, 38, 38, 0.3)', 
-            }
+              'card-soft': '0 10px 30px -5px rgba(0, 0, 0, 0.08), 0 4px 15px -2px rgba(0, 0, 0, 0.02)',
+              'card-dark': '0 10px 30px -5px rgba(0, 0, 0, 0.3), 0 4px 15px -2px rgba(0, 0, 0, 0.1)',
+              'button-red': '0 8px 20px -6px rgba(220, 38, 38, 0.5)',
+              'button-green': '0 8px 20px -6px rgba(34, 197, 94, 0.5)',
+              'button-blue': '0 8px 20px -6px rgba(59, 130, 246, 0.5)',
+              'pop-in': '0 15px 40px -8px rgba(0,0,0,0.25)',
+            },
+            keyframes: {
+              'pop-in': {
+                '0%': { transform: 'scale(0.95) translateY(10px)', opacity: '0' },
+                '100%': { transform: 'scale(1) translateY(0)', opacity: '1' },
+              },
+            },
+            animation: {
+              'pop-in': 'pop-in 0.3s ease-out forwards',
+            },
           }
         }
       }
@@ -61,6 +74,9 @@
       
       .animate-fade-in { animation: fadeIn 0.2s ease-out; }
       .animate-slide-up { animation: slideUp 0.3s ease-out; }
+      
+      /* New pop-in animation for modals */
+      .animate-pop-in { animation: pop-in 0.3s ease-out forwards; }
 
       /* Print Styles */
       @media print {
@@ -119,8 +135,9 @@
     "firebase/app": "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js",
     "firebase/firestore": "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js",
     "react-dom/": "https://aistudiocdn.com/react-dom@^18.2.0/",
-    "react/": "https://aistudiocdn.com/react@^18.2.0/",
     "react": "https://aistudiocdn.com/react@^18.2.0",
+    "react-dom/client": "https://aistudiocdn.com/react-dom@^18.2.0/client.js",
+    "react/": "https://aistudiocdn.com/react@^18.2.0/",
     "lucide-react": "https://aistudiocdn.com/lucide-react@^0.344.0",
     "vite": "https://aistudiocdn.com/vite@^5.1.4",
     "recharts": "https://aistudiocdn.com/recharts@^2.12.0",
@@ -136,12 +153,10 @@
       // Register Service Worker for PWA
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          // Use relative path './sw.js' instead of absolute '/sw.js'
-          navigator.serviceWorker.register('./sw.js').then(registration => {
-            console.log('SW registered successfully'); // Avoid logging 'registration' object to prevent circular structure errors
+          navigator.serviceWorker.register('/sw.js').then(registration => {
+            console.log('SW registered: ', registration);
           }).catch(registrationError => {
-            // Log but don't alarm user
-            console.warn('SW registration failed (likely due to dev/preview environment origin mismatch). This is expected in preview.');
+            console.log('SW registration failed: ', registrationError);
           });
         });
       }

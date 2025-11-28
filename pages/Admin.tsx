@@ -1,8 +1,8 @@
-import * as React from 'react';
-import { useState, useEffect, useRef } from 'react';
-import { UserRole, User, UploadedFile, Product } from '../types';
+import React, { useState, useEffect, useRef } from 'react';
+import { UserRole, User, Product } from '../types';
 import { storageService, OrderBatch } from '../services/storageService';
-import { Download, Users, Package, Trash2, Edit2, Key, X, Save, Shield, Eye, FileDown, Upload, Database, AlertTriangle, Loader2, Image as ImageIcon, FileText, ZoomIn, ZoomOut, Maximize, Printer, Zap } from 'lucide-react';
+import { Download, Users, Package, Trash2, Edit2, Key, X, Save, Shield, Eye, FileDown, Upload, Database, AlertTriangle, Loader2, Image as ImageIcon, FileText, ZoomIn, ZoomOut, Maximize, Printer } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { Logo } from '../components/Logo';
 
 interface AdminProps {
@@ -10,29 +10,24 @@ interface AdminProps {
 }
 
 const Admin: React.FC<AdminProps> = ({ currentUser }) => {
-  const [activeTab, setActiveTab] = useState<'requests' | 'users' | 'data' | 'files'>('requests');
+  const [activeTab, setActiveTab] = useState<'requests' | 'users' | 'data'>('requests');
   
-  const [orders, setOrders] = useState<OrderBatch[]>([]);
+  const [orders, setOrders] = useState<OrderBatch[]>([]
+  );
   const [users, setUsers] = useState<User[]>([]);
-  const [files, setFiles] = useState<UploadedFile[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isGeneratingData, setIsGeneratingData] = useState(false);
   
   const [newUser, setNewUser] = useState({ name: '', role: UserRole.STAFF, pin: '' });
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<OrderBatch | null>(null);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
-  const [previewFile, setPreviewFile] = useState<UploadedFile | null>(null);
-  const [zoomLevel, setZoomLevel] = useState(1);
   const [batchToDelete, setBatchToDelete] = useState<string | null>(null);
-  const [fileToDelete, setFileToDelete] = useState<string | null>(null);
 
   useEffect(() => {
     // Realtime subscriptions
     const unsubOrders = storageService.subscribeToBatches(setOrders);
     const unsubUsers = storageService.subscribeToUsers(setUsers);
-    const unsubFiles = storageService.subscribeToFiles(setFiles);
     const unsubProducts = storageService.subscribeToProducts(setProducts);
     
     // Fake loading delay for initial render smoothening
@@ -41,14 +36,9 @@ const Admin: React.FC<AdminProps> = ({ currentUser }) => {
     return () => {
         unsubOrders();
         unsubUsers();
-        unsubFiles();
         unsubProducts();
     };
   }, []);
-
-  useEffect(() => {
-    setZoomLevel(1);
-  }, [previewFile]);
 
   const handleDownloadPDF = async () => {
     if (!selectedOrder) return;
@@ -94,15 +84,6 @@ const Admin: React.FC<AdminProps> = ({ currentUser }) => {
     }
   };
 
-  const handleDeleteFileClick = (fileId: string) => setFileToDelete(fileId);
-  const confirmDeleteFile = () => {
-    if (fileToDelete) {
-      storageService.deleteFile(fileToDelete);
-      setFileToDelete(null);
-      if (previewFile?.id === fileToDelete) setPreviewFile(null);
-    }
-  };
-
   const handleAddUser = (e: React.FormEvent) => {
     e.preventDefault();
     if (newUser.name && newUser.pin) {
@@ -130,53 +111,23 @@ const Admin: React.FC<AdminProps> = ({ currentUser }) => {
     }
   };
 
-  const handleGenerateStock = async () => {
-    if (!window.confirm("Esto añadirá más de 60 productos de prueba (Bar/Cocina Hotel) a la base de datos. ¿Continuar?")) return;
-    
-    setIsGeneratingData(true);
-    try {
-      await storageService.generateDemoData();
-      alert("¡Stock masivo generado correctamente!");
-    } catch (e: any) {
-      console.error(e);
-      alert(`Error al generar stock: ${e.message}`);
-    } finally {
-      setIsGeneratingData(false);
-    }
-  };
-  
-  const handleClearDemoStock = async () => {
-    if (!window.confirm("¿Seguro que quieres borrar todos los productos de demostración? Los productos creados manualmente se conservarán.")) return;
-    setIsGeneratingData(true);
-    try {
-      await storageService.clearDemoData();
-      alert("Productos de prueba eliminados.");
-    } catch (e: any) {
-      console.error(e);
-      alert(`Error al limpiar: ${e.message}`);
-    } finally {
-      setIsGeneratingData(false);
-    }
-  };
-
   // Calculated from state instead of sync call
   const lowStockData = products
     .filter(p => p.quantity <= p.minThreshold * 2)
     .map(p => ({ name: p.name, stock: p.quantity, min: p.minThreshold }))
     .sort((a, b) => a.stock - b.stock)
-    .slice(0, 8); // Top 8 critical items
+    .slice(0, 10);
 
   if (currentUser.role !== UserRole.ADMIN) return <div className="p-8 text-center text-red-600">Acceso Denegado</div>;
   if (loading) return <div className="flex h-full items-center justify-center"><Loader2 size={40} className="animate-spin text-red-600" /></div>;
 
   return (
     <div className="pb-20 md:pb-6 transition-colors duration-300">
-      <div className="bg-white dark:bg-slate-800 border-b dark:border-slate-700/50 sticky top-0 z-10 transition-colors duration-300">
+      <div className="bg-white dark:bg-slate-800 border-b dark:border-slate-700/50 sticky top-0 z-10 shadow-sm transition-colors duration-300">
         <div className="flex overflow-x-auto no-scrollbar">
-          <button onClick={() => setActiveTab('requests')} className={`flex-1 min-w-[120px] py-4 text-sm font-semibold border-b-2 transition-colors ${activeTab === 'requests' ? 'border-red-600 text-red-600 dark:text-red-400 dark:border-red-400' : 'border-transparent text-gray-500 dark:text-slate-400'}`}>Pedidos</button>
-          <button onClick={() => setActiveTab('files')} className={`flex-1 min-w-[150px] py-4 text-sm font-semibold border-b-2 transition-colors ${activeTab === 'files' ? 'border-red-600 text-red-600 dark:text-red-400 dark:border-red-400' : 'border-transparent text-gray-500 dark:text-slate-400'}`}>Archivos Subidos</button>
-          <button onClick={() => setActiveTab('data')} className={`flex-1 min-w-[120px] py-4 text-sm font-semibold border-b-2 transition-colors ${activeTab === 'data' ? 'border-red-600 text-red-600 dark:text-red-400 dark:border-red-400' : 'border-transparent text-gray-500 dark:text-slate-400'}`}>Datos</button>
-          <button onClick={() => setActiveTab('users')} className={`flex-1 min-w-[120px] py-4 text-sm font-semibold border-b-2 transition-colors ${activeTab === 'users' ? 'border-red-600 text-red-600 dark:text-red-400 dark:border-red-400' : 'border-transparent text-gray-500 dark:text-slate-400'}`}>Usuarios</button>
+          <button onClick={() => setActiveTab('requests')} className={`flex-1 min-w-[120px] py-4 text-sm font-semibold border-b-2 transition-colors duration-200 ${activeTab === 'requests' ? 'border-red-600 text-red-600 dark:text-red-400 dark:border-red-400 bg-red-50 dark:bg-red-900/10 shadow-inner' : 'border-transparent text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700/50'}`}>Pedidos</button>
+          <button onClick={() => setActiveTab('data')} className={`flex-1 min-w-[120px] py-4 text-sm font-semibold border-b-2 transition-colors duration-200 ${activeTab === 'data' ? 'border-red-600 text-red-600 dark:text-red-400 dark:border-red-400 bg-red-50 dark:bg-red-900/10 shadow-inner' : 'border-transparent text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700/50'}`}>Datos</button>
+          <button onClick={() => setActiveTab('users')} className={`flex-1 min-w-[120px] py-4 text-sm font-semibold border-b-2 transition-colors duration-200 ${activeTab === 'users' ? 'border-red-600 text-red-600 dark:text-red-400 dark:border-red-400 bg-red-50 dark:bg-red-900/10 shadow-inner' : 'border-transparent text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700/50'}`}>Usuarios</button>
         </div>
       </div>
 
@@ -186,10 +137,10 @@ const Admin: React.FC<AdminProps> = ({ currentUser }) => {
              {orders.length === 0 && <div className="col-span-full py-20 text-center text-gray-400 dark:text-slate-600"><Package size={40} className="mx-auto mb-2 opacity-50" /><p>No hay pedidos registrados.</p></div>}
              <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
                 {orders.map((order) => (
-                  <div key={order.batchId} className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-700/50 p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 hover:border-red-200 dark:hover:border-red-900/50 transition-colors">
+                  <div key={order.batchId} className="bg-white dark:bg-slate-800 rounded-2xl shadow-card-soft dark:shadow-card-dark border border-gray-200 dark:border-slate-700/50 p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 hover:border-red-200 dark:hover:border-red-900/50 hover:shadow-xl transition-all group">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
-                        <span className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-xs font-black px-2 py-1 rounded uppercase tracking-wider">{order.department}</span>
+                        <span className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-xs font-black px-2 py-1 rounded uppercase tracking-wider border border-red-100 dark:border-red-900/30">{order.department}</span>
                         <span className="text-xs text-gray-400 dark:text-slate-500 font-mono">{order.date}</span>
                       </div>
                       <h3 className="font-bold text-gray-900 dark:text-white text-lg">Pedido <span className="font-mono text-gray-500 dark:text-slate-400">#{order.batchId}</span></h3>
@@ -197,8 +148,8 @@ const Admin: React.FC<AdminProps> = ({ currentUser }) => {
                       <p className="text-sm font-semibold text-gray-600 dark:text-slate-400 mt-2 flex items-center gap-2"><Package size={16} /> {order.items.reduce((acc, i) => acc + i.quantity, 0)} productos</p>
                     </div>
                     <div className="flex items-center gap-3 w-full md:w-auto">
-                      <button onClick={() => setSelectedOrder(order)} className="flex-1 md:flex-none bg-gray-900 dark:bg-white dark:text-slate-900 text-white px-5 py-3 rounded-xl font-bold hover:bg-red-600 dark:hover:bg-gray-200 transition-colors flex items-center justify-center gap-2 shadow-sm"><Eye size={18} /> Ver Albarán</button>
-                      <button onClick={() => handleDeleteBatchClick(order.batchId)} className="p-3 text-gray-400 dark:text-slate-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors border border-gray-100 dark:border-slate-700/50"><Trash2 size={18} /></button>
+                      <button onClick={() => setSelectedOrder(order)} className="flex-1 md:flex-none bg-gray-900 dark:bg-white dark:text-slate-900 text-white px-5 py-3 rounded-xl font-bold hover:bg-red-600 dark:hover:bg-gray-200 transition-colors flex items-center justify-center gap-2 shadow-md active:scale-95"><Eye size={18} /> Ver Albarán</button>
+                      <button onClick={() => handleDeleteBatchClick(order.batchId)} className="p-3 text-gray-400 dark:text-slate-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors border border-gray-100 dark:border-slate-700/50 shadow-sm active:scale-95"><Trash2 size={18} /></button>
                     </div>
                   </div>
                 ))}
@@ -206,54 +157,31 @@ const Admin: React.FC<AdminProps> = ({ currentUser }) => {
           </div>
         )}
 
-        {activeTab === 'files' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-             {files.length === 0 && <div className="col-span-full py-20 text-center text-gray-400 dark:text-slate-600"><ImageIcon size={40} className="mx-auto mb-2 opacity-50" /><p>No hay fotos.</p></div>}
-             {files.map(file => (
-              <div key={file.id} className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700/50 hover:shadow-md transition-all group overflow-hidden flex flex-col">
-                <div className="aspect-video bg-gray-100 dark:bg-slate-700 relative cursor-pointer" onClick={() => file.type === 'image' && setPreviewFile(file)}>
-                  {file.type === 'image' ? <img src={file.data} alt={file.name} className="w-full h-full object-cover" /> : <div className="w-full h-full flex flex-col items-center justify-center text-red-500 dark:text-red-400"><FileText size={48} /><span className="text-xs font-bold mt-2 uppercase">PDF</span></div>}
-                  {file.type === 'image' && <div className="absolute top-3 right-3 bg-black/60 text-white p-2 rounded-full backdrop-blur-sm shadow-sm pointer-events-none"><Eye size={16} /></div>}
-                </div>
-                <div className="p-4 flex flex-col flex-1">
-                  <h3 className="font-bold text-gray-900 dark:text-white truncate text-sm mb-1">{file.name}</h3>
-                  <div className="flex justify-between items-center mb-4"><p className="text-xs text-gray-500 dark:text-slate-400"><span className="font-bold text-gray-700 dark:text-slate-300">{file.uploadedBy}</span></p><span className="text-[10px] text-gray-400">{file.date.split(',')[0]}</span></div>
-                  <div className="flex items-center gap-2 mt-auto pt-3 border-t border-gray-100 dark:border-slate-700/50">
-                     {file.type === 'image' && <button onClick={() => setPreviewFile(file)} className="flex-1 py-2 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-lg flex items-center justify-center hover:bg-blue-100 transition-colors"><Eye size={18} /></button>}
-                     <a href={file.data} download={file.name} className="flex-1 py-2 bg-gray-50 dark:bg-slate-700/50 text-gray-600 dark:text-slate-300 rounded-lg flex items-center justify-center hover:bg-gray-100 transition-colors"><Download size={18} /></a>
-                     <button onClick={() => handleDeleteFileClick(file.id)} className="flex-1 py-2 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg flex items-center justify-center hover:bg-red-100 transition-colors"><Trash2 size={18} /></button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
         {activeTab === 'users' && (
           <div>
-            <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700/50 mb-6">
-              <div className="flex items-center gap-2 mb-4 text-gray-800 dark:text-white"><Users className="text-red-600 dark:text-red-400" size={24} /><h3 className="font-bold text-lg">Registrar Nuevo Empleado</h3></div>
+            <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-card-soft dark:shadow-card-dark border border-gray-100 dark:border-slate-700/50 mb-6">
+              <div className="flex items-center gap-2 mb-4 text-gray-900 dark:text-white"><Users className="text-red-600 dark:text-red-400" size={24} /><h3 className="font-bold text-xl">Registrar Nuevo Empleado</h3></div>
               <form onSubmit={handleAddUser} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <input type="text" placeholder="Nombre" value={newUser.name} onChange={e => setNewUser({...newUser, name: e.target.value})} className="p-3 border rounded-xl bg-gray-50 dark:bg-slate-700/50 dark:text-white outline-none" required />
-                  <input type="text" placeholder="PIN" value={newUser.pin} onChange={e => setNewUser({...newUser, pin: e.target.value})} className="p-3 border rounded-xl bg-gray-50 dark:bg-slate-700/50 dark:text-white outline-none" required />
-                  <select value={newUser.role} onChange={e => setNewUser({...newUser, role: e.target.value as UserRole})} className="p-3 border rounded-xl bg-gray-50 dark:bg-slate-700/50 dark:text-white outline-none">
+                  <input type="text" placeholder="Nombre" value={newUser.name} onChange={e => setNewUser({...newUser, name: e.target.value})} className="p-3 border-2 border-gray-200 dark:border-slate-700/50 rounded-xl bg-gray-50 dark:bg-slate-700/50 dark:text-white outline-none focus:border-red-500 focus:ring-4 focus:ring-red-100 dark:focus:ring-red-500/30 shadow-sm" required />
+                  <input type="text" placeholder="PIN" value={newUser.pin} onChange={e => setNewUser({...newUser, pin: e.target.value})} className="p-3 border-2 border-gray-200 dark:border-slate-700/50 rounded-xl bg-gray-50 dark:bg-slate-700/50 dark:text-white outline-none focus:border-red-500 focus:ring-4 focus:ring-red-100 dark:focus:ring-red-500/30 shadow-sm" required />
+                  <select value={newUser.role} onChange={e => setNewUser({...newUser, role: e.target.value as UserRole})} className="p-3 border-2 border-gray-200 dark:border-slate-700/50 rounded-xl bg-gray-50 dark:bg-slate-700/50 dark:text-white outline-none focus:border-red-500 focus:ring-4 focus:ring-red-100 dark:focus:ring-red-500/30 shadow-sm">
                     <option value={UserRole.STAFF}>Personal</option><option value={UserRole.ADMIN}>Admin</option>
                   </select>
                 </div>
-                <button type="submit" className="w-full md:w-auto bg-red-600 hover:bg-red-700 text-white px-8 py-3 rounded-xl font-bold shadow-md flex items-center justify-center gap-2"><Save size={18} /> Registrar</button>
+                <button type="submit" className="w-full md:w-auto bg-red-600 hover:bg-red-700 text-white px-8 py-3 rounded-xl font-bold shadow-lg shadow-button-red flex items-center justify-center gap-2 active:scale-95"><Save size={18} /> Registrar</button>
               </form>
             </div>
             <div className="space-y-3">
               {users.map(u => (
-                <div key={u.id} className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-gray-100 dark:border-slate-700/50 flex items-center justify-between hover:shadow-md transition-shadow">
+                <div key={u.id} className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-gray-100 dark:border-slate-700/50 flex items-center justify-between hover:shadow-lg transition-shadow group">
                   <div className="flex items-center gap-3">
-                    <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg ${u.role === UserRole.ADMIN ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-gray-600'}`}>{u.name.charAt(0)}</div>
-                    <div><h4 className="font-bold text-gray-800 dark:text-white">{u.name}</h4><p className="text-xs text-gray-500">{u.role} • PIN: {u.pin}</p></div>
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg shadow-sm ${u.role === UserRole.ADMIN ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-gray-600'}`}>{u.name.charAt(0)}</div>
+                    <div><h4 className="font-bold text-gray-900 dark:text-white">{u.name}</h4><p className="text-xs text-gray-500 dark:text-slate-400">{u.role} • PIN: {u.pin}</p></div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <button onClick={() => setEditingUser(u)} className="p-2 text-blue-600 bg-blue-50 rounded-lg"><Edit2 size={18} /></button>
-                    {u.id !== currentUser.id && <button onClick={() => handleDeleteUser(u.id)} className="p-2 text-red-600 bg-red-50 rounded-lg"><Trash2 size={18} /></button>}
+                    <button onClick={() => setEditingUser(u)} className="p-2 text-blue-600 bg-blue-50 dark:bg-blue-900/20 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30 active:scale-95 transition-colors shadow-sm"><Edit2 size={18} /></button>
+                    {u.id !== currentUser.id && <button onClick={() => handleDeleteUser(u.id)} className="p-2 text-red-600 bg-red-50 dark:bg-red-900/20 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 active:scale-95 transition-colors shadow-sm"><Trash2 size={18} /></button>}
                   </div>
                 </div>
               ))}
@@ -262,94 +190,32 @@ const Admin: React.FC<AdminProps> = ({ currentUser }) => {
         )}
 
         {activeTab === 'data' && (
-           <div className="space-y-6">
-             <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700/50">
-               <h3 className="text-lg font-bold mb-6 text-gray-800 dark:text-white">Stock Crítico (Top 8)</h3>
-               
-               {/* Custom CSS Bar Chart - Robust and Crash Free */}
-               {lowStockData.length > 0 ? (
-                 <div className="w-full h-64 flex items-end gap-2 md:gap-4 border-b border-gray-200 dark:border-slate-700 pb-2 overflow-x-auto">
-                    {lowStockData.map((item, i) => (
-                      <div key={i} className="flex-1 min-w-[40px] flex flex-col justify-end group relative h-full">
-                         <div className="text-center text-[10px] md:text-xs text-red-600 dark:text-red-400 font-bold mb-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            {item.stock} uds
-                         </div>
-                         <div 
-                           className="w-full bg-red-500/80 hover:bg-red-500 dark:bg-red-600/80 dark:hover:bg-red-600 rounded-t-lg transition-all relative shadow-sm"
-                           style={{ height: `${Math.max(10, Math.min(100, (item.stock / 20) * 100))}%` }} 
-                         >
-                         </div>
-                         <div className="text-center mt-2">
-                           <p className="text-[10px] text-gray-500 dark:text-slate-400 font-bold truncate w-full max-w-[60px] mx-auto" title={item.name}>{item.name}</p>
-                         </div>
-                      </div>
-                    ))}
-                 </div>
-               ) : (
-                  <div className="h-32 flex items-center justify-center text-gray-400 italic">Todo el stock está en niveles seguros.</div>
-               )}
-             </div>
-
-             <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700/50">
-                <h3 className="text-lg font-bold mb-4 text-gray-800 dark:text-white flex items-center gap-2">
-                  <Database size={20} className="text-blue-500" />
-                  Gestión de Datos
-                </h3>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-100 dark:border-blue-900/30">
-                    <h4 className="font-bold text-blue-800 dark:text-blue-300 text-sm mb-1">Prueba de Carga (Demo)</h4>
-                    <p className="text-xs text-blue-600 dark:text-blue-400 mb-3">
-                      Genera automáticamente +60 productos de prueba (Bar, Cocina, Limpieza...) para testear el app.
-                    </p>
-                    <button 
-                      onClick={handleGenerateStock}
-                      disabled={isGeneratingData}
-                      className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-xl font-bold text-sm shadow-md flex items-center gap-2 disabled:opacity-50 disabled:cursor-wait w-full justify-center"
-                    >
-                      {isGeneratingData ? <Loader2 className="animate-spin" size={18} /> : <Zap size={18} />}
-                      Generar Stock
-                    </button>
-                  </div>
-
-                  <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-100 dark:border-red-900/30">
-                    <h4 className="font-bold text-red-800 dark:text-red-300 text-sm mb-1">Limpiar Datos Demo</h4>
-                    <p className="text-xs text-red-600 dark:text-red-400 mb-3">
-                      Elimina solo los productos generados automáticamente, manteniendo tus datos manuales.
-                    </p>
-                    <button 
-                      onClick={handleClearDemoStock}
-                      disabled={isGeneratingData}
-                      className="bg-red-600 hover:bg-red-700 text-white px-4 py-3 rounded-xl font-bold text-sm shadow-md flex items-center gap-2 disabled:opacity-50 disabled:cursor-wait w-full justify-center"
-                    >
-                      {isGeneratingData ? <Loader2 className="animate-spin" size={18} /> : <Trash2 size={18} />}
-                      Limpiar Demo
-                    </button>
-                  </div>
-                </div>
+           <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-card-soft dark:shadow-card-dark border border-gray-100 dark:border-slate-700/50">
+             <h3 className="text-lg font-bold mb-4 text-gray-900 dark:text-white">Stock Crítico</h3>
+             <div className="h-64 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={lowStockData}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" opacity={0.3} />
+                    <XAxis dataKey="name" hide />
+                    <YAxis stroke="#94a3b8" />
+                    <Tooltip contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '12px', color: '#fff' }} />
+                    <Bar dataKey="stock" radius={[4, 4, 0, 0]}><Cell fill="#ef4444" /></Bar>
+                  </BarChart>
+                </ResponsiveContainer>
              </div>
            </div>
         )}
       </div>
 
-      {/* MODALS (Edit User, Confirm Delete, Preview PDF, Lightbox) */}
-      {editingUser && <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4 backdrop-blur-sm"><div className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-md p-6"><h3 className="font-bold text-lg mb-4 dark:text-white">Editar Usuario</h3><input value={editingUser.name} onChange={e => setEditingUser({...editingUser, name: e.target.value})} className="w-full p-3 mb-3 border rounded-xl dark:bg-slate-700/50 dark:text-white" /><input value={editingUser.pin} onChange={e => setEditingUser({...editingUser, pin: e.target.value})} className="w-full p-3 mb-3 border rounded-xl dark:bg-slate-700/50 dark:text-white" /><div className="flex gap-3"><button onClick={() => setEditingUser(null)} className="flex-1 py-3 bg-gray-100 rounded-xl">Cancelar</button><button onClick={handleUpdateUser} className="flex-1 py-3 bg-red-600 text-white rounded-xl">Guardar</button></div></div></div>}
+      {/* MODALS (Edit User, Confirm Delete, Preview PDF) */}
+      {editingUser && <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in"><div className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-md p-6 shadow-pop-in animate-pop-in"><h3 className="font-bold text-lg mb-4 dark:text-white">Editar Usuario</h3><input value={editingUser.name} onChange={e => setEditingUser({...editingUser, name: e.target.value})} className="w-full p-3 mb-3 border-2 border-gray-200 dark:border-slate-700/50 rounded-xl dark:bg-slate-700/50 dark:text-white outline-none focus:border-red-500 focus:ring-4 focus:ring-red-100 dark:focus:ring-red-500/30 shadow-sm" /><input value={editingUser.pin} onChange={e => setEditingUser({...editingUser, pin: e.target.value})} className="w-full p-3 mb-3 border-2 border-gray-200 dark:border-slate-700/50 rounded-xl dark:bg-slate-700/50 dark:text-white outline-none focus:border-red-500 focus:ring-4 focus:ring-red-100 dark:focus:ring-red-500/30 shadow-sm" /><div className="flex gap-3 mt-4"><button onClick={() => setEditingUser(null)} className="flex-1 py-3 bg-gray-100 dark:bg-slate-700 rounded-xl font-bold text-gray-600 dark:text-slate-400 hover:bg-gray-200 dark:hover:bg-slate-600 active:scale-[0.98]">Cancelar</button><button onClick={handleUpdateUser} className="flex-1 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 shadow-lg shadow-button-red active:scale-[0.98]">Guardar</button></div></div></div>}
       
-      {/* Lightbox */}
-      {previewFile && previewFile.type === 'image' && (
-        <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-md flex flex-col animate-fade-in" onClick={() => setPreviewFile(null)}>
-          <div className="flex justify-between items-center p-4 bg-black/40 text-white z-10"><h3 className="font-bold">{previewFile.name}</h3><button onClick={() => setPreviewFile(null)}><X size={24} /></button></div>
-          <div className="flex-1 flex items-center justify-center p-4"><img src={previewFile.data} className="max-h-[85vh] max-w-[95vw] object-contain transition-transform" style={{ transform: `scale(${zoomLevel})` }} /></div>
-          <div className="flex justify-center items-center gap-6 p-6 bg-black/40 z-10" onClick={e => e.stopPropagation()}><button onClick={() => setZoomLevel(prev => Math.max(0.5, prev - 0.25))} className="p-2 text-white"><ZoomOut /></button><button onClick={() => setZoomLevel(prev => Math.min(3, prev + 0.25))} className="p-2 text-white"><ZoomIn /></button></div>
-        </div>
-      )}
-
       {/* PDF Modal */}
       {selectedOrder && (
         <div className="fixed inset-0 z-[70] bg-gray-900/95 flex flex-col items-center justify-start p-0 md:p-6 overflow-y-auto animate-fade-in" onClick={() => setSelectedOrder(null)}>
            <div className="w-full max-w-3xl flex justify-between items-center p-4 sticky top-0 bg-gray-900/80 backdrop-blur-md z-20" onClick={e => e.stopPropagation()}>
-             <button onClick={handleDownloadPDF} disabled={isGeneratingPdf} className="bg-red-600 text-white px-6 py-3 rounded-xl font-bold shadow-lg flex items-center gap-2 disabled:bg-gray-600">{isGeneratingPdf ? 'Generando...' : 'Descargar PDF'}</button>
-             <button onClick={() => setSelectedOrder(null)} className="bg-white text-gray-900 px-4 py-3 rounded-xl font-bold"><X size={24} /></button>
+             <button onClick={handleDownloadPDF} disabled={isGeneratingPdf} className="bg-red-600 text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-button-red flex items-center gap-2 disabled:bg-gray-600 disabled:shadow-none hover:bg-red-700 active:scale-95">{isGeneratingPdf ? <Loader2 className="animate-spin" /> : <Download size={20} />} {isGeneratingPdf ? 'Generando...' : 'Descargar PDF'}</button>
+             <button onClick={() => setSelectedOrder(null)} className="bg-white text-gray-900 px-4 py-3 rounded-xl font-bold shadow-md hover:bg-gray-100 active:scale-95"><X size={24} /></button>
            </div>
            
            {/* Printable Area */}
@@ -373,11 +239,8 @@ const Admin: React.FC<AdminProps> = ({ currentUser }) => {
       )}
       
       {/* Confirm Batch Delete */}
-      {batchToDelete && <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4"><div className="bg-white dark:bg-slate-800 rounded-3xl p-6 text-center"><h3 className="text-xl font-black mb-2 dark:text-white">¿Eliminar Pedido?</h3><div className="flex gap-3"><button onClick={() => setBatchToDelete(null)} className="flex-1 py-3 bg-gray-100 rounded-xl">Cancelar</button><button onClick={confirmDeleteBatch} className="flex-1 py-3 bg-red-600 text-white rounded-xl">Eliminar</button></div></div></div>}
+      {batchToDelete && <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in"><div className="bg-white dark:bg-slate-800 rounded-3xl p-6 text-center shadow-pop-in animate-pop-in"><h3 className="text-xl font-black mb-2 dark:text-white">¿Eliminar Pedido?</h3><p className="text-gray-500 dark:text-slate-400 mb-6">Esta acción no se puede deshacer.</p><div className="flex gap-3"><button onClick={() => setBatchToDelete(null)} className="flex-1 py-3 bg-gray-100 dark:bg-slate-700 rounded-xl font-bold text-gray-600 dark:text-slate-400 hover:bg-gray-200 dark:hover:bg-slate-600 active:scale-[0.98]">Cancelar</button><button onClick={confirmDeleteBatch} className="flex-1 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 shadow-lg shadow-button-red active:scale-[0.98]">Eliminar</button></div></div></div>}
       
-      {/* Confirm File Delete */}
-      {fileToDelete && <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4"><div className="bg-white dark:bg-slate-800 rounded-3xl p-6 text-center"><h3 className="text-xl font-black mb-2 dark:text-white">¿Eliminar Archivo?</h3><div className="flex gap-3"><button onClick={() => setFileToDelete(null)} className="flex-1 py-3 bg-gray-100 rounded-xl">Cancelar</button><button onClick={confirmDeleteFile} className="flex-1 py-3 bg-red-600 text-white rounded-xl">Eliminar</button></div></div></div>}
-
     </div>
   );
 };

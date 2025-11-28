@@ -22,12 +22,10 @@ export enum Department {
 export interface Product {
   id: string;
   name: string;
-  category: string; // Main category (e.g. Bebidas, Alcohol, Cocina)
-  subcategory?: string; // Specific type (e.g. Ron, Ginebra, Agua)
+  category: string;
   quantity: number;
   unit: string; // e.g., 'unidades', 'litros', 'cajas'
   minThreshold: number; // For low stock alerts
-  isDemo?: boolean;
 }
 
 export interface ReplenishmentRequest {
@@ -44,17 +42,11 @@ export interface ReplenishmentRequest {
   unit?: string;
 }
 
-export interface UploadedFile {
-  id: string;
-  name: string;
-  type: 'image' | 'pdf';
-  data: string; // Base64 string
-  uploadedBy: string;
-  date: string;
-  timestamp: number;
-  size: string;
-}
-
 export interface AppState {
   currentUser: User | null;
+}
+
+export interface CartItem {
+  product: Product;
+  quantity: number;
 }
