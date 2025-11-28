@@ -1,4 +1,4 @@
-import { Product, User, ReplenishmentRequest, UserRole, Department } from '../types';
+import { Product, User, ReplenishmentRequest, UserRole, Department, CartItem } from '../types';
 import { 
   collection, 
   getDocs, 
@@ -18,6 +18,22 @@ import {
 // Import the 'db' instance from firebaseConfig
 import { db } from '../firebaseConfig';
 
+// Helper to handle circular references for localStorage
+function stringifyWithCircularGuard(obj: any) {
+  const cache = new Set();
+  return JSON.stringify(obj, (key, value) => {
+    if (typeof value === 'object' && value !== null) {
+      if (cache.has(value)) {
+        // Circular reference found, discard key
+        return;
+      }
+      // Store value in our collection
+      cache.add(value);
+    }
+    return value;
+  });
+}
+
 // LOCAL STORAGE FALLBACK KEYS
 const KEYS = {
   USERS: 'hotel_victoria_users',
@@ -26,6 +42,7 @@ const KEYS = {
   CURRENT_SESSION: 'hotel_victoria_session',
   DRAFT_CART: 'hotel_victoria_draft_cart',
   LAST_VIEW: 'hotel_victoria_last_view',
+  DEPARTMENTS: 'hotel_victoria_departments', // New key for departments
 };
 
 // INITIAL DATA FOR SEEDING
@@ -35,25 +52,42 @@ const INITIAL_USERS: User[] = [
   { id: '3', name: 'Chef Cocina', role: UserRole.STAFF, pin: '1234' }
 ];
 
-const INITIAL_PRODUCTS: Product[] = [
-  { id: 'p1', name: 'Coca Cola', category: 'Bebidas', quantity: 150, unit: 'latas', minThreshold: 20 },
-  { id: 'p2', name: 'Bitter Kas', category: 'Bebidas', quantity: 45, unit: 'botellines', minThreshold: 10 },
-  { id: 'p3', name: 'Cerveza Barril', category: 'Alcohol', quantity: 8, unit: 'barriles', minThreshold: 2 },
-  { id: 'p4', name: 'Leche Entera', category: 'Lácteos', quantity: 60, unit: 'litros', minThreshold: 12 },
-  { id: 'p5', name: 'Galletas María', category: 'Desayuno', quantity: 30, unit: 'paquetes', minThreshold: 5 },
-  { id: 'p6', name: 'Jabón Lavavajillas', category: 'Limpieza', quantity: 10, unit: 'bidones', minThreshold: 2 },
+const INITIAL_DEPARTMENTS: Department[] = [
+  { id: 'd-bar', name: 'Bar' },
+  { id: 'd-gastrobar', name: 'Gastro Bar' },
+  { id: 'd-cocina', name: 'Cocina' },
+  { id: 'd-limpieza', name: 'Limpieza' },
+  { id: 'd-tienda', name: 'Tienda de Regalos' },
+  { id: 'd-general', name: 'General' },
+  { id: 'd-comedor', name: 'Comedor' },
+  { id: 'd-spa', name: 'SPA' },
 ];
+
+const INITIAL_PRODUCTS: Product[] = [
+  { id: 'p1', name: 'Coca Cola', category: 'Bebidas', quantity: 150, unit: 'latas', minThreshold: 20, departmentId: 'd-bar', departmentName: 'Bar' },
+  { id: 'p2', name: 'Bitter Kas', category: 'Bebidas', quantity: 45, unit: 'botellines', minThreshold: 10, departmentId: 'd-bar', departmentName: 'Bar' },
+  { id: 'p3', name: 'Cerveza Barril', category: 'Alcohol', quantity: 8, unit: 'barriles', minThreshold: 2, departmentId: 'd-bar', departmentName: 'Bar' },
+  { id: 'p4', name: 'Leche Entera', category: 'Lácteos', quantity: 60, unit: 'litros', minThreshold: 12, departmentId: 'd-cocina', departmentName: 'Cocina' },
+  { id: 'p5', name: 'Galletas María', category: 'Desayuno', quantity: 30, unit: 'paquetes', minThreshold: 5, departmentId: 'd-comedor', departmentName: 'Comedor' },
+  { id: 'p6', name: 'Jabón Lavavajillas', category: 'Limpieza', quantity: 10, unit: 'bidones', minThreshold: 2, departmentId: 'd-limpieza', departmentName: 'Limpieza' },
+  { id: 'p7', name: 'Servilletas', category: 'Material', quantity: 20, unit: 'paquetes', minThreshold: 5, departmentId: 'd-gastrobar', departmentName: 'Gastro Bar' },
+  { id: 'p8', name: 'Pan de Molde', category: 'Panadería', quantity: 10, unit: 'bolsas', minThreshold: 3, departmentId: 'd-cocina', departmentName: 'Cocina' },
+  { id: 'p9', name: 'Champú Huesped', category: 'Amenidades', quantity: 100, unit: 'uds', minThreshold: 20, departmentId: 'd-spa', departmentName: 'SPA' },
+  { id: 'p10', name: 'Chocolate Negro', category: 'Golosinas', quantity: 50, unit: 'barras', minThreshold: 10, departmentId: 'd-tienda', departmentName: 'Tienda de Regalos' },
+];
+
 
 export interface OrderBatch {
   batchId: string;
   date: string;
-  department: Department;
+  departmentId: string; // Changed to ID
+  departmentName: string; // New: For display
   requestedBy: string;
   items: ReplenishmentRequest[];
 }
 
 // Check if Firebase is available by ensuring 'db' is defined
-const isFirebaseReady = !!db;
+const isFirebaseReady = typeof db !== 'undefined' && db !== null;
 
 export const storageService = {
   // --- AUTH & SESSION ---
@@ -74,7 +108,7 @@ export const storageService = {
            );
            
            if (match) {
-             localStorage.setItem(KEYS.CURRENT_SESSION, JSON.stringify(match));
+             localStorage.setItem(KEYS.CURRENT_SESSION, stringifyWithCircularGuard(match));
              return match;
            }
         }
@@ -86,13 +120,19 @@ export const storageService = {
             
             // Create Users
             INITIAL_USERS.forEach(u => {
-             const ref = doc(collection(db, 'users'));
+             const ref = doc(db, 'users', u.id); // Use provided ID for users
              batch.set(ref, u);
+            });
+
+            // Create Departments
+            INITIAL_DEPARTMENTS.forEach(d => {
+              const ref = doc(db, 'departments', d.id); // Use provided ID for departments
+              batch.set(ref, d); // Use setDoc to explicitly set the ID
             });
 
             // Create Products
             INITIAL_PRODUCTS.forEach(p => {
-             const ref = doc(collection(db, 'products'));
+             const ref = doc(db, 'products', p.id); // Use provided ID for products
              batch.set(ref, p);
             });
             
@@ -108,7 +148,7 @@ export const storageService = {
                 if (!snap.empty) {
                      const userData = snap.docs[0].data() as User;
                      const user = { ...userData, id: snap.docs[0].id };
-                     localStorage.setItem(KEYS.CURRENT_SESSION, JSON.stringify(user));
+                     localStorage.setItem(KEYS.CURRENT_SESSION, stringifyWithCircularGuard(user));
                      return user;
                 }
             }
@@ -127,9 +167,9 @@ export const storageService = {
       }
     } else {
       // Local Fallback
-      const users = JSON.parse(localStorage.getItem(KEYS.USERS) || JSON.stringify(INITIAL_USERS));
+      const users = JSON.parse(localStorage.getItem(KEYS.USERS) || stringifyWithCircularGuard(INITIAL_USERS));
       const user = users.find((u: User) => u.name.toLowerCase() === name.toLowerCase() && u.pin === pin);
-      if (user) localStorage.setItem(KEYS.CURRENT_SESSION, JSON.stringify(user));
+      if (user) localStorage.setItem(KEYS.CURRENT_SESSION, stringifyWithCircularGuard(user));
       return user || null;
     }
   },
@@ -152,8 +192,21 @@ export const storageService = {
         callback(products);
       });
     } else {
-      const prods = JSON.parse(localStorage.getItem(KEYS.PRODUCTS) || JSON.stringify(INITIAL_PRODUCTS));
+      const prods = JSON.parse(localStorage.getItem(KEYS.PRODUCTS) || stringifyWithCircularGuard(INITIAL_PRODUCTS));
       callback(prods);
+      return () => {};
+    }
+  },
+
+  subscribeToDepartments: (callback: (departments: Department[]) => void) => {
+    if (isFirebaseReady) {
+      return onSnapshot(collection(db, 'departments'), (snapshot) => {
+        const departments = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Department));
+        callback(departments);
+      });
+    } else {
+      const deps = JSON.parse(localStorage.getItem(KEYS.DEPARTMENTS) || stringifyWithCircularGuard(INITIAL_DEPARTMENTS));
+      callback(deps);
       return () => {};
     }
   },
@@ -171,7 +224,8 @@ export const storageService = {
             groups[bid] = {
               batchId: bid,
               date: req.date,
-              department: req.department,
+              departmentId: req.departmentId, // Updated
+              departmentName: req.departmentName, // Updated
               requestedBy: req.requestedBy,
               items: []
             };
@@ -191,7 +245,8 @@ export const storageService = {
             groups[bid] = {
               batchId: bid,
               date: req.date,
-              department: req.department,
+              departmentId: req.departmentId, // Updated
+              departmentName: req.departmentName, // Updated
               requestedBy: req.requestedBy,
               items: []
             };
@@ -210,7 +265,7 @@ export const storageService = {
         callback(users);
       });
     } else {
-      callback(JSON.parse(localStorage.getItem(KEYS.USERS) || JSON.stringify(INITIAL_USERS)));
+      callback(JSON.parse(localStorage.getItem(KEYS.USERS) || stringifyWithCircularGuard(INITIAL_USERS)));
       return () => {};
     }
   },
@@ -218,17 +273,20 @@ export const storageService = {
   // --- ACTIONS ---
   saveProduct: async (product: Product) => {
     if (isFirebaseReady) {
-      if (product.id.startsWith('p_') || product.id.length < 5) { // New product
-         await addDoc(collection(db, 'products'), { ...product, id: undefined }); // Let ID be auto
-      } else {
+      // If product.id is a temporary client-side ID or missing, it's a new product
+      if (!product.id || product.id.startsWith('p_')) { 
+         // Firebase will auto-generate the document ID, so don't pass 'id' in the object
+         const { id, ...productWithoutId } = product; 
+         await addDoc(collection(db, 'products'), productWithoutId);
+      } else { // Existing product
          await updateDoc(doc(db, 'products', product.id), { ...product });
       }
     } else {
-      const products = JSON.parse(localStorage.getItem(KEYS.PRODUCTS) || JSON.stringify(INITIAL_PRODUCTS));
+      const products = JSON.parse(localStorage.getItem(KEYS.PRODUCTS) || stringifyWithCircularGuard(INITIAL_PRODUCTS));
       const idx = products.findIndex((p: Product) => p.id === product.id);
       if (idx >= 0) products[idx] = product;
       else products.push(product);
-      localStorage.setItem(KEYS.PRODUCTS, JSON.stringify(products));
+      localStorage.setItem(KEYS.PRODUCTS, stringifyWithCircularGuard(products));
     }
   },
 
@@ -236,12 +294,39 @@ export const storageService = {
     if (isFirebaseReady) {
       await deleteDoc(doc(db, 'products', id));
     } else {
-      const products = JSON.parse(localStorage.getItem(KEYS.PRODUCTS) || JSON.stringify(INITIAL_PRODUCTS));
-      localStorage.setItem(KEYS.PRODUCTS, JSON.stringify(products.filter((p: Product) => p.id !== id)));
+      const products = JSON.parse(localStorage.getItem(KEYS.PRODUCTS) || stringifyWithCircularGuard(INITIAL_PRODUCTS));
+      localStorage.setItem(KEYS.PRODUCTS, stringifyWithCircularGuard(products.filter((p: Product) => p.id !== id)));
     }
   },
 
-  submitOrderBatch: async (items: {product: Product, quantity: number}[], department: Department, user: User) => {
+  saveDepartment: async (department: Department) => {
+    if (isFirebaseReady) {
+      // If department.id is a temporary client-side ID or empty, it's a new department
+      if (!department.id || department.id.startsWith('d-temp')) { 
+        const { id, ...departmentWithoutId } = department; // Omit client-side temp ID
+        await addDoc(collection(db, 'departments'), departmentWithoutId); // Firebase generates ID
+      } else { // Existing department
+        await updateDoc(doc(db, 'departments', department.id), { name: department.name });
+      }
+    } else {
+      const departments = JSON.parse(localStorage.getItem(KEYS.DEPARTMENTS) || stringifyWithCircularGuard(INITIAL_DEPARTMENTS));
+      const idx = departments.findIndex((d: Department) => d.id === department.id);
+      if (idx >= 0) departments[idx] = department;
+      else departments.push({ ...department, id: `d-temp-${Date.now()}` }); // Assign a temp ID for new local departments
+      localStorage.setItem(KEYS.DEPARTMENTS, stringifyWithCircularGuard(departments));
+    }
+  },
+
+  deleteDepartment: async (id: string) => {
+    if (isFirebaseReady) {
+      await deleteDoc(doc(db, 'departments', id));
+    } else {
+      const departments = JSON.parse(localStorage.getItem(KEYS.DEPARTMENTS) || stringifyWithCircularGuard(INITIAL_DEPARTMENTS));
+      localStorage.setItem(KEYS.DEPARTMENTS, stringifyWithCircularGuard(departments.filter((d: Department) => d.id !== id)));
+    }
+  },
+
+  submitOrderBatch: async (items: {product: Product, quantity: number}[], departmentId: string, departmentName: string, user: User) => {
     const timestamp = Date.now();
     const batchId = `ORD-${timestamp.toString().slice(-6)}`;
     const date = new Date().toLocaleString();
@@ -266,7 +351,8 @@ export const storageService = {
           batchId,
           productId: item.product.id,
           productName: item.product.name,
-          department,
+          departmentId, // Updated
+          departmentName, // Updated
           requestedBy: user.name,
           quantity: item.quantity,
           status: 'PENDING',
@@ -280,7 +366,7 @@ export const storageService = {
       return { success: true, batchId, lowStockItems };
     } else {
       // Local fallback
-      const products = JSON.parse(localStorage.getItem(KEYS.PRODUCTS) || JSON.stringify(INITIAL_PRODUCTS));
+      const products = JSON.parse(localStorage.getItem(KEYS.PRODUCTS) || stringifyWithCircularGuard(INITIAL_PRODUCTS));
       const requests = JSON.parse(localStorage.getItem(KEYS.REQUESTS) || '[]');
       
       items.forEach(item => {
@@ -296,7 +382,8 @@ export const storageService = {
             batchId,
             productId: item.product.id,
             productName: item.product.name,
-            department,
+            departmentId, // Updated
+            departmentName, // Updated
             requestedBy: user.name,
             quantity: item.quantity,
             status: 'PENDING',
@@ -305,8 +392,8 @@ export const storageService = {
             unit: item.product.unit
         });
       });
-      localStorage.setItem(KEYS.PRODUCTS, JSON.stringify(products));
-      localStorage.setItem(KEYS.REQUESTS, JSON.stringify(requests));
+      localStorage.setItem(KEYS.PRODUCTS, stringifyWithCircularGuard(products));
+      localStorage.setItem(KEYS.REQUESTS, stringifyWithCircularGuard(requests));
       return { success: true, batchId, lowStockItems };
     }
   },
@@ -321,17 +408,17 @@ export const storageService = {
     } else {
       const requests = JSON.parse(localStorage.getItem(KEYS.REQUESTS) || '[]');
       const filtered = requests.filter((r: ReplenishmentRequest) => r.batchId !== batchId);
-      localStorage.setItem(KEYS.REQUESTS, JSON.stringify(filtered));
+      localStorage.setItem(KEYS.REQUESTS, stringifyWithCircularGuard(filtered));
     }
   },
 
   addUser: async (user: User) => {
     if (isFirebaseReady) {
-      await addDoc(collection(db, 'users'), user);
+      await setDoc(doc(db, 'users', user.id), user); // Use setDoc to create/update with provided ID
     } else {
-      const users = JSON.parse(localStorage.getItem(KEYS.USERS) || JSON.stringify(INITIAL_USERS));
+      const users = JSON.parse(localStorage.getItem(KEYS.USERS) || stringifyWithCircularGuard(INITIAL_USERS));
       users.push(user);
-      localStorage.setItem(KEYS.USERS, JSON.stringify(users));
+      localStorage.setItem(KEYS.USERS, stringifyWithCircularGuard(users));
     }
   },
 
@@ -339,11 +426,11 @@ export const storageService = {
     if (isFirebaseReady) {
        await updateDoc(doc(db, 'users', user.id), { ...user });
     } else {
-       const users = JSON.parse(localStorage.getItem(KEYS.USERS) || JSON.stringify(INITIAL_USERS));
+       const users = JSON.parse(localStorage.getItem(KEYS.USERS) || stringifyWithCircularGuard(INITIAL_USERS));
        const idx = users.findIndex((u: User) => u.id === user.id);
        if (idx >= 0) {
          users[idx] = user;
-         localStorage.setItem(KEYS.USERS, JSON.stringify(users));
+         localStorage.setItem(KEYS.USERS, stringifyWithCircularGuard(users));
        }
     }
   },
@@ -352,14 +439,14 @@ export const storageService = {
     if (isFirebaseReady) {
       await deleteDoc(doc(db, 'users', id));
     } else {
-      const users = JSON.parse(localStorage.getItem(KEYS.USERS) || JSON.stringify(INITIAL_USERS));
-      localStorage.setItem(KEYS.USERS, JSON.stringify(users.filter((u: User) => u.id !== id)));
+      const users = JSON.parse(localStorage.getItem(KEYS.USERS) || stringifyWithCircularGuard(INITIAL_USERS));
+      localStorage.setItem(KEYS.USERS, stringifyWithCircularGuard(users.filter((u: User) => u.id !== id)));
     }
   },
 
   // Helpers
-  getDraftCart: () => JSON.parse(localStorage.getItem(KEYS.DRAFT_CART) || '[]'),
-  saveDraftCart: (cart: any[]) => localStorage.setItem(KEYS.DRAFT_CART, JSON.stringify(cart)),
+  getDraftCart: (): CartItem[] => JSON.parse(localStorage.getItem(KEYS.DRAFT_CART) || '[]'),
+  saveDraftCart: (cart: CartItem[]) => localStorage.setItem(KEYS.DRAFT_CART, stringifyWithCircularGuard(cart)),
   getLastView: () => localStorage.getItem(KEYS.LAST_VIEW),
   saveLastView: (view: string) => localStorage.setItem(KEYS.LAST_VIEW, view),
   
@@ -369,14 +456,14 @@ export const storageService = {
     Object.values(KEYS).forEach(k => {
       backup[k] = JSON.parse(localStorage.getItem(k) || 'null');
     });
-    return JSON.stringify(backup);
+    return stringifyWithCircularGuard(backup);
   },
   
   restoreBackup: (json: string) => {
     try {
       const data = JSON.parse(json);
       Object.keys(data).forEach(k => {
-         if (data[k]) localStorage.setItem(k, JSON.stringify(data[k]));
+         if (data[k]) localStorage.setItem(k, stringifyWithCircularGuard(data[k]));
       });
       return true;
     } catch { return false; }

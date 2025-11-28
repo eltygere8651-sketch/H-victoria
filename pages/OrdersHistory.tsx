@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { storageService, OrderBatch } from '../services/storageService';
-import { User, UserRole } from '../types';
+import { User, UserRole, Department } from '../types';
 import { FileText, Printer, Trash2, X, Eye, Package } from 'lucide-react';
 import { Logo } from '../components/Logo';
 
@@ -38,11 +38,11 @@ const OrdersHistory: React.FC<OrdersHistoryProps> = ({ currentUser }) => {
       
       {/* Header */}
       <div className="mb-8">
-        <h2 className="text-3xl font-extrabold text-gray-900 dark:text-white flex items-center gap-3">
+        <h2 className="text-3xl font-extrabold text-gray-900 dark:text-white flex items-center gap-3 drop-shadow-sm">
           <span className="bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 p-2 rounded-xl shadow-sm"><FileText size={32} /></span>
           Historial de Pedidos
         </h2>
-        <p className="text-gray-500 dark:text-slate-400 text-base mt-2 ml-1">Consulta y reimprime los albaranes anteriores</p>
+        <p className="text-gray-500 dark:text-slate-400 text-base mt-2 ml-1 drop-shadow-sm">Consulta y reimprime los albaranes anteriores</p>
       </div>
 
       {/* Orders List */}
@@ -51,23 +51,23 @@ const OrdersHistory: React.FC<OrdersHistoryProps> = ({ currentUser }) => {
           <div key={order.batchId} className="bg-white dark:bg-slate-800 rounded-2xl shadow-card-soft dark:shadow-card-dark border border-gray-200 dark:border-slate-700/50 p-6 hover:shadow-xl dark:hover:shadow-red-900/20 dark:hover:border-slate-600 transition-all cursor-pointer group" onClick={() => setSelectedOrder(order)}>
             <div className="flex justify-between items-start mb-4">
               <div>
-                <span className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-xs font-black px-3 py-1.5 rounded-lg uppercase tracking-wider border border-red-100 dark:border-red-900/30">
-                  {order.department}
+                <span className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-xs font-black px-3 py-1.5 rounded-lg uppercase tracking-wider border border-red-100 dark:border-red-900/30 drop-shadow-sm">
+                  {order.departmentName}
                 </span>
-                <h3 className="font-bold text-gray-900 dark:text-slate-200 mt-2 text-lg group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors">{order.batchId}</h3>
+                <h3 className="font-bold text-gray-900 dark:text-slate-200 mt-2 text-lg group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors drop-shadow-sm">{order.batchId}</h3>
               </div>
               <div className="text-right">
-                <p className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wide">{order.date.split(',')[0]}</p>
-                <p className="text-xs font-semibold text-gray-400 dark:text-slate-500">{order.date.split(',')[1]}</p>
+                <p className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wide drop-shadow-sm">{order.date.split(',')[0]}</p>
+                <p className="text-xs font-semibold text-gray-400 dark:text-slate-500 drop-shadow-sm">{order.date.split(',')[1]}</p>
               </div>
             </div>
             
             <div className="mb-6 space-y-1">
-              <p className="text-sm font-semibold text-gray-600 dark:text-slate-400 flex items-center gap-2">
+              <p className="text-sm font-semibold text-gray-600 dark:text-slate-400 flex items-center gap-2 drop-shadow-sm">
                 <Package size={16} className="text-gray-400 dark:text-slate-500" /> 
                 <span className="text-gray-900 dark:text-white font-bold">{order.items.reduce((acc, item) => acc + item.quantity, 0)}</span> productos
               </p>
-              <p className="text-sm text-gray-500 dark:text-slate-400">
+              <p className="text-sm text-gray-500 dark:text-slate-400 drop-shadow-sm">
                 Solicitado por: <span className="font-bold text-gray-700 dark:text-slate-300">{order.requestedBy}</span>
               </p>
             </div>
@@ -97,8 +97,8 @@ const OrdersHistory: React.FC<OrdersHistoryProps> = ({ currentUser }) => {
             <div className="bg-gray-50 dark:bg-slate-700/30 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 shadow-md">
               <FileText size={40} className="opacity-40" />
             </div>
-            <p className="text-xl font-bold text-gray-500 dark:text-slate-500">No hay pedidos registrados</p>
-            <p className="text-sm mt-1 text-gray-400">Realiza un nuevo pedido para verlo aquí.</p>
+            <p className="text-xl font-bold text-gray-500 dark:text-slate-500 drop-shadow-sm">No hay pedidos registrados</p>
+            <p className="text-sm mt-1 text-gray-400 drop-shadow-sm">Realiza un nuevo pedido para verlo aquí.</p>
           </div>
         )}
       </div>
@@ -115,7 +115,7 @@ const OrdersHistory: React.FC<OrdersHistoryProps> = ({ currentUser }) => {
             className="w-full max-w-3xl flex flex-wrap justify-between items-center p-4 md:p-0 md:mb-6 sticky top-0 md:static bg-gray-900/80 md:bg-transparent backdrop-blur-md md:backdrop-blur-none z-20 gap-3 no-print border-b md:border-none border-white/10"
             onClick={(e) => e.stopPropagation()} // Prevent closing when clicking toolbar
           >
-            <h2 className="text-white font-bold text-lg hidden md:block">Vista Previa</h2>
+            <h2 className="text-white font-bold text-lg hidden md:block drop-shadow-sm">Vista Previa</h2>
             
             <div className="flex gap-2 ml-auto w-full md:w-auto">
               {currentUser.role === UserRole.ADMIN && (
@@ -124,7 +124,7 @@ const OrdersHistory: React.FC<OrdersHistoryProps> = ({ currentUser }) => {
                   className="flex-1 md:flex-none bg-red-600/20 text-red-200 border border-red-500/50 px-4 py-3 rounded-xl font-bold backdrop-blur-md flex items-center justify-center gap-2 hover:bg-red-600 hover:text-white transition-all active:scale-95 shadow-sm"
                   title="Eliminar Pedido (Admin)"
                 >
-                  <Trash2 size={20} /> <span className="md:hidden">Eliminar</span>
+                  <Trash2 size={20} /> <span className="md:hidden drop-shadow-sm">Eliminar</span>
                 </button>
               )}
               
@@ -132,7 +132,7 @@ const OrdersHistory: React.FC<OrdersHistoryProps> = ({ currentUser }) => {
                 onClick={handlePrint} 
                 className="flex-1 md:flex-none bg-blue-600 text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-button-blue flex items-center justify-center gap-2 hover:bg-blue-700 transition-all active:scale-95"
               >
-                <Printer size={20} /> <span className="md:hidden">Imprimir</span> <span className="hidden md:inline">Imprimir</span>
+                <Printer size={20} /> <span className="md:hidden drop-shadow-sm">Imprimir</span> <span className="hidden md:inline drop-shadow-sm">Imprimir</span>
               </button>
 
               <button 
@@ -169,21 +169,21 @@ const OrdersHistory: React.FC<OrdersHistoryProps> = ({ currentUser }) => {
               </div>
               <div className="text-left md:text-right w-full md:w-auto mt-4 md:mt-0">
                 <div className="inline-block bg-gray-100 px-4 py-2 rounded-lg border border-gray-200">
-                  <h2 className="text-xl md:text-2xl font-mono font-bold text-black">#{selectedOrder.batchId}</h2>
+                  <h2 className="text-xl md:text-2xl font-mono font-bold text-black drop-shadow-sm">#{selectedOrder.batchId}</h2>
                 </div>
-                <p className="text-sm font-semibold text-gray-500 mt-2 uppercase tracking-wide">{selectedOrder.date}</p>
+                <p className="text-sm font-semibold text-gray-500 mt-2 uppercase tracking-wide drop-shadow-sm">{selectedOrder.date}</p>
               </div>
             </div>
 
             {/* Info Grid */}
             <div className="grid grid-cols-2 gap-4 md:gap-8 mb-10 bg-gray-50 p-6 md:p-8 rounded-2xl border border-gray-200">
               <div>
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Departamento</p>
-                <p className="text-xl md:text-2xl font-extrabold text-black">{selectedOrder.department}</p>
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 drop-shadow-sm">Departamento</p>
+                <p className="text-xl md:text-2xl font-extrabold text-black drop-shadow-sm">{selectedOrder.departmentName}</p>
               </div>
               <div>
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Solicitante</p>
-                <p className="text-xl md:text-2xl font-extrabold text-black">{selectedOrder.requestedBy}</p>
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 drop-shadow-sm">Solicitante</p>
+                <p className="text-xl md:text-2xl font-extrabold text-black drop-shadow-sm">{selectedOrder.requestedBy}</p>
               </div>
             </div>
 
@@ -201,14 +201,14 @@ const OrdersHistory: React.FC<OrdersHistoryProps> = ({ currentUser }) => {
                 <tbody>
                   {selectedOrder.items.map((item, idx) => (
                     <tr key={idx} className="border-b border-gray-200 hover:bg-gray-50 transition-colors">
-                      <td className="py-4 md:py-5 font-bold text-black text-base md:text-lg">
+                      <td className="py-4 md:py-5 font-bold text-black text-base md:text-lg drop-shadow-sm">
                         {item.productName}
-                        <span className="md:hidden text-xs text-gray-500 block uppercase font-normal">{item.unit || 'ud.'}</span>
+                        <span className="md:hidden text-xs text-gray-500 block uppercase font-normal drop-shadow-sm">{item.unit || 'ud.'}</span>
                       </td>
                       <td className="py-4 md:py-5 text-center">
-                         <span className="font-black text-lg md:text-xl text-black bg-gray-100 px-3 py-1 rounded-lg border border-gray-200">{item.quantity}</span>
+                         <span className="font-black text-lg md:text-xl text-black bg-gray-100 px-3 py-1 rounded-lg border border-gray-200 drop-shadow-sm">{item.quantity}</span>
                       </td>
-                      <td className="hidden md:table-cell py-4 md:py-5 text-right text-gray-500 font-semibold text-sm uppercase">{item.unit || 'Ud.'}</td>
+                      <td className="hidden md:table-cell py-4 md:py-5 text-right text-gray-500 font-semibold text-sm uppercase drop-shadow-sm">{item.unit || 'Ud.'}</td>
                       <td className="py-4 md:py-5 text-right">
                          <div className="w-6 h-6 md:w-8 md:h-8 border-2 border-gray-300 rounded-lg inline-block"></div>
                       </td>
@@ -222,16 +222,16 @@ const OrdersHistory: React.FC<OrdersHistoryProps> = ({ currentUser }) => {
             <div className="grid grid-cols-2 gap-8 md:gap-16 mt-auto pt-12 border-t-2 border-gray-200 page-break-inside-avoid">
               <div className="text-center">
                  <div className="h-20 md:h-24 border-b-2 border-gray-300 mb-3 border-dashed"></div>
-                 <p className="text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-widest">Firma Entregado (Almacén)</p>
+                 <p className="text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-widest drop-shadow-sm">Firma Entregado (Almacén)</p>
               </div>
               <div className="text-center">
                  <div className="h-20 md:h-24 border-b-2 border-gray-300 mb-3 border-dashed"></div>
-                 <p className="text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-widest">Firma Recibido ({selectedOrder.department})</p>
+                 <p className="text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-widest drop-shadow-sm">Firma Recibido ({selectedOrder.departmentName})</p>
               </div>
             </div>
             
             <div className="mt-12 text-center">
-              <p className="text-[10px] text-gray-400 uppercase tracking-widest font-bold">Generado Digitalmente por Sistema Hotel Victoria</p>
+              <p className="text-[10px] text-gray-400 uppercase tracking-widest font-bold drop-shadow-sm">Generado Digitalmente por Sistema Hotel Victoria</p>
             </div>
 
           </div>

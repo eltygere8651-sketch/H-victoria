@@ -1,22 +1,26 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Department, Product, User, CartItem } from '../types';
+import { Product, User, CartItem, Department } from '../types';
 import { storageService } from '../services/storageService';
-import { Search, ShoppingCart, Plus, Minus, Trash2, CheckCircle2, X, ArrowRight, Package, ChevronUp, AlertTriangle, Siren, Loader2 } from 'lucide-react';
+import { Search, ShoppingCart, Plus, Minus, Trash2, CheckCircle2, X, ArrowRight, Package, ChevronUp, AlertTriangle, Siren, Loader2, ChevronDown, ListTree } from 'lucide-react';
 
 interface ReplenishmentProps {
   currentUser: User;
 }
 
 const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser }) => {
-  // `selectedDepartmentForOrder` will now be set in the confirmation modal, not initially.
-  const [selectedDepartmentForOrder, setSelectedDepartmentForOrder] = useState<Department>(Department.GENERAL);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [selectedDepartmentForOrder, setSelectedDepartmentForOrder] = useState<string>('');
+  const [selectedDepartmentNameForOrder, setSelectedDepartmentNameForOrder] = useState<string>('');
   
   const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [isLoadingProducts, setIsLoadingProducts] = useState(true);
+  const [isLoadingDepartments, setIsLoadingDepartments] = useState(true);
   
+  // Fix: Declare searchTerm and setSearchTerm
+  const [searchTerm, setSearchTerm] = useState('');
+
   const [cart, setCart] = useState<CartItem[]>(
-    storageService.getDraftCart() as CartItem[]
+    storageService.getDraftCart()
   );
   
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -32,12 +36,48 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser }) => {
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const unsub = storageService.subscribeToProducts((data) => {
+    const unsubProducts = storageService.subscribeToProducts((data) => {
       setProducts(data);
-      setLoading(false);
+      setIsLoadingProducts(false);
     });
-    return () => unsub();
+    const unsubDepartments = storageService.subscribeToDepartments((data) => {
+      setDepartments(data);
+      setIsLoadingDepartments(false);
+    });
+
+    return () => {
+      unsubProducts();
+      unsubDepartments();
+    };
   }, []);
+
+  useEffect(() => {
+    if (!isLoadingDepartments && departments.length > 0) {
+      // If a department was previously selected, check if it still exists.
+      const currentSelectedExists = departments.some(d => d.id === selectedDepartmentForOrder);
+      if (!selectedDepartmentForOrder || !currentSelectedExists) {
+        // Set a default department if none is selected or if the selected one was deleted
+        setSelectedDepartmentForOrder(departments[0].id);
+        setSelectedDepartmentNameForOrder(departments[0].name);
+      } else {
+        // Update name if department exists but name might have changed
+        const dep = departments.find(d => d.id === selectedDepartmentForOrder);
+        setSelectedDepartmentNameForOrder(dep ? dep.name : '');
+      }
+    } else if (!isLoadingDepartments && departments.length === 0) {
+      // No departments available
+      setSelectedDepartmentForOrder('');
+      setSelectedDepartmentNameForOrder('');
+    }
+  }, [departments, isLoadingDepartments, selectedDepartmentForOrder]);
+
+
+  useEffect(() => {
+    // If selectedDepartmentForOrder is changed, update the name too
+    const dep = departments.find(d => d.id === selectedDepartmentForOrder);
+    setSelectedDepartmentNameForOrder(dep ? dep.name : '');
+  }, [selectedDepartmentForOrder, departments]);
+
 
   useEffect(() => {
     storageService.saveDraftCart(cart);
@@ -130,11 +170,15 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser }) => {
   };
 
   const processOrder = async () => {
-    if (cart.length === 0) return;
+    if (cart.length === 0 || !selectedDepartmentForOrder || !selectedDepartmentNameForOrder) return;
     setIsProcessing(true);
     
-    // Use selectedDepartmentForOrder from the modal
-    const result = await storageService.submitOrderBatch(cart, selectedDepartmentForOrder, currentUser);
+    const result = await storageService.submitOrderBatch(
+      cart, 
+      selectedDepartmentForOrder, 
+      selectedDepartmentNameForOrder, 
+      currentUser
+    );
     
     setIsProcessing(false);
     if (result.success) {
@@ -162,16 +206,47 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser }) => {
     setShowSuccessModal(false);
     setShowLowStockModal(false);
     setSearchTerm('');
-    setSelectedDepartmentForOrder(Department.GENERAL); // Reset department
+    // Reset department to a default or empty string
+    setSelectedDepartmentForOrder(departments.length > 0 ? departments[0].id : ''); 
+    setSelectedDepartmentNameForOrder(departments.length > 0 ? departments[0].name : '');
   };
 
   const filteredProducts = products.filter(p => 
     p.quantity > 0 && 
+    p.departmentId === selectedDepartmentForOrder && // Filter by selected department ID
     (p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
     p.category.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
-  if (loading) return <div className="flex h-full items-center justify-center"><Loader2 size={40} className="animate-spin text-red-600" /></div>;
+  // If no departments are loaded yet, or a department isn't selected, disable order button
+  const isOrderButtonDisabled = cart.length === 0 || !selectedDepartmentForOrder || isProcessing;
+
+  if (isLoadingProducts || isLoadingDepartments) {
+    return <div className="flex h-full items-center justify-center"><Loader2 size={40} className="animate-spin text-red-600" /></div>;
+  }
+
+  // Display a message if no departments are created
+  if (departments.length === 0 && currentUser.role === 'ADMIN') {
+    return (
+      <div className="flex flex-col h-full items-center justify-center p-4 text-center bg-gray-50 dark:bg-slate-900 transition-colors duration-300">
+        <ListTree size={60} className="text-gray-400 dark:text-slate-600 mb-4" />
+        <h3 className="text-xl font-extrabold text-gray-700 dark:text-slate-200 drop-shadow-sm mb-2">No hay departamentos creados.</h3>
+        <p className="text-gray-500 dark:text-slate-400 max-w-sm">
+          Como administrador, debes crear al menos un departamento en la pestaña de <span className="font-semibold text-red-600 dark:text-red-400">Inventario</span> para poder añadir productos y realizar pedidos.
+        </p>
+      </div>
+    );
+  } else if (departments.length === 0 && currentUser.role === 'STAFF') {
+     return (
+      <div className="flex flex-col h-full items-center justify-center p-4 text-center bg-gray-50 dark:bg-slate-900 transition-colors duration-300">
+        <ListTree size={60} className="text-gray-400 dark:text-slate-600 mb-4" />
+        <h3 className="text-xl font-extrabold text-gray-700 dark:text-slate-200 drop-shadow-sm mb-2">Esperando departamentos...</h3>
+        <p className="text-gray-500 dark:text-slate-400 max-w-sm">
+          Tu administrador necesita configurar los departamentos para que puedas empezar a realizar pedidos.
+        </p>
+      </div>
+     );
+  }
 
   return (
     <div className="h-full flex flex-col lg:flex-row overflow-hidden bg-gray-50 dark:bg-slate-900 relative font-sans transition-colors duration-300">
@@ -182,8 +257,8 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser }) => {
           <div className="bg-white dark:bg-slate-800 w-full md:max-w-md rounded-t-3xl md:rounded-3xl shadow-pop-in overflow-hidden animate-pop-in border border-gray-100 dark:border-slate-700/50">
             <div className="bg-gray-900 dark:bg-slate-950 p-5 text-white flex justify-between items-center">
               <div>
-                <p className="text-sm opacity-80 uppercase tracking-wider font-bold">Añadir Producto</p>
-                <h3 className="font-extrabold text-2xl truncate">{selectedProduct.name}</h3>
+                <p className="text-sm opacity-80 uppercase tracking-wider font-bold drop-shadow-sm">Añadir Producto</p>
+                <h3 className="font-extrabold text-2xl truncate drop-shadow-sm">{selectedProduct.name}</h3>
               </div>
               <button onClick={closeQtyModal} className="bg-white/10 p-2 rounded-full hover:bg-white/20 active:scale-95 transition-all"><X size={28} /></button>
             </div>
@@ -203,7 +278,7 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser }) => {
                   value={qtyValue}
                   onChange={(e) => setQtyValue(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && confirmAddToCart()}
-                  className="flex-1 h-16 text-center text-4xl font-extrabold border-2 border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white rounded-2xl focus:border-red-600 focus:ring-4 focus:ring-red-100 dark:focus:ring-red-500/30 outline-none shadow-sm"
+                  className="flex-1 h-16 text-center text-4xl font-extrabold border-2 border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white rounded-2xl focus:border-red-600 focus:ring-4 focus:ring-red-100 dark:focus:ring-red-100 dark:focus:ring-red-500/30 outline-none shadow-sm"
                   min="1"
                 />
 
@@ -232,27 +307,28 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser }) => {
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 dark:bg-slate-900/90 backdrop-blur-sm p-4 animate-fade-in">
            <div className="bg-white dark:bg-slate-800 w-full max-w-md rounded-3xl shadow-pop-in overflow-hidden animate-pop-in border border-gray-100 dark:border-slate-700/50">
               <div className="p-6 border-b border-gray-100 dark:border-slate-700">
-                <h3 className="text-2xl font-extrabold text-gray-900 dark:text-white text-center">Confirmar Pedido</h3>
+                <h3 className="text-2xl font-extrabold text-gray-900 dark:text-white text-center drop-shadow-sm">Confirmar Pedido</h3>
                 <p className="text-center text-gray-500 dark:text-slate-400 mt-1">Vas a solicitar <b>{cart.length} productos</b>.</p>
-                <div className="mt-4">
+                <div className="mt-4 relative">
                   <label htmlFor="department-select" className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">Selecciona el área de destino:</label>
                   <select
                     id="department-select"
                     value={selectedDepartmentForOrder}
-                    onChange={(e) => setSelectedDepartmentForOrder(e.target.value as Department)}
-                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-slate-600/50 focus:ring-4 focus:ring-red-100 dark:focus:ring-red-500/30 focus:border-red-500 outline-none transition-all bg-gray-50 dark:bg-slate-700/50 dark:text-white focus:bg-white dark:focus:bg-slate-700 shadow-sm"
+                    onChange={(e) => setSelectedDepartmentForOrder(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-slate-600/50 focus:ring-4 focus:ring-red-100 dark:focus:ring-red-500/30 focus:border-red-500 outline-none transition-all bg-gray-50 dark:bg-slate-700/50 dark:text-white focus:bg-white dark:focus:bg-slate-700 shadow-sm appearance-none pr-10"
                   >
-                    {Object.values(Department).map((dep) => (
-                      <option key={dep} value={dep}>{dep}</option>
+                    {departments.map((dep) => (
+                      <option key={dep.id} value={dep.id}>{dep.name}</option>
                     ))}
                   </select>
+                  <ChevronDown className="absolute right-4 top-[58%] -translate-y-1/2 text-gray-400 dark:text-slate-500 pointer-events-none" size={22} />
                 </div>
               </div>
               <div className="max-h-[40vh] overflow-y-auto p-4 bg-gray-50 dark:bg-slate-900/50">
                 {cart.map((item, idx) => (
                   <div key={idx} className="flex justify-between items-center py-3 border-b border-gray-200 dark:border-slate-700 last:border-0">
-                    <span className="font-bold text-gray-700 dark:text-slate-300">{item.product.name}</span>
-                    <span className="font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 px-3 py-1 rounded-lg">x{item.quantity}</span>
+                    <span className="font-bold text-gray-700 dark:text-slate-300 drop-shadow-sm">{item.product.name}</span>
+                    <span className="font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 px-3 py-1 rounded-lg drop-shadow-sm">x{item.quantity}</span>
                   </div>
                 ))}
               </div>
@@ -266,8 +342,8 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser }) => {
                 </button>
                 <button 
                   onClick={processOrder}
-                  disabled={isProcessing}
-                  className="flex-1 py-4 rounded-xl font-bold text-white bg-green-600 hover:bg-green-700 shadow-lg shadow-button-green flex items-center justify-center gap-2 active:scale-[0.98]"
+                  disabled={isOrderButtonDisabled}
+                  className="flex-1 py-4 rounded-xl font-bold text-white bg-green-600 hover:bg-green-700 shadow-lg shadow-button-green flex items-center justify-center gap-2 active:scale-[0.98] disabled:bg-gray-100 dark:disabled:bg-slate-700 disabled:text-gray-400 disabled:shadow-none"
                 >
                   {isProcessing ? <Loader2 className="animate-spin text-white"/> : <><CheckCircle2 /> Confirmar</>}
                 </button>
@@ -283,8 +359,8 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser }) => {
             <div className="w-24 h-24 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl shadow-green-200/50 dark:shadow-green-900/30 animate-bounce">
               <CheckCircle2 size={48} className="text-white" />
             </div>
-            <h2 className="text-3xl font-black text-gray-900 dark:text-white mb-2">¡Pedido Enviado!</h2>
-            <p className="text-xl text-gray-500 dark:text-slate-400">Stock actualizado correctamente.</p>
+            <h2 className="text-3xl font-black text-gray-900 dark:text-white mb-2 drop-shadow-sm">¡Pedido Enviado!</h2>
+            <p className="text-xl text-gray-500 dark:text-slate-400 drop-shadow-sm">Stock actualizado correctamente.</p>
           </div>
         </div>
       )}
@@ -302,7 +378,7 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser }) => {
                <div className="bg-red-50 dark:bg-red-900/20 rounded-xl p-4 mb-6 border border-red-100 dark:border-red-900/30">
                  <ul className="text-left space-y-2">
                    {lowStockList.map((name, i) => (
-                     <li key={i} className="flex items-center gap-2 font-bold text-red-700 dark:text-red-400">
+                     <li key={i} className="flex items-center gap-2 font-bold text-red-700 dark:text-red-400 drop-shadow-sm">
                        <AlertTriangle size={16} /> {name}
                      </li>
                    ))}
@@ -322,7 +398,22 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser }) => {
       {/* --- CATALOG --- */}
       <div className="flex-1 flex flex-col h-full overflow-hidden pb-20 lg:pb-0">
         <div className="bg-white dark:bg-slate-800 px-4 py-4 md:px-6 md:py-6 border-b border-gray-200 dark:border-slate-700/50 shadow-sm z-10 space-y-4 transition-colors duration-300">
-           {/* Removed Department Selection Buttons */}
+           {/* Department Selection Dropdown for filtering catalog */}
+           <div className="relative">
+              <label htmlFor="catalog-department-select" className="sr-only">Filtrar Productos por Departamento</label>
+              <select
+                id="catalog-department-select"
+                value={selectedDepartmentForOrder}
+                onChange={(e) => setSelectedDepartmentForOrder(e.target.value)}
+                className="w-full px-4 py-3 rounded-2xl border-2 border-gray-200 dark:border-slate-600/50 focus:ring-4 focus:ring-red-100 dark:focus:ring-red-500/30 focus:border-red-500 outline-none transition-all bg-gray-50 dark:bg-slate-700/50 dark:text-white focus:bg-white dark:focus:bg-slate-700 shadow-sm appearance-none pr-10"
+              >
+                {departments.map((dep) => (
+                  <option key={dep.id} value={dep.id}>{dep.name}</option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500 pointer-events-none" size={22} />
+            </div>
+
            <div className="relative">
              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" size={24} />
              <input 
@@ -355,18 +446,18 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser }) => {
                 >
                   <div className="flex justify-between items-start mb-2">
                     <div className="flex-1 pr-2">
-                      <h3 className="text-lg md:text-xl font-extrabold text-gray-900 dark:text-white leading-snug line-clamp-2">{product.name}</h3>
-                      <p className="text-sm font-semibold text-gray-400 dark:text-slate-500 mt-1 uppercase tracking-wide">{product.category}</p>
+                      <h3 className="text-lg md:text-xl font-extrabold text-gray-900 dark:text-white leading-snug line-clamp-2 drop-shadow-sm">{product.name}</h3>
+                      <p className="text-sm font-semibold text-gray-400 dark:text-slate-500 mt-1 uppercase tracking-wide drop-shadow-sm">{product.category}</p>
                     </div>
                     {inCart && (
-                      <span className="bg-red-600 text-white text-sm font-bold px-2.5 py-1 rounded-lg shadow-md animate-fade-in shrink-0">
+                      <span className="bg-red-600 text-white text-sm font-bold px-2.5 py-1 rounded-lg shadow-md animate-fade-in shrink-0 drop-shadow-sm">
                         {inCart.quantity}
                       </span>
                     )}
                   </div>
                   
                   <div className="mt-2 flex items-center justify-between">
-                    <div className={`text-sm font-bold px-3 py-1.5 rounded-lg ${available <= 0 ? 'bg-gray-200 text-gray-500 dark:bg-slate-700 dark:text-slate-400' : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'}`}>
+                    <div className={`text-sm font-bold px-3 py-1.5 rounded-lg drop-shadow-sm ${available <= 0 ? 'bg-gray-200 text-gray-500 dark:bg-slate-700 dark:text-slate-400' : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'}`}>
                       {available <= 0 ? 'AGOTADO' : `${available} ${product.unit}`}
                     </div>
                   </div>
@@ -384,7 +475,7 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser }) => {
            className="w-full bg-gray-900 dark:bg-white text-white dark:text-gray-900 p-4 rounded-2xl shadow-xl shadow-gray-200/50 dark:shadow-none flex items-center justify-between font-bold active:scale-[0.98] transition-all"
          >
             <div className="flex items-center gap-3">
-               <span className="bg-red-600 text-white w-8 h-8 rounded-full flex items-center justify-center text-sm shadow-md">
+               <span className="bg-red-600 text-white w-8 h-8 rounded-full flex items-center justify-center text-sm shadow-md drop-shadow-sm">
                  {cart.length}
                </span>
                <span>Ver Carrito</span>
@@ -414,12 +505,12 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser }) => {
 
         <div className="p-6 border-b border-gray-100 dark:border-slate-700/50 bg-gray-50 dark:bg-slate-800/50 flex justify-between items-center rounded-t-3xl lg:rounded-none">
           <div>
-            <h3 className="font-extrabold text-gray-900 dark:text-white text-xl tracking-tight">Tu Pedido</h3>
+            <h3 className="font-extrabold text-gray-900 dark:text-white text-xl tracking-tight drop-shadow-sm">Tu Pedido</h3>
             <p className="text-sm text-gray-500 dark:text-slate-400 font-medium mt-1">
-              {cart.length > 0 ? 'Para confirmar, selecciona el área de destino.' : 'Añade productos para empezar un pedido.'}
+              {cart.length > 0 ? `Para: ${selectedDepartmentNameForOrder}` : 'Añade productos para empezar un pedido.'}
             </p>
           </div>
-          <div className="bg-gray-900 dark:bg-white dark:text-slate-900 text-white w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm shadow-sm">
+          <div className="bg-gray-900 dark:bg-white dark:text-slate-900 text-white w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm shadow-sm drop-shadow-sm">
             {cart.length}
           </div>
         </div>
@@ -434,11 +525,12 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser }) => {
             cart.map(item => (
               <div key={item.product.id} className="flex items-center justify-between bg-white dark:bg-slate-700/50 border-2 border-gray-100 dark:border-slate-700 p-4 rounded-2xl shadow-sm group hover:border-red-100 dark:hover:border-red-500/30 transition-colors">
                 <div className="flex-1 min-w-0 pr-4">
-                  <p className="font-bold text-base text-gray-900 dark:text-white truncate">{item.product.name}</p>
+                  <p className="font-bold text-base text-gray-900 dark:text-white truncate drop-shadow-sm">{item.product.name}</p>
+                  <p className="text-xs text-gray-500 dark:text-slate-400 truncate mt-1 drop-shadow-sm">{item.product.departmentName}</p>
                 </div>
                 <div className="flex items-center gap-3">
                   <button onClick={() => updateQuantityInCart(item.product.id, -1)} className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-slate-600 flex items-center justify-center hover:bg-gray-200 dark:hover:bg-slate-500 font-bold active:scale-95 transition-all"><Minus size={14} /></button>
-                  <span className="font-bold text-lg w-8 text-center text-gray-900 dark:text-white">{item.quantity}</span>
+                  <span className="font-black text-lg w-8 text-center text-gray-900 dark:text-white drop-shadow-sm">{item.quantity}</span>
                   <button onClick={() => updateQuantityInCart(item.product.id, 1)} className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-slate-600 flex items-center justify-center hover:bg-gray-200 dark:hover:bg-slate-500 font-bold active:scale-95 transition-all"><Plus size={14} /></button>
                   <button onClick={() => removeFromCart(item.product.id)} className="text-gray-300 hover:text-red-500 ml-2 transition-colors p-2 -mr-2 rounded-full hover:bg-red-50 dark:hover:bg-red-900/20 active:scale-95"><Trash2 size={18} /></button>
                 </div>
@@ -450,7 +542,7 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser }) => {
         <div className="p-6 border-t border-gray-200 dark:border-slate-700/50 bg-white dark:bg-slate-800 pb-safe lg:pb-6">
           <button 
             onClick={() => setShowConfirmModal(true)}
-            disabled={cart.length === 0}
+            disabled={isOrderButtonDisabled}
             className="w-full py-5 rounded-2xl font-extrabold text-xl shadow-xl transition-all flex items-center justify-center gap-3 transform active:scale-[0.98]
               bg-red-600 text-white hover:bg-red-700 hover:shadow-button-red disabled:bg-gray-100 dark:disabled:bg-slate-700 disabled:text-gray-400 disabled:shadow-none"
           >

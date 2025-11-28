@@ -47,7 +47,7 @@
             keyframes: {
               'pop-in': {
                 '0%': { transform: 'scale(0.95) translateY(10px)', opacity: '0' },
-                '100%': { transform: 'scale(1) translateY(0)', opacity: '1' },
+                '100%': { transform: 'scale(1) translateY(0)', opacity: '1', },
               },
             },
             animation: {
@@ -131,24 +131,26 @@
   <script type="importmap">
 {
   "imports": {
-    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.1",
+    "react": "https://aistudiocdn.com/react@18.2.0/index.js",
+    "react-dom": "https://aistudiocdn.com/react-dom@18.2.0/index.js",
+    "react-dom/client": "https://aistudiocdn.com/react-dom@18.2.0/client.js",
+    "react/jsx-runtime": "https://aistudiocdn.com/react@18.2.0/jsx-runtime.js",
     "firebase/app": "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js",
     "firebase/firestore": "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^18.2.0/",
-    "react": "https://aistudiocdn.com/react@^18.2.0",
-    "react-dom/client": "https://aistudiocdn.com/react-dom@^18.2.0/client.js",
-    "react/": "https://aistudiocdn.com/react@^18.2.0/",
-    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.344.0",
-    "vite": "https://aistudiocdn.com/vite@^5.1.4",
-    "recharts": "https://aistudiocdn.com/recharts@^2.12.0",
-    "firebase/": "https://aistudiocdn.com/firebase@^12.6.0/"
+    "lucide-react": "https://aistudiocdn.com/lucide-react@0.344.0",
+    "recharts": "https://aistudiocdn.com/recharts@2.12.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "firebase/": "https://aistudiocdn.com/firebase@^12.6.0/",
+    "vite": "https://aistudiocdn.com/vite@^7.2.4",
+    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.1"
   }
 }
 </script>
 </head>
   <body class="bg-gray-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 antialiased selection:bg-red-100 dark:selection:bg-red-900/50 transition-colors duration-300">
     <div id="root"></div>
-    <script type="module" src="/index.tsx"></script>
+    <script type="module" src="/index.tsx?v=1710000001"></script>
     <script>
       // Register Service Worker for PWA
       if ('serviceWorker' in navigator) {

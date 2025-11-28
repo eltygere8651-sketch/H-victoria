@@ -10,13 +10,10 @@ export interface User {
   pin: string; // Simplified password for this demo
 }
 
-export enum Department {
-  BAR = 'Bar',
-  GASTRO_BAR = 'Gastro Bar',
-  COCINA = 'Cocina',
-  LIMPIEZA = 'Limpieza',
-  TIENDA_REGALOS = 'Tienda de Regalos',
-  GENERAL = 'General'
+// New dynamic Department interface
+export interface Department {
+  id: string;
+  name: string;
 }
 
 export interface Product {
@@ -26,6 +23,8 @@ export interface Product {
   quantity: number;
   unit: string; // e.g., 'unidades', 'litros', 'cajas'
   minThreshold: number; // For low stock alerts
+  departmentId: string; // New: Link to a department
+  departmentName: string; // New: For display purposes
 }
 
 export interface ReplenishmentRequest {
@@ -33,7 +32,8 @@ export interface ReplenishmentRequest {
   batchId?: string; // Group requests into a single order
   productId: string;
   productName: string;
-  department: Department;
+  departmentId: string; // Updated: Use department ID
+  departmentName: string; // Updated: For display purposes
   requestedBy: string;
   quantity: number;
   status: 'PENDING' | 'COMPLETED';
