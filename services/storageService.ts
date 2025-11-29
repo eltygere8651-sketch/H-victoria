@@ -1,4 +1,4 @@
-import { Product, User, ReplenishmentRequest, UserRole, Department, CartItem } from '../types';
+import { Product, User, ReplenishmentRequest, UserRole, Department, CartItem, AppNotification, NotificationType, NotificationPayload, OrderBatch } from '../types';
 import { 
   collection, 
   getDocs, 
@@ -43,6 +43,7 @@ const KEYS = {
   DRAFT_CART: 'hotel_victoria_draft_cart',
   LAST_VIEW: 'hotel_victoria_last_view',
   DEPARTMENTS: 'hotel_victoria_departments', // New key for departments
+  NOTIFICATIONS: 'hotel_victoria_notifications', // New key for notifications
 };
 
 // INITIAL DATA FOR SEEDING
@@ -76,15 +77,6 @@ const INITIAL_PRODUCTS: Product[] = [
   { id: 'p10', name: 'Chocolate Negro', category: 'Golosinas', quantity: 50, unit: 'barras', minThreshold: 10, departmentId: 'd-tienda', departmentName: 'Tienda de Regalos' },
 ];
 
-
-export interface OrderBatch {
-  batchId: string;
-  date: string;
-  departmentId: string; // Changed to ID
-  departmentName: string; // New: For display
-  requestedBy: string;
-  items: ReplenishmentRequest[];
-}
 
 // Check if Firebase is available by ensuring 'db' is defined
 const isFirebaseReady = typeof db !== 'undefined' && db !== null;
@@ -270,9 +262,114 @@ export const storageService = {
     }
   },
 
+  // --- NOTIFICATION ACTIONS ---
+  addNotification: async (notification: Omit<AppNotification, 'id' | 'timestamp' | 'readStatus' | 'reviewedBy' | 'reviewedAt'>) => {
+    if (isFirebaseReady) {
+      await addDoc(collection(db, 'notifications'), {
+        ...notification,
+        timestamp: Date.now(),
+        readStatus: false,
+      });
+    } else {
+      // Local fallback for notifications (simplified)
+      const notifications = JSON.parse(localStorage.getItem(KEYS.NOTIFICATIONS) || '[]');
+      const newNotification: AppNotification = {
+        ...notification as AppNotification, // Type assertion for local
+        id: `notif_${Date.now()}_${Math.random()}`,
+        timestamp: Date.now(),
+        readStatus: false,
+      };
+      notifications.unshift(newNotification); // Add to beginning
+      localStorage.setItem(KEYS.NOTIFICATIONS, stringifyWithCircularGuard(notifications));
+    }
+  },
+
+  subscribeToNotifications: (callback: (notifications: AppNotification[]) => void, unreadOnly: boolean = false) => {
+    if (isFirebaseReady) {
+      let q = query(collection(db, 'notifications'), orderBy('timestamp', 'desc'));
+      if (unreadOnly) {
+        q = query(q, where('readStatus', '==', false));
+      }
+      return onSnapshot(q, (snapshot) => {
+        const notifications = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as AppNotification));
+        callback(notifications);
+      });
+    } else {
+      const notifications = JSON.parse(localStorage.getItem(KEYS.NOTIFICATIONS) || '[]');
+      callback(unreadOnly ? notifications.filter((n: AppNotification) => !n.readStatus) : notifications);
+      return () => {};
+    }
+  },
+
+  getNotifications: async (readStatusFilter?: boolean): Promise<AppNotification[]> => {
+    if (isFirebaseReady) {
+      let q = query(collection(db, 'notifications'), orderBy('timestamp', 'desc'));
+      if (readStatusFilter !== undefined) {
+        q = query(q, where('readStatus', '==', readStatusFilter));
+      }
+      const snapshot = await getDocs(q);
+      return snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as AppNotification));
+    } else {
+      const notifications = JSON.parse(localStorage.getItem(KEYS.NOTIFICATIONS) || '[]');
+      return readStatusFilter !== undefined 
+        ? notifications.filter((n: AppNotification) => n.readStatus === readStatusFilter) 
+        : notifications;
+    }
+  },
+
+  markNotificationAsRead: async (notificationId: string, userId: string, userName: string) => {
+    if (isFirebaseReady) {
+      await updateDoc(doc(db, 'notifications', notificationId), {
+        readStatus: true,
+        reviewedBy: userName,
+        reviewedAt: Date.now(),
+      });
+    } else {
+      const notifications = JSON.parse(localStorage.getItem(KEYS.NOTIFICATIONS) || '[]');
+      const updatedNotifications = notifications.map((n: AppNotification) => 
+        n.id === notificationId ? { ...n, readStatus: true, reviewedBy: userName, reviewedAt: Date.now() } : n
+      );
+      localStorage.setItem(KEYS.NOTIFICATIONS, stringifyWithCircularGuard(updatedNotifications));
+    }
+  },
+
+  markAllNotificationsAsRead: async (userId: string, userName: string) => {
+    if (isFirebaseReady) {
+      const q = query(collection(db, 'notifications'), where('readStatus', '==', false));
+      const snapshot = await getDocs(q);
+      if (!snapshot.empty) {
+        const batch = writeBatch(db);
+        snapshot.docs.forEach(d => {
+          batch.update(d.ref, {
+            readStatus: true,
+            reviewedBy: userName,
+            reviewedAt: Date.now(),
+          });
+        });
+        await batch.commit();
+      }
+    } else {
+      const notifications = JSON.parse(localStorage.getItem(KEYS.NOTIFICATIONS) || '[]');
+      const updatedNotifications = notifications.map((n: AppNotification) => 
+        !n.readStatus ? { ...n, readStatus: true, reviewedBy: userName, reviewedAt: Date.now() } : n
+      );
+      localStorage.setItem(KEYS.NOTIFICATIONS, stringifyWithCircularGuard(updatedNotifications));
+    }
+  },
+
+
   // --- ACTIONS ---
   saveProduct: async (product: Product) => {
     if (isFirebaseReady) {
+      // Fetch current product to compare quantity
+      let oldProduct: Product | undefined;
+      if (product.id && !product.id.startsWith('p_')) {
+        const docSnap = await getDoc(doc(db, 'products', product.id));
+        if (docSnap.exists()) {
+          oldProduct = docSnap.data() as Product;
+        }
+      }
+
       // If product.id is a temporary client-side ID or missing, it's a new product
       if (!product.id || product.id.startsWith('p_')) { 
          // Firebase will auto-generate the document ID, so don't pass 'id' in the object
@@ -281,12 +378,51 @@ export const storageService = {
       } else { // Existing product
          await updateDoc(doc(db, 'products', product.id), { ...product });
       }
+
+      // Check for low stock notification AFTER update/add
+      if (product.quantity <= product.minThreshold && (oldProduct?.quantity || Infinity) > product.quantity) {
+        await storageService.addNotification({
+          type: NotificationType.LOW_STOCK,
+          title: '¡Stock Bajo Detectado!',
+          message: `El producto "${product.name}" ha caído por debajo de su umbral mínimo (${product.minThreshold} ${product.unit}). Stock actual: ${product.quantity} ${product.unit}.`,
+          icon: 'AlertTriangle',
+          payload: {
+            productId: product.id,
+            productName: product.name,
+            departmentId: product.departmentId,
+            departmentName: product.departmentName,
+          }
+        });
+      }
+
     } else {
       const products = JSON.parse(localStorage.getItem(KEYS.PRODUCTS) || stringifyWithCircularGuard(INITIAL_PRODUCTS));
       const idx = products.findIndex((p: Product) => p.id === product.id);
-      if (idx >= 0) products[idx] = product;
-      else products.push(product);
+      
+      let oldProductQty = Infinity;
+      if (idx >= 0) {
+        oldProductQty = products[idx].quantity;
+        products[idx] = product;
+      } else {
+        products.push(product);
+      }
       localStorage.setItem(KEYS.PRODUCTS, stringifyWithCircularGuard(products));
+
+      // Local low stock check
+      if (product.quantity <= product.minThreshold && oldProductQty > product.quantity) {
+        await storageService.addNotification({
+          type: NotificationType.LOW_STOCK,
+          title: '¡Stock Bajo Detectado!',
+          message: `El producto "${product.name}" ha caído por debajo de su umbral mínimo (${product.minThreshold} ${product.unit}). Stock actual: ${product.quantity} ${product.unit}.`,
+          icon: 'AlertTriangle',
+          payload: {
+            productId: product.id,
+            productName: product.name,
+            departmentId: product.departmentId,
+            departmentName: product.departmentName,
+          }
+        });
+      }
     }
   },
 
@@ -363,6 +499,38 @@ export const storageService = {
       }
       
       await batch.commit();
+
+      // --- Add Notifications for New Order and Low Stock ---
+      await storageService.addNotification({
+        type: NotificationType.NEW_ORDER,
+        title: '¡Nuevo Pedido Recibido!',
+        message: `El usuario "${user.name}" ha realizado el pedido #${batchId} para el departamento "${departmentName}".`,
+        icon: 'BellRing',
+        payload: {
+          orderBatchId: batchId,
+          departmentId: departmentId,
+          departmentName: departmentName,
+        }
+      });
+
+      for (const productName of lowStockItems) {
+        const product = items.find(i => i.product.name === productName)?.product;
+        if (product) {
+          await storageService.addNotification({
+            type: NotificationType.LOW_STOCK,
+            title: '¡Stock Bajo Detectado!',
+            message: `El producto "${productName}" ha caído por debajo de su umbral mínimo (${product.minThreshold} ${product.unit}). Stock actual: ${product.quantity - items.find(i => i.product.name === productName)!.quantity} ${product.unit}.`,
+            icon: 'AlertTriangle',
+            payload: {
+              productId: product.id,
+              productName: product.name,
+              departmentId: product.departmentId,
+              departmentName: product.departmentName,
+            }
+          });
+        }
+      }
+
       return { success: true, batchId, lowStockItems };
     } else {
       // Local fallback
@@ -394,6 +562,37 @@ export const storageService = {
       });
       localStorage.setItem(KEYS.PRODUCTS, stringifyWithCircularGuard(products));
       localStorage.setItem(KEYS.REQUESTS, stringifyWithCircularGuard(requests));
+
+      // Local Add Notifications
+      await storageService.addNotification({
+        type: NotificationType.NEW_ORDER,
+        title: '¡Nuevo Pedido Recibido!',
+        message: `El usuario "${user.name}" ha realizado el pedido #${batchId} para el departamento "${departmentName}".`,
+        icon: 'BellRing',
+        payload: {
+          orderBatchId: batchId,
+          departmentId: departmentId,
+          departmentName: departmentName,
+        }
+      });
+      for (const productName of lowStockItems) {
+        const product = items.find(i => i.product.name === productName)?.product;
+        if (product) {
+          await storageService.addNotification({
+            type: NotificationType.LOW_STOCK,
+            title: '¡Stock Bajo Detectado!',
+            message: `El producto "${productName}" ha caído por debajo de su umbral mínimo (${product.minThreshold} ${product.unit}). Stock actual: ${product.quantity - items.find(i => i.product.name === productName)!.quantity} ${product.unit}.`,
+            icon: 'AlertTriangle',
+            payload: {
+              productId: product.id,
+              productName: product.name,
+              departmentId: product.departmentId,
+              departmentName: product.departmentName,
+            }
+          });
+        }
+      }
+
       return { success: true, batchId, lowStockItems };
     }
   },

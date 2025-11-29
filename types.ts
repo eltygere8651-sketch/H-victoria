@@ -50,3 +50,40 @@ export interface CartItem {
   product: Product;
   quantity: number;
 }
+
+export interface OrderBatch {
+  batchId: string;
+  date: string;
+  departmentId: string;
+  departmentName: string;
+  requestedBy: string;
+  items: ReplenishmentRequest[];
+}
+
+// --- Notification System Types ---
+export enum NotificationType {
+  LOW_STOCK = 'LOW_STOCK',
+  NEW_ORDER = 'NEW_ORDER',
+}
+
+export interface NotificationPayload {
+  productId?: string;
+  productName?: string;
+  orderBatchId?: string;
+  departmentId?: string;
+  departmentName?: string;
+  // Add other specific data relevant to the notification type
+}
+
+export interface AppNotification {
+  id: string; // Firestore document ID
+  type: NotificationType;
+  title: string;
+  message: string;
+  icon: string; // Lucide icon name, e.g., 'AlertTriangle', 'BellRing'
+  timestamp: number; // Unix timestamp for sorting and display
+  readStatus: boolean;
+  reviewedBy?: string; // User ID who marked it as read/reviewed
+  reviewedAt?: number; // Unix timestamp when it was reviewed
+  payload: NotificationPayload;
+}

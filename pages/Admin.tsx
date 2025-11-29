@@ -1,20 +1,23 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { UserRole, User, Product, Department } from '../types';
-import { storageService, OrderBatch } from '../services/storageService';
-import { Download, Users, Package, Trash2, Edit2, Key, X, Save, Shield, Eye, FileDown, Upload, Database, AlertTriangle, Loader2, Image as ImageIcon, FileText, ZoomIn, ZoomOut, Maximize, Printer, BarChart as BarChartIcon } from 'lucide-react'; // Added BarChartIcon
+import { UserRole, User, Product, Department, AppNotification, OrderBatch } from '../types';
+import { storageService } from '../services/storageService';
+import { Download, Users, Package, Trash2, Edit2, Key, X, Save, Shield, Eye, FileDown, Upload, Database, AlertTriangle, Loader2, Image as ImageIcon, FileText, ZoomIn, ZoomOut, Maximize, Printer, BarChart as BarChartIcon, BellRing, Bell, CheckCircle2, ChevronDown } from 'lucide-react'; // Added BarChartIcon, BellRing, Bell, CheckCircle2, ChevronDown
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { Logo } from '../components/Logo';
+import { NotificationIcon } from '../components/NotificationIcon';
 
 interface AdminProps {
   currentUser: User;
+  unreadNotificationsCount: number; // New prop for badge
 }
 
-const Admin: React.FC<AdminProps> = ({ currentUser }) => {
-  const [activeTab, setActiveTab] = useState<'requests' | 'users' | 'reports'>('requests'); // Changed 'data' to 'reports'
+const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount }) => {
+  const [activeTab, setActiveTab] = useState<'requests' | 'users' | 'reports' | 'notifications'>('requests'); // Changed 'data' to 'reports', added 'notifications'
   
   const [orders, setOrders] = useState<OrderBatch[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]); // New state for notifications
   const [isLoading, setIsLoading] = useState(true); // Renamed from 'loading' for clarity
   
   const [newUser, setNewUser] = useState({ name: '', role: UserRole.STAFF, pin: '' });
@@ -31,11 +34,13 @@ const Admin: React.FC<AdminProps> = ({ currentUser }) => {
       setProducts(data);
       setIsLoading(false); // Set loading to false once products are loaded
     });
+    const unsubNotifications = storageService.subscribeToNotifications(setNotifications, false); // Subscribe to all for Admin panel
     
     return () => {
         unsubOrders();
         unsubUsers();
         unsubProducts();
+        unsubNotifications();
     };
   }, []);
 
@@ -110,6 +115,14 @@ const Admin: React.FC<AdminProps> = ({ currentUser }) => {
     }
   };
 
+  const handleMarkNotificationAsRead = async (notificationId: string) => {
+    await storageService.markNotificationAsRead(notificationId, currentUser.id, currentUser.name);
+  };
+
+  const handleMarkAllNotificationsAsRead = async () => {
+    await storageService.markAllNotificationsAsRead(currentUser.id, currentUser.name);
+  };
+
   // Calculated from state instead of sync call
   const lowStockData = products
     .filter(p => p.quantity <= p.minThreshold * 2)
@@ -127,6 +140,14 @@ const Admin: React.FC<AdminProps> = ({ currentUser }) => {
           <button onClick={() => setActiveTab('requests')} className={`flex-1 min-w-[120px] py-4 text-sm font-extrabold border-b-2 transition-colors duration-200 ${activeTab === 'requests' ? 'border-red-600 text-red-600 dark:text-red-400 dark:border-red-400 bg-red-50 dark:bg-red-900/10 shadow-inner drop-shadow-sm' : 'border-transparent text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700/50'}`}>Pedidos</button>
           <button onClick={() => setActiveTab('reports')} className={`flex-1 min-w-[120px] py-4 text-sm font-extrabold border-b-2 transition-colors duration-200 ${activeTab === 'reports' ? 'border-red-600 text-red-600 dark:text-red-400 dark:border-red-400 bg-red-50 dark:bg-red-900/10 shadow-inner drop-shadow-sm' : 'border-transparent text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700/50'}`}>Reportes</button>
           <button onClick={() => setActiveTab('users')} className={`flex-1 min-w-[120px] py-4 text-sm font-extrabold border-b-2 transition-colors duration-200 ${activeTab === 'users' ? 'border-red-600 text-red-600 dark:text-red-400 dark:border-red-400 bg-red-50 dark:bg-red-900/10 shadow-inner drop-shadow-sm' : 'border-transparent text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700/50'}`}>Usuarios</button>
+          <button onClick={() => setActiveTab('notifications')} className={`flex-1 min-w-[120px] py-4 text-sm font-extrabold border-b-2 transition-colors duration-200 relative ${activeTab === 'notifications' ? 'border-red-600 text-red-600 dark:text-red-400 dark:border-red-400 bg-red-50 dark:bg-red-900/10 shadow-inner drop-shadow-sm' : 'border-transparent text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700/50'}`}>
+            Notificaciones
+            {unreadNotificationsCount > 0 && (
+                <span className="absolute top-2 right-2 md:right-4 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold ring-2 ring-white dark:ring-slate-800 animate-pulse !important" aria-label={`${unreadNotificationsCount} nuevas notificaciones`}>
+                    !
+                </span>
+            )}
+          </button>
         </div>
       </div>
 
@@ -234,6 +255,81 @@ const Admin: React.FC<AdminProps> = ({ currentUser }) => {
                 )}
              </div>
            </div>
+        )}
+
+        {activeTab === 'notifications' && (
+            <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-card-soft dark:shadow-card-dark border border-gray-100 dark:border-slate-700/50">
+              <div className="flex justify-between items-center mb-6">
+                <div className="flex items-center gap-2">
+                  <BellRing size={24} className="text-red-600 dark:text-red-400 drop-shadow-sm" />
+                  <h3 className="font-bold text-xl text-gray-900 dark:text-white drop-shadow-sm">Notificaciones</h3>
+                </div>
+                {notifications.some(n => !n.readStatus) && (
+                  <button 
+                    onClick={handleMarkAllNotificationsAsRead}
+                    className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white text-sm font-bold rounded-xl shadow-lg shadow-button-red hover:bg-red-700 active:scale-95 transition-all"
+                  >
+                    <CheckCircle2 size={18} /> Marcar todas como leídas
+                  </button>
+                )}
+              </div>
+
+              <div className="space-y-4">
+                {notifications.length === 0 ? (
+                  <div className="py-12 text-center text-gray-400 dark:text-slate-600">
+                    <Bell size={40} className="mx-auto mb-2 opacity-50" />
+                    <p>No hay notificaciones.</p>
+                  </div>
+                ) : (
+                  notifications.map(notif => (
+                    <div 
+                      key={notif.id} 
+                      className={`
+                        flex items-start gap-4 p-4 rounded-xl border transition-all duration-200
+                        ${notif.readStatus 
+                          ? 'bg-gray-50 dark:bg-slate-700/50 border-gray-100 dark:border-slate-700/50 text-gray-500' 
+                          : 'bg-white dark:bg-slate-800 border-red-200 dark:border-red-900/50 shadow-md hover:shadow-lg'
+                        }
+                      `}
+                    >
+                      <div className="flex-shrink-0 pt-1">
+                        <NotificationIcon 
+                          iconName={notif.icon} 
+                          size={24} 
+                          className={`
+                            ${notif.readStatus ? 'text-gray-400' : 
+                              (notif.type === 'LOW_STOCK' ? 'text-amber-500' : 'text-red-600')}
+                          `}
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <p className={`font-bold ${notif.readStatus ? 'text-gray-600 dark:text-slate-400' : 'text-gray-900 dark:text-white'} drop-shadow-sm`}>
+                          {notif.title}
+                        </p>
+                        <p className={`text-sm mt-1 ${notif.readStatus ? 'text-gray-500 dark:text-slate-500' : 'text-gray-700 dark:text-slate-300'}`}>
+                          {notif.message}
+                        </p>
+                        <p className="text-xs text-gray-400 dark:text-slate-500 mt-2">
+                          {new Date(notif.timestamp).toLocaleString()}
+                          {notif.readStatus && notif.reviewedBy && (
+                            <span className="ml-2"> • Leída por {notif.reviewedBy}</span>
+                          )}
+                        </p>
+                      </div>
+                      {!notif.readStatus && (
+                        <button 
+                          onClick={() => handleMarkNotificationAsRead(notif.id)}
+                          className="flex-shrink-0 p-2 text-gray-400 hover:text-green-600 dark:hover:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-full transition-colors active:scale-95"
+                          title="Marcar como leída"
+                        >
+                          <CheckCircle2 size={20} />
+                        </button>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
         )}
       </div>
 

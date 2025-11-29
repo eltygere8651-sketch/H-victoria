@@ -5,8 +5,9 @@ import Replenishment from './pages/Replenishment';
 import Admin from './pages/Admin';
 import { storageService } from './services/storageService';
 import { Logo } from './components/Logo';
-import { LayoutGrid, ClipboardList, ShieldCheck, LogOut, Moon, Sun, FileText, Download, Smartphone, Share, PlusSquare, X } from 'lucide-react';
-import { User, UserRole } from './types'; // Import User and UserRole explicitly
+import { LayoutGrid, ClipboardList, ShieldCheck, LogOut, Moon, Sun, Download, Smartphone, Share, PlusSquare, X, Bell } from 'lucide-react'; // Added Bell icon
+import { User, UserRole, AppNotification } from './types'; // Import User and UserRole explicitly
+import { NotificationToast } from './components/NotificationToast'; // Import the new toast component
 
 const App: React.FC = () => {
   // Initialize user from persisted session
@@ -36,7 +37,13 @@ const App: React.FC = () => {
   const [isIOS, setIsIOS] = useState(false);
   const [showIOSPrompt, setShowIOSPrompt] = useState(false);
 
+  // Notification states
+  const [toasts, setToasts] = useState<AppNotification[]>([]);
+  const [unreadAdminNotifications, setUnreadAdminNotifications] = useState<AppNotification[]>([]);
+
+
   useEffect(() => {
+    // --- PWA Logic ---
     // Check if already installed
     if (window.matchMedia('(display-mode: standalone)').matches) {
       setIsInstalled(true);
@@ -56,23 +63,8 @@ const App: React.FC = () => {
     return () => window.removeEventListener('beforeinstallprompt', handler);
   }, []);
 
-  const handleInstallClick = async () => {
-    if (isIOS) {
-      setShowIOSPrompt(true);
-    } else if (deferredPrompt) {
-      deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
-      if (outcome === 'accepted') {
-        setDeferredPrompt(null);
-        setIsInstalled(true); // Assume success for immediate UI feedback
-      }
-    } else {
-      // Fallback for browsers that don't support programmatic install but aren't iOS
-      alert("Para instalar: \n1. Abre el menú del navegador (tres puntos).\n2. Selecciona 'Instalar aplicación' o 'Añadir a pantalla de inicio'.");
-    }
-  };
-
   useEffect(() => {
+    // --- Dark Mode Logic ---
     if (darkMode) {
       document.documentElement.classList.add('dark');
       localStorage.setItem('theme', 'dark');
@@ -89,6 +81,46 @@ const App: React.FC = () => {
     }
   }, [view, user]);
 
+  // --- Notifications Logic ---
+  useEffect(() => {
+    let unsubscribe: () => void = () => {};
+    if (user && user.role === UserRole.ADMIN) {
+      // Subscribe to unread notifications for the admin badge AND toasts
+      unsubscribe = storageService.subscribeToNotifications((notifications) => {
+        const newUnread = notifications.filter(n => !n.readStatus);
+        setUnreadAdminNotifications(newUnread);
+
+        // Filter for new notifications that haven't been shown as a toast yet
+        // A new notification is one that is unread AND its ID is not yet in the 'toasts' state.
+        const newToasts = newUnread.filter(
+          (notif) => !toasts.some((t) => t.id === notif.id) 
+        );
+
+        if (newToasts.length > 0) {
+          setToasts((prev) => [...prev, ...newToasts]);
+        }
+      }, true); // Only listen to unread for badge and toasts
+    }
+    return () => unsubscribe();
+  }, [user, toasts]); // `toasts` in dependency array ensures new toasts are checked against current state
+
+
+  const handleInstallClick = async () => {
+    if (isIOS) {
+      setShowIOSPrompt(true);
+    } else if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        setDeferredPrompt(null);
+        setIsInstalled(true); // Assume success for immediate UI feedback
+      }
+    } else {
+      // Fallback for browsers that don't support programmatic install but aren't iOS
+      alert("Para instalar: \n1. Abre el menú del navegador (tres puntos).\n2. Selecciona 'Instalar aplicación' o 'Añadir a pantalla de inicio'.");
+    }
+  };
+
   const toggleTheme = () => setDarkMode(!darkMode);
 
   const handleLogout = () => {
@@ -96,9 +128,17 @@ const App: React.FC = () => {
     setUser(null);
   };
 
+  const dismissToast = (id: string) => {
+    setToasts((prev) => prev.filter((toast) => toast.id !== id));
+    // Optionally mark the notification as read when dismissed from toast
+    // if (user) storageService.markNotificationAsRead(id, user.id, user.name);
+  };
+
   if (!user) {
     return <Login onLogin={setUser} />;
   }
+
+  const unreadCount = unreadAdminNotifications.length;
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex flex-col md:flex-row font-sans text-gray-900 dark:text-slate-200 transition-colors duration-300">
@@ -164,6 +204,7 @@ const App: React.FC = () => {
                 onClick={() => setView('admin')} 
                 icon={<ShieldCheck size={22} />} 
                 label="Administración" 
+                badge={unreadCount > 0 ? '!' : undefined}
               />
             </>
           )}
@@ -236,7 +277,7 @@ const App: React.FC = () => {
 
         {view === 'inventory' && <Inventory currentUser={user} />}
         {view === 'replenish' && <Replenishment currentUser={user} />}
-        {view === 'admin' && <Admin currentUser={user} />}
+        {view === 'admin' && <Admin currentUser={user} unreadNotificationsCount={unreadCount} />}
       </main>
 
       {/* Mobile Bottom Navigation (Z-40 to sit BEHIND modals which are Z-50/60) */}
@@ -260,18 +301,26 @@ const App: React.FC = () => {
             onClick={() => setView('admin')} 
             icon={<ShieldCheck size={24} />} 
             label="Admin" 
+            badge={unreadCount > 0 ? '!' : undefined}
           />
         )}
       </nav>
+
+      {/* Global Notification Toasts Container */}
+      <div className="fixed bottom-4 right-4 z-[90] space-y-3 pointer-events-none">
+        {toasts.map((toast) => (
+          <NotificationToast key={toast.id} notification={toast} onDismiss={dismissToast} />
+        ))}
+      </div>
     </div>
   );
 };
 
 // UI Helper Components
-const NavButton = ({ active, onClick, icon, label }: any) => (
+const NavButton = ({ active, onClick, icon, label, badge }: any) => (
   <button
     onClick={onClick}
-    className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition-all duration-200 active:scale-[0.98]
+    className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition-all duration-200 active:scale-[0.98] relative
     ${
       active 
         ? 'bg-red-600 text-white font-extrabold shadow-xl shadow-button-red' 
@@ -280,13 +329,18 @@ const NavButton = ({ active, onClick, icon, label }: any) => (
   >
     {icon}
     <span className="text-base drop-shadow-sm">{label}</span>
+    {badge && (
+      <span className="absolute top-2 right-4 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold ring-2 ring-white dark:ring-slate-800 !important">
+          {badge}
+      </span>
+    )}
   </button>
 );
 
-const MobileNavButton = ({ active, onClick, icon, label }: any) => (
+const MobileNavButton = ({ active, onClick, icon, label, badge }: any) => (
   <button
     onClick={onClick}
-    className={`flex flex-col items-center justify-center gap-1 w-20 py-2 transition-colors active:scale-95
+    className={`flex flex-col items-center justify-center gap-1 w-20 py-2 transition-colors active:scale-95 relative
     ${
       active ? 'text-red-600 dark:text-red-400' : 'text-gray-500 dark:text-slate-400'
     }`}
@@ -295,6 +349,11 @@ const MobileNavButton = ({ active, onClick, icon, label }: any) => (
       {icon}
     </div>
     <span className="text-[10px] font-extrabold tracking-wide drop-shadow-sm">{label}</span>
+    {badge && (
+      <span className="absolute top-1 right-3 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold ring-1 ring-white dark:ring-slate-800 !important">
+          {badge}
+      </span>
+    )}
   </button>
 );
 

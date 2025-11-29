@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { storageService, OrderBatch } from '../services/storageService';
-import { User, UserRole, Department } from '../types';
+import { storageService } from '../services/storageService';
+import { User, UserRole, Department, OrderBatch } from '../types';
 import { FileText, Printer, Trash2, X, Eye, Package } from 'lucide-react';
 import { Logo } from '../components/Logo';
 
