@@ -60,10 +60,24 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
     }
 
     setIsGeneratingPdf(true);
-    // Give UI a moment to update button state
-    await new Promise(resolve => setTimeout(resolve, 100));
 
-    const element = document.getElementById('print-area');
+    const printElement = document.getElementById('print-area');
+    if (!printElement) {
+      setIsGeneratingPdf(false);
+      alert('No se pudo encontrar el contenido para imprimir.');
+      return;
+    }
+
+    // Use a clone to avoid issues with modal styling and scroll context
+    const elementToPrint = printElement.cloneNode(true) as HTMLElement;
+
+    // Must append to body for html2pdf to calculate dimensions, but hide it
+    elementToPrint.style.position = 'absolute';
+    elementToPrint.style.left = '-9999px';
+    elementToPrint.style.top = '0';
+    elementToPrint.style.width = '8.5in'; // A4-ish width for better scaling
+    document.body.appendChild(elementToPrint);
+    
     const opt = {
       margin: [10, 10, 10, 10], // mm
       filename: `Pedido_${selectedOrder.batchId}_${selectedOrder.departmentName}.pdf`,
@@ -74,15 +88,21 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
         logging: false, 
         backgroundColor: '#ffffff', 
         letterRendering: true,
-        scrollX: 0,
-        scrollY: 0,
       },
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
       pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
     };
 
-    // @ts-ignore
-    window.html2pdf().set(opt).from(element).save().then(() => setIsGeneratingPdf(false)).catch((err) => { console.error(err); setIsGeneratingPdf(false); alert('Error al generar PDF.'); });
+    try {
+        // @ts-ignore
+        await window.html2pdf().set(opt).from(elementToPrint).save();
+    } catch (err) {
+        console.error("PDF Generation Error:", err);
+        alert('Hubo un error al generar el PDF.');
+    } finally {
+        setIsGeneratingPdf(false);
+        document.body.removeChild(elementToPrint);
+    }
   };
 
   const handleDeleteBatchClick = (batchId: string) => setBatchToDelete(batchId);
@@ -215,8 +235,7 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
         )}
 
         {activeTab === 'reports' && (
-           <div className="space-y-8"> {/* Added space-y for separation */}
-             {/* Stock Criticality Report */}
+           <div className="space-y-8">
              <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-card-soft dark:shadow-card-dark border border-gray-100 dark:border-slate-700/50">
                <h3 className="text-lg font-bold mb-4 text-gray-900 dark:text-white drop-shadow-sm flex items-center gap-2">
                  <BarChartIcon size={20} className="text-red-600 dark:text-red-400" /> Top 10 Productos en Stock Crítico
@@ -224,243 +243,150 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
                <div className="h-64 w-full">
                   {lowStockData.length > 0 ? (
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={lowStockData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" opacity={0.3} />
-                        <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} interval={0} stroke="#94a3b8" tick={{ fill: 'currentColor', fontSize: 12 }} className="text-gray-600 dark:text-slate-400" />
-                        <YAxis 
-                          stroke="#94a3b8" 
-                          label={{ value: 'Stock Actual', angle: -90, position: 'insideLeft', fill: '#94a3b8', fontSize: 12 }} 
-                          tick={{ fill: 'currentColor', fontSize: 12 }} 
-                          className="text-gray-600 dark:text-slate-400"
+                      <BarChart data={lowStockData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(128, 128, 128, 0.2)" />
+                        <XAxis dataKey="name" tick={{ fontSize: 10, fill: 'currentColor' }} interval={0} angle={-45} textAnchor="end" height={50} />
+                        <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: 'currentColor' }} />
+                        <Tooltip
+                            contentStyle={{
+                                backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                                backdropFilter: 'blur(4px)',
+                                border: '1px solid rgba(200, 200, 200, 0.5)',
+                                borderRadius: '1rem',
+                                color: '#333'
+                            }}
+                            cursor={{ fill: 'rgba(220, 38, 38, 0.1)' }}
                         />
-                        <Tooltip 
-                          cursor={{ fill: 'rgba(220, 38, 38, 0.1)' }}
-                          contentStyle={{ 
-                            backgroundColor: 'rgba(30, 41, 59, 0.9)',
-                            border: '1px solid rgba(71, 85, 105, 0.5)',
-                            borderRadius: '12px', 
-                            color: '#fff', 
-                            boxShadow: '0 44px 12px rgba(0,0,0,0.2)'
-                          }}
-                          itemStyle={{ color: '#fff', padding: '0px' }}
-                          labelStyle={{ color: '#cbd5e1', fontWeight: 'bold' }}
-                          formatter={(value: number, name: string, props: any) => {
-                            if (name === 'stock') return [`${value} unidades`, 'Stock'];
-                            if (name === 'min') return [`${value} unidades`, 'Mínimo'];
-                            return value;
-                          }}
-                          labelFormatter={(label: string) => <span className="text-red-300">Producto: {label}</span>}
-                        />
-                        <Bar dataKey="stock" fill="#f87171" stroke="#ef4444" strokeWidth={1} radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="stock" name="Stock Actual" radius={[4, 4, 0, 0]}>
+                            {lowStockData.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={entry.stock <= entry.min ? '#dc2626' : '#f59e0b'} />
+                            ))}
+                        </Bar>
                       </BarChart>
                     </ResponsiveContainer>
                   ) : (
-                    <div className="h-full flex flex-col items-center justify-center text-gray-400 dark:text-slate-600">
-                      <AlertTriangle size={40} className="mb-2 opacity-50" />
-                      <p className="font-bold">No hay productos en stock crítico.</p>
+                    <div className="flex h-full items-center justify-center text-gray-400 dark:text-slate-500">
+                      <p>No hay datos de stock bajo para mostrar.</p>
                     </div>
                   )}
                </div>
              </div>
-
-             {/* Notifications Section */}
+             
              <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-card-soft dark:shadow-card-dark border border-gray-100 dark:border-slate-700/50">
-               <div className="flex justify-between items-center mb-6">
-                 <div className="flex items-center gap-2">
-                   <BellRing size={24} className="text-red-600 dark:text-red-400 drop-shadow-sm" />
-                   <h3 className="font-bold text-xl text-gray-900 dark:text-white drop-shadow-sm">Actividad Reciente y Notificaciones</h3>
-                 </div>
-                 {notifications.some(n => !n.readStatus) && (
-                   <button 
-                     onClick={handleMarkAllNotificationsAsRead}
-                     className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white text-sm font-bold rounded-xl shadow-lg shadow-button-red hover:bg-red-700 active:scale-95 transition-all"
-                   >
-                     <CheckCircle2 size={18} /> Marcar todas como leídas
-                   </button>
-                 )}
-               </div>
-
-               <div className="space-y-4">
-                 {notifications.length === 0 ? (
-                   <div className="py-12 text-center text-gray-400 dark:text-slate-600">
-                     <Bell size={40} className="mx-auto mb-2 opacity-50" />
-                     <p>No hay notificaciones.</p>
-                   </div>
-                 ) : (
-                   notifications.map(notif => (
-                     <div 
-                       key={notif.id} 
-                       className={`
-                         flex items-start gap-4 p-4 rounded-xl border transition-all duration-200
-                         ${notif.readStatus 
-                           ? 'bg-gray-50 dark:bg-slate-700/50 border-gray-100 dark:border-slate-700/50 text-gray-500' 
-                           : 'bg-white dark:bg-slate-800 border-red-200 dark:border-red-900/50 shadow-md hover:shadow-lg'
-                         }
-                       `}
-                     >
-                       <div className="flex-shrink-0 pt-1">
-                         <NotificationIcon 
-                           iconName={notif.icon} 
-                           size={24} 
-                           className={`
-                             ${notif.readStatus ? 'text-gray-400' : 
-                               (notif.type === 'LOW_STOCK' ? 'text-amber-500' : 'text-red-600')}
-                           `}
-                         />
-                       </div>
-                       <div className="flex-1">
-                         <p className={`font-bold ${notif.readStatus ? 'text-gray-600 dark:text-slate-400' : 'text-gray-900 dark:text-white'} drop-shadow-sm`}>
-                           {notif.title}
-                         </p>
-                         <p className={`text-sm mt-1 ${notif.readStatus ? 'text-gray-500 dark:text-slate-500' : 'text-gray-700 dark:text-slate-300'}`}>
-                           {notif.message}
-                         </p>
-                         <p className="text-xs text-gray-400 dark:text-slate-500 mt-2">
-                           {new Date(notif.timestamp).toLocaleString()}
-                           {notif.readStatus && notif.reviewedBy && (
-                             <span className="ml-2"> • Leída por {notif.reviewedBy}</span>
-                           )}
-                         </p>
-                       </div>
-                       {!notif.readStatus && (
-                         <button 
-                           onClick={() => handleMarkNotificationAsRead(notif.id)}
-                           className="flex-shrink-0 p-2 text-gray-400 hover:text-green-600 dark:hover:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-full transition-colors active:scale-95"
-                           title="Marcar como leída"
-                         >
-                           <CheckCircle2 size={20} />
-                         </button>
-                       )}
-                     </div>
-                   ))
-                 )}
-               </div>
-             </div>
-           </div>
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-bold text-gray-900 dark:text-white drop-shadow-sm flex items-center gap-2">
+                    <BellRing size={20} className="text-red-600 dark:text-red-400" />
+                    Registro de Actividad y Notificaciones
+                  </h3>
+                  {unreadNotificationsCount > 0 && (
+                    <button
+                      onClick={handleMarkAllNotificationsAsRead}
+                      className="text-sm font-bold text-red-600 dark:text-red-400 hover:underline flex items-center gap-1 drop-shadow-sm"
+                    >
+                      <CheckCircle2 size={16} /> Marcar todas como leídas
+                    </button>
+                  )}
+                </div>
+                <div className="max-h-96 overflow-y-auto space-y-3 pr-2">
+                  {notifications.length === 0 ? (
+                    <p className="text-gray-400 dark:text-slate-500 text-center py-8">No hay notificaciones.</p>
+                  ) : (
+                    notifications.map(notif => (
+                      <div key={notif.id} className={`flex items-start gap-3 p-4 rounded-xl border transition-all ${notif.readStatus ? 'bg-gray-50/50 dark:bg-slate-800/50 border-gray-100 dark:border-slate-700/50 opacity-70' : 'bg-red-50/50 dark:bg-red-900/10 border-red-100 dark:border-red-900/30 shadow-sm'}`}>
+                        <div className="pt-1">
+                          <NotificationIcon iconName={notif.icon} size={20} className={notif.readStatus ? 'text-gray-400' : 'text-red-600'} />
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-bold text-gray-800 dark:text-slate-200 text-sm drop-shadow-sm">{notif.title}</p>
+                          <p className="text-gray-600 dark:text-slate-400 text-sm mt-1">{notif.message}</p>
+                          <div className="text-xs text-gray-400 dark:text-slate-500 mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
+                             <span>{new Date(notif.timestamp).toLocaleString()}</span>
+                             {notif.reviewedBy && <span>Revisado por: {notif.reviewedBy}</span>}
+                          </div>
+                        </div>
+                        {!notif.readStatus && (
+                          <button
+                            onClick={() => handleMarkNotificationAsRead(notif.id)}
+                            className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-100 dark:hover:bg-green-900/20 rounded-full transition-colors"
+                            title="Marcar como leída"
+                          >
+                            <CheckCircle2 size={20} />
+                          </button>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
         )}
       </div>
 
-      {/* MODALS (Edit User, Confirm Delete, Preview PDF) */}
-      {editingUser && <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in"><div className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-md p-6 shadow-pop-in animate-pop-in"><h3 className="font-bold text-lg mb-4 dark:text-white drop-shadow-sm">Editar Usuario</h3><input value={editingUser.name} onChange={e => setEditingUser({...editingUser, name: e.target.value})} className="w-full p-3 mb-3 border-2 border-gray-200 dark:border-slate-700/50 rounded-xl dark:bg-slate-700/50 dark:text-white outline-none focus:border-red-500 focus:ring-4 focus:ring-red-100 dark:focus:ring-red-500/30 shadow-sm" /><input value={editingUser.pin} onChange={e => setEditingUser({...editingUser, pin: e.target.value})} className="w-full p-3 mb-3 border-2 border-gray-200 dark:border-slate-700/50 rounded-xl dark:bg-slate-700/50 dark:text-white outline-none focus:border-red-500 focus:ring-4 focus:ring-red-100 dark:focus:ring-red-500/30 shadow-sm" /><div className="flex gap-3 mt-4"><button onClick={() => setEditingUser(null)} className="flex-1 py-3 bg-gray-100 dark:bg-slate-700 rounded-xl font-bold text-gray-600 dark:text-slate-400 hover:bg-gray-200 dark:hover:bg-slate-600 active:scale-[0.98]">Cancelar</button><button onClick={handleUpdateUser} className="flex-1 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 shadow-lg shadow-button-red active:scale-[0.98]">Guardar</button></div></div></div>}
-      
-      {/* PDF Modal */}
-      {selectedOrder && (
-        <div 
-          className="fixed inset-0 z-[70] bg-gray-900/90 dark:bg-slate-950/95 backdrop-blur-sm flex flex-col items-center justify-start p-0 md:p-6 overflow-y-auto animate-fade-in"
-          onClick={() => setSelectedOrder(null)}
-        >
-          {/* Controls Bar (Sticky on Mobile) */}
-          <div 
-            className="w-full max-w-3xl flex flex-wrap justify-between items-center px-4 pt-safe pb-4 md:p-0 md:mb-6 sticky top-0 md:static bg-gray-900/80 md:bg-transparent backdrop-blur-md md:backdrop-blur-none z-20 gap-3 no-print border-b md:border-none border-white/10"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex gap-2 ml-auto w-full md:w-auto">
-              <button 
-                onClick={handleDownloadPDF} 
-                disabled={isGeneratingPdf}
-                className="flex-1 md:flex-none bg-red-600 text-white px-5 py-3 rounded-xl font-bold shadow-lg shadow-button-red flex items-center justify-center gap-2 disabled:bg-gray-600 disabled:shadow-none hover:bg-red-700 active:scale-95 text-lg"
-              >
-                {isGeneratingPdf ? <Loader2 className="animate-spin" /> : <Download size={22} />} 
-                <span className="drop-shadow-sm">{isGeneratingPdf ? 'Generando...' : 'Descargar PDF'}</span> 
-              </button>
-              <button 
-                onClick={() => setSelectedOrder(null)} 
-                className="flex-shrink-0 p-3 bg-white text-gray-900 rounded-xl font-bold shadow-md hover:bg-gray-100 flex items-center justify-center transition-all active:scale-95"
-              >
-                <X size={28} />
-              </button>
+      {editingUser && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-md p-6 shadow-pop-in animate-pop-in">
+            <div className="flex justify-between items-center mb-4"><h3 className="font-bold text-xl text-gray-900 dark:text-white">Editar Usuario</h3><button onClick={() => setEditingUser(null)} className="text-gray-400 hover:text-gray-600"><X /></button></div>
+            <div className="space-y-4">
+              <input type="text" placeholder="Nombre" value={editingUser.name} onChange={e => setEditingUser({...editingUser, name: e.target.value})} className="w-full p-3 border-2 border-gray-200 dark:border-slate-700/50 rounded-xl bg-gray-50 dark:bg-slate-700/50 dark:text-white outline-none focus:border-red-500 focus:ring-4 focus:ring-red-100 dark:focus:ring-red-500/30 shadow-sm" required />
+              <input type="text" placeholder="PIN" value={editingUser.pin} onChange={e => setEditingUser({...editingUser, pin: e.target.value})} className="w-full p-3 border-2 border-gray-200 dark:border-slate-700/50 rounded-xl bg-gray-50 dark:bg-slate-700/50 dark:text-white outline-none focus:border-red-500 focus:ring-4 focus:ring-red-100 dark:focus:ring-red-500/30 shadow-sm" required />
+              <select value={editingUser.role} onChange={e => setEditingUser({...editingUser, role: e.target.value as UserRole})} className="w-full p-3 border-2 border-gray-200 dark:border-slate-700/50 rounded-xl bg-gray-50 dark:bg-slate-700/50 dark:text-white outline-none focus:border-red-500 focus:ring-4 focus:ring-red-100 dark:focus:ring-red-500/30 shadow-sm appearance-none">
+                <option value={UserRole.STAFF}>Personal</option><option value={UserRole.ADMIN}>Admin</option>
+              </select>
+            </div>
+            <div className="flex gap-4 mt-6">
+              <button onClick={() => setEditingUser(null)} className="flex-1 py-3 bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-300 rounded-xl font-bold active:scale-95">Cancelar</button>
+              <button onClick={handleUpdateUser} className="flex-1 py-3 bg-red-600 text-white rounded-xl font-bold shadow-lg shadow-button-red active:scale-95">Guardar</button>
             </div>
           </div>
+        </div>
+      )}
 
-          {/* Printable Area - STRICT WHITE PAPER MODE */}
-          <div 
-            id="print-area" 
-            className="bg-white dark:bg-white text-black dark:text-black p-6 md:p-16 md:rounded-3xl shadow-2xl max-w-3xl w-full h-auto min-h-[calc(100vh-80px)] md:min-h-0 animate-slide-up relative overflow-visible"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header */}
-            <div className="flex flex-col md:flex-row justify-between items-start border-b-2 border-black pb-8 mb-8 gap-6 mt-6 md:mt-0">
-              <div className="flex items-center gap-6">
-                <Logo size="lg" />
-                <div>
-                  <h1 className="text-3xl md:text-4xl font-black text-black uppercase tracking-tighter">Hotel Victoria</h1>
-                  <p className="text-red-600 font-bold uppercase tracking-[0.3em] text-sm mt-1">Pedidos Internos</p>
-                </div>
-              </div>
-              <div className="text-left md:text-right w-full md:w-auto mt-4 md:mt-0">
-                <div className="inline-block bg-gray-100 px-4 py-2 rounded-lg border border-gray-200">
-                  <h2 className="text-xl md:text-2xl font-mono font-bold text-black drop-shadow-sm">#{selectedOrder.batchId}</h2>
-                </div>
-                <p className="text-sm font-semibold text-gray-500 mt-2 uppercase tracking-wide drop-shadow-sm">{selectedOrder.date}</p>
-              </div>
+      {batchToDelete && (
+         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-sm p-6 text-center shadow-pop-in animate-pop-in">
+            <h3 className="font-bold text-lg text-gray-900 dark:text-white">¿Eliminar Pedido?</h3>
+            <p className="text-gray-500 dark:text-slate-400 text-sm my-4">Se eliminará el pedido <span className="font-bold text-gray-800 dark:text-slate-200">#{batchToDelete}</span>. Esta acción no se puede deshacer.</p>
+            <div className="flex gap-4">
+              <button onClick={() => setBatchToDelete(null)} className="flex-1 py-3 bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-300 rounded-xl font-bold active:scale-95">Cancelar</button>
+              <button onClick={confirmDeleteBatch} className="flex-1 py-3 bg-red-600 text-white rounded-xl font-bold shadow-lg shadow-button-red active:scale-95">Eliminar</button>
             </div>
+          </div>
+        </div>
+      )}
 
-            {/* Info Grid */}
-            <div className="grid grid-cols-2 gap-4 md:gap-8 mb-10 bg-gray-50 p-6 md:p-8 rounded-2xl border border-gray-200">
-              <div>
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 drop-shadow-sm">Departamento</p>
-                <p className="text-xl md:text-2xl font-extrabold text-black drop-shadow-sm">{selectedOrder.departmentName}</p>
-              </div>
-              <div>
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 drop-shadow-sm">Solicitante</p>
-                <p className="text-xl md:text-2xl font-extrabold text-black drop-shadow-sm">{selectedOrder.requestedBy}</p>
-              </div>
+      {selectedOrder && (
+        <div className="fixed inset-0 z-40 bg-gray-900/90 backdrop-blur-sm flex flex-col p-0 md:p-6 overflow-y-auto animate-fade-in" onClick={() => setSelectedOrder(null)}>
+          <div className="w-full max-w-3xl flex items-center justify-between px-4 pt-safe pb-4 md:p-0 md:mb-6 sticky top-0 md:static bg-gray-900/80 md:bg-transparent backdrop-blur-md md:backdrop-blur-none z-20" onClick={e => e.stopPropagation()}>
+            <h2 className="text-white font-bold text-lg hidden md:block">Vista Previa</h2>
+            <div className="flex gap-3 ml-auto">
+              <button onClick={handleDownloadPDF} disabled={isGeneratingPdf} className="bg-red-600 text-white px-5 py-3 rounded-xl font-bold shadow-lg shadow-button-red flex items-center gap-2 hover:bg-red-700 transition-colors disabled:bg-red-400 active:scale-95">
+                {isGeneratingPdf ? <Loader2 className="animate-spin" /> : <Download />} {isGeneratingPdf ? 'Generando...' : 'PDF'}
+              </button>
+              <button onClick={() => setSelectedOrder(null)} className="p-3 bg-white text-gray-900 rounded-xl font-bold shadow-md hover:bg-gray-100 active:scale-95"><X /></button>
             </div>
-
-            {/* Table */}
-            <div className="mb-12">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b-2 border-black">
-                    <th className="text-left py-4 text-sm font-black text-black uppercase tracking-wider">Producto</th>
-                    <th className="text-center py-4 text-sm font-black text-black uppercase tracking-wider w-24 md:w-32">Cant.</th>
-                    <th className="hidden md:table-cell text-right py-4 text-sm font-black text-black uppercase tracking-wider w-24">Unidad</th>
-                    <th className="text-right py-4 text-sm font-black text-black uppercase tracking-wider w-16 md:w-20">Check</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {selectedOrder.items.map((item, idx) => (
-                    <tr key={idx} className="border-b border-gray-200 hover:bg-gray-50 transition-colors">
-                      <td className="py-4 md:py-5 font-bold text-black text-base md:text-lg drop-shadow-sm">
-                        {item.productName}
-                        <span className="md:hidden text-xs text-gray-500 block uppercase font-normal drop-shadow-sm">{item.unit || 'ud.'}</span>
-                      </td>
-                      <td className="py-4 md:py-5 text-center">
-                         <span className="font-black text-lg md:text-xl text-black bg-gray-100 px-3 py-1 rounded-lg border border-gray-200 drop-shadow-sm">{item.quantity}</span>
-                      </td>
-                      <td className="hidden md:table-cell py-4 md:py-5 text-right text-gray-500 font-semibold text-sm uppercase drop-shadow-sm">{item.unit || 'Ud.'}</td>
-                      <td className="py-4 md:py-5 text-right">
-                         <div className="w-6 h-6 md:w-8 md:h-8 border-2 border-gray-300 rounded-lg inline-block"></div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          </div>
+          <div id="print-area" className="bg-white text-black p-6 md:p-12 rounded-t-2xl md:rounded-2xl shadow-2xl max-w-3xl w-full h-auto animate-slide-up" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-start border-b-2 border-black pb-8 mb-8">
+              <div className="flex items-center gap-4"><Logo size="lg" solid /><div className="mt-2"><h1 className="text-3xl font-black uppercase tracking-tighter">Hotel Victoria</h1><p className="text-red-600 font-bold uppercase tracking-[0.3em] text-sm">Pedidos Internos</p></div></div>
+              <div className="text-right"><h2 className="text-2xl font-mono font-bold">#{selectedOrder.batchId}</h2><p className="text-sm font-semibold text-gray-500 mt-1">{selectedOrder.date}</p></div>
             </div>
-
-            {/* Footer Signatures */}
-            <div className="grid grid-cols-2 gap-8 md:gap-16 mt-auto pt-12 border-t-2 border-gray-200 page-break-inside-avoid">
-              <div className="text-center">
-                 <div className="h-20 md:h-24 border-b-2 border-gray-300 mb-3 border-dashed"></div>
-                 <p className="text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-widest drop-shadow-sm">Firma Entregado (Almacén)</p>
-              </div>
-              <div className="text-center">
-                 <div className="h-20 md:h-24 border-b-2 border-gray-300 mb-3 border-dashed"></div>
-                 <p className="text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-widest drop-shadow-sm">Firma Recibido ({selectedOrder.departmentName})</p>
-              </div>
-            </div>
-            
-            <div className="mt-12 text-center">
-              <p className="text-[10px] text-gray-400 uppercase tracking-widest font-bold drop-shadow-sm">Generado Digitalmente por Sistema Hotel Victoria</p>
+            <div className="grid grid-cols-2 gap-8 mb-10"><p><span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Departamento</span><br /><span className="text-2xl font-extrabold">{selectedOrder.departmentName}</span></p><p><span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Solicitante</span><br /><span className="text-2xl font-extrabold">{selectedOrder.requestedBy}</span></p></div>
+            <table className="w-full mb-12">
+              <thead><tr className="border-b-2 border-black"><th className="text-left py-3 text-sm font-black uppercase tracking-wider">Producto</th><th className="text-center py-3 text-sm font-black uppercase tracking-wider w-32">Cant.</th><th className="hidden md:table-cell text-right py-3 text-sm font-black uppercase tracking-wider w-24">Unidad</th><th className="text-right py-3 text-sm font-black uppercase tracking-wider w-20">Check</th></tr></thead>
+              <tbody>
+                {selectedOrder.items.map((item, idx) => (
+                  <tr key={idx} className="border-b border-gray-200"><td className="py-4 font-bold text-lg">{item.productName}</td><td className="py-4 text-center font-black text-xl">{item.quantity}</td><td className="hidden md:table-cell py-4 text-right text-gray-500 font-semibold">{item.unit || 'uds.'}</td><td className="py-4 text-right"><div className="w-8 h-8 border-2 border-gray-300 rounded-lg inline-block"></div></td></tr>
+                ))}
+              </tbody>
+            </table>
+            <div className="grid grid-cols-2 gap-16 mt-auto pt-12 border-t-2 border-gray-200">
+              <div><div className="h-24 border-b-2 border-gray-300 mb-2"></div><p className="text-xs font-bold text-gray-400 uppercase tracking-widest text-center">Firma Entregado (Almacén)</p></div>
+              <div><div className="h-24 border-b-2 border-gray-300 mb-2"></div><p className="text-xs font-bold text-gray-400 uppercase tracking-widest text-center">Firma Recibido ({selectedOrder.departmentName})</p></div>
             </div>
           </div>
           <div className="h-24 w-full no-print"></div>
         </div>
       )}
-      
-      {/* Confirm Batch Delete */}
-      {batchToDelete && <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in"><div className="bg-white dark:bg-slate-800 rounded-3xl p-6 text-center shadow-pop-in animate-pop-in"><h3 className="text-xl font-black mb-2 dark:text-white drop-shadow-sm">¿Eliminar Pedido?</h3><p className="text-gray-500 dark:text-slate-400 mb-6">Esta acción no se puede deshacer.</p><div className="flex gap-3"><button onClick={() => setBatchToDelete(null)} className="flex-1 py-3 bg-gray-100 dark:bg-slate-700 rounded-xl font-bold text-gray-600 dark:text-slate-400 hover:bg-gray-200 dark:hover:bg-slate-600 active:scale-[0.98]">Cancelar</button><button onClick={confirmDeleteBatch} className="flex-1 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 shadow-lg shadow-button-red active:scale-[0.98]">Eliminar</button></div></div></div>}
-      
     </div>
   );
 };

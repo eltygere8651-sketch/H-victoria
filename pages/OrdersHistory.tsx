@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { storageService } from '../services/storageService';
 import { User, UserRole, Department, OrderBatch } from '../types';
-import { FileText, Printer, Trash2, X, Eye, Package, Download } from 'lucide-react';
+import { FileText, Printer, Trash2, X, Eye, Package, Download, Loader2 } from 'lucide-react';
 import { Logo } from '../components/Logo';
 
 interface OrdersHistoryProps {
@@ -11,22 +11,40 @@ interface OrdersHistoryProps {
 const OrdersHistory: React.FC<OrdersHistoryProps> = ({ currentUser }) => {
   const [orders, setOrders] = useState<OrderBatch[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<OrderBatch | null>(null);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
   useEffect(() => {
     const unsubscribe = storageService.subscribeToBatches(setOrders);
     return () => unsubscribe();
   }, []);
 
-  const handlePrint = () => {
+  const handleDownloadPDF = async () => {
+    if (!selectedOrder) return;
     // @ts-ignore
     if (typeof window.html2pdf === 'undefined') {
       alert('La librería de PDF está cargando. Por favor espera unos segundos.');
       return;
     }
-    const element = document.getElementById('print-area');
+
+    setIsGeneratingPdf(true);
+    
+    const printElement = document.getElementById('print-area');
+    if (!printElement) {
+        setIsGeneratingPdf(false);
+        alert('No se pudo encontrar el contenido para imprimir.');
+        return;
+    }
+
+    const elementToPrint = printElement.cloneNode(true) as HTMLElement;
+    elementToPrint.style.position = 'absolute';
+    elementToPrint.style.left = '-9999px';
+    elementToPrint.style.top = '0';
+    elementToPrint.style.width = '8.5in'; // A4-ish width for better scaling
+    document.body.appendChild(elementToPrint);
+
     const opt = {
       margin: [10, 10, 10, 10], // mm
-      filename: `Pedido_${selectedOrder?.batchId || 'desconocido'}_${selectedOrder?.departmentName || 'desconocido'}.pdf`,
+      filename: `Pedido_${selectedOrder.batchId}_${selectedOrder.departmentName}.pdf`,
       image: { type: 'png', quality: 1.0 },
       html2canvas: { 
         scale: 4,
@@ -34,14 +52,21 @@ const OrdersHistory: React.FC<OrdersHistoryProps> = ({ currentUser }) => {
         logging: false, 
         backgroundColor: '#ffffff', 
         letterRendering: true,
-        scrollX: 0,
-        scrollY: 0,
       },
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
       pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
     };
-    // @ts-ignore
-    window.html2pdf().set(opt).from(element).save();
+
+    try {
+        // @ts-ignore
+        await window.html2pdf().set(opt).from(elementToPrint).save();
+    } catch (err) {
+        console.error("PDF Generation Error:", err);
+        alert('Hubo un error al generar el PDF.');
+    } finally {
+        setIsGeneratingPdf(false);
+        document.body.removeChild(elementToPrint);
+    }
   };
 
   const handleDelete = (batchId: string) => {
@@ -153,10 +178,12 @@ const OrdersHistory: React.FC<OrdersHistoryProps> = ({ currentUser }) => {
               )}
               
               <button 
-                onClick={handlePrint} 
-                className="flex-1 md:flex-none bg-red-600 text-white px-5 py-3 rounded-xl font-bold shadow-lg shadow-button-red flex items-center justify-center gap-2 hover:bg-red-700 transition-all active:scale-95 text-lg"
+                onClick={handleDownloadPDF} 
+                disabled={isGeneratingPdf}
+                className="flex-1 md:flex-none bg-red-600 text-white px-5 py-3 rounded-xl font-bold shadow-lg shadow-button-red flex items-center justify-center gap-2 hover:bg-red-700 transition-all active:scale-95 text-lg disabled:bg-red-400 disabled:cursor-not-allowed"
               >
-                <Download size={22} /> <span className="drop-shadow-sm">Descargar PDF</span> 
+                {isGeneratingPdf ? <Loader2 size={22} className="animate-spin" /> : <Download size={22} />}
+                <span className="drop-shadow-sm">{isGeneratingPdf ? 'Generando...' : 'Descargar PDF'}</span> 
               </button>
 
               <button 
@@ -172,7 +199,7 @@ const OrdersHistory: React.FC<OrdersHistoryProps> = ({ currentUser }) => {
           {/* Printable Area - STRICT WHITE PAPER MODE */}
           <div 
             id="print-area" 
-            className="bg-white dark:bg-white text-black dark:text-black p-6 md:p-16 md:rounded-3xl shadow-2xl max-w-3xl w-full h-auto min-h-[calc(100vh-80px)] md:min-h-0 animate-slide-up relative overflow-visible"
+            className="bg-white dark:bg-white text-black dark:text-black p-6 md:p-16 md:rounded-3xl shadow-2xl max-w-3xl w-full h-auto animate-slide-up relative overflow-visible"
             onClick={(e) => e.stopPropagation()} // Prevent closing when clicking the paper
           >
             {/* Removed redundant mobile close button inside the print area */}
