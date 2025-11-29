@@ -41,6 +41,8 @@ const App: React.FC = () => {
   // Notification states
   const [toasts, setToasts] = useState<AppNotification[]>([]);
   const [unreadAdminNotifications, setUnreadAdminNotifications] = useState<AppNotification[]>([]);
+  // To control which tab in Admin is opened when navigating from a toast
+  const [initialAdminTab, setInitialAdminTab] = useState<'requests' | 'users' | 'reports'>('requests');
   // To keep track of notification IDs that have already generated a toast in the current session
   const displayedToastIds = useRef<Set<string>>(new Set());
 
@@ -86,8 +88,9 @@ const App: React.FC = () => {
 
   // --- Notifications Logic ---
   const playNotificationSound = () => {
-    const audio = new Audio('https://www.soundjay.com/buttons/beep-07.mp3'); // A subtle beep sound
-    audio.volume = 0.5; // Adjust volume as needed
+    // Using a more reliable, short sound that won't be as intrusive
+    const audio = new Audio('https://www.soundjay.com/buttons/beep-07a.mp3'); 
+    audio.volume = 0.4; // Adjust volume as needed
     audio.play().catch(e => console.warn("Failed to play notification sound:", e));
   };
 
@@ -146,8 +149,22 @@ const App: React.FC = () => {
   };
 
   const dismissToast = (id: string) => {
+    // Only remove from local state. Actual marking as read is handled by onReadAndNavigate or auto-timeout.
     setToasts((prev) => prev.filter((toast) => toast.id !== id));
-    // The actual marking as read happens inside NotificationToast.tsx
+  };
+
+  const handleReadAndNavigateFromToast = async (notificationId: string) => {
+    if (!user) return;
+
+    // 1. Mark notification as read in Firestore
+    await storageService.markNotificationAsRead(notificationId, user.id, user.name);
+    
+    // 2. Remove toast from display
+    dismissToast(notificationId);
+
+    // 3. Navigate to Admin > Reports
+    setInitialAdminTab('reports');
+    setView('admin');
   };
 
   if (!user) {
@@ -219,7 +236,10 @@ const App: React.FC = () => {
               <div className="my-4 border-t border-gray-100 dark:border-slate-700/50"></div>
               <NavButton 
                 active={view === 'admin'} 
-                onClick={() => setView('admin')} 
+                onClick={() => {
+                  setView('admin');
+                  setInitialAdminTab('requests'); // Reset to default when clicking main Admin button
+                }} 
                 icon={<ShieldCheck size={22} />} 
                 label="Administración" 
                 badge={unreadCount > 0 ? '!' : undefined}
@@ -306,7 +326,7 @@ const App: React.FC = () => {
            </div>
         )}
         {view === 'replenish' && <Replenishment currentUser={user} />}
-        {view === 'admin' && <Admin currentUser={user} unreadNotificationsCount={unreadCount} />}
+        {view === 'admin' && <Admin currentUser={user} unreadNotificationsCount={unreadCount} initialTab={initialAdminTab} />}
       </main>
 
       {/* Mobile Bottom Navigation (Z-40 to sit BEHIND modals which are Z-50/60) */}
@@ -329,7 +349,10 @@ const App: React.FC = () => {
         {user.role === UserRole.ADMIN && (
           <MobileNavButton 
             active={view === 'admin'} 
-            onClick={() => setView('admin')} 
+            onClick={() => {
+              setView('admin');
+              setInitialAdminTab('requests'); // Reset to default when clicking main Admin button
+            }} 
             icon={<ShieldCheck size={24} />} 
             label="Admin" 
             badge={unreadCount > 0 ? '!' : undefined}
@@ -344,7 +367,7 @@ const App: React.FC = () => {
             key={toast.id} 
             notification={toast} 
             onDismiss={dismissToast} 
-            currentUser={user} // Pass currentUser here
+            onReadAndNavigate={handleReadAndNavigateFromToast} // Pass the new handler
           />
         ))}
       </div>

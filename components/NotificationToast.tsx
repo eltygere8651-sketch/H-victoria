@@ -1,35 +1,38 @@
 import React, { useEffect, useState } from 'react';
-import { AppNotification, User } from '../types';
-import { X, CheckCircle2 } from 'lucide-react';
+import { AppNotification } from '../types';
+import { X, BookOpen } from 'lucide-react'; // Changed CheckCircle2 to BookOpen for "Leer" button
 import { NotificationIcon } from './NotificationIcon';
-import { storageService } from '../services/storageService';
 
 interface NotificationToastProps {
   notification: AppNotification;
-  onDismiss: (id: string) => void;
-  currentUser: User | null; // Needed to mark as read
+  onDismiss: (id: string) => void; // For simple dismissal (timeout, or X on already read)
+  onReadAndNavigate: (id: string) => void; // For "Leer" button (marks as read AND navigates)
   timeout?: number; // Milliseconds before auto-dismiss
 }
 
-export const NotificationToast: React.FC<NotificationToastProps> = ({ notification, onDismiss, currentUser, timeout = 5000 }) => {
+export const NotificationToast: React.FC<NotificationToastProps> = ({ notification, onDismiss, onReadAndNavigate, timeout = 5000 }) => {
   const [isVisible, setIsVisible] = useState(true);
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      handleDismiss(); // Use the unified dismiss handler
+      if (isVisible) { // Only auto-dismiss if still visible
+        handleDismiss();
+      }
     }, timeout);
 
     return () => clearTimeout(timer);
-  }, [notification.id, timeout]);
+  }, [notification.id, timeout, isVisible]); // Depend on isVisible to prevent re-scheduling if already dismissed
 
-  const handleDismiss = async () => {
+  const handleDismiss = () => {
     setIsVisible(false);
-    // If notification is unread and a user is logged in, mark as read
-    if (!notification.readStatus && currentUser) {
-      await storageService.markNotificationAsRead(notification.id, currentUser.id, currentUser.name);
-    }
     // Then, dismiss the toast from the UI after a short delay for animation
     setTimeout(() => onDismiss(notification.id), 300);
+  };
+
+  const handleReadClick = () => {
+    setIsVisible(false);
+    onReadAndNavigate(notification.id); // Delegate to App.tsx for marking as read and navigating
+    // onReadAndNavigate will also call onDismiss internally after its actions
   };
 
   const timeAgo = (timestamp: number) => {
@@ -61,17 +64,17 @@ export const NotificationToast: React.FC<NotificationToastProps> = ({ notificati
         <p className="text-sm text-gray-600 dark:text-slate-400 mt-1">{notification.message}</p>
         <p className="text-xs text-gray-400 dark:text-slate-500 mt-2">hace {timeAgo(notification.timestamp)}</p>
       </div>
-      {/* Botón "Leído" */}
+      {/* Botón "Leer" para notificaciones no leídas */}
       {!notification.readStatus && (
         <button 
-          onClick={handleDismiss} 
+          onClick={handleReadClick} 
           className="flex-shrink-0 ml-2 px-3 py-1.5 bg-red-600 text-white text-sm font-bold rounded-lg shadow-md hover:bg-red-700 active:scale-95 transition-all flex items-center gap-1 drop-shadow-sm"
-          aria-label="Marcar como leída y cerrar notificación"
+          aria-label="Marcar como leída y navegar a reportes"
         >
-          <CheckCircle2 size={16} /> Leído
+          <BookOpen size={16} /> Leer
         </button>
       )}
-      {/* Botón X de cierre rápido para notificaciones ya leídas o como alternativa */}
+      {/* Botón X de cierre rápido para notificaciones ya leídas */}
       {notification.readStatus && (
         <button 
           onClick={handleDismiss} 

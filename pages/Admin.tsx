@@ -9,10 +9,11 @@ import { NotificationIcon } from '../components/NotificationIcon';
 interface AdminProps {
   currentUser: User;
   unreadNotificationsCount: number;
+  initialTab?: 'requests' | 'users' | 'reports'; // New prop
 }
 
-const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount }) => {
-  const [activeTab, setActiveTab] = useState<'requests' | 'users' | 'reports'>('requests'); // 'notifications' removed
+const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, initialTab = 'requests' }) => {
+  const [activeTab, setActiveTab] = useState<'requests' | 'users' | 'reports'>(initialTab); // Use initialTab prop
   
   const [orders, setOrders] = useState<OrderBatch[]>([]);
   const [users, setUsers] = useState<User[]>([]);
@@ -25,6 +26,11 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount }) 
   const [selectedOrder, setSelectedOrder] = useState<OrderBatch | null>(null);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [batchToDelete, setBatchToDelete] = useState<string | null>(null);
+
+  useEffect(() => {
+    // If initialTab changes, update activeTab state
+    setActiveTab(initialTab);
+  }, [initialTab]);
 
   useEffect(() => {
     // Realtime subscriptions

@@ -300,10 +300,13 @@ export const storageService = {
 
   subscribeToNotifications: (callback: (notifications: AppNotification[]) => void, unreadOnly: boolean = false) => {
     if (isFirebaseReady) {
-      let q = query(collection(db, 'notifications'), orderBy('timestamp', 'desc'));
+      let q: any = collection(db, 'notifications');
       if (unreadOnly) {
         q = query(q, where('readStatus', '==', false));
       }
+      // Apply orderBy AFTER the where clause, for compound index
+      q = query(q, orderBy('timestamp', 'desc'));
+
       return onSnapshot(q, (snapshot) => {
         const notifications = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as AppNotification));
         callback(notifications);
@@ -317,10 +320,11 @@ export const storageService = {
 
   getNotifications: async (readStatusFilter?: boolean): Promise<AppNotification[]> => {
     if (isFirebaseReady) {
-      let q = query(collection(db, 'notifications'), orderBy('timestamp', 'desc'));
+      let q: any = collection(db, 'notifications');
       if (readStatusFilter !== undefined) {
         q = query(q, where('readStatus', '==', readStatusFilter));
       }
+      q = query(q, orderBy('timestamp', 'desc')); // Always order by timestamp for consistency
       const snapshot = await getDocs(q);
       return snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as AppNotification));
     } else {
