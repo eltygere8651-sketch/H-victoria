@@ -207,7 +207,7 @@ const OrdersHistory: React.FC<OrdersHistoryProps> = ({ currentUser }) => {
             {/* Header */}
             <div className="flex flex-col md:flex-row justify-between items-start border-b-2 border-black pb-8 mb-8 gap-6 mt-6 md:mt-0">
               <div className="flex items-center gap-6">
-                <Logo size="lg" />
+                <Logo size="lg" solid />
                 <div>
                   <h1 className="text-3xl md:text-4xl font-black text-black uppercase tracking-tighter">Hotel Victoria</h1>
                   <p className="text-red-600 font-bold uppercase tracking-[0.3em] text-sm mt-1">Pedidos Internos</p>
