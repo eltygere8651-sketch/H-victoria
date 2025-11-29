@@ -23,7 +23,6 @@ function stringifyWithCircularGuard(obj: any) {
   const cache = new Set();
   return JSON.stringify(obj, (key, value) => {
     if (typeof value === 'object' && value !== null) {
-      // --- START: Added defensive check for Firebase internal objects ---
       // Excluir objetos que son instancias de clases internas de Firebase y no deben serializarse.
       // Esto previene errores de "estructura circular" cuando se intentan guardar accidentalmente.
       if (value.constructor && (
@@ -35,7 +34,6 @@ function stringifyWithCircularGuard(obj: any) {
         )) {
         return undefined; // Excluye este valor de la serialización
       }
-      // --- END: Added defensive check ---
 
       if (cache.has(value)) {
         // Circular reference found, discard key
@@ -149,7 +147,7 @@ export const storageService = {
             const match = INITIAL_USERS.find(u => u.name.toLowerCase() === name.trim().toLowerCase() && u.pin === pin);
             if (match) {
                 // Fetch the newly created user ID by exact name match from the seed
-                const q = query(collection(db, 'users'), where('name', '==', match.name));
+                const q = query(collection(db, 'users'), where('name', '==', match.name)); // CORRECTED SYNTAX
                 const snap = await getDocs(q);
                 if (!snap.empty) {
                      const userData = snap.docs[0].data() as User;

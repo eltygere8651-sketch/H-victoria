@@ -18,7 +18,30 @@ const OrdersHistory: React.FC<OrdersHistoryProps> = ({ currentUser }) => {
   }, []);
 
   const handlePrint = () => {
-    window.print();
+    // @ts-ignore
+    if (typeof window.html2pdf === 'undefined') {
+      alert('La librería de PDF está cargando. Por favor espera unos segundos.');
+      return;
+    }
+    const element = document.getElementById('print-area');
+    const opt = {
+      margin: [10, 10, 10, 10], // mm
+      filename: `Pedido_${selectedOrder?.batchId || 'desconocido'}_${selectedOrder?.departmentName || 'desconocido'}.pdf`,
+      image: { type: 'png', quality: 1.0 },
+      html2canvas: { 
+        scale: 4,
+        useCORS: true, 
+        logging: false, 
+        backgroundColor: '#ffffff', 
+        letterRendering: true,
+        scrollX: 0,
+        scrollY: 0,
+      },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+    };
+    // @ts-ignore
+    window.html2pdf().set(opt).from(element).save();
   };
 
   const handleDelete = (batchId: string) => {
@@ -112,7 +135,8 @@ const OrdersHistory: React.FC<OrdersHistoryProps> = ({ currentUser }) => {
           
           {/* Controls Bar (Sticky on Mobile) */}
           <div 
-            className="w-full max-w-3xl flex flex-wrap justify-between items-center p-4 md:p-0 md:mb-6 sticky top-0 md:static bg-gray-900/80 md:bg-transparent backdrop-blur-md md:backdrop-blur-none z-20 gap-3 no-print border-b md:border-none border-white/10"
+            // Adjusted padding for safe areas: px-4 horizontal, pt-safe for top, pb-4 for bottom
+            className="w-full max-w-3xl flex flex-wrap justify-between items-center px-4 pt-safe pb-4 md:p-0 md:mb-6 sticky top-0 md:static bg-gray-900/80 md:bg-transparent backdrop-blur-md md:backdrop-blur-none z-20 gap-3 no-print border-b md:border-none border-white/10"
             onClick={(e) => e.stopPropagation()} // Prevent closing when clicking toolbar
           >
             <h2 className="text-white font-bold text-lg hidden md:block drop-shadow-sm">Vista Previa</h2>
@@ -121,25 +145,27 @@ const OrdersHistory: React.FC<OrdersHistoryProps> = ({ currentUser }) => {
               {currentUser.role === UserRole.ADMIN && (
                 <button 
                   onClick={() => handleDelete(selectedOrder.batchId)}
-                  className="flex-1 md:flex-none bg-red-600/20 text-red-200 border border-red-500/50 px-4 py-3 rounded-xl font-bold backdrop-blur-md flex items-center justify-center gap-2 hover:bg-red-600 hover:text-white transition-all active:scale-95 shadow-sm"
+                  className="flex-1 md:flex-none bg-red-600/20 text-red-200 border border-red-500/50 px-4 py-3 rounded-xl font-bold backdrop-blur-md flex items-center justify-center gap-2 hover:bg-red-600 hover:text-white transition-all active:scale-95 shadow-sm text-base"
                   title="Eliminar Pedido (Admin)"
                 >
-                  <Trash2 size={20} /> <span className="md:hidden drop-shadow-sm">Eliminar</span>
+                  <Trash2 size={20} /> <span className="drop-shadow-sm">Eliminar</span>
                 </button>
               )}
               
               <button 
                 onClick={handlePrint} 
-                className="flex-1 md:flex-none bg-blue-600 text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-button-blue flex items-center justify-center gap-2 hover:bg-blue-700 transition-all active:scale-95"
+                // Made button more prominent for mobile, always shows Descargar/Imprimir
+                className="flex-1 md:flex-none bg-blue-600 text-white px-5 py-3 rounded-xl font-bold shadow-lg shadow-button-blue flex items-center justify-center gap-2 hover:bg-blue-700 transition-all active:scale-95 text-lg"
               >
-                <Printer size={20} /> <span className="md:hidden drop-shadow-sm">Imprimir</span> <span className="hidden md:inline drop-shadow-sm">Imprimir</span>
+                <Printer size={22} /> <span className="drop-shadow-sm">Descargar / Imprimir</span> 
               </button>
 
               <button 
                 onClick={() => setSelectedOrder(null)} 
-                className="bg-white text-gray-900 px-4 py-3 rounded-xl font-bold shadow-md hover:bg-gray-100 flex items-center justify-center gap-2 transition-all active:scale-95"
+                // Made X button larger and with background for better tap target
+                className="flex-shrink-0 p-3 bg-white text-gray-900 rounded-xl font-bold shadow-md hover:bg-gray-100 flex items-center justify-center transition-all active:scale-95"
               >
-                <X size={24} />
+                <X size={28} />
               </button>
             </div>
           </div>
@@ -150,13 +176,7 @@ const OrdersHistory: React.FC<OrdersHistoryProps> = ({ currentUser }) => {
             className="bg-white dark:bg-white text-black dark:text-black p-6 md:p-16 md:rounded-3xl shadow-2xl max-w-3xl w-full h-auto min-h-[calc(100vh-80px)] md:min-h-0 animate-slide-up relative overflow-visible"
             onClick={(e) => e.stopPropagation()} // Prevent closing when clicking the paper
           >
-            {/* Close Button Inside Paper (Mobile Convenience) */}
-            <button 
-              onClick={() => setSelectedOrder(null)}
-              className="absolute top-4 right-4 p-2 bg-gray-100 rounded-full text-gray-500 hover:bg-gray-200 md:hidden no-print active:scale-95 transition-all"
-            >
-              <X size={24} />
-            </button>
+            {/* Removed redundant mobile close button inside the print area */}
             
             {/* Header */}
             <div className="flex flex-col md:flex-row justify-between items-start border-b-2 border-black pb-8 mb-8 gap-6 mt-6 md:mt-0">
