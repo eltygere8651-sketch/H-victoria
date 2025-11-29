@@ -249,7 +249,7 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser }) => {
   }
 
   return (
-    <div className="h-full flex flex-col lg:flex-row overflow-hidden bg-gray-50 dark:bg-slate-900 relative font-sans transition-colors duration-300">
+    <div className="h-full flex flex-col lg:flex-row bg-gray-50 dark:bg-slate-900 relative font-sans transition-colors duration-300">
       
       {/* 1. QUANTITY INPUT MODAL */}
       {selectedProduct && (
@@ -400,7 +400,7 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser }) => {
       )}
 
       {/* --- CATALOG --- */}
-      <div className="flex-1 flex flex-col h-full overflow-hidden pb-20 lg:pb-0">
+      <div className="flex-1 flex flex-col h-full pb-20 lg:pb-0">
         <div className="bg-white dark:bg-slate-800 px-4 py-4 md:px-6 md:py-6 border-b border-gray-200 dark:border-slate-700/50 shadow-sm z-10 space-y-4 transition-colors duration-300">
            {/* Department Selection Dropdown for filtering catalog */}
            <div className="relative">
