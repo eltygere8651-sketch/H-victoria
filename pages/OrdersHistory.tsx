@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { storageService } from '../services/storageService';
 import { User, UserRole, Department, OrderBatch } from '../types';
-import { FileText, Printer, Trash2, X, Eye, Package } from 'lucide-react';
+import { FileText, Printer, Trash2, X, Eye, Package, Download } from 'lucide-react';
 import { Logo } from '../components/Logo';
 
 interface OrdersHistoryProps {
@@ -154,10 +154,9 @@ const OrdersHistory: React.FC<OrdersHistoryProps> = ({ currentUser }) => {
               
               <button 
                 onClick={handlePrint} 
-                // Made button more prominent for mobile, always shows Descargar/Imprimir
-                className="flex-1 md:flex-none bg-blue-600 text-white px-5 py-3 rounded-xl font-bold shadow-lg shadow-button-blue flex items-center justify-center gap-2 hover:bg-blue-700 transition-all active:scale-95 text-lg"
+                className="flex-1 md:flex-none bg-red-600 text-white px-5 py-3 rounded-xl font-bold shadow-lg shadow-button-red flex items-center justify-center gap-2 hover:bg-red-700 transition-all active:scale-95 text-lg"
               >
-                <Printer size={22} /> <span className="drop-shadow-sm">Descargar / Imprimir</span> 
+                <Download size={22} /> <span className="drop-shadow-sm">Descargar PDF</span> 
               </button>
 
               <button 

@@ -345,29 +345,116 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
       
       {/* PDF Modal */}
       {selectedOrder && (
-        <div className="fixed inset-0 z-[70] bg-gray-900/95 flex flex-col items-center justify-start p-0 md:p-6 overflow-y-auto animate-fade-in" onClick={() => setSelectedOrder(null)}>
-           <div className="w-full max-w-3xl flex justify-between items-center p-4 sticky top-0 bg-gray-900/80 backdrop-blur-md z-20" onClick={e => e.stopPropagation()}>
-             <button onClick={handleDownloadPDF} disabled={isGeneratingPdf} className="bg-red-600 text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-button-red flex items-center gap-2 disabled:bg-gray-600 disabled:shadow-none hover:bg-red-700 active:scale-95">{isGeneratingPdf ? <Loader2 className="animate-spin" /> : <Download size={20} />} {isGeneratingPdf ? 'Generando...' : 'Descargar PDF'}</button>
-             <button onClick={() => setSelectedOrder(null)} className="bg-white text-gray-900 px-4 py-3 rounded-xl font-bold shadow-md hover:bg-gray-100 active:scale-95"><X size={24} /></button>
-           </div>
-           
-           {/* Printable Area */}
-           <div 
-             id="print-area" 
-             className="bg-white dark:bg-white text-black dark:text-black p-6 md:p-12 shadow-2xl max-w-3xl w-full h-auto relative overflow-visible" 
-             style={{ backgroundColor: '#ffffff', color: '#000000' }} 
-             onClick={e => e.stopPropagation()}
-           >
-              <div className="flex justify-between items-center border-b-2 border-black pb-6 mb-6">
-                <div className="flex items-center gap-6"><Logo size="lg" solid={true} /><div><h1 className="text-3xl font-black uppercase text-black">Hotel Victoria</h1></div></div>
-                <h2 className="text-xl font-mono font-bold text-black">#{selectedOrder.batchId}</h2>
+        <div 
+          className="fixed inset-0 z-[70] bg-gray-900/90 dark:bg-slate-950/95 backdrop-blur-sm flex flex-col items-center justify-start p-0 md:p-6 overflow-y-auto animate-fade-in"
+          onClick={() => setSelectedOrder(null)}
+        >
+          {/* Controls Bar (Sticky on Mobile) */}
+          <div 
+            className="w-full max-w-3xl flex flex-wrap justify-between items-center px-4 pt-safe pb-4 md:p-0 md:mb-6 sticky top-0 md:static bg-gray-900/80 md:bg-transparent backdrop-blur-md md:backdrop-blur-none z-20 gap-3 no-print border-b md:border-none border-white/10"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex gap-2 ml-auto w-full md:w-auto">
+              <button 
+                onClick={handleDownloadPDF} 
+                disabled={isGeneratingPdf}
+                className="flex-1 md:flex-none bg-red-600 text-white px-5 py-3 rounded-xl font-bold shadow-lg shadow-button-red flex items-center justify-center gap-2 disabled:bg-gray-600 disabled:shadow-none hover:bg-red-700 active:scale-95 text-lg"
+              >
+                {isGeneratingPdf ? <Loader2 className="animate-spin" /> : <Download size={22} />} 
+                <span className="drop-shadow-sm">{isGeneratingPdf ? 'Generando...' : 'Descargar PDF'}</span> 
+              </button>
+              <button 
+                onClick={() => setSelectedOrder(null)} 
+                className="flex-shrink-0 p-3 bg-white text-gray-900 rounded-xl font-bold shadow-md hover:bg-gray-100 flex items-center justify-center transition-all active:scale-95"
+              >
+                <X size={28} />
+              </button>
+            </div>
+          </div>
+
+          {/* Printable Area - STRICT WHITE PAPER MODE */}
+          <div 
+            id="print-area" 
+            className="bg-white dark:bg-white text-black dark:text-black p-6 md:p-16 md:rounded-3xl shadow-2xl max-w-3xl w-full h-auto min-h-[calc(100vh-80px)] md:min-h-0 animate-slide-up relative overflow-visible"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex flex-col md:flex-row justify-between items-start border-b-2 border-black pb-8 mb-8 gap-6 mt-6 md:mt-0">
+              <div className="flex items-center gap-6">
+                <Logo size="lg" />
+                <div>
+                  <h1 className="text-3xl md:text-4xl font-black text-black uppercase tracking-tighter">Hotel Victoria</h1>
+                  <p className="text-red-600 font-bold uppercase tracking-[0.3em] text-sm mt-1">Pedidos Internos</p>
+                </div>
               </div>
-              <table className="w-full"><thead><tr className="border-b-2 border-black"><th className="text-left py-4 text-black font-black">Producto</th><th className="text-center py-4 text-black font-black">Cant.</th></tr></thead><tbody>{selectedOrder.items.map((item, idx) => (<tr key={idx} className="border-b border-gray-200"><td className="py-4 font-bold text-black">{item.productName}</td><td className="py-4 text-center text-black font-black bg-gray-100 rounded-lg">{item.quantity}</td></tr>))}</tbody></table>
-              
-              <div className="mt-12 pt-8 border-t-2 border-gray-100 text-center">
-                 <p className="text-xs text-gray-400 font-bold uppercase">Generado el {new Date().toLocaleString()}</p>
+              <div className="text-left md:text-right w-full md:w-auto mt-4 md:mt-0">
+                <div className="inline-block bg-gray-100 px-4 py-2 rounded-lg border border-gray-200">
+                  <h2 className="text-xl md:text-2xl font-mono font-bold text-black drop-shadow-sm">#{selectedOrder.batchId}</h2>
+                </div>
+                <p className="text-sm font-semibold text-gray-500 mt-2 uppercase tracking-wide drop-shadow-sm">{selectedOrder.date}</p>
               </div>
-           </div>
+            </div>
+
+            {/* Info Grid */}
+            <div className="grid grid-cols-2 gap-4 md:gap-8 mb-10 bg-gray-50 p-6 md:p-8 rounded-2xl border border-gray-200">
+              <div>
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 drop-shadow-sm">Departamento</p>
+                <p className="text-xl md:text-2xl font-extrabold text-black drop-shadow-sm">{selectedOrder.departmentName}</p>
+              </div>
+              <div>
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 drop-shadow-sm">Solicitante</p>
+                <p className="text-xl md:text-2xl font-extrabold text-black drop-shadow-sm">{selectedOrder.requestedBy}</p>
+              </div>
+            </div>
+
+            {/* Table */}
+            <div className="mb-12">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b-2 border-black">
+                    <th className="text-left py-4 text-sm font-black text-black uppercase tracking-wider">Producto</th>
+                    <th className="text-center py-4 text-sm font-black text-black uppercase tracking-wider w-24 md:w-32">Cant.</th>
+                    <th className="hidden md:table-cell text-right py-4 text-sm font-black text-black uppercase tracking-wider w-24">Unidad</th>
+                    <th className="text-right py-4 text-sm font-black text-black uppercase tracking-wider w-16 md:w-20">Check</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {selectedOrder.items.map((item, idx) => (
+                    <tr key={idx} className="border-b border-gray-200 hover:bg-gray-50 transition-colors">
+                      <td className="py-4 md:py-5 font-bold text-black text-base md:text-lg drop-shadow-sm">
+                        {item.productName}
+                        <span className="md:hidden text-xs text-gray-500 block uppercase font-normal drop-shadow-sm">{item.unit || 'ud.'}</span>
+                      </td>
+                      <td className="py-4 md:py-5 text-center">
+                         <span className="font-black text-lg md:text-xl text-black bg-gray-100 px-3 py-1 rounded-lg border border-gray-200 drop-shadow-sm">{item.quantity}</span>
+                      </td>
+                      <td className="hidden md:table-cell py-4 md:py-5 text-right text-gray-500 font-semibold text-sm uppercase drop-shadow-sm">{item.unit || 'Ud.'}</td>
+                      <td className="py-4 md:py-5 text-right">
+                         <div className="w-6 h-6 md:w-8 md:h-8 border-2 border-gray-300 rounded-lg inline-block"></div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Footer Signatures */}
+            <div className="grid grid-cols-2 gap-8 md:gap-16 mt-auto pt-12 border-t-2 border-gray-200 page-break-inside-avoid">
+              <div className="text-center">
+                 <div className="h-20 md:h-24 border-b-2 border-gray-300 mb-3 border-dashed"></div>
+                 <p className="text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-widest drop-shadow-sm">Firma Entregado (Almacén)</p>
+              </div>
+              <div className="text-center">
+                 <div className="h-20 md:h-24 border-b-2 border-gray-300 mb-3 border-dashed"></div>
+                 <p className="text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-widest drop-shadow-sm">Firma Recibido ({selectedOrder.departmentName})</p>
+              </div>
+            </div>
+            
+            <div className="mt-12 text-center">
+              <p className="text-[10px] text-gray-400 uppercase tracking-widest font-bold drop-shadow-sm">Generado Digitalmente por Sistema Hotel Victoria</p>
+            </div>
+          </div>
+          <div className="h-24 w-full no-print"></div>
         </div>
       )}
       
