@@ -1,24 +1,24 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { UserRole, User, Product, Department, AppNotification, OrderBatch } from '../types';
 import { storageService } from '../services/storageService';
-import { Download, Users, Package, Trash2, Edit2, Key, X, Save, Shield, Eye, FileDown, Upload, Database, AlertTriangle, Loader2, Image as ImageIcon, FileText, ZoomIn, ZoomOut, Maximize, Printer, BarChart as BarChartIcon, BellRing, Bell, CheckCircle2, ChevronDown } from 'lucide-react'; // Added BarChartIcon, BellRing, Bell, CheckCircle2, ChevronDown
+import { Download, Users, Package, Trash2, Edit2, Key, X, Save, Shield, Eye, FileDown, Upload, Database, AlertTriangle, Loader2, Image as ImageIcon, FileText, ZoomIn, ZoomOut, Maximize, Printer, BarChart as BarChartIcon, BellRing, Bell, CheckCircle2, ChevronDown } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { Logo } from '../components/Logo';
 import { NotificationIcon } from '../components/NotificationIcon';
 
 interface AdminProps {
   currentUser: User;
-  unreadNotificationsCount: number; // New prop for badge
+  unreadNotificationsCount: number;
 }
 
 const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount }) => {
-  const [activeTab, setActiveTab] = useState<'requests' | 'users' | 'reports' | 'notifications'>('requests'); // Changed 'data' to 'reports', added 'notifications'
+  const [activeTab, setActiveTab] = useState<'requests' | 'users' | 'reports'>('requests'); // 'notifications' removed
   
   const [orders, setOrders] = useState<OrderBatch[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
-  const [notifications, setNotifications] = useState<AppNotification[]>([]); // New state for notifications
-  const [isLoading, setIsLoading] = useState(true); // Renamed from 'loading' for clarity
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   
   const [newUser, setNewUser] = useState({ name: '', role: UserRole.STAFF, pin: '' });
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -32,9 +32,10 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount }) 
     const unsubUsers = storageService.subscribeToUsers(setUsers);
     const unsubProducts = storageService.subscribeToProducts((data) => {
       setProducts(data);
-      setIsLoading(false); // Set loading to false once products are loaded
+      setIsLoading(false);
     });
-    const unsubNotifications = storageService.subscribeToNotifications(setNotifications, false); // Subscribe to all for Admin panel
+    // Subscribe to all notifications for the Admin panel
+    const unsubNotifications = storageService.subscribeToNotifications(setNotifications, false);
     
     return () => {
         unsubOrders();
@@ -59,17 +60,16 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount }) 
     const element = document.getElementById('print-area');
     const opt = {
       margin: [10, 10, 10, 10], // mm
-      filename: `Pedido_${selectedOrder.batchId}_${selectedOrder.departmentName}.pdf`, // Updated
-      image: { type: 'png', quality: 1.0 }, // PNG for lossless text sharpness
+      filename: `Pedido_${selectedOrder.batchId}_${selectedOrder.departmentName}.pdf`,
+      image: { type: 'png', quality: 1.0 },
       html2canvas: { 
-        scale: 4, // High resolution (approx 300-400 DPI)
+        scale: 4,
         useCORS: true, 
         logging: false, 
         backgroundColor: '#ffffff', 
         letterRendering: true,
-        scrollX: 0, // CRITICAL: Fixes left-cropping issues
-        scrollY: 0, // CRITICAL: Fixes top-cropping issues
-        // windowWidth removed to allow auto-detection and prevent centering offsets
+        scrollX: 0,
+        scrollY: 0,
       },
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
       pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
@@ -92,7 +92,7 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount }) 
     e.preventDefault();
     if (newUser.name && newUser.pin) {
       storageService.addUser({
-        id: `u_${Date.now()}`, // Generate ID here for setDoc
+        id: `u_${Date.now()}`,
         name: newUser.name,
         role: newUser.role,
         pin: newUser.pin
@@ -138,16 +138,15 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount }) 
       <div className="bg-white dark:bg-slate-800 border-b dark:border-slate-700/50 sticky top-0 z-10 shadow-sm transition-colors duration-300">
         <div className="flex overflow-x-auto no-scrollbar">
           <button onClick={() => setActiveTab('requests')} className={`flex-1 min-w-[120px] py-4 text-sm font-extrabold border-b-2 transition-colors duration-200 ${activeTab === 'requests' ? 'border-red-600 text-red-600 dark:text-red-400 dark:border-red-400 bg-red-50 dark:bg-red-900/10 shadow-inner drop-shadow-sm' : 'border-transparent text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700/50'}`}>Pedidos</button>
-          <button onClick={() => setActiveTab('reports')} className={`flex-1 min-w-[120px] py-4 text-sm font-extrabold border-b-2 transition-colors duration-200 ${activeTab === 'reports' ? 'border-red-600 text-red-600 dark:text-red-400 dark:border-red-400 bg-red-50 dark:bg-red-900/10 shadow-inner drop-shadow-sm' : 'border-transparent text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700/50'}`}>Reportes</button>
-          <button onClick={() => setActiveTab('users')} className={`flex-1 min-w-[120px] py-4 text-sm font-extrabold border-b-2 transition-colors duration-200 ${activeTab === 'users' ? 'border-red-600 text-red-600 dark:text-red-400 dark:border-red-400 bg-red-50 dark:bg-red-900/10 shadow-inner drop-shadow-sm' : 'border-transparent text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700/50'}`}>Usuarios</button>
-          <button onClick={() => setActiveTab('notifications')} className={`flex-1 min-w-[120px] py-4 text-sm font-extrabold border-b-2 transition-colors duration-200 relative ${activeTab === 'notifications' ? 'border-red-600 text-red-600 dark:text-red-400 dark:border-red-400 bg-red-50 dark:bg-red-900/10 shadow-inner drop-shadow-sm' : 'border-transparent text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700/50'}`}>
-            Notificaciones
+          <button onClick={() => setActiveTab('reports')} className={`flex-1 min-w-[120px] py-4 text-sm font-extrabold border-b-2 transition-colors duration-200 relative ${activeTab === 'reports' ? 'border-red-600 text-red-600 dark:text-red-400 dark:border-red-400 bg-red-50 dark:bg-red-900/10 shadow-inner drop-shadow-sm' : 'border-transparent text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700/50'}`}>
+            Reportes
             {unreadNotificationsCount > 0 && (
                 <span className="absolute top-2 right-2 md:right-4 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold ring-2 ring-white dark:ring-slate-800 animate-pulse !important" aria-label={`${unreadNotificationsCount} nuevas notificaciones`}>
                     !
                 </span>
             )}
           </button>
+          <button onClick={() => setActiveTab('users')} className={`flex-1 min-w-[120px] py-4 text-sm font-extrabold border-b-2 transition-colors duration-200 ${activeTab === 'users' ? 'border-red-600 text-red-600 dark:text-red-400 dark:border-red-400 bg-red-50 dark:bg-red-900/10 shadow-inner drop-shadow-sm' : 'border-transparent text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700/50'}`}>Usuarios</button>
         </div>
       </div>
 
@@ -209,127 +208,129 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount }) 
           </div>
         )}
 
-        {activeTab === 'reports' && ( // Changed 'data' to 'reports'
-           <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-card-soft dark:shadow-card-dark border border-gray-100 dark:border-slate-700/50">
-             <h3 className="text-lg font-bold mb-4 text-gray-900 dark:text-white drop-shadow-sm flex items-center gap-2">
-               <BarChartIcon size={20} className="text-red-600 dark:text-red-400" /> Top 10 Productos en Stock Crítico
-             </h3>
-             <div className="h-64 w-full">
-                {lowStockData.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={lowStockData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" opacity={0.3} />
-                      <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} interval={0} stroke="#94a3b8" tick={{ fill: 'currentColor', fontSize: 12 }} className="text-gray-600 dark:text-slate-400" />
-                      <YAxis 
-                        stroke="#94a3b8" 
-                        label={{ value: 'Stock Actual', angle: -90, position: 'insideLeft', fill: '#94a3b8', fontSize: 12 }} 
-                        tick={{ fill: 'currentColor', fontSize: 12 }} 
-                        className="text-gray-600 dark:text-slate-400"
-                      />
-                      <Tooltip 
-                        cursor={{ fill: 'rgba(220, 38, 38, 0.1)' }} // Light red background for hover
-                        contentStyle={{ 
-                          backgroundColor: 'rgba(30, 41, 59, 0.9)', // slate-800 with opacity
-                          border: '1px solid rgba(71, 85, 105, 0.5)', // slate-600 border
-                          borderRadius: '12px', 
-                          color: '#fff', 
-                          boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
-                        }}
-                        itemStyle={{ color: '#fff', padding: '0px' }}
-                        labelStyle={{ color: '#cbd5e1', fontWeight: 'bold' }}
-                        formatter={(value: number, name: string, props: any) => {
-                          if (name === 'stock') return [`${value} unidades`, 'Stock'];
-                          if (name === 'min') return [`${value} unidades`, 'Mínimo'];
-                          return value;
-                        }}
-                        labelFormatter={(label: string) => <span className="text-red-300">Producto: {label}</span>}
-                      />
-                      <Bar dataKey="stock" fill="#f87171" stroke="#ef4444" strokeWidth={1} radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="h-full flex flex-col items-center justify-center text-gray-400 dark:text-slate-600">
-                    <AlertTriangle size={40} className="mb-2 opacity-50" />
-                    <p className="font-bold">No hay productos en stock crítico.</p>
-                  </div>
-                )}
+        {activeTab === 'reports' && (
+           <div className="space-y-8"> {/* Added space-y for separation */}
+             {/* Stock Criticality Report */}
+             <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-card-soft dark:shadow-card-dark border border-gray-100 dark:border-slate-700/50">
+               <h3 className="text-lg font-bold mb-4 text-gray-900 dark:text-white drop-shadow-sm flex items-center gap-2">
+                 <BarChartIcon size={20} className="text-red-600 dark:text-red-400" /> Top 10 Productos en Stock Crítico
+               </h3>
+               <div className="h-64 w-full">
+                  {lowStockData.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={lowStockData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" opacity={0.3} />
+                        <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} interval={0} stroke="#94a3b8" tick={{ fill: 'currentColor', fontSize: 12 }} className="text-gray-600 dark:text-slate-400" />
+                        <YAxis 
+                          stroke="#94a3b8" 
+                          label={{ value: 'Stock Actual', angle: -90, position: 'insideLeft', fill: '#94a3b8', fontSize: 12 }} 
+                          tick={{ fill: 'currentColor', fontSize: 12 }} 
+                          className="text-gray-600 dark:text-slate-400"
+                        />
+                        <Tooltip 
+                          cursor={{ fill: 'rgba(220, 38, 38, 0.1)' }}
+                          contentStyle={{ 
+                            backgroundColor: 'rgba(30, 41, 59, 0.9)',
+                            border: '1px solid rgba(71, 85, 105, 0.5)',
+                            borderRadius: '12px', 
+                            color: '#fff', 
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
+                          }}
+                          itemStyle={{ color: '#fff', padding: '0px' }}
+                          labelStyle={{ color: '#cbd5e1', fontWeight: 'bold' }}
+                          formatter={(value: number, name: string, props: any) => {
+                            if (name === 'stock') return [`${value} unidades`, 'Stock'];
+                            if (name === 'min') return [`${value} unidades`, 'Mínimo'];
+                            return value;
+                          }}
+                          labelFormatter={(label: string) => <span className="text-red-300">Producto: {label}</span>}
+                        />
+                        <Bar dataKey="stock" fill="#f87171" stroke="#ef4444" strokeWidth={1} radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="h-full flex flex-col items-center justify-center text-gray-400 dark:text-slate-600">
+                      <AlertTriangle size={40} className="mb-2 opacity-50" />
+                      <p className="font-bold">No hay productos en stock crítico.</p>
+                    </div>
+                  )}
+               </div>
+             </div>
+
+             {/* Notifications Section */}
+             <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-card-soft dark:shadow-card-dark border border-gray-100 dark:border-slate-700/50">
+               <div className="flex justify-between items-center mb-6">
+                 <div className="flex items-center gap-2">
+                   <BellRing size={24} className="text-red-600 dark:text-red-400 drop-shadow-sm" />
+                   <h3 className="font-bold text-xl text-gray-900 dark:text-white drop-shadow-sm">Actividad Reciente y Notificaciones</h3>
+                 </div>
+                 {notifications.some(n => !n.readStatus) && (
+                   <button 
+                     onClick={handleMarkAllNotificationsAsRead}
+                     className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white text-sm font-bold rounded-xl shadow-lg shadow-button-red hover:bg-red-700 active:scale-95 transition-all"
+                   >
+                     <CheckCircle2 size={18} /> Marcar todas como leídas
+                   </button>
+                 )}
+               </div>
+
+               <div className="space-y-4">
+                 {notifications.length === 0 ? (
+                   <div className="py-12 text-center text-gray-400 dark:text-slate-600">
+                     <Bell size={40} className="mx-auto mb-2 opacity-50" />
+                     <p>No hay notificaciones.</p>
+                   </div>
+                 ) : (
+                   notifications.map(notif => (
+                     <div 
+                       key={notif.id} 
+                       className={`
+                         flex items-start gap-4 p-4 rounded-xl border transition-all duration-200
+                         ${notif.readStatus 
+                           ? 'bg-gray-50 dark:bg-slate-700/50 border-gray-100 dark:border-slate-700/50 text-gray-500' 
+                           : 'bg-white dark:bg-slate-800 border-red-200 dark:border-red-900/50 shadow-md hover:shadow-lg'
+                         }
+                       `}
+                     >
+                       <div className="flex-shrink-0 pt-1">
+                         <NotificationIcon 
+                           iconName={notif.icon} 
+                           size={24} 
+                           className={`
+                             ${notif.readStatus ? 'text-gray-400' : 
+                               (notif.type === 'LOW_STOCK' ? 'text-amber-500' : 'text-red-600')}
+                           `}
+                         />
+                       </div>
+                       <div className="flex-1">
+                         <p className={`font-bold ${notif.readStatus ? 'text-gray-600 dark:text-slate-400' : 'text-gray-900 dark:text-white'} drop-shadow-sm`}>
+                           {notif.title}
+                         </p>
+                         <p className={`text-sm mt-1 ${notif.readStatus ? 'text-gray-500 dark:text-slate-500' : 'text-gray-700 dark:text-slate-300'}`}>
+                           {notif.message}
+                         </p>
+                         <p className="text-xs text-gray-400 dark:text-slate-500 mt-2">
+                           {new Date(notif.timestamp).toLocaleString()}
+                           {notif.readStatus && notif.reviewedBy && (
+                             <span className="ml-2"> • Leída por {notif.reviewedBy}</span>
+                           )}
+                         </p>
+                       </div>
+                       {!notif.readStatus && (
+                         <button 
+                           onClick={() => handleMarkNotificationAsRead(notif.id)}
+                           className="flex-shrink-0 p-2 text-gray-400 hover:text-green-600 dark:hover:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-full transition-colors active:scale-95"
+                           title="Marcar como leída"
+                         >
+                           <CheckCircle2 size={20} />
+                         </button>
+                       )}
+                     </div>
+                   ))
+                 )}
+               </div>
              </div>
            </div>
-        )}
-
-        {activeTab === 'notifications' && (
-            <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-card-soft dark:shadow-card-dark border border-gray-100 dark:border-slate-700/50">
-              <div className="flex justify-between items-center mb-6">
-                <div className="flex items-center gap-2">
-                  <BellRing size={24} className="text-red-600 dark:text-red-400 drop-shadow-sm" />
-                  <h3 className="font-bold text-xl text-gray-900 dark:text-white drop-shadow-sm">Notificaciones</h3>
-                </div>
-                {notifications.some(n => !n.readStatus) && (
-                  <button 
-                    onClick={handleMarkAllNotificationsAsRead}
-                    className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white text-sm font-bold rounded-xl shadow-lg shadow-button-red hover:bg-red-700 active:scale-95 transition-all"
-                  >
-                    <CheckCircle2 size={18} /> Marcar todas como leídas
-                  </button>
-                )}
-              </div>
-
-              <div className="space-y-4">
-                {notifications.length === 0 ? (
-                  <div className="py-12 text-center text-gray-400 dark:text-slate-600">
-                    <Bell size={40} className="mx-auto mb-2 opacity-50" />
-                    <p>No hay notificaciones.</p>
-                  </div>
-                ) : (
-                  notifications.map(notif => (
-                    <div 
-                      key={notif.id} 
-                      className={`
-                        flex items-start gap-4 p-4 rounded-xl border transition-all duration-200
-                        ${notif.readStatus 
-                          ? 'bg-gray-50 dark:bg-slate-700/50 border-gray-100 dark:border-slate-700/50 text-gray-500' 
-                          : 'bg-white dark:bg-slate-800 border-red-200 dark:border-red-900/50 shadow-md hover:shadow-lg'
-                        }
-                      `}
-                    >
-                      <div className="flex-shrink-0 pt-1">
-                        <NotificationIcon 
-                          iconName={notif.icon} 
-                          size={24} 
-                          className={`
-                            ${notif.readStatus ? 'text-gray-400' : 
-                              (notif.type === 'LOW_STOCK' ? 'text-amber-500' : 'text-red-600')}
-                          `}
-                        />
-                      </div>
-                      <div className="flex-1">
-                        <p className={`font-bold ${notif.readStatus ? 'text-gray-600 dark:text-slate-400' : 'text-gray-900 dark:text-white'} drop-shadow-sm`}>
-                          {notif.title}
-                        </p>
-                        <p className={`text-sm mt-1 ${notif.readStatus ? 'text-gray-500 dark:text-slate-500' : 'text-gray-700 dark:text-slate-300'}`}>
-                          {notif.message}
-                        </p>
-                        <p className="text-xs text-gray-400 dark:text-slate-500 mt-2">
-                          {new Date(notif.timestamp).toLocaleString()}
-                          {notif.readStatus && notif.reviewedBy && (
-                            <span className="ml-2"> • Leída por {notif.reviewedBy}</span>
-                          )}
-                        </p>
-                      </div>
-                      {!notif.readStatus && (
-                        <button 
-                          onClick={() => handleMarkNotificationAsRead(notif.id)}
-                          className="flex-shrink-0 p-2 text-gray-400 hover:text-green-600 dark:hover:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-full transition-colors active:scale-95"
-                          title="Marcar como leída"
-                        >
-                          <CheckCircle2 size={20} />
-                        </button>
-                      )}
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
         )}
       </div>
 
