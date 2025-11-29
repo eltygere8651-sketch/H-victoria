@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Login from './pages/Login';
 import Inventory from './pages/Inventory';
 import Replenishment from './pages/Replenishment';
@@ -41,6 +41,8 @@ const App: React.FC = () => {
   // Notification states
   const [toasts, setToasts] = useState<AppNotification[]>([]);
   const [unreadAdminNotifications, setUnreadAdminNotifications] = useState<AppNotification[]>([]);
+  // To keep track of notification IDs that have already generated a toast in the current session
+  const displayedToastIds = useRef<Set<string>>(new Set());
 
 
   useEffect(() => {
@@ -83,27 +85,39 @@ const App: React.FC = () => {
   }, [view, user]);
 
   // --- Notifications Logic ---
+  const playNotificationSound = () => {
+    const audio = new Audio('https://www.soundjay.com/buttons/beep-07.mp3'); // A subtle beep sound
+    audio.volume = 0.5; // Adjust volume as needed
+    audio.play().catch(e => console.warn("Failed to play notification sound:", e));
+  };
+
   useEffect(() => {
     let unsubscribe: () => void = () => {};
     if (user && user.role === UserRole.ADMIN) {
-      // Subscribe to unread notifications for the admin badge AND toasts
+      // Subscribe to all notifications to determine unread count and trigger toasts
       unsubscribe = storageService.subscribeToNotifications((notifications) => {
         const newUnread = notifications.filter(n => !n.readStatus);
         setUnreadAdminNotifications(newUnread);
 
-        // Filter for new notifications that haven't been shown as a toast yet
-        // A new notification is one that is unread AND its ID is not yet in the 'toasts' state.
+        // Filter for truly new notifications that haven't been shown as a toast yet
         const newToasts = newUnread.filter(
-          (notif) => !toasts.some((t) => t.id === notif.id) 
+          (notif) => !displayedToastIds.current.has(notif.id)
         );
 
         if (newToasts.length > 0) {
+          // Add new toasts to the state and mark their IDs as displayed
           setToasts((prev) => [...prev, ...newToasts]);
+          newToasts.forEach(notif => displayedToastIds.current.add(notif.id));
+          playNotificationSound(); // Play sound only for genuinely new toasts
         }
-      }, true); // Only listen to unread for badge and toasts
+      }, false); // Listen to ALL notifications to correctly manage `displayedToastIds`
+    } else {
+      // Clear displayedToastIds when user logs out or is not admin
+      displayedToastIds.current.clear();
+      setToasts([]);
     }
     return () => unsubscribe();
-  }, [user, toasts]); // `toasts` in dependency array ensures new toasts are checked against current state
+  }, [user]); // Only `user` in dependency array to avoid re-running on toast state changes
 
 
   const handleInstallClick = async () => {
@@ -127,12 +141,13 @@ const App: React.FC = () => {
   const handleLogout = () => {
     storageService.clearSession();
     setUser(null);
+    displayedToastIds.current.clear(); // Clear displayed toasts on logout
+    setToasts([]);
   };
 
   const dismissToast = (id: string) => {
     setToasts((prev) => prev.filter((toast) => toast.id !== id));
-    // Optionally mark the notification as read when dismissed from toast
-    // if (user) storageService.markNotificationAsRead(id, user.id, user.name);
+    // The actual marking as read happens inside NotificationToast.tsx
   };
 
   if (!user) {
@@ -323,9 +338,14 @@ const App: React.FC = () => {
       </nav>
 
       {/* Global Notification Toasts Container */}
-      <div className="fixed bottom-4 right-4 z-[90] space-y-3 pointer-events-none">
+      <div className="fixed bottom-4 left-4 right-4 md:left-auto md:w-80 z-[90] space-y-3 pointer-events-none flex flex-col items-end md:items-start">
         {toasts.map((toast) => (
-          <NotificationToast key={toast.id} notification={toast} onDismiss={dismissToast} />
+          <NotificationToast 
+            key={toast.id} 
+            notification={toast} 
+            onDismiss={dismissToast} 
+            currentUser={user} // Pass currentUser here
+          />
         ))}
       </div>
     </div>

@@ -23,6 +23,20 @@ function stringifyWithCircularGuard(obj: any) {
   const cache = new Set();
   return JSON.stringify(obj, (key, value) => {
     if (typeof value === 'object' && value !== null) {
+      // --- START: Added defensive check for Firebase internal objects ---
+      // Excluir objetos que son instancias de clases internas de Firebase y no deben serializarse.
+      // Esto previene errores de "estructura circular" cuando se intentan guardar accidentalmente.
+      if (value.constructor && (
+          value.constructor.name.includes('DocumentReference') ||
+          value.constructor.name.includes('Query') ||
+          value.constructor.name.includes('Firestore') ||
+          value.constructor.name.includes('FirebaseAppImpl') ||
+          value.constructor.name.includes('Snapshot') // Catch DocumentSnapshot and QuerySnapshot
+        )) {
+        return undefined; // Excluye este valor de la serialización
+      }
+      // --- END: Added defensive check ---
+
       if (cache.has(value)) {
         // Circular reference found, discard key
         return;
@@ -361,7 +375,7 @@ export const storageService = {
   // --- ACTIONS ---
   saveProduct: async (product: Product) => {
     if (isFirebaseReady) {
-      // Fetch current product to compare quantity
+      // Fetch current product to compare quantity and avoid duplicate low stock notifications
       let oldProduct: Product | undefined;
       if (product.id && !product.id.startsWith('p_')) {
         const docSnap = await getDoc(doc(db, 'products', product.id));
@@ -380,7 +394,13 @@ export const storageService = {
       }
 
       // Check for low stock notification AFTER update/add
-      if (product.quantity <= product.minThreshold && (oldProduct?.quantity || Infinity) > product.quantity) {
+      // Only notify if:
+      // 1. Current quantity is <= minThreshold
+      // 2. AND (Old quantity was > minThreshold OR it's a new product with low stock)
+      const oldQuantity = oldProduct?.quantity ?? Infinity; // If oldProduct is undefined, treat as new/infinite
+      const shouldNotifyLowStock = product.quantity <= product.minThreshold && oldQuantity > product.minThreshold;
+
+      if (shouldNotifyLowStock) {
         await storageService.addNotification({
           type: NotificationType.LOW_STOCK,
           title: '¡Stock Bajo Detectado!',
@@ -409,7 +429,10 @@ export const storageService = {
       localStorage.setItem(KEYS.PRODUCTS, stringifyWithCircularGuard(products));
 
       // Local low stock check
-      if (product.quantity <= product.minThreshold && oldProductQty > product.quantity) {
+      const oldQuantity = oldProductQty; // If oldProduct is undefined, treat as new/infinite
+      const shouldNotifyLowStock = product.quantity <= product.minThreshold && oldQuantity > product.minThreshold;
+
+      if (shouldNotifyLowStock) {
         await storageService.addNotification({
           type: NotificationType.LOW_STOCK,
           title: '¡Stock Bajo Detectado!',
@@ -478,7 +501,8 @@ export const storageService = {
         
         batch.update(prodRef, { quantity: newQty });
 
-        if (newQty <= item.product.minThreshold) {
+        // Check against minThreshold and old quantity for low stock notification
+        if (newQty <= item.product.minThreshold && item.product.quantity > item.product.minThreshold) {
             lowStockItems.push(item.product.name);
         }
 
@@ -540,10 +564,11 @@ export const storageService = {
       items.forEach(item => {
         const idx = products.findIndex((p: Product) => p.id === item.product.id);
         if (idx >= 0) {
-            products[idx].quantity -= item.quantity;
-            if (products[idx].quantity <= products[idx].minThreshold) {
+            // Check against minThreshold and old quantity for low stock notification in local
+            if (products[idx].quantity > products[idx].minThreshold && (products[idx].quantity - item.quantity) <= products[idx].minThreshold) {
                 lowStockItems.push(products[idx].name);
             }
+            products[idx].quantity -= item.quantity;
         }
         requests.unshift({
             id: `req_${Date.now()}_${Math.random()}`,
