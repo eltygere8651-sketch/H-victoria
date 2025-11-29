@@ -255,19 +255,22 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser }) => {
       {selectedProduct && (
         <div className="fixed inset-0 z-[70] flex items-end md:items-center justify-center bg-black/70 dark:bg-slate-900/90 backdrop-blur-sm animate-fade-in">
           <div className="bg-white dark:bg-slate-800 w-full md:max-w-md rounded-t-3xl md:rounded-3xl shadow-pop-in overflow-hidden animate-pop-in border border-gray-100 dark:border-slate-700/50">
-            <div className="bg-gray-900 dark:bg-slate-950 p-5 text-white flex justify-between items-center">
-              <div>
-                <p className="text-sm opacity-80 uppercase tracking-wider font-bold drop-shadow-sm">Añadir Producto</p>
-                <h3 className="font-extrabold text-2xl truncate drop-shadow-sm">{selectedProduct.name}</h3>
-              </div>
-              <button onClick={closeQtyModal} className="bg-white/10 p-2 rounded-full hover:bg-white/20 active:scale-95 transition-all"><X size={28} /></button>
+            <div className="p-5 flex justify-between items-center border-b border-gray-100 dark:border-slate-700/50">
+              <h3 className="font-extrabold text-xl md:text-2xl text-gray-900 dark:text-white truncate drop-shadow-sm">{selectedProduct.name}</h3>
+              <button onClick={closeQtyModal} className="text-gray-400 hover:text-gray-600 dark:hover:text-white p-2 -mr-2 rounded-full hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors">
+                <X size={28} />
+              </button>
             </div>
             
             <div className="p-6">
+              <p className="text-sm font-semibold text-gray-500 dark:text-slate-400 mb-6 text-center">
+                Stock disponible: <span className="font-bold text-red-600 dark:text-red-400">{selectedProduct.quantity} {selectedProduct.unit}</span>
+              </p>
+
               <div className="flex items-center gap-4 mb-8">
                 <button 
                   onClick={() => setQtyValue(prev => String(Math.max(1, parseInt(prev || '0') - 1)))}
-                  className="w-16 h-16 rounded-2xl bg-gray-100 dark:bg-slate-700 text-gray-800 dark:text-white flex items-center justify-center hover:bg-gray-200 dark:hover:bg-slate-600 active:scale-95 transition-all shadow-sm"
+                  className="w-16 h-16 rounded-2xl bg-gray-100 dark:bg-slate-700 text-gray-800 dark:text-white flex items-center justify-center hover:bg-gray-200 dark:hover:bg-slate-600 active:scale-95 transition-all shadow-md"
                 >
                   <Minus size={32} />
                 </button>
@@ -278,13 +281,14 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser }) => {
                   value={qtyValue}
                   onChange={(e) => setQtyValue(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && confirmAddToCart()}
-                  className="flex-1 h-16 text-center text-4xl font-extrabold border-2 border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white rounded-2xl focus:border-red-600 focus:ring-4 focus:ring-red-100 dark:focus:ring-red-100 dark:focus:ring-red-500/30 outline-none shadow-sm"
+                  className="flex-1 h-16 text-center text-4xl font-extrabold border-2 border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white rounded-2xl focus:border-red-600 focus:ring-4 focus:ring-red-100 dark:focus:ring-red-500/30 outline-none shadow-md"
                   min="1"
+                  max={selectedProduct.quantity} // Restrict max quantity to available stock
                 />
 
                 <button 
-                  onClick={() => setQtyValue(prev => String(parseInt(prev || '0') + 1))}
-                  className="w-16 h-16 rounded-2xl bg-gray-100 dark:bg-slate-700 text-gray-800 dark:text-white flex items-center justify-center hover:bg-gray-200 dark:hover:bg-slate-600 active:scale-95 transition-all shadow-sm"
+                  onClick={() => setQtyValue(prev => String(Math.min(selectedProduct.quantity, parseInt(prev || '0') + 1)))} // Restrict max quantity to available stock
+                  className="w-16 h-16 rounded-2xl bg-gray-100 dark:bg-slate-700 text-gray-800 dark:text-white flex items-center justify-center hover:bg-gray-200 dark:hover:bg-slate-600 active:scale-95 transition-all shadow-md"
                 >
                   <Plus size={32} />
                 </button>
