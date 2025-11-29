@@ -125,6 +125,8 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser }) => {
     p.category.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
+  if (currentUser.role !== UserRole.ADMIN) return <div className="p-8 text-center text-red-600 dark:text-red-400 font-bold text-xl">Acceso Denegado: Solo administradores pueden ver el inventario.</div>;
+
   if (loading && products.length === 0) {
     return <div className="flex h-full items-center justify-center"><Loader2 size={40} className="animate-spin text-red-600" /></div>;
   }

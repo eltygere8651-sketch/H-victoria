@@ -19,7 +19,8 @@ const App: React.FC = () => {
      if (lastView === 'inventory' || lastView === 'replenish' || lastView === 'admin') {
        return lastView;
      }
-     return 'inventory';
+     // Default view for ADMIN is inventory, for STAFF is replenish
+     return user?.role === UserRole.ADMIN ? 'inventory' : 'replenish';
   });
   
   // Dark Mode Logic
@@ -183,12 +184,14 @@ const App: React.FC = () => {
         </div>
         
         <nav className="flex-1 space-y-3">
-          <NavButton 
-            active={view === 'inventory'} 
-            onClick={() => setView('inventory')} 
-            icon={<LayoutGrid size={22} />} 
-            label="Inventario" 
-          />
+          {user.role === UserRole.ADMIN && (
+            <NavButton 
+              active={view === 'inventory'} 
+              onClick={() => setView('inventory')} 
+              icon={<LayoutGrid size={22} />} 
+              label="Inventario" 
+            />
+          )}
           <NavButton 
             active={view === 'replenish'} 
             onClick={() => setView('replenish')} 
@@ -275,19 +278,32 @@ const App: React.FC = () => {
           </div>
         </div>
 
-        {view === 'inventory' && <Inventory currentUser={user} />}
+        {/* Conditional rendering based on user role */}
+        {view === 'inventory' && user.role === UserRole.ADMIN && <Inventory currentUser={user} />}
+        {view === 'inventory' && user.role === UserRole.STAFF && (
+           <div className="flex h-full items-center justify-center p-8 text-center bg-gray-50 dark:bg-slate-900 transition-colors duration-300">
+             <div className="bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-pop-in border border-gray-100 dark:border-slate-700/50">
+               <ShieldCheck size={60} className="text-red-600 dark:text-red-400 mx-auto mb-4 drop-shadow-sm" />
+               <h3 className="text-2xl font-black text-gray-900 dark:text-white mb-2 drop-shadow-sm">Acceso Denegado</h3>
+               <p className="text-lg text-gray-500 dark:text-slate-400 drop-shadow-sm">Solo los administradores pueden ver el inventario.</p>
+               <button onClick={() => setView('replenish')} className="mt-6 bg-red-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg shadow-button-red hover:bg-red-700 active:scale-[0.98] transition-all">Ir a Realizar Pedido</button>
+             </div>
+           </div>
+        )}
         {view === 'replenish' && <Replenishment currentUser={user} />}
         {view === 'admin' && <Admin currentUser={user} unreadNotificationsCount={unreadCount} />}
       </main>
 
       {/* Mobile Bottom Navigation (Z-40 to sit BEHIND modals which are Z-50/60) */}
       <nav className="md:hidden fixed bottom-0 w-full bg-white dark:bg-slate-800 border-t border-gray-200 dark:border-slate-700/50 flex justify-around p-2 pb-safe z-40 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] dark:shadow-none transition-colors duration-300">
-        <MobileNavButton 
-          active={view === 'inventory'} 
-          onClick={() => setView('inventory')} 
-          icon={<LayoutGrid size={24} />} 
-          label="Stock" 
-        />
+        {user.role === UserRole.ADMIN && (
+          <MobileNavButton 
+            active={view === 'inventory'} 
+            onClick={() => setView('inventory')} 
+            icon={<LayoutGrid size={24} />} 
+            label="Stock" 
+          />
+        )}
         <MobileNavButton 
           active={view === 'replenish'} 
           onClick={() => setView('replenish')} 
