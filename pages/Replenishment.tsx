@@ -473,7 +473,7 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser }) => {
       </div>
 
       {/* --- CART SLIDER --- */}
-      <div className={`lg:hidden fixed bottom-[70px] left-4 right-4 z-40 transition-transform duration-300 ${cart.length > 0 && !showMobileCart ? 'translate-y-0' : 'translate-y-[150%]'}`}>
+      <div className={`lg:hidden fixed bottom-[95px] left-4 right-4 z-[45] transition-transform duration-300 ${cart.length > 0 && !showMobileCart ? 'translate-y-0' : 'translate-y-[150%]'}`}>
          <button 
            onClick={() => setShowMobileCart(true)}
            className="w-full bg-gray-900 dark:bg-white text-white dark:text-gray-900 p-4 rounded-2xl shadow-xl shadow-gray-200/50 dark:shadow-none flex items-center justify-between font-bold active:scale-[0.98] transition-all"
