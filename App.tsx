@@ -290,7 +290,7 @@ const App: React.FC = () => {
       {/* Main Content */}
       <main className="flex-1 overflow-y-auto h-screen bg-gray-50 dark:bg-slate-900 relative transition-colors duration-300">
         {/* Mobile Top Bar */}
-        <div className="md:hidden bg-white dark:bg-slate-800 px-4 py-3 border-b dark:border-slate-700/50 flex justify-between items-center sticky top-0 z-40 shadow-sm transition-colors duration-300">
+        <div className="md:hidden bg-white dark:bg-slate-800 px-4 py-3 pt-safe border-b dark:border-slate-700/50 flex justify-between items-center sticky top-0 z-40 shadow-sm transition-colors duration-300">
           <div className="flex items-center gap-3">
             <Logo size="sm" />
             <div>

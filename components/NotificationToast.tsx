@@ -16,7 +16,7 @@ export const NotificationToast: React.FC<NotificationToastProps> = ({ notificati
   useEffect(() => {
     const timer = setTimeout(() => {
       if (isVisible) { // Only auto-dismiss if still visible
-        handleDismiss();
+        handleDismiss(); // Simply dismiss, don't mark as read if it's just a timeout
       }
     }, timeout);
 
@@ -74,7 +74,7 @@ export const NotificationToast: React.FC<NotificationToastProps> = ({ notificati
           <BookOpen size={16} /> Leer
         </button>
       )}
-      {/* Botón X de cierre rápido para notificaciones ya leídas */}
+      {/* Botón X de cierre rápido para notificaciones ya leídas o si no hay acción de leer */}
       {notification.readStatus && (
         <button 
           onClick={handleDismiss} 

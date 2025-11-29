@@ -126,6 +126,12 @@
       .force-light-mode tr { background-color: #ffffff !important; }
       .force-light-mode tr:nth-child(even) { background-color: #f9fafb !important; } 
       .force-light-mode td, .force-light-mode th { border-bottom-color: #e5e7eb !important; }
+
+      /* PWA Safe Area Insets for iOS */
+      .pt-safe { padding-top: env(safe-area-inset-top); }
+      .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+      .pl-safe { padding-left: env(safe-area-inset-left); }
+      .pr-safe { padding-right: env(safe-area-inset-right); }
       
     </style>
   <script type="importmap">
@@ -142,8 +148,8 @@
     "firebase/": "https://aistudiocdn.com/firebase@^12.6.0/",
     "vite": "https://aistudiocdn.com/vite@^7.2.4",
     "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.1",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
-    "react/": "https://aistudiocdn.com/react@^19.2.0/"
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/"
   }
 }
 </script>
