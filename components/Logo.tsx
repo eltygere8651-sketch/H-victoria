@@ -30,12 +30,15 @@ export const Logo: React.FC<{ size?: 'sm' | 'md' | 'lg' | 'xl', className?: stri
       }}
       preserveAspectRatio="xMidYMid meet"
     >
-      <defs>
-        <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#dc2626" /> {/* Red-600 */}
-          <stop offset="100%" stopColor="#7f1d1d" /> {/* Red-900 */}
-        </linearGradient>
-      </defs>
+      {/* Conditionally render the gradient definition to avoid issues in PDF generation */}
+      {!solid && (
+        <defs>
+          <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#dc2626" /> {/* Red-600 */}
+            <stop offset="100%" stopColor="#7f1d1d" /> {/* Red-900 */}
+          </linearGradient>
+        </defs>
+      )}
       
       {/* Background - Squircle Shape */}
       {/* If solid prop is true (for print safety), use flat color, otherwise use gradient */}

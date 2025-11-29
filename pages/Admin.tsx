@@ -71,6 +71,9 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
     // Use a clone to avoid issues with modal styling and scroll context
     const elementToPrint = printElement.cloneNode(true) as HTMLElement;
 
+    // Force a light mode theme for reliable printing
+    elementToPrint.classList.add('force-light-mode');
+
     // Must append to body for html2pdf to calculate dimensions, but hide it
     elementToPrint.style.position = 'absolute';
     elementToPrint.style.left = '-9999px';
@@ -78,16 +81,17 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
     elementToPrint.style.width = '8.5in'; // A4-ish width for better scaling
     document.body.appendChild(elementToPrint);
     
+    // Optimized options for better reliability and performance
     const opt = {
       margin: [10, 10, 10, 10], // mm
       filename: `Pedido_${selectedOrder.batchId}_${selectedOrder.departmentName}.pdf`,
-      image: { type: 'png', quality: 1.0 },
+      image: { type: 'jpeg', quality: 0.98 }, // Use JPEG for smaller file size
       html2canvas: { 
-        scale: 4,
+        scale: 2, // Reduced scale from 4 to 2 for better performance
         useCORS: true, 
         logging: false, 
-        backgroundColor: '#ffffff', 
-        letterRendering: true,
+        backgroundColor: '#ffffff',
+        // letterRendering: true, // Removed experimental feature
       },
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
       pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
@@ -355,7 +359,7 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
       )}
 
       {selectedOrder && (
-        <div className="fixed inset-0 z-40 bg-gray-900/90 backdrop-blur-sm flex flex-col p-0 md:p-6 overflow-y-auto animate-fade-in" onClick={() => setSelectedOrder(null)}>
+        <div className="fixed inset-0 z-40 bg-gray-900/90 backdrop-blur-sm flex flex-col items-center p-0 md:p-6 overflow-y-auto animate-fade-in" onClick={() => setSelectedOrder(null)}>
           <div className="w-full max-w-3xl flex items-center justify-between px-4 pt-safe pb-4 md:p-0 md:mb-6 sticky top-0 md:static bg-gray-900/80 md:bg-transparent backdrop-blur-md md:backdrop-blur-none z-20" onClick={e => e.stopPropagation()}>
             <h2 className="text-white font-bold text-lg hidden md:block">Vista Previa</h2>
             <div className="flex gap-3 ml-auto">

@@ -36,22 +36,27 @@ const OrdersHistory: React.FC<OrdersHistoryProps> = ({ currentUser }) => {
     }
 
     const elementToPrint = printElement.cloneNode(true) as HTMLElement;
+
+    // Force a light mode theme for reliable printing
+    elementToPrint.classList.add('force-light-mode');
+
     elementToPrint.style.position = 'absolute';
     elementToPrint.style.left = '-9999px';
     elementToPrint.style.top = '0';
     elementToPrint.style.width = '8.5in'; // A4-ish width for better scaling
     document.body.appendChild(elementToPrint);
 
+    // Optimized options for better reliability and performance
     const opt = {
       margin: [10, 10, 10, 10], // mm
       filename: `Pedido_${selectedOrder.batchId}_${selectedOrder.departmentName}.pdf`,
-      image: { type: 'png', quality: 1.0 },
+      image: { type: 'jpeg', quality: 0.98 }, // Use JPEG for smaller file size
       html2canvas: { 
-        scale: 4,
+        scale: 2, // Reduced scale from 4 to 2 for better performance
         useCORS: true, 
         logging: false, 
-        backgroundColor: '#ffffff', 
-        letterRendering: true,
+        backgroundColor: '#ffffff',
+        // letterRendering: true, // Removed experimental feature
       },
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
       pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
