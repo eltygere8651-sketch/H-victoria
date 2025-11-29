@@ -610,7 +610,7 @@ export const storageService = {
           await storageService.addNotification({
             type: NotificationType.LOW_STOCK,
             title: '¡Stock Bajo Detectado!',
-            message: `El producto "${productName}" ha caído por debajo de su umbral mínimo (${product.minThreshold} ${product.unit}). Stock actual: ${product.quantity - items.find(i => i.product.name === productName)!.quantity} ${product.unit}.`,
+            message: `El producto "${product.name}" ha caído por debajo de su umbral mínimo (${product.minThreshold} ${product.unit}). Stock actual: ${product.quantity - items.find(i => i.product.name === productName)!.quantity} ${product.unit}.`,
             icon: 'AlertTriangle',
             payload: {
               productId: product.id,

@@ -240,7 +240,7 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
                             border: '1px solid rgba(71, 85, 105, 0.5)',
                             borderRadius: '12px', 
                             color: '#fff', 
-                            boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
+                            boxShadow: '0 44px 12px rgba(0,0,0,0.2)'
                           }}
                           itemStyle={{ color: '#fff', padding: '0px' }}
                           labelStyle={{ color: '#cbd5e1', fontWeight: 'bold' }}

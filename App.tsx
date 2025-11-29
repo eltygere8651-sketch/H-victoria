@@ -290,7 +290,7 @@ const App: React.FC = () => {
       {/* Main Content */}
       <main className="flex-1 overflow-y-auto h-screen bg-gray-50 dark:bg-slate-900 relative transition-colors duration-300">
         {/* Mobile Top Bar */}
-        <div className="md:hidden bg-white dark:bg-slate-800 px-4 py-3 pt-safe border-b dark:border-slate-700/50 flex justify-between items-center sticky top-0 z-40 shadow-sm transition-colors duration-300">
+        <div className="md:hidden bg-white dark:bg-slate-800 px-4 pt-safe pb-3 border-b dark:border-slate-700/50 flex justify-between items-center sticky top-0 z-40 shadow-sm transition-colors duration-300">
           <div className="flex items-center gap-3">
             <Logo size="sm" />
             <div>
@@ -330,7 +330,7 @@ const App: React.FC = () => {
       </main>
 
       {/* Mobile Bottom Navigation (Z-40 to sit BEHIND modals which are Z-50/60) */}
-      <nav className="md:hidden fixed bottom-0 w-full bg-white dark:bg-slate-800 border-t border-gray-200 dark:border-slate-700/50 flex justify-around p-2 pb-safe z-40 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] dark:shadow-none transition-colors duration-300">
+      <nav className="md:hidden fixed bottom-0 w-full bg-white dark:bg-slate-800 border-t border-gray-200 dark:border-slate-700/50 flex justify-around px-2 pt-2 pb-safe z-40 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] dark:shadow-none transition-colors duration-300">
         {user.role === UserRole.ADMIN && (
           <MobileNavButton 
             active={view === 'inventory'} 
