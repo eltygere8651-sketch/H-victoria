@@ -328,7 +328,7 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
           </div>
           <div id="print-area" className="bg-white text-black p-6 md:p-12 rounded-t-2xl md:rounded-2xl shadow-2xl max-w-3xl w-full h-auto animate-slide-up dark:bg-white dark:text-black" onClick={e => e.stopPropagation()}>
             <div className="flex justify-between items-start border-b-2 border-black pb-8 mb-8">
-              <div className="flex items-center gap-4"><Logo size="lg" solid /><div className="mt-2"><h1 className="text-3xl font-black uppercase tracking-tighter">Hotel Victoria</h1><p className="text-red-600 font-bold uppercase tracking-[0.3em] text-sm">Pedidos Internos</p></div></div>
+              <div className="flex items-center gap-4"><Logo size="lg" solid /><div className="mt-2"><h1 className="text-3xl font-black uppercase tracking-tighter">Hub</h1><p className="text-red-600 font-bold uppercase tracking-[0.3em] text-sm">Reporte de Pedido</p></div></div>
               <div className="text-right"><h2 className="text-2xl font-mono font-bold">#{selectedOrder.batchId}</h2><p className="text-sm font-semibold text-gray-500 mt-1">{selectedOrder.date}</p></div>
             </div>
             <div className="grid grid-cols-2 gap-8 mb-10"><p><span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Departamento</span><br /><span className="text-2xl font-extrabold">{selectedOrder.departmentName}</span></p><p><span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Solicitante</span><br /><span className="text-2xl font-extrabold">{selectedOrder.requestedBy}</span></p></div>

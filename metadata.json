@@ -1,5 +1,5 @@
 {
-  "name": "Hotel Victoria",
-  "description": "Sistema de gestión de pedidos internos y stock para Hotel Victoria.",
+  "name": "Hub",
+  "description": "Gestión sencilla para el equipo: inventario, pedidos y comunicación",
   "requestFramePermissions": []
 }

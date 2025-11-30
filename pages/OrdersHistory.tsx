@@ -173,8 +173,8 @@ const OrdersHistory: React.FC<OrdersHistoryProps> = ({ currentUser }) => {
               <div className="flex items-center gap-6">
                 <Logo size="lg" solid />
                 <div>
-                  <h1 className="text-3xl md:text-4xl font-black text-black uppercase tracking-tighter">Hotel Victoria</h1>
-                  <p className="text-red-600 font-bold uppercase tracking-[0.3em] text-sm mt-1">Pedidos Internos</p>
+                  <h1 className="text-3xl md:text-4xl font-black text-black uppercase tracking-tighter">Hub</h1>
+                  <p className="text-red-600 font-bold uppercase tracking-[0.3em] text-sm mt-1">Reporte de Pedido</p>
                 </div>
               </div>
               <div className="text-left md:text-right w-full md:w-auto mt-4 md:mt-0">
@@ -241,7 +241,7 @@ const OrdersHistory: React.FC<OrdersHistoryProps> = ({ currentUser }) => {
             </div>
             
             <div className="mt-12 text-center">
-              <p className="text-[10px] text-gray-400 uppercase tracking-widest font-bold drop-shadow-sm">Generado Digitalmente por Sistema Hotel Victoria</p>
+              <p className="text-[10px] text-gray-400 uppercase tracking-widest font-bold drop-shadow-sm">Generado Digitalmente por Hub</p>
             </div>
 
           </div>

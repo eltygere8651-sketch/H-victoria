@@ -1,11 +1,11 @@
 {
-  "name": "Hotel Victoria",
-  "short_name": "Hotel Victoria",
+  "name": "Hub",
+  "short_name": "Hub",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#dc2626",
-  "description": "Sistema de gestión de pedidos internos - Hotel Victoria",
+  "description": "Gestión sencilla para el equipo: inventario, pedidos y comunicación",
   "orientation": "portrait",
   "icons": [
     {

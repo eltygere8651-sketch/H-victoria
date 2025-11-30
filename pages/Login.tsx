@@ -37,8 +37,8 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
           <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-white via-transparent to-transparent" />
           
           <Logo size="xl" className="shadow-2xl shadow-red-900/50 drop-shadow-lg mb-6 bg-white/10 backdrop-blur-sm border border-white/20" />
-          <h1 className="text-4xl font-extrabold tracking-tight text-center drop-shadow-md">HOTEL VICTORIA</h1>
-          <p className="opacity-90 mt-2 font-medium text-red-100 uppercase tracking-widest text-xs drop-shadow-sm">Pedidos Internos</p>
+          <h1 className="text-4xl font-extrabold tracking-tight text-center drop-shadow-md">Hub</h1>
+          <p className="opacity-90 mt-2 font-medium text-red-100 text-sm max-w-xs text-center drop-shadow-sm">Gestión sencilla para el equipo: inventario, pedidos y comunicación</p>
         </div>
 
         <div className="p-8">
@@ -85,7 +85,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
           </form>
 
           <div className="mt-8 text-center text-xs text-gray-400 dark:text-slate-500">
-             Sistema Digital Hotel Victoria v1.0
+             Sistema de Gestión v1.0
           </div>
         </div>
       </div>
