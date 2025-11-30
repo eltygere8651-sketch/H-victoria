@@ -196,58 +196,74 @@ export const storageService = {
   submitOrderBatch: async (items: CartItem[], departmentId: string, departmentName: string, user: User) => { /* ... existing logic ... */ return { success: true, batchId: '', lowStockItems: [] } },
   deleteBatch: async (batchId: string) => { /* ... existing logic ... */ },
 
-  // --- TASK ACTIONS (with image handling) ---
+  // --- TASK ACTIONS (REFACTORED AND ROBUST) ---
   saveTask: async (taskData: Partial<Task>, imageFile?: File | null) => {
     const isNewTask = !taskData.id;
-    // Start with the data from the form
-    const taskToSave: { [key: string]: any } = { ...taskData };
-    
-    // Logic for Image Handling
-    // Case 1: A new image file is being uploaded.
+    const taskId = taskData.id; // Store ID for updates
+
+    // 1. Create a clean data object for Firestore
+    const dataForFirestore: { [key: string]: any } = {
+        title: taskData.title,
+        description: taskData.description,
+        status: taskData.status,
+        priority: taskData.priority,
+        location: taskData.location,
+        departmentId: taskData.departmentId,
+        departmentName: taskData.departmentName,
+        createdBy: taskData.createdBy,
+        createdById: taskData.createdById,
+        createdAt: taskData.createdAt,
+        completedBy: taskData.completedBy,
+        completedAt: taskData.completedAt,
+    };
+
+    // 2. Handle image logic explicitly
+    let imageUrlToSave = taskData.imageUrl;
+    let imagePathToSave = taskData.imagePath;
+
+    // Case A: A new file is being uploaded (for new task or replacing old image)
     if (imageFile) {
-      // If there was an old image associated with this task, delete it first.
-      if (taskData.imagePath) {
-        await deleteObject(ref(storage, taskData.imagePath)).catch(e => console.error("Failed to delete old image", e));
-      }
-      // Upload the new image and get its URLs.
-      const { downloadURL, filePath } = await uploadImage(imageFile, 'task_images');
-      taskToSave.imageUrl = downloadURL;
-      taskToSave.imagePath = filePath;
+        if (imagePathToSave) {
+            await deleteObject(ref(storage, imagePathToSave)).catch(e => console.error("Failed to delete old image:", e));
+        }
+        const { downloadURL, filePath } = await uploadImage(imageFile, 'task_images');
+        imageUrlToSave = downloadURL;
+        imagePathToSave = filePath;
     } 
-    // Case 2: The image was explicitly removed in the UI (imageUrl is null).
-    else if (taskData.imageUrl === null && taskData.imagePath) {
-      await deleteObject(ref(storage, taskData.imagePath)).catch(e => console.error("Failed to delete image", e));
-      // Ensure the fields are set to null for removal in Firestore.
-      taskToSave.imageUrl = null;
-      taskToSave.imagePath = null;
+    // Case B: An existing image is being removed (UI signals this with imageUrl: null)
+    else if (taskData.imageUrl === null && imagePathToSave) {
+        await deleteObject(ref(storage, imagePathToSave)).catch(e => console.error("Failed to delete image:", e));
+        imageUrlToSave = null;
+        imagePathToSave = null;
+    }
+    
+    // 3. Add image fields to the final object only if they are not undefined
+    if (imageUrlToSave !== undefined) {
+        dataForFirestore.imageUrl = imageUrlToSave;
+    }
+    if (imagePathToSave !== undefined) {
+        dataForFirestore.imagePath = imagePathToSave;
     }
 
-    // Prepare the final data object for Firestore.
-    // Remove the client-side 'id' and any fields that are 'undefined'.
-    delete taskToSave.id;
-    Object.keys(taskToSave).forEach(key => {
-        if (taskToSave[key as keyof typeof taskToSave] === undefined) {
-            delete taskToSave[key as keyof typeof taskToSave];
+    // 4. Final sanitization: Remove any top-level keys with `undefined` values
+    Object.keys(dataForFirestore).forEach(key => {
+        if (dataForFirestore[key] === undefined) {
+            delete dataForFirestore[key];
         }
     });
 
-    let newTaskId = taskData.id;
-
+    // 5. Save to Firestore and create notification
     if (isNewTask) {
-      const docRef = await addDoc(collection(db, 'tasks'), taskToSave);
-      newTaskId = docRef.id;
+        const docRef = await addDoc(collection(db, 'tasks'), dataForFirestore);
+        await createNotification({
+            type: NotificationType.NEW_TASK,
+            title: 'Nueva Tarea Asignada',
+            message: `"${dataForFirestore.createdBy}" creó la tarea "${dataForFirestore.title}".`,
+            icon: 'ClipboardCheck',
+            payload: { taskId: docRef.id, taskTitle: dataForFirestore.title }
+        });
     } else {
-      await updateDoc(doc(db, 'tasks', taskData.id!), taskToSave);
-    }
-    
-    if (isNewTask) {
-      await createNotification({
-        type: NotificationType.NEW_TASK,
-        title: 'Nueva Tarea Asignada',
-        message: `"${taskToSave.createdBy}" creó la tarea "${taskToSave.title}".`,
-        icon: 'ClipboardCheck',
-        payload: { taskId: newTaskId, taskTitle: taskToSave.title }
-      });
+        await updateDoc(doc(db, 'tasks', taskId!), dataForFirestore);
     }
   },
 
