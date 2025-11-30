@@ -43,18 +43,36 @@ const App: React.FC = () => {
   const [showMobileCart, setShowMobileCart] = useState(false);
 
   useEffect(() => {
+    // Check if the app is already installed and running in standalone mode
     if (window.matchMedia('(display-mode: standalone)').matches) {
       setIsInstalled(true);
     }
+    
+    // Detect iOS for specific install instructions
     const userAgent = window.navigator.userAgent.toLowerCase();
     const ios = /iphone|ipad|ipod/.test(userAgent);
     setIsIOS(ios);
-    const handler = (e: any) => {
+    
+    // Listen for the browser's install prompt
+    const handleBeforeInstallPrompt = (e: any) => {
       e.preventDefault();
       setDeferredPrompt(e);
     };
-    window.addEventListener('beforeinstallprompt', handler);
-    return () => window.removeEventListener('beforeinstallprompt', handler);
+
+    // Listen for when the app is successfully installed
+    const handleAppInstalled = () => {
+      setIsInstalled(true);
+      setDeferredPrompt(null); // Clear the prompt as it's no longer needed
+      console.log('PWA was installed successfully.');
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    window.addEventListener('appinstalled', handleAppInstalled);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('appinstalled', handleAppInstalled);
+    };
   }, []);
 
   useEffect(() => {
@@ -111,11 +129,7 @@ const App: React.FC = () => {
       setShowIOSPrompt(true);
     } else if (deferredPrompt) {
       deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
-      if (outcome === 'accepted') {
-        setDeferredPrompt(null);
-        setIsInstalled(true);
-      }
+      // The `appinstalled` event listener will handle hiding the button now
     } else {
       alert("Para instalar: \n1. Abre el menú del navegador (tres puntos).\n2. Selecciona 'Instalar aplicación' o 'Añadir a pantalla de inicio'.");
     }
@@ -147,6 +161,9 @@ const App: React.FC = () => {
   }
 
   const unreadCount = unreadAdminNotifications.length;
+  
+  // Show install button if it's not installed AND (it's iOS OR the prompt is available)
+  const showInstallButton = !isInstalled && (isIOS || deferredPrompt);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex flex-col md:flex-row font-sans text-gray-900 dark:text-slate-200 transition-colors duration-300">
@@ -216,7 +233,7 @@ const App: React.FC = () => {
               />
             </>
           )}
-          {!isInstalled && (
+          {showInstallButton && (
             <button
               onClick={handleInstallClick}
               className="w-full flex items-center gap-4 px-5 py-4 mt-6 rounded-2xl transition-all duration-200 bg-red-600 text-white hover:bg-red-700 shadow-lg shadow-button-red animate-pulse active:scale-[0.98]"
@@ -275,7 +292,7 @@ const App: React.FC = () => {
                 </span>
               </button>
             )}
-            {!isInstalled && (
+            {showInstallButton && (
               <button onClick={handleInstallClick} className="bg-red-600 text-white p-2 rounded-full shadow-md animate-pulse active:scale-95 transition-all">
                 <Download size={20} />
               </button>
