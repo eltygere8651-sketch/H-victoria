@@ -5,9 +5,13 @@ import { Search, ShoppingCart, Plus, Minus, Trash2, CheckCircle2, X, ArrowRight,
 
 interface ReplenishmentProps {
   currentUser: User;
+  cart: CartItem[];
+  setCart: React.Dispatch<React.SetStateAction<CartItem[]>>;
+  showMobileCart: boolean;
+  setShowMobileCart: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
-const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser }) => {
+const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCart, showMobileCart, setShowMobileCart }) => {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [selectedDepartmentForOrder, setSelectedDepartmentForOrder] = useState<string>('');
   const [selectedDepartmentNameForOrder, setSelectedDepartmentNameForOrder] = useState<string>('');
@@ -16,18 +20,12 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser }) => {
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
   const [isLoadingDepartments, setIsLoadingDepartments] = useState(true);
   
-  // Fix: Declare searchTerm and setSearchTerm
   const [searchTerm, setSearchTerm] = useState('');
 
-  const [cart, setCart] = useState<CartItem[]>(
-    storageService.getDraftCart()
-  );
-  
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [qtyValue, setQtyValue] = useState<string>('1');
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [showMobileCart, setShowMobileCart] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   
   const [showLowStockModal, setShowLowStockModal] = useState(false);
@@ -53,19 +51,15 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser }) => {
 
   useEffect(() => {
     if (!isLoadingDepartments && departments.length > 0) {
-      // If a department was previously selected, check if it still exists.
       const currentSelectedExists = departments.some(d => d.id === selectedDepartmentForOrder);
       if (!selectedDepartmentForOrder || !currentSelectedExists) {
-        // Set a default department if none is selected or if the selected one was deleted
         setSelectedDepartmentForOrder(departments[0].id);
         setSelectedDepartmentNameForOrder(departments[0].name);
       } else {
-        // Update name if department exists but name might have changed
         const dep = departments.find(d => d.id === selectedDepartmentForOrder);
         setSelectedDepartmentNameForOrder(dep ? dep.name : '');
       }
     } else if (!isLoadingDepartments && departments.length === 0) {
-      // No departments available
       setSelectedDepartmentForOrder('');
       setSelectedDepartmentNameForOrder('');
     }
@@ -73,15 +67,9 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser }) => {
 
 
   useEffect(() => {
-    // If selectedDepartmentForOrder is changed, update the name too
     const dep = departments.find(d => d.id === selectedDepartmentForOrder);
     setSelectedDepartmentNameForOrder(dep ? dep.name : '');
   }, [selectedDepartmentForOrder, departments]);
-
-
-  useEffect(() => {
-    storageService.saveDraftCart(cart);
-  }, [cart]);
 
   useEffect(() => {
     if (selectedProduct && inputRef.current) {
@@ -206,26 +194,23 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser }) => {
     setShowSuccessModal(false);
     setShowLowStockModal(false);
     setSearchTerm('');
-    // Reset department to a default or empty string
     setSelectedDepartmentForOrder(departments.length > 0 ? departments[0].id : ''); 
     setSelectedDepartmentNameForOrder(departments.length > 0 ? departments[0].name : '');
   };
 
   const filteredProducts = products.filter(p => 
     p.quantity > 0 && 
-    p.departmentId === selectedDepartmentForOrder && // Filter by selected department ID
+    p.departmentId === selectedDepartmentForOrder &&
     (p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
     p.category.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
-  // If no departments are loaded yet, or a department isn't selected, disable order button
   const isOrderButtonDisabled = cart.length === 0 || !selectedDepartmentForOrder || isProcessing;
 
   if (isLoadingProducts || isLoadingDepartments) {
     return <div className="flex h-full items-center justify-center"><Loader2 size={40} className="animate-spin text-red-600" /></div>;
   }
 
-  // Display a message if no departments are created
   if (departments.length === 0 && currentUser.role === 'ADMIN') {
     return (
       <div className="flex flex-col h-full items-center justify-center p-4 text-center bg-gray-50 dark:bg-slate-900 transition-colors duration-300">
@@ -251,7 +236,6 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser }) => {
   return (
     <div className="h-full flex flex-col lg:flex-row bg-gray-50 dark:bg-slate-900 relative font-sans transition-colors duration-300">
       
-      {/* 1. QUANTITY INPUT MODAL */}
       {selectedProduct && (
         <div className="fixed inset-0 z-[70] flex items-end md:items-center justify-center bg-black/70 dark:bg-slate-900/90 backdrop-blur-sm animate-fade-in">
           <div className="bg-white dark:bg-slate-800 w-full md:max-w-md rounded-t-3xl md:rounded-3xl shadow-pop-in overflow-hidden animate-pop-in border border-gray-100 dark:border-slate-700/50">
@@ -283,11 +267,11 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser }) => {
                   onKeyDown={(e) => e.key === 'Enter' && confirmAddToCart()}
                   className="flex-1 h-16 text-center text-4xl font-extrabold border-2 border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white rounded-2xl focus:border-red-600 focus:ring-4 focus:ring-red-100 dark:focus:ring-red-500/30 outline-none shadow-md"
                   min="1"
-                  max={selectedProduct.quantity} // Restrict max quantity to available stock
+                  max={selectedProduct.quantity}
                 />
 
                 <button 
-                  onClick={() => setQtyValue(prev => String(Math.min(selectedProduct.quantity, parseInt(prev || '0') + 1)))} // Restrict max quantity to available stock
+                  onClick={() => setQtyValue(prev => String(Math.min(selectedProduct.quantity, parseInt(prev || '0') + 1)))}
                   className="w-16 h-16 rounded-2xl bg-gray-100 dark:bg-slate-700 text-gray-800 dark:text-white flex items-center justify-center hover:bg-gray-200 dark:hover:bg-slate-600 active:scale-95 transition-all shadow-md"
                 >
                   <Plus size={32} />
@@ -306,7 +290,6 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser }) => {
         </div>
       )}
 
-      {/* 2. CONFIRMATION MODAL */}
       {showConfirmModal && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 dark:bg-slate-900/90 backdrop-blur-sm p-4 animate-fade-in">
            <div className="bg-white dark:bg-slate-800 w-full max-w-md rounded-3xl shadow-pop-in overflow-hidden animate-pop-in border border-gray-100 dark:border-slate-700/50">
@@ -356,7 +339,6 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser }) => {
         </div>
       )}
 
-      {/* 3. SUCCESS MODAL */}
       {showSuccessModal && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-white/90 dark:bg-slate-900/90 backdrop-blur-md p-4 animate-fade-in">
           <div className="text-center bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-pop-in border border-gray-100 dark:border-slate-700/50 animate-pop-in">
@@ -369,7 +351,6 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser }) => {
         </div>
       )}
 
-      {/* 4. LOW STOCK */}
       {showLowStockModal && (
         <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/80 dark:bg-slate-950/90 backdrop-blur-md p-4 animate-fade-in">
           <div className="bg-white dark:bg-slate-800 w-full max-w-sm rounded-3xl shadow-pop-in overflow-hidden animate-pop-in border-2 border-red-500 text-center">
@@ -399,10 +380,8 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser }) => {
         </div>
       )}
 
-      {/* --- CATALOG --- */}
       <div className="flex-1 flex flex-col h-full pb-20 lg:pb-0">
         <div className="bg-white dark:bg-slate-800 px-4 py-4 md:px-6 md:py-6 border-b border-gray-200 dark:border-slate-700/50 shadow-sm z-10 space-y-4 transition-colors duration-300">
-           {/* Department Selection Dropdown for filtering catalog */}
            <div className="relative">
               <label htmlFor="catalog-department-select" className="sr-only">Filtrar Productos por Departamento</label>
               <select
@@ -470,22 +449,6 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser }) => {
             })}
           </div>
         </div>
-      </div>
-
-      {/* --- CART SLIDER --- */}
-      <div className={`lg:hidden fixed bottom-[95px] left-4 right-4 z-[45] transition-transform duration-300 ${cart.length > 0 && !showMobileCart ? 'translate-y-0' : 'translate-y-[150%]'}`}>
-         <button 
-           onClick={() => setShowMobileCart(true)}
-           className="w-full bg-gray-900 dark:bg-white text-white dark:text-gray-900 p-4 rounded-2xl shadow-xl shadow-gray-200/50 dark:shadow-none flex items-center justify-between font-bold active:scale-[0.98] transition-all"
-         >
-            <div className="flex items-center gap-3">
-               <span className="bg-red-600 text-white w-8 h-8 rounded-full flex items-center justify-center text-sm shadow-md drop-shadow-sm">
-                 {cart.length}
-               </span>
-               <span>Ver Carrito</span>
-            </div>
-            <ChevronUp size={24} />
-         </button>
       </div>
 
       <div className={`

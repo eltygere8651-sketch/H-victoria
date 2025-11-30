@@ -56,22 +56,24 @@ const OrdersHistory: React.FC<OrdersHistoryProps> = ({ currentUser }) => {
         useCORS: true, 
         logging: false, 
         backgroundColor: '#ffffff',
-        // letterRendering: true, // Removed experimental feature
       },
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
       pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
     };
 
-    try {
-        // @ts-ignore
-        await window.html2pdf().set(opt).from(elementToPrint).save();
-    } catch (err) {
-        console.error("PDF Generation Error:", err);
-        alert('Hubo un error al generar el PDF.');
-    } finally {
+    // Introduce a small delay to ensure the browser renders the cloned element
+    setTimeout(() => {
+      // @ts-ignore
+      window.html2pdf().set(opt).from(elementToPrint).save().then(() => {
         setIsGeneratingPdf(false);
         document.body.removeChild(elementToPrint);
-    }
+      }).catch((err: any) => {
+        console.error("PDF Generation Error:", err);
+        alert('Hubo un error al generar el PDF.');
+        setIsGeneratingPdf(false);
+        document.body.removeChild(elementToPrint);
+      });
+    }, 100);
   };
 
   const handleDelete = (batchId: string) => {

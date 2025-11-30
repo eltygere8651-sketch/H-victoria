@@ -91,22 +91,24 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
         useCORS: true, 
         logging: false, 
         backgroundColor: '#ffffff',
-        // letterRendering: true, // Removed experimental feature
       },
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
       pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
     };
 
-    try {
-        // @ts-ignore
-        await window.html2pdf().set(opt).from(elementToPrint).save();
-    } catch (err) {
-        console.error("PDF Generation Error:", err);
-        alert('Hubo un error al generar el PDF.');
-    } finally {
+    // Introduce a small delay to ensure the browser renders the cloned element
+    setTimeout(() => {
+      // @ts-ignore
+      window.html2pdf().set(opt).from(elementToPrint).save().then(() => {
         setIsGeneratingPdf(false);
         document.body.removeChild(elementToPrint);
-    }
+      }).catch((err: any) => {
+        console.error("PDF Generation Error:", err);
+        alert('Hubo un error al generar el PDF.');
+        setIsGeneratingPdf(false);
+        document.body.removeChild(elementToPrint);
+      });
+    }, 100);
   };
 
   const handleDeleteBatchClick = (batchId: string) => setBatchToDelete(batchId);
@@ -369,7 +371,7 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
               <button onClick={() => setSelectedOrder(null)} className="p-3 bg-white text-gray-900 rounded-xl font-bold shadow-md hover:bg-gray-100 active:scale-95"><X /></button>
             </div>
           </div>
-          <div id="print-area" className="bg-white text-black p-6 md:p-12 rounded-t-2xl md:rounded-2xl shadow-2xl max-w-3xl w-full h-auto animate-slide-up" onClick={e => e.stopPropagation()}>
+          <div id="print-area" className="bg-white text-black p-6 md:p-12 rounded-t-2xl md:rounded-2xl shadow-2xl max-w-3xl w-full h-auto animate-slide-up dark:bg-white dark:text-black" onClick={e => e.stopPropagation()}>
             <div className="flex justify-between items-start border-b-2 border-black pb-8 mb-8">
               <div className="flex items-center gap-4"><Logo size="lg" solid /><div className="mt-2"><h1 className="text-3xl font-black uppercase tracking-tighter">Hotel Victoria</h1><p className="text-red-600 font-bold uppercase tracking-[0.3em] text-sm">Pedidos Internos</p></div></div>
               <div className="text-right"><h2 className="text-2xl font-mono font-bold">#{selectedOrder.batchId}</h2><p className="text-sm font-semibold text-gray-500 mt-1">{selectedOrder.date}</p></div>
