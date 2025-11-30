@@ -3,6 +3,7 @@ import { storageService } from '../services/storageService';
 import { User, UserRole, Department, OrderBatch } from '../types';
 import { FileText, Printer, Trash2, X, Eye, Package, Download, Loader2 } from 'lucide-react';
 import { Logo } from '../components/Logo';
+import { generatePdfFromElement } from '../utils/pdfGenerator';
 
 interface OrdersHistoryProps {
   currentUser: User;
@@ -20,66 +21,16 @@ const OrdersHistory: React.FC<OrdersHistoryProps> = ({ currentUser }) => {
 
   const handleDownloadPDF = async () => {
     if (!selectedOrder) return;
-    // @ts-ignore
-    if (typeof window.html2pdf === 'undefined') {
-      alert('La librería de PDF está cargando. Por favor espera unos segundos.');
-      return;
-    }
-
     setIsGeneratingPdf(true);
-    
-    const printElement = document.getElementById('print-area');
-    if (!printElement) {
-        setIsGeneratingPdf(false);
-        alert('No se pudo encontrar el contenido para imprimir.');
-        return;
+    try {
+      const filename = `Pedido_${selectedOrder.batchId}_${selectedOrder.departmentName}.pdf`;
+      await generatePdfFromElement('print-area', filename);
+    } catch (error) {
+      console.error("PDF Generation Failed:", error);
+      alert('Hubo un error al generar el PDF. Por favor, inténtalo de nuevo.');
+    } finally {
+      setIsGeneratingPdf(false);
     }
-
-    const elementToPrint = printElement.cloneNode(true) as HTMLElement;
-
-    // Force a light mode theme for reliable printing
-    elementToPrint.classList.add('force-light-mode');
-
-    // CRITICAL: Remove animation classes and reset transform/opacity to ensure it's visible to the renderer
-    elementToPrint.classList.remove('animate-slide-up');
-    elementToPrint.style.animation = 'none';
-    elementToPrint.style.transform = 'none';
-    elementToPrint.style.opacity = '1';
-
-    elementToPrint.style.position = 'absolute';
-    elementToPrint.style.left = '-9999px';
-    elementToPrint.style.top = '0';
-    elementToPrint.style.width = '8.5in'; // A4-ish width for better scaling
-    document.body.appendChild(elementToPrint);
-
-    // Optimized options for better reliability and performance
-    const opt = {
-      margin: [10, 10, 10, 10], // mm
-      filename: `Pedido_${selectedOrder.batchId}_${selectedOrder.departmentName}.pdf`,
-      image: { type: 'jpeg', quality: 0.98 }, // Use JPEG for smaller file size
-      html2canvas: { 
-        scale: 2, // Reduced scale from 4 to 2 for better performance
-        useCORS: true, 
-        logging: false, 
-        backgroundColor: '#ffffff',
-      },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-      pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
-    };
-
-    // Introduce a small delay to ensure the browser renders the cloned element
-    setTimeout(() => {
-      // @ts-ignore
-      window.html2pdf().set(opt).from(elementToPrint).save().then(() => {
-        setIsGeneratingPdf(false);
-        document.body.removeChild(elementToPrint);
-      }).catch((err: any) => {
-        console.error("PDF Generation Error:", err);
-        alert('Hubo un error al generar el PDF.');
-        setIsGeneratingPdf(false);
-        document.body.removeChild(elementToPrint);
-      });
-    }, 100);
   };
 
   const handleDelete = (batchId: string) => {
