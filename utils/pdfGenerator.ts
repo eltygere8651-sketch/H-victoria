@@ -8,40 +8,46 @@ const PDF_GENERATION_TIMEOUT = 15000; // 15 seconds
  */
 export const generatePdfFromElement = (elementId: string, filename: string): Promise<void> => {
   return new Promise((resolve, reject) => {
-    // This makes sure html2pdf is available on the window object
     if (typeof (window as any).html2pdf === 'undefined') {
       return reject(new Error('html2pdf.js library is not loaded.'));
     }
 
-    const printElement = document.getElementById(elementId);
-    if (!printElement) {
+    const sourceElement = document.getElementById(elementId);
+    if (!sourceElement) {
       return reject(new Error('Element to print not found.'));
     }
 
-    // Set a timeout to prevent the process from hanging indefinitely
     const timeoutId = setTimeout(() => {
       reject(new Error('PDF generation timed out.'));
     }, PDF_GENERATION_TIMEOUT);
 
-    // Use a clone to avoid issues with modal styling and scroll context
-    const elementToPrint = printElement.cloneNode(true) as HTMLElement;
+    // Create a dedicated wrapper for printing. This provides a stable rendering environment.
+    const printWrapper = document.createElement('div');
+    printWrapper.style.position = 'fixed';
+    printWrapper.style.opacity = '0'; // Use opacity to hide instead of positioning off-screen
+    printWrapper.style.pointerEvents = 'none'; // Prevent any interaction
+    printWrapper.style.zIndex = '-1'; // Ensure it's behind all other content
+    printWrapper.style.top = '0';
+    printWrapper.style.left = '0';
+    printWrapper.style.width = '210mm'; // Standard A4 width
+    printWrapper.style.height = 'auto';
+    printWrapper.style.overflow = 'visible';
     
-    // Force a light mode theme for reliable printing
+    // Clone the source element to avoid modifying the live DOM
+    const elementToPrint = sourceElement.cloneNode(true) as HTMLElement;
+    
+    // Style the clone for optimal printing
     elementToPrint.classList.add('force-light-mode');
-
-    // CRITICAL: Reset any transformations or animations that might hide the element
+    elementToPrint.style.width = '100%';
+    elementToPrint.style.maxWidth = 'none';
     elementToPrint.style.animation = 'none';
     elementToPrint.style.transform = 'none';
-    elementToPrint.style.opacity = '1';
+    elementToPrint.style.display = 'block';
 
-    // Must append to body for html2pdf to calculate dimensions, but hide it
-    elementToPrint.style.position = 'absolute';
-    elementToPrint.style.left = '-9999px';
-    elementToPrint.style.top = '0';
-    elementToPrint.style.width = '8.5in'; // Standard paper width for better scaling
-    document.body.appendChild(elementToPrint);
+    // Append clone to the wrapper, and wrapper to the body
+    printWrapper.appendChild(elementToPrint);
+    document.body.appendChild(printWrapper);
     
-    // Optimized options for better reliability and performance
     const options = {
       margin: [10, 10, 10, 10], // mm
       filename,
@@ -55,8 +61,8 @@ export const generatePdfFromElement = (elementId: string, filename: string): Pro
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
       pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
     };
-
-    // Give the browser a moment to render the cloned element
+    
+    // Allow a brief moment for the browser to render the cloned content
     setTimeout(() => {
       (window as any).html2pdf().set(options).from(elementToPrint).save()
         .then(() => {
@@ -68,9 +74,9 @@ export const generatePdfFromElement = (elementId: string, filename: string): Pro
           reject(err);
         })
         .finally(() => {
-          // Always clean up the cloned element
-          if (document.body.contains(elementToPrint)) {
-            document.body.removeChild(elementToPrint);
+          // Always clean up the wrapper element from the DOM
+          if (document.body.contains(printWrapper)) {
+            document.body.removeChild(printWrapper);
           }
         });
     }, 100);
