@@ -74,6 +74,12 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
     // Force a light mode theme for reliable printing
     elementToPrint.classList.add('force-light-mode');
 
+    // CRITICAL: Remove animation classes and reset transform/opacity to ensure it's visible to the renderer
+    elementToPrint.classList.remove('animate-slide-up');
+    elementToPrint.style.animation = 'none';
+    elementToPrint.style.transform = 'none';
+    elementToPrint.style.opacity = '1';
+
     // Must append to body for html2pdf to calculate dimensions, but hide it
     elementToPrint.style.position = 'absolute';
     elementToPrint.style.left = '-9999px';
