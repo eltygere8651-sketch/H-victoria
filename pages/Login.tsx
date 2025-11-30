@@ -38,7 +38,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
           
           <Logo size="xl" className="shadow-2xl shadow-red-900/50 drop-shadow-lg mb-6 bg-white/10 backdrop-blur-sm border border-white/20" />
           <h1 className="text-4xl font-extrabold tracking-tight text-center drop-shadow-md">Hub</h1>
-          <p className="opacity-90 mt-2 font-medium text-red-100 text-sm max-w-xs text-center drop-shadow-sm">Gestión sencilla para el equipo: inventario, pedidos y comunicación</p>
+          <p className="opacity-90 mt-2 font-medium text-red-100 text-sm max-w-xs text-center drop-shadow-sm">Centraliza el inventario, agiliza los pedidos y conecta a tu equipo.</p>
         </div>
 
         <div className="p-8">

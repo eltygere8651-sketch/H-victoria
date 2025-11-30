@@ -1,5 +1,5 @@
 {
   "name": "Hub",
-  "description": "Gestión sencilla para el equipo: inventario, pedidos y comunicación",
+  "description": "Centraliza el inventario, agiliza los pedidos y conecta a tu equipo.",
   "requestFramePermissions": []
 }
