@@ -10,6 +10,8 @@ interface AnnouncementsProps {
 const Announcements: React.FC<AnnouncementsProps> = ({ currentUser }) => {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const [showModal, setShowModal] = useState(false);
   const [editingAnnouncement, setEditingAnnouncement] = useState<Partial<Announcement> | null>(null);
@@ -29,11 +31,18 @@ const Announcements: React.FC<AnnouncementsProps> = ({ currentUser }) => {
       return;
     }
 
-    setLoading(true);
-    await storageService.saveAnnouncement(editingAnnouncement, currentUser);
-    setLoading(false);
-    setShowModal(false);
-    setEditingAnnouncement(null);
+    setIsSaving(true);
+    setSaveError(null);
+    try {
+      await storageService.saveAnnouncement(editingAnnouncement, currentUser);
+      setShowModal(false);
+      setEditingAnnouncement(null);
+    } catch (error: any) {
+      console.error("Failed to save announcement:", error);
+      setSaveError(error.message);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleDeleteClick = (announcement: Announcement) => {
@@ -49,11 +58,13 @@ const Announcements: React.FC<AnnouncementsProps> = ({ currentUser }) => {
 
   const openNewModal = () => {
     setEditingAnnouncement({});
+    setSaveError(null);
     setShowModal(true);
   };
 
   const openEditModal = (announcement: Announcement) => {
     setEditingAnnouncement({ ...announcement });
+    setSaveError(null);
     setShowModal(true);
   };
   
@@ -89,9 +100,19 @@ const Announcements: React.FC<AnnouncementsProps> = ({ currentUser }) => {
               <input value={editingAnnouncement?.title || ''} onChange={e => setEditingAnnouncement({...editingAnnouncement, title: e.target.value})} placeholder="Título del anuncio" className="w-full p-4 border-2 rounded-xl bg-gray-50 dark:bg-slate-700/50 focus:border-red-500 outline-none font-bold text-gray-900 dark:text-white shadow-sm" />
               <textarea value={editingAnnouncement?.content || ''} onChange={e => setEditingAnnouncement({...editingAnnouncement, content: e.target.value})} placeholder="Contenido del anuncio..." className="w-full p-4 border-2 rounded-xl bg-gray-50 dark:bg-slate-700/50 focus:border-red-500 outline-none dark:text-white shadow-sm h-40" />
             </div>
+            
+            {saveError && (
+              <div className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 p-4 rounded-xl text-sm font-medium mt-6 border border-red-100 dark:border-red-900/30">
+                <p className="font-bold text-center">Error al Publicar</p>
+                <p className="mt-1 whitespace-pre-wrap text-left">{saveError}</p>
+              </div>
+            )}
+
             <div className="flex gap-4 mt-8">
               <button onClick={() => {setShowModal(false); setEditingAnnouncement(null);}} className="flex-1 py-4 text-gray-600 font-bold bg-gray-100 dark:bg-slate-700/50 rounded-xl hover:bg-gray-200 active:scale-[0.98]">Cancelar</button>
-              <button onClick={handleSave} className="flex-1 py-4 text-white font-bold bg-red-600 rounded-xl hover:bg-red-700 shadow-lg shadow-button-red flex items-center justify-center gap-2 active:scale-[0.98]"><Save size={20} /> Publicar</button>
+              <button onClick={handleSave} disabled={isSaving} className="flex-1 py-4 text-white font-bold bg-red-600 rounded-xl hover:bg-red-700 shadow-lg shadow-button-red flex items-center justify-center gap-2 active:scale-[0.98] disabled:bg-red-400">
+                {isSaving ? <Loader2 className="animate-spin" /> : <><Save size={20} /> Publicar</>}
+              </button>
             </div>
           </div>
         </div>

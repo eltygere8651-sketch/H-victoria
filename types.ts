@@ -87,27 +87,14 @@ export interface Task {
   createdAt: number; // Timestamp
   completedBy?: string;
   completedAt?: number;
-  imageUrl?: string; // URL for the task image
-  imagePath?: string; // Path in Firebase Storage for deletion
+  imagesBase64?: string[]; // Store compressed images as Base64 strings
 }
-
-// --- New Announcement Type ---
-export interface Announcement {
-  id: string;
-  title: string;
-  content: string;
-  authorId: string;
-  authorName: string;
-  createdAt: number; // timestamp
-}
-
 
 // --- Notification System Types ---
 export enum NotificationType {
   LOW_STOCK = 'LOW_STOCK',
   NEW_ORDER = 'NEW_ORDER',
   NEW_TASK = 'NEW_TASK',
-  NEW_ANNOUNCEMENT = 'NEW_ANNOUNCEMENT',
 }
 
 export interface NotificationPayload {
@@ -118,8 +105,6 @@ export interface NotificationPayload {
   departmentName?: string;
   taskId?: string; // For new task notifications
   taskTitle?: string;
-  announcementId?: string; // For new announcement notifications
-  announcementTitle?: string;
 }
 
 export interface AppNotification {
@@ -133,4 +118,13 @@ export interface AppNotification {
   reviewedBy?: string; // User ID who marked it as read/reviewed
   reviewedAt?: number; // Unix timestamp when it was reviewed
   payload: NotificationPayload;
+}
+
+// --- Announcement System Types ---
+export interface Announcement {
+  id: string;
+  title: string;
+  content: string;
+  authorName: string; // User's name who created it
+  createdAt: number; // Timestamp
 }

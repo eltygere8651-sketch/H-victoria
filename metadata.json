@@ -1,5 +1,7 @@
 {
   "name": "Hub",
   "description": "Centraliza el inventario, agiliza los pedidos y conecta a tu equipo.",
-  "requestFramePermissions": []
+  "requestFramePermissions": [
+    "camera"
+  ]
 }

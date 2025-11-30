@@ -4,26 +4,25 @@ import Inventory from './pages/Inventory';
 import Replenishment from './pages/Replenishment';
 import Admin from './pages/Admin';
 import Tasks from './pages/Tasks';
-import Announcements from './pages/Announcements'; // Import the new Announcements page
 import { storageService } from './services/storageService';
 import { Logo } from './components/Logo';
-import { LayoutGrid, ClipboardList, ShieldCheck, LogOut, Moon, Sun, Download, Share, PlusSquare, X, Bell, ShoppingCart, ClipboardCheck, Megaphone } from 'lucide-react';
+import { LayoutGrid, ClipboardList, ShieldCheck, LogOut, Moon, Sun, Download, Share, PlusSquare, X, Bell, ShoppingCart, ClipboardCheck } from 'lucide-react';
 import { User, UserRole, AppNotification, CartItem } from './types';
 import { NotificationToast } from './components/NotificationToast';
 
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(storageService.getSession());
   
-  const [view, setView] = useState<'inventory' | 'replenish' | 'admin' | 'tasks' | 'announcements'>(() => {
+  const [view, setView] = useState<'inventory' | 'replenish' | 'admin' | 'tasks'>(() => {
      const lastView = storageService.getLastView();
      const sessionUser = storageService.getSession();
      
-     let defaultView: 'inventory' | 'replenish' | 'tasks' | 'announcements' = 'replenish';
+     let defaultView: 'inventory' | 'replenish' | 'tasks' = 'replenish';
      if (sessionUser?.role === UserRole.ADMIN) {
         defaultView = 'inventory';
      }
 
-     if (lastView === 'inventory' || lastView === 'replenish' || lastView === 'admin' || lastView === 'tasks' || lastView === 'announcements') {
+     if (lastView === 'inventory' || lastView === 'replenish' || lastView === 'admin' || lastView === 'tasks') {
        if (sessionUser?.role === UserRole.STAFF && (lastView === 'admin' || lastView === 'inventory')) return defaultView;
        if (sessionUser?.role === UserRole.ADMIN && lastView === 'replenish') return defaultView;
        // @ts-ignore
@@ -118,12 +117,8 @@ const App: React.FC = () => {
   const handleReadAndNavigate = async (notification: AppNotification) => {
     if (user) {
       await storageService.markNotificationAsRead(notification.id, user.id, user.name);
-      if (notification.type === 'NEW_ANNOUNCEMENT') {
-        setView('announcements');
-      } else {
-        setInitialAdminTab('reports');
-        setView('admin');
-      }
+      setInitialAdminTab('reports');
+      setView('admin');
       removeToast(notification.id);
     }
   };
@@ -153,7 +148,6 @@ const App: React.FC = () => {
           {user.role === UserRole.ADMIN && <NavButton icon={LayoutGrid} label="Inventario" isActive={view === 'inventory'} onClick={() => setView('inventory')} />}
           <NavButton icon={ClipboardList} label="Hacer Pedido" isActive={view === 'replenish'} onClick={() => setView('replenish')} />
           <NavButton icon={ClipboardCheck} label="Tareas" isActive={view === 'tasks'} onClick={() => setView('tasks')} />
-          <NavButton icon={Megaphone} label="Anuncios" isActive={view === 'announcements'} onClick={() => setView('announcements')} />
           {user.role === UserRole.ADMIN && <NavButton icon={ShieldCheck} label="Admin" isActive={view === 'admin'} onClick={() => setView('admin')} notificationCount={unreadAdminNotifications.length} />}
         </nav>
         <div className="space-y-2">
@@ -168,7 +162,7 @@ const App: React.FC = () => {
           <div className="flex items-center gap-2"><Logo size="sm" /><h1 className="font-extrabold text-lg text-gray-900 dark:text-white">Hub</h1></div>
           <div className="flex items-center gap-2">
              <button onClick={() => setDarkMode(!darkMode)} className="p-2 text-slate-600 dark:text-slate-400"><span className="sr-only">Toggle Theme</span>{darkMode ? <Sun size={22} /> : <Moon size={22} />}</button>
-             <button onClick={handleLogout} className="p-2 text-slate-600 dark:text-slate-400"><span className="sr-only">Logout</span><LogOut size={22} /></button>
+             <button onClick={handleLogout} className="p-2 text-slate-600 dark:text-slate-400"><span className="sr-only">Logout</span><LogOut size={22} />}</button>
           </div>
         </header>
 
@@ -176,7 +170,6 @@ const App: React.FC = () => {
           {view === 'inventory' && user.role === UserRole.ADMIN && <Inventory currentUser={user} />}
           {view === 'replenish' && <Replenishment currentUser={user} cart={cart} setCart={setCart} showMobileCart={showMobileCart} setShowMobileCart={setShowMobileCart} />}
           {view === 'tasks' && <Tasks currentUser={user} />}
-          {view === 'announcements' && <Announcements currentUser={user} />}
           {view === 'admin' && user.role === UserRole.ADMIN && <Admin currentUser={user} unreadNotificationsCount={unreadAdminNotifications.length} initialTab={initialAdminTab} />}
         </div>
         
@@ -184,7 +177,6 @@ const App: React.FC = () => {
           {user.role === UserRole.ADMIN && <NavButton icon={LayoutGrid} label="Inventario" isActive={view === 'inventory'} onClick={() => setView('inventory')} />}
           <NavButton icon={ClipboardList} label="Pedido" isActive={view === 'replenish'} onClick={() => setView('replenish')} />
           <NavButton icon={ClipboardCheck} label="Tareas" isActive={view === 'tasks'} onClick={() => setView('tasks')} />
-          <NavButton icon={Megaphone} label="Anuncios" isActive={view === 'announcements'} onClick={() => setView('announcements')} />
           {user.role === UserRole.ADMIN && <NavButton icon={ShieldCheck} label="Admin" isActive={view === 'admin'} onClick={() => setView('admin')} notificationCount={unreadAdminNotifications.length} />}
           {view === 'replenish' && <NavButton icon={ShoppingCart} label="Carrito" isActive={showMobileCart} onClick={() => setShowMobileCart(true)} isCart={true} />}
         </nav>
