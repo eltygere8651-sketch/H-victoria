@@ -1,21 +1,7 @@
 import { Product, User, ReplenishmentRequest, UserRole, Department, CartItem, AppNotification, NotificationType, NotificationPayload, OrderBatch, Task, TaskStatus, TaskPriority } from '../types';
-import { 
-  collection, 
-  getDocs, 
-  addDoc, 
-  updateDoc, 
-  deleteDoc, 
-  doc, 
-  query, 
-  where, 
-  onSnapshot, 
-  writeBatch,
-  getDoc,
-  setDoc,
-  orderBy,
-  limit
-} from 'firebase/firestore';
+// FIX: Remove modular imports and use compat 'db' instance directly
 import { db } from '../firebaseConfig';
+import firebase from 'firebase/compat/app';
 
 // LOCAL STORAGE FALLBACK KEYS
 const KEYS = {
@@ -56,13 +42,16 @@ async function initFirestoreWithInitialData() {
   ];
 
   for (const { name, data, key } of collectionsToInit) {
-    const q = query(collection(db, name), limit(1));
-    const snapshot = await getDocs(q);
+    // FIX: Use compat query syntax
+    const q = db.collection(name).limit(1);
+    const snapshot = await q.get();
     if (snapshot.empty) {
       console.log(`Initializing ${name} collection...`);
-      const batch = writeBatch(db);
+      // FIX: Use compat batch syntax
+      const batch = db.batch();
       data.forEach(item => {
-        const docRef = item.id ? doc(db, name, item.id) : doc(collection(db, name));
+        // FIX: Use compat doc reference syntax
+        const docRef = item.id ? db.collection(name).doc(item.id) : db.collection(name).doc();
         batch.set(docRef, { ...item, id: item.id || docRef.id });
       });
       await batch.commit();
@@ -98,13 +87,15 @@ const createNotification = async (type: NotificationType, payload: NotificationP
     readStatus: false,
     payload,
   };
-  await addDoc(collection(db, 'notifications'), newNotification);
+  // FIX: Use compat addDoc syntax
+  await db.collection('notifications').add(newNotification);
 };
 
 // --- AUTH & SESSION ---
 export const login = async (name: string, pin: string): Promise<User | null> => {
-  const q = query(collection(db, "users"), where("name", "==", name), where("pin", "==", pin));
-  const querySnapshot = await getDocs(q);
+  // FIX: Use compat query syntax
+  const q = db.collection("users").where("name", "==", name).where("pin", "==", pin);
+  const querySnapshot = await q.get();
   if (!querySnapshot.empty) {
     const user = { ...querySnapshot.docs[0].data(), id: querySnapshot.docs[0].id } as User;
     saveSession(user);
@@ -123,29 +114,37 @@ export const saveDraftCart = (cart: CartItem[]) => localStorage.setItem(KEYS.DRA
 export const getDraftCart = (): CartItem[] => JSON.parse(localStorage.getItem(KEYS.DRAFT_CART) || '[]');
 
 // --- DEPARTMENTS ---
-export const subscribeToDepartments = (callback: (data: Department[]) => void) => onSnapshot(query(collection(db, 'departments'), orderBy('name')), snapshot => callback(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Department))));
+// FIX: Use compat query syntax for onSnapshot
+export const subscribeToDepartments = (callback: (data: Department[]) => void) => db.collection('departments').orderBy('name').onSnapshot(snapshot => callback(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Department))));
 export const saveDepartment = async (department: Partial<Department>) => {
-  const docRef = department.id ? doc(db, 'departments', department.id) : doc(collection(db, 'departments'));
-  await setDoc(docRef, { ...department, id: docRef.id }, { merge: true });
+  // FIX: Use compat doc reference and set syntax
+  const docRef = department.id ? db.collection('departments').doc(department.id) : db.collection('departments').doc();
+  await docRef.set({ ...department, id: docRef.id }, { merge: true });
 };
-export const deleteDepartment = async (id: string) => await deleteDoc(doc(db, 'departments', id));
+// FIX: Use compat delete syntax
+export const deleteDepartment = async (id: string) => await db.collection('departments').doc(id).delete();
 
 // --- PRODUCTS ---
-export const subscribeToProducts = (callback: (data: Product[]) => void) => onSnapshot(query(collection(db, 'products'), orderBy('name')), snapshot => callback(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Product))));
+// FIX: Use compat query syntax for onSnapshot
+export const subscribeToProducts = (callback: (data: Product[]) => void) => db.collection('products').orderBy('name').onSnapshot(snapshot => callback(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Product))));
 export const saveProduct = async (product: Partial<Product>) => {
-  const docRef = product.id ? doc(db, 'products', product.id) : doc(collection(db, 'products'));
-  await setDoc(docRef, { ...product, id: docRef.id }, { merge: true });
+  // FIX: Use compat doc reference and set syntax
+  const docRef = product.id ? db.collection('products').doc(product.id) : db.collection('products').doc();
+  await docRef.set({ ...product, id: docRef.id }, { merge: true });
 };
-export const deleteProduct = async (id: string) => await deleteDoc(doc(db, 'products', id));
+// FIX: Use compat delete syntax
+export const deleteProduct = async (id: string) => await db.collection('products').doc(id).delete();
 
 // --- ORDERS / REPLENISHMENT ---
 export const submitOrderBatch = async (cart: CartItem[], departmentId: string, departmentName: string, user: User) => {
-  const batch = writeBatch(db);
+  // FIX: Use compat batch syntax
+  const batch = db.batch();
   const lowStockItems: string[] = [];
   const batchId = Date.now().toString().slice(-6);
 
   for (const item of cart) {
-    const productRef = doc(db, 'products', item.product.id);
+    // FIX: Use compat doc reference syntax
+    const productRef = db.collection('products').doc(item.product.id);
     const newQuantity = item.product.quantity - item.quantity;
     batch.update(productRef, { quantity: newQuantity });
 
@@ -155,7 +154,8 @@ export const submitOrderBatch = async (cart: CartItem[], departmentId: string, d
       quantity: item.quantity, status: 'COMPLETED',
       date: new Date().toLocaleString(), timestamp: Date.now(), unit: item.product.unit
     };
-    const requestRef = doc(collection(db, 'requests'));
+    // FIX: Use compat doc reference syntax
+    const requestRef = db.collection('requests').doc();
     batch.set(requestRef, request);
     
     if (newQuantity <= item.product.minThreshold) {
@@ -170,8 +170,9 @@ export const submitOrderBatch = async (cart: CartItem[], departmentId: string, d
 };
 
 export const subscribeToBatches = (callback: (batches: OrderBatch[]) => void) => {
-  const q = query(collection(db, 'requests'), orderBy('timestamp', 'desc'));
-  return onSnapshot(q, snapshot => {
+  // FIX: Use compat query syntax for onSnapshot
+  const q = db.collection('requests').orderBy('timestamp', 'desc');
+  return q.onSnapshot(snapshot => {
     const requests = snapshot.docs.map(d => ({ ...d.data(), id: d.id } as ReplenishmentRequest));
     const batches = requests.reduce((acc, req) => {
       if (!req.batchId) return acc;
@@ -186,41 +187,56 @@ export const subscribeToBatches = (callback: (batches: OrderBatch[]) => void) =>
   });
 };
 export const deleteBatch = async (batchId: string) => {
-  const q = query(collection(db, 'requests'), where('batchId', '==', batchId));
-  const snapshot = await getDocs(q);
-  const batch = writeBatch(db);
+  // FIX: Use compat query syntax
+  const q = db.collection('requests').where('batchId', '==', batchId);
+  const snapshot = await q.get();
+  // FIX: Use compat batch syntax
+  const batch = db.batch();
   snapshot.docs.forEach(d => batch.delete(d.ref));
   await batch.commit();
 };
 
 // --- USERS ---
-export const subscribeToUsers = (callback: (users: User[]) => void) => onSnapshot(query(collection(db, 'users'), orderBy('name')), snapshot => callback(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as User))));
-export const addUser = async (user: Omit<User, 'id'>) => await addDoc(collection(db, 'users'), user);
-export const updateUser = async (user: User) => await updateDoc(doc(db, 'users', user.id), { ...user });
-export const deleteUser = async (id: string) => await deleteDoc(doc(db, 'users', id));
+// FIX: Use compat query syntax for onSnapshot
+export const subscribeToUsers = (callback: (users: User[]) => void) => db.collection('users').orderBy('name').onSnapshot(snapshot => callback(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as User))));
+// FIX: Use compat add syntax
+export const addUser = async (user: Omit<User, 'id'>) => await db.collection('users').add(user);
+// FIX: Use compat update syntax
+export const updateUser = async (user: User) => await db.collection('users').doc(user.id).update({ ...user });
+// FIX: Use compat delete syntax
+export const deleteUser = async (id: string) => await db.collection('users').doc(id).delete();
+// FIX: Added function to save the FCM push token to a user's document.
+// FIX: Use compat update syntax
+export const savePushToken = async (userId: string, token: string) => await db.collection('users').doc(userId).update({ pushToken: token });
 
 // --- NOTIFICATIONS ---
 export const subscribeToNotifications = (callback: (data: AppNotification[]) => void, unreadOnly = false) => {
-  let q = query(collection(db, 'notifications'), orderBy('timestamp', 'desc'));
-  if (unreadOnly) q = query(q, where('readStatus', '==', false));
-  return onSnapshot(q, snapshot => callback(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as AppNotification))));
+  // FIX: Use compat query syntax
+  let q: firebase.firestore.Query = db.collection('notifications').orderBy('timestamp', 'desc');
+  if (unreadOnly) q = q.where('readStatus', '==', false);
+  return q.onSnapshot(snapshot => callback(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as AppNotification))));
 };
-export const markNotificationAsRead = async (id: string, userId: string, userName: string) => await updateDoc(doc(db, 'notifications', id), { readStatus: true, reviewedBy: userName, reviewedAt: Date.now() });
+// FIX: Use compat update syntax
+export const markNotificationAsRead = async (id: string, userId: string, userName: string) => await db.collection('notifications').doc(id).update({ readStatus: true, reviewedBy: userName, reviewedAt: Date.now() });
 export const markAllNotificationsAsRead = async (userId: string, userName: string) => {
-  const q = query(collection(db, 'notifications'), where('readStatus', '==', false));
-  const snapshot = await getDocs(q);
-  const batch = writeBatch(db);
+  // FIX: Use compat query syntax
+  const q = db.collection('notifications').where('readStatus', '==', false);
+  const snapshot = await q.get();
+  // FIX: Use compat batch syntax
+  const batch = db.batch();
   snapshot.docs.forEach(d => batch.update(d.ref, { readStatus: true, reviewedBy: userName, reviewedAt: Date.now() }));
   await batch.commit();
 };
 
 // --- TASKS ---
-export const subscribeToTasks = (callback: (data: Task[]) => void) => onSnapshot(query(collection(db, 'tasks'), orderBy('createdAt', 'desc')), snapshot => callback(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Task))));
+// FIX: Use compat query syntax for onSnapshot
+export const subscribeToTasks = (callback: (data: Task[]) => void) => db.collection('tasks').orderBy('createdAt', 'desc').onSnapshot(snapshot => callback(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Task))));
 export const saveTask = async (task: Partial<Task>) => {
   const isNew = !task.id;
-  const docRef = isNew ? doc(collection(db, 'tasks')) : doc(db, 'tasks', task.id!);
+  // FIX: Use compat doc reference and set syntax
+  const docRef = isNew ? db.collection('tasks').doc() : db.collection('tasks').doc(task.id!);
   const taskData = { ...task, id: docRef.id };
-  await setDoc(docRef, taskData, { merge: true });
+  await docRef.set(taskData, { merge: true });
 
   if(isNew) {
     await createNotification(NotificationType.NEW_TASK, {
@@ -230,18 +246,19 @@ export const saveTask = async (task: Partial<Task>) => {
     });
   }
 };
-export const deleteTask = async (id: string) => await deleteDoc(doc(db, 'tasks', id));
+// FIX: Use compat delete syntax
+export const deleteTask = async (id: string) => await db.collection('tasks').doc(id).delete();
 export const cleanupCompletedTasks = async () => {
   const twelveHoursAgo = Date.now() - (12 * 60 * 60 * 1000);
-  const q = query(
-    collection(db, 'tasks'), 
-    where('status', '==', TaskStatus.COMPLETED),
-    where('completedAt', '<', twelveHoursAgo)
-  );
-  const snapshot = await getDocs(q);
+  // FIX: Use compat query syntax
+  const q = db.collection('tasks')
+    .where('status', '==', TaskStatus.COMPLETED)
+    .where('completedAt', '<', twelveHoursAgo);
+  const snapshot = await q.get();
   if (!snapshot.empty) {
     console.log(`Cleaning up ${snapshot.size} completed tasks...`);
-    const batch = writeBatch(db);
+    // FIX: Use compat batch syntax
+    const batch = db.batch();
     snapshot.docs.forEach(d => batch.delete(d.ref));
     await batch.commit();
   }

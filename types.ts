@@ -9,6 +9,8 @@ export interface User {
   role: UserRole;
   pin: string; // Simplified password for this demo
   permissions?: ('CAN_MANAGE_TASKS')[]; // New: Granular permissions
+  // FIX: Added optional pushToken for FCM integration.
+  pushToken?: string;
 }
 
 // New dynamic Department interface

@@ -9,6 +9,7 @@ import { Logo } from './components/Logo';
 import { LayoutGrid, ClipboardList, ShieldCheck, LogOut, Moon, Sun, Download, Share, PlusSquare, X, Bell, ShoppingCart, ClipboardCheck } from 'lucide-react';
 import { User, UserRole, AppNotification, CartItem } from './types';
 import { NotificationToast } from './components/NotificationToast';
+import { initializePushNotifications } from './services/pushNotificationService';
 
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(storageService.getSession());
@@ -47,11 +48,27 @@ const App: React.FC = () => {
   const [unreadAdminNotifications, setUnreadAdminNotifications] = useState<AppNotification[]>([]);
   const [initialAdminTab, setInitialAdminTab] = useState<'requests' | 'users' | 'reports'>('requests');
   const displayedToastIds = useRef<Set<string>>(new Set());
+  const displayedNativeNotificationIds = useRef<Set<string>>(new Set());
 
   const [cart, setCart] = useState<CartItem[]>(storageService.getDraftCart());
   const [showMobileCart, setShowMobileCart] = useState(false);
   
   const cleanupPerformed = useRef(false);
+  const audioAlertRef = useRef<{
+    context: AudioContext | null;
+    intervalId: number | null;
+    isPlaying: boolean;
+  }>({ context: null, intervalId: null, isPlaying: false });
+  
+  useEffect(() => {
+    // This effect runs when the user state changes.
+    if (user && user.role === UserRole.ADMIN) {
+      // If an admin is logged in, initialize the push notification service.
+      // This will request permission and save the device token.
+      console.log('Admin user detected, initializing push notifications...');
+      initializePushNotifications(user);
+    }
+  }, [user]);
 
   useEffect(() => {
     if (user && user.role === UserRole.ADMIN && !cleanupPerformed.current) {
@@ -93,7 +110,23 @@ const App: React.FC = () => {
   useEffect(() => { if (user) storageService.saveLastView(view); }, [view, user]);
   useEffect(() => { storageService.saveDraftCart(cart); }, [cart]);
 
-  const playNotificationSound = () => { /* ... sound logic ... */ };
+  const showNativeNotification = (notification: AppNotification) => {
+    if ('Notification' in window && Notification.permission === 'granted') {
+       if (document.hidden) { // Only show native notification if tab is not active
+         const n = new Notification(notification.title, {
+            body: notification.message,
+            icon: '/logo192.png', // Make sure you have this icon
+            badge: '/logo192.png',
+            tag: notification.id, // Use ID to prevent duplicate notifications
+         });
+         n.onclick = () => {
+            window.focus();
+            setView('admin');
+            setInitialAdminTab('reports');
+         };
+       }
+    }
+  };
 
   useEffect(() => {
     let unsubscribe: () => void = () => {};
@@ -101,19 +134,95 @@ const App: React.FC = () => {
       unsubscribe = storageService.subscribeToNotifications((notifications) => {
         const newUnread = notifications.filter(n => !n.readStatus);
         setUnreadAdminNotifications(newUnread);
+
         const newToasts = newUnread.filter(n => !displayedToastIds.current.has(n.id));
         if (newToasts.length > 0) {
           setToasts((prev) => [...prev, ...newToasts]);
-          newToasts.forEach(n => displayedToastIds.current.add(n.id));
-          playNotificationSound();
+          newToasts.forEach(n => {
+            displayedToastIds.current.add(n.id);
+            if (!displayedNativeNotificationIds.current.has(n.id)) {
+              showNativeNotification(n);
+              displayedNativeNotificationIds.current.add(n.id);
+            }
+          });
         }
       }, true);
     } else {
       displayedToastIds.current.clear();
+      displayedNativeNotificationIds.current.clear();
       setToasts([]);
+      setUnreadAdminNotifications([]);
     }
     return () => unsubscribe();
   }, [user]);
+
+  const stopAlertSound = () => {
+    if (audioAlertRef.current.intervalId) {
+      clearInterval(audioAlertRef.current.intervalId);
+    }
+    audioAlertRef.current.isPlaying = false;
+    audioAlertRef.current.intervalId = null;
+  };
+
+  const startAlertSound = () => {
+    if (audioAlertRef.current.isPlaying) return;
+
+    try {
+      const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContext) {
+        console.warn("Web Audio API is not supported.");
+        return;
+      }
+
+      if (!audioAlertRef.current.context) {
+        audioAlertRef.current.context = new AudioContext();
+      }
+      const ctx = audioAlertRef.current.context;
+      
+      if (ctx.state === 'suspended') {
+        ctx.resume();
+      }
+
+      const playBeep = () => {
+          if (ctx.state !== 'running') return;
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(900, ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.1);
+          gain.gain.setValueAtTime(0.15, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+
+          osc.start(ctx.currentTime);
+          osc.stop(ctx.currentTime + 0.4);
+      };
+      
+      playBeep();
+      const intervalId = window.setInterval(playBeep, 2000);
+
+      audioAlertRef.current = { ...audioAlertRef.current, isPlaying: true, intervalId: intervalId };
+    } catch (e) {
+      console.warn("Could not start alert sound.", e);
+      stopAlertSound();
+    }
+  };
+
+  useEffect(() => {
+    const hasUnread = unreadAdminNotifications.length > 0;
+    
+    if (hasUnread && view !== 'admin') {
+      startAlertSound();
+    } else {
+      stopAlertSound();
+    }
+
+    return () => {
+      stopAlertSound();
+    };
+  }, [unreadAdminNotifications.length, view]);
 
   const handleInstallClick = async () => {
     if (isIOS) setShowIOSPrompt(true);
@@ -185,7 +294,7 @@ const App: React.FC = () => {
           <div className="flex items-center gap-2"><Logo size="sm" /><h1 className="font-extrabold text-lg text-gray-900 dark:text-white">Hub</h1></div>
           <div className="flex items-center gap-2">
              <button onClick={() => setDarkMode(!darkMode)} className="p-2 text-slate-600 dark:text-slate-400"><span className="sr-only">Toggle Theme</span>{darkMode ? <Sun size={22} /> : <Moon size={22} />}</button>
-             <button onClick={handleLogout} className="p-2 text-slate-600 dark:text-slate-400"><span className="sr-only">Logout</span><LogOut size={22} /></button>
+             <button onClick={handleLogout} className="p-2 text-slate-600 dark:text-slate-400"><span className="sr-only">Logout</span><LogOut size={22} />}</button>
           </div>
         </header>
 
