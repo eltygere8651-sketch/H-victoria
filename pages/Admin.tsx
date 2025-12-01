@@ -29,6 +29,9 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [batchToDelete, setBatchToDelete] = useState<string | null>(null);
 
+  // New: State for notification filter
+  const [notificationFilter, setNotificationFilter] = useState<'all' | 'unread'>('unread');
+
   useEffect(() => {
     setActiveTab(initialTab);
   }, [initialTab]);
@@ -117,6 +120,11 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
     .map(p => ({ name: p.name, stock: p.quantity, min: p.minThreshold }))
     .sort((a, b) => a.stock - b.stock)
     .slice(0, 10);
+
+  // New: Derived state for filtered notifications
+  const filteredNotifications = notificationFilter === 'unread'
+    ? notifications.filter(n => !n.readStatus)
+    : notifications;
 
   if (currentUser.role !== UserRole.ADMIN) return <div className="p-8 text-center text-red-600">Acceso Denegado</div>;
   if (isLoading) return <div className="flex h-full items-center justify-center"><Loader2 size={40} className="animate-spin text-red-600" /></div>;
@@ -256,11 +264,20 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
                     </button>
                   )}
                 </div>
+                {/* New: Filter for notifications */}
+                <div className="flex gap-2 bg-gray-100 dark:bg-slate-800/60 p-1.5 rounded-xl mb-4">
+                  <button onClick={() => setNotificationFilter('unread')} className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${notificationFilter === 'unread' ? 'bg-white dark:bg-slate-900 text-red-500 shadow-md' : 'text-gray-500 dark:text-slate-400 hover:bg-white/50 dark:hover:bg-slate-700/50'}`}>
+                    No Leídas ({unreadNotificationsCount})
+                  </button>
+                  <button onClick={() => setNotificationFilter('all')} className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${notificationFilter === 'all' ? 'bg-white dark:bg-slate-900 text-red-500 shadow-md' : 'text-gray-500 dark:text-slate-400 hover:bg-white/50 dark:hover:bg-slate-700/50'}`}>
+                    Todas
+                  </button>
+                </div>
                 <div className="max-h-96 overflow-y-auto space-y-3 pr-2">
-                  {notifications.length === 0 ? (
-                    <p className="text-gray-400 dark:text-slate-500 text-center py-8">No hay notificaciones.</p>
+                  {filteredNotifications.length === 0 ? (
+                    <p className="text-gray-400 dark:text-slate-500 text-center py-8">No hay notificaciones en esta vista.</p>
                   ) : (
-                    notifications.map(notif => (
+                    filteredNotifications.map(notif => (
                       <div key={notif.id} className={`flex items-start gap-3 p-4 rounded-xl border transition-all ${notif.readStatus ? 'bg-gray-50/50 dark:bg-slate-800/50 border-gray-100 dark:border-slate-800 opacity-70' : 'bg-red-50/50 dark:bg-red-900/10 border-red-100 dark:border-red-900/30 shadow-sm'}`}>
                         <div className="pt-1">
                           <NotificationIcon iconName={notif.icon} size={20} className={notif.readStatus ? 'text-gray-400' : 'text-red-600'} />

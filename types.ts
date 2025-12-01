@@ -76,6 +76,22 @@ export enum TaskPriority {
   HIGH = 'HIGH',
 }
 
+// New: Enum to differentiate between a task and an announcement
+export enum TaskType {
+  TASK = 'TASK',
+  ANNOUNCEMENT = 'ANNOUNCEMENT',
+}
+
+// New: Interface for comments within a task
+export interface TaskComment {
+  id: string;
+  userId: string;
+  userName: string;
+  message: string;
+  timestamp: number;
+}
+
+
 export interface Task {
   id: string;
   title: string;
@@ -91,6 +107,8 @@ export interface Task {
   completedBy?: string;
   completedAt?: number;
   imagesBase64?: string[]; // Store compressed images as Base64 strings
+  type: TaskType; // New: Differentiates between task and announcement
+  comments?: TaskComment[]; // New: Thread for discussions
 }
 
 // --- Notification System Types ---
@@ -98,6 +116,7 @@ export enum NotificationType {
   LOW_STOCK = 'LOW_STOCK',
   NEW_ORDER = 'NEW_ORDER',
   NEW_TASK = 'NEW_TASK',
+  NEW_ANNOUNCEMENT = 'NEW_ANNOUNCEMENT', // New: For announcements
 }
 
 export interface NotificationPayload {

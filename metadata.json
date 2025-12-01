@@ -1,6 +1,6 @@
 {
   "name": "Hub",
-  "description": "Centraliza el inventario, agiliza los pedidos y conecta a tu equipo.",
+  "description": "La inteligencia operativa que impulsa tu rentabilidad.",
   "requestFramePermissions": [
     "camera"
   ]

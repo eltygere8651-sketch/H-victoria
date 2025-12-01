@@ -1,4 +1,4 @@
-import { Product, User, ReplenishmentRequest, UserRole, Department, CartItem, AppNotification, NotificationType, NotificationPayload, OrderBatch, Task, TaskStatus, TaskPriority } from '../types';
+import { Product, User, ReplenishmentRequest, UserRole, Department, CartItem, AppNotification, NotificationType, NotificationPayload, OrderBatch, Task, TaskStatus, TaskPriority, TaskType, TaskComment } from '../types';
 // FIX: Remove modular imports and use compat 'db' instance directly
 import { db } from '../firebaseConfig';
 import firebase from 'firebase/compat/app';
@@ -79,6 +79,11 @@ const createNotification = async (type: NotificationType, payload: NotificationP
       title = 'Nueva Tarea Creada';
       message = `Tarea "${payload.taskTitle}" para el dpto. ${payload.departmentName}.`;
       icon = 'ClipboardCheck';
+      break;
+    case NotificationType.NEW_ANNOUNCEMENT:
+      title = 'Nuevo Anuncio Publicado';
+      message = `Anuncio "${payload.taskTitle}" para ${payload.departmentName}.`;
+      icon = 'Megaphone';
       break;
   }
   const newNotification: Omit<AppNotification, 'id'> = {
@@ -240,7 +245,8 @@ export const saveTask = async (task: Partial<Task>) => {
   await docRef.set(taskData, { merge: true });
 
   if(isNew) {
-    await createNotification(NotificationType.NEW_TASK, {
+    const notificationType = task.type === TaskType.ANNOUNCEMENT ? NotificationType.NEW_ANNOUNCEMENT : NotificationType.NEW_TASK;
+    await createNotification(notificationType, {
       taskId: docRef.id,
       taskTitle: task.title,
       departmentName: task.departmentName
@@ -263,4 +269,17 @@ export const cleanupCompletedTasks = async () => {
     snapshot.docs.forEach(d => batch.delete(d.ref));
     await batch.commit();
   }
+};
+
+// New: Function to add a comment to a task
+export const addCommentToTask = async (taskId: string, comment: Omit<TaskComment, 'id'>) => {
+  const newComment = {
+    ...comment,
+    id: Date.now().toString() + Math.random().toString(36).substring(2, 9),
+    timestamp: Date.now()
+  };
+  const taskRef = db.collection('tasks').doc(taskId);
+  await taskRef.update({
+    comments: firebase.firestore.FieldValue.arrayUnion(newComment)
+  });
 };

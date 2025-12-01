@@ -273,7 +273,7 @@ const App: React.FC = () => {
           <Logo size="md" />
           <div>
             <h1 className="font-extrabold text-xl tracking-tight text-gray-900 dark:text-white">Hub</h1>
-            <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-widest">Control proactivo</p>
+            <p className="text-sm font-bold text-red-600 dark:text-red-500">Tu Negocio, Sincronizado</p>
           </div>
         </div>
         <nav className="flex-1 space-y-2">
