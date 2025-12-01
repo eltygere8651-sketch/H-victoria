@@ -3,25 +3,21 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0, viewport-fit=cover" />
-    <meta name="theme-color" content="#dc2626" />
+    <meta name="theme-color" content="#111827" />
     <meta name="description" content="Centraliza el inventario, agiliza los pedidos y conecta a tu equipo." />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     
-    <!-- PWA Manifest -->
     <link rel="manifest" href="/manifest.json" />
-
     <title>Hub</title>
     
-    <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     
-    <!-- PDF Generation Library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" integrity="sha512-GsLlZN/3F2ErC5ifS5QtgpiJtWd43JWSuIgh7mbzZ8zBps+dvLusV+eNQATqgA/HdeKFVgA5v3S/cIrLF7QnIg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
-    <!-- Tailwind CDN -->
+    <!-- Tailwind Play CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
@@ -32,10 +28,13 @@
               sans: ['Inter', 'sans-serif'],
             },
             colors: {
-              // Soft dark mode palette overrides
+              slate: {
+                850: '#1e293b',
+                950: '#0a0f1e',
+              }
             },
             boxShadow: {
-              'soft': '0 4px 20px -2px rgba(0, 0, 0, 0.05)',
+              'soft': '0 4px_20px -2px rgba(0, 0, 0, 0.05)',
               'glow': '0 0 15px rgba(220, 38, 38, 0.3)', 
               'card-soft': '0 10px 30px -5px rgba(0, 0, 0, 0.08), 0 4px 15px -2px rgba(0, 0, 0, 0.02)',
               'card-dark': '0 10px 30px -5px rgba(0, 0, 0, 0.3), 0 4px 15px -2px rgba(0, 0, 0, 0.1)',
@@ -47,124 +46,67 @@
             keyframes: {
               'pop-in': {
                 '0%': { transform: 'scale(0.95) translateY(10px)', opacity: '0' },
-                '100%': { transform: 'scale(1) translateY(0)', opacity: '1', },
+                '100%': { transform: 'scale(1) translateY(0)', opacity: '1' },
               },
+              'slide-up': {
+                 '0%': { transform: 'translateY(20px)', opacity: '0' },
+                '100%': { transform: 'translateY(0)', opacity: '1' },
+              },
+              'fade-in': {
+                '0%': { opacity: '0' },
+                '100%': { opacity: '1' },
+              }
             },
             animation: {
               'pop-in': 'pop-in 0.3s ease-out forwards',
+              'slide-up': 'slide-up 0.3s ease-out forwards',
+              'fade-in': 'fade-in 0.2s ease-out forwards',
             },
-          }
+          },
         }
       }
     </script>
-
-    <style>
+    <style type="text/tailwindcss">
       body {
         font-family: 'Inter', sans-serif;
         -webkit-tap-highlight-color: transparent;
       }
-      
-      /* Hide scrollbar */
       .no-scrollbar::-webkit-scrollbar { display: none; }
       .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-
-      /* Animations */
-      @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-      @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-      
-      .animate-fade-in { animation: fadeIn 0.2s ease-out; }
-      .animate-slide-up { animation: slideUp 0.3s ease-out; }
-      
-      /* New pop-in animation for modals */
-      .animate-pop-in { animation: pop-in 0.3s ease-out forwards; }
-
-      /* Print Styles */
-      @media print {
-        body * { visibility: hidden; }
-        #print-area, #print-area * { visibility: visible; }
-        #print-area {
-          position: absolute;
-          left: 0;
-          top: 0;
-          width: 100%;
-          min-height: 100%;
-          padding: 0;
-          margin: 0;
-          background-color: white !important;
-          color: black !important;
-        }
-        .no-print { display: none !important; }
-      }
-
-      /* PDF Generation Helpers */
-      .force-light-mode {
-        background-color: #ffffff !important;
-        color: #000000 !important;
-        -webkit-font-smoothing: antialiased;
-        -moz-osx-font-smoothing: grayscale;
-        text-rendering: optimizeLegibility;
-      }
-      
-      .force-light-mode * {
-        box-shadow: none !important;
-        filter: none !important;
-      }
-      
-      .force-light-mode .logo-path {
-        fill: #ffffff !important;
-        color: #ffffff !important;
-        stroke: none !important;
-      }
-
-      .force-light-mode svg rect {
-        fill: #dc2626 !important;
-      }
-      
-      .force-light-mode h1, .force-light-mode h2, .force-light-mode h3 { color: #000000 !important; }
-      .force-light-mode p, .force-light-mode span, .force-light-mode td { color: #1f2937 !important; }
-      
-      .force-light-mode tr { background-color: #ffffff !important; }
-      .force-light-mode tr:nth-child(even) { background-color: #f9fafb !important; } 
-      .force-light-mode td, .force-light-mode th { border-bottom-color: #e5e7eb !important; }
-
-      /* PWA Safe Area Insets for iOS */
       .pt-safe { padding-top: env(safe-area-inset-top); }
       .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
       .pl-safe { padding-left: env(safe-area-inset-left); }
       .pr-safe { padding-right: env(safe-area-inset-right); }
-      
     </style>
-  <script type="importmap">
+
+    <script type="importmap">
 {
   "imports": {
-    "react": "https://aistudiocdn.com/react@18.2.0/index.js",
-    "react-dom": "https://aistudiocdn.com/react-dom@18.2.0/index.js",
-    "react-dom/client": "https://aistudiocdn.com/react-dom@18.2.0/client.js",
-    "react/jsx-runtime": "https://aistudiocdn.com/react@18.2.0/jsx-runtime.js",
+    "react": "https://esm.sh/react@18.2.0",
+    "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+    "react/jsx-runtime": "https://esm.sh/react@18.2.0/jsx-runtime",
     "firebase/app": "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js",
     "firebase/firestore": "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js",
-    "lucide-react": "https://aistudiocdn.com/lucide-react@0.344.0",
-    "recharts": "https://aistudiocdn.com/recharts@2.12.0",
+    "lucide-react": "https://esm.sh/lucide-react@0.344.0",
+    "recharts": "https://esm.sh/recharts@2.12.0",
     "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
     "react/": "https://aistudiocdn.com/react@^19.2.0/",
     "firebase/": "https://aistudiocdn.com/firebase@^12.6.0/",
-    "vite": "https://aistudiocdn.com/vite@^7.2.4",
+    "vite": "https://aistudiocdn.com/vite@^7.2.6",
     "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.1"
   }
 }
 </script>
 </head>
-  <body class="bg-gray-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 antialiased selection:bg-red-100 dark:selection:bg-red-900/50 transition-colors duration-300">
+  <body class="bg-gray-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 antialiased selection:bg-red-100 dark:selection:bg-red-900/50">
     <div id="root"></div>
-    <script type="module" src="/index.tsx?v=1710000001"></script>
+    <script type="module" src="/index.tsx?v=1710000002"></script>
     <script>
-      // Register Service Worker for PWA
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js').then(registration => {
-            console.log('SW registered: ', registration);
-          }).catch(registrationError => {
-            console.log('SW registration failed: ', registrationError);
+          const swUrl = `${window.location.origin}/sw.js`;
+          navigator.serviceWorker.register(swUrl).catch(error => {
+            console.warn('ServiceWorker registration failed. This can happen in sandboxed environments and is not critical for app functionality, but PWA features may be disabled.', error);
           });
         });
       }

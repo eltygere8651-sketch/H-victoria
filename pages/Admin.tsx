@@ -30,19 +30,16 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
   const [batchToDelete, setBatchToDelete] = useState<string | null>(null);
 
   useEffect(() => {
-    // If initialTab changes, update activeTab state
     setActiveTab(initialTab);
   }, [initialTab]);
 
   useEffect(() => {
-    // Realtime subscriptions
     const unsubOrders = storageService.subscribeToBatches(setOrders);
     const unsubUsers = storageService.subscribeToUsers(setUsers);
     const unsubProducts = storageService.subscribeToProducts((data) => {
       setProducts(data);
       setIsLoading(false);
     });
-    // Subscribe to all notifications for the Admin panel
     const unsubNotifications = storageService.subscribeToNotifications(setNotifications, false);
     
     return () => {
@@ -58,11 +55,10 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
     setIsGeneratingPdf(true);
     try {
       const filename = `Pedido_${selectedOrder.batchId}_${selectedOrder.departmentName}.pdf`;
-      // Use the new robust PDF generation method
       await generatePdfFromReactComponent(<OrderPdfDocument order={selectedOrder} />, filename);
     } catch (error) {
       console.error("PDF Generation Failed:", error);
-      alert('Hubo un error al generar el PDF. Por favor, inténtalo de nuevo.');
+      alert('Hubo un error al generar el PDF.');
     } finally {
       setIsGeneratingPdf(false);
     }
@@ -94,7 +90,6 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
     if (editingUser && editingUser.name && editingUser.pin) {
       const userToUpdate = { ...editingUser };
       if (userToUpdate.role === UserRole.ADMIN) {
-        // @ts-ignore
         userToUpdate.permissions = [];
       }
       storageService.updateUser(userToUpdate);
@@ -127,41 +122,41 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
   if (isLoading) return <div className="flex h-full items-center justify-center"><Loader2 size={40} className="animate-spin text-red-600" /></div>;
 
   return (
-    <div className="pb-20 md:pb-6 transition-colors duration-300">
-      <div className="bg-white dark:bg-slate-800 border-b dark:border-slate-700/50 sticky top-0 z-10 shadow-sm transition-colors duration-300">
+    <div className="transition-colors duration-300">
+      <div className="bg-white dark:bg-slate-900 border-b dark:border-slate-800 sticky top-0 z-10 shadow-sm transition-colors duration-300">
         <div className="flex overflow-x-auto no-scrollbar">
-          <button onClick={() => setActiveTab('requests')} className={`flex-1 min-w-[120px] py-4 text-sm font-extrabold border-b-2 transition-colors duration-200 ${activeTab === 'requests' ? 'border-red-600 text-red-600 dark:text-red-400 dark:border-red-400 bg-red-50 dark:bg-red-900/10 shadow-inner drop-shadow-sm' : 'border-transparent text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700/50'}`}>Pedidos</button>
-          <button onClick={() => setActiveTab('reports')} className={`flex-1 min-w-[120px] py-4 text-sm font-extrabold border-b-2 transition-colors duration-200 relative ${activeTab === 'reports' ? 'border-red-600 text-red-600 dark:text-red-400 dark:border-red-400 bg-red-50 dark:bg-red-900/10 shadow-inner drop-shadow-sm' : 'border-transparent text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700/50'}`}>
+          <button onClick={() => setActiveTab('requests')} className={`flex-1 min-w-[120px] py-4 text-sm font-extrabold border-b-2 transition-colors duration-200 ${activeTab === 'requests' ? 'border-red-600 text-red-600 dark:text-red-400 dark:border-red-400 bg-red-50 dark:bg-red-900/10 shadow-inner' : 'border-transparent text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800/50'}`}>Pedidos</button>
+          <button onClick={() => setActiveTab('reports')} className={`flex-1 min-w-[120px] py-4 text-sm font-extrabold border-b-2 transition-colors duration-200 relative ${activeTab === 'reports' ? 'border-red-600 text-red-600 dark:text-red-400 dark:border-red-400 bg-red-50 dark:bg-red-900/10 shadow-inner' : 'border-transparent text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800/50'}`}>
             Reportes
             {unreadNotificationsCount > 0 && (
-                <span className="absolute top-2 right-2 md:right-4 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold ring-2 ring-white dark:ring-slate-800 animate-pulse !important" aria-label={`${unreadNotificationsCount} nuevas notificaciones`}>
-                    !
+                <span className="absolute top-2 right-2 md:right-4 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold ring-2 ring-white dark:ring-slate-900 animate-pulse" aria-label={`${unreadNotificationsCount} nuevas notificaciones`}>
+                    {unreadNotificationsCount}
                 </span>
             )}
           </button>
-          <button onClick={() => setActiveTab('users')} className={`flex-1 min-w-[120px] py-4 text-sm font-extrabold border-b-2 transition-colors duration-200 ${activeTab === 'users' ? 'border-red-600 text-red-600 dark:text-red-400 dark:border-red-400 bg-red-50 dark:bg-red-900/10 shadow-inner drop-shadow-sm' : 'border-transparent text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700/50'}`}>Usuarios</button>
+          <button onClick={() => setActiveTab('users')} className={`flex-1 min-w-[120px] py-4 text-sm font-extrabold border-b-2 transition-colors duration-200 ${activeTab === 'users' ? 'border-red-600 text-red-600 dark:text-red-400 dark:border-red-400 bg-red-50 dark:bg-red-900/10 shadow-inner' : 'border-transparent text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800/50'}`}>Usuarios</button>
         </div>
       </div>
 
-      <div className="p-4 bg-gray-50 dark:bg-slate-900 min-h-[calc(100vh-140px)] transition-colors duration-300">
+      <div className="p-4 bg-gray-50 dark:bg-slate-950 min-h-[calc(100vh-140px)] transition-colors duration-300">
         {activeTab === 'requests' && (
           <div className="space-y-4">
              {orders.length === 0 && <div className="col-span-full py-20 text-center text-gray-400 dark:text-slate-600"><Package size={40} className="mx-auto mb-2 opacity-50" /><p>No hay pedidos registrados.</p></div>}
              <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
                 {orders.map((order) => (
-                  <div key={order.batchId} className="bg-white dark:bg-slate-800 rounded-2xl shadow-card-soft dark:shadow-card-dark border border-gray-200 dark:border-slate-700/50 p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 hover:border-red-200 dark:hover:border-red-900/50 hover:shadow-xl transition-all group">
+                  <div key={order.batchId} className="bg-white dark:bg-slate-900 rounded-2xl shadow-md border border-gray-100 dark:border-slate-800 p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 hover:border-red-500/50 dark:hover:border-red-500/50 hover:shadow-lg transition-all group">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
-                        <span className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-xs font-black px-2 py-1 rounded uppercase tracking-wider border border-red-100 dark:border-red-900/30 drop-shadow-sm">{order.departmentName}</span>
+                        <span className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-xs font-black px-2 py-1 rounded uppercase tracking-wider border border-red-100 dark:border-red-900/30">{order.departmentName}</span>
                         <span className="text-xs text-gray-400 dark:text-slate-500 font-mono">{order.date}</span>
                       </div>
-                      <h3 className="font-bold text-gray-900 dark:text-white text-lg drop-shadow-sm">Pedido <span className="font-mono text-gray-500 dark:text-slate-400">#{order.batchId}</span></h3>
+                      <h3 className="font-bold text-gray-900 dark:text-white text-lg">Pedido <span className="font-mono text-gray-500 dark:text-slate-400">#{order.batchId}</span></h3>
                       <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">Solicitado por: <span className="font-bold text-gray-700 dark:text-slate-300">{order.requestedBy}</span></p>
-                      <p className="text-sm font-extrabold text-gray-600 dark:text-slate-400 mt-2 flex items-center gap-2 drop-shadow-sm"><Package size={16} /> {order.items.reduce((acc, i) => acc + i.quantity, 0)} productos</p>
+                      <p className="text-sm font-extrabold text-gray-600 dark:text-slate-400 mt-2 flex items-center gap-2"><Package size={16} /> {order.items.reduce((acc, i) => acc + i.quantity, 0)} productos</p>
                     </div>
                     <div className="flex items-center gap-3 w-full md:w-auto">
-                      <button onClick={() => setSelectedOrder(order)} className="flex-1 md:flex-none bg-gray-900 dark:bg-white dark:text-slate-900 text-white px-5 py-3 rounded-xl font-bold hover:bg-red-600 dark:hover:bg-gray-200 transition-colors flex items-center justify-center gap-2 shadow-md active:scale-95"><Eye size={18} /> Ver Albarán</button>
-                      <button onClick={() => handleDeleteBatchClick(order.batchId)} className="p-3 text-gray-400 dark:text-slate-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors border border-gray-100 dark:border-slate-700/50 shadow-sm active:scale-95"><Trash2 size={18} /></button>
+                      <button onClick={() => setSelectedOrder(order)} className="flex-1 md:flex-none bg-gray-900 dark:bg-white dark:text-slate-900 text-white px-5 py-3 rounded-xl font-bold hover:bg-red-600 dark:hover:bg-slate-200 transition-colors flex items-center justify-center gap-2 shadow-md active:scale-95"><Eye size={18} /> Ver Albarán</button>
+                      <button onClick={() => handleDeleteBatchClick(order.batchId)} className="p-3 text-gray-400 dark:text-slate-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors border border-gray-100 dark:border-slate-700 shadow-sm active:scale-95"><Trash2 size={18} /></button>
                     </div>
                   </div>
                 ))}
@@ -171,22 +166,22 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
 
         {activeTab === 'users' && (
           <div>
-            <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-card-soft dark:shadow-card-dark border border-gray-100 dark:border-slate-700/50 mb-6">
-              <div className="flex items-center gap-2 mb-4 text-gray-900 dark:text-white"><Users className="text-red-600 dark:text-red-400 drop-shadow-sm" size={24} /><h3 className="font-bold text-xl drop-shadow-sm">Registrar Nuevo Empleado</h3></div>
+            <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-md border border-gray-100 dark:border-slate-800 mb-6">
+              <div className="flex items-center gap-2 mb-4 text-gray-900 dark:text-white"><Users className="text-red-600 dark:text-red-400" size={24} /><h3 className="font-bold text-xl">Registrar Empleado</h3></div>
               <form onSubmit={handleAddUser} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <input type="text" placeholder="Nombre" value={newUser.name} onChange={e => setNewUser({...newUser, name: e.target.value})} className="p-3 border-2 border-gray-200 dark:border-slate-700/50 rounded-xl bg-gray-50 dark:bg-slate-700/50 dark:text-white outline-none focus:border-red-500 focus:ring-4 focus:ring-red-100 dark:focus:ring-red-500/30 shadow-sm" required />
-                  <input type="text" placeholder="PIN" value={newUser.pin} onChange={e => setNewUser({...newUser, pin: e.target.value})} className="p-3 border-2 border-gray-200 dark:border-slate-700/50 rounded-xl bg-gray-50 dark:bg-slate-700/50 dark:text-white outline-none focus:border-red-500 focus:ring-4 focus:ring-red-100 dark:focus:ring-red-500/30 shadow-sm" required />
-                  <select value={newUser.role} onChange={e => setNewUser({...newUser, role: e.target.value as UserRole})} className="p-3 border-2 border-gray-200 dark:border-slate-700/50 rounded-xl bg-gray-50 dark:bg-slate-700/50 dark:text-white outline-none focus:border-red-500 focus:ring-4 focus:ring-red-100 dark:focus:ring-red-500/30 shadow-sm">
+                  <input type="text" placeholder="Nombre" value={newUser.name} onChange={e => setNewUser({...newUser, name: e.target.value})} className="p-3 border-2 border-gray-200 dark:border-slate-700 rounded-xl bg-gray-100 dark:bg-slate-800/60 dark:text-white outline-none focus:border-red-500 focus:ring-2 focus:ring-red-200 dark:focus:ring-red-500/50 shadow-sm" required />
+                  <input type="text" placeholder="PIN" value={newUser.pin} onChange={e => setNewUser({...newUser, pin: e.target.value})} className="p-3 border-2 border-gray-200 dark:border-slate-700 rounded-xl bg-gray-100 dark:bg-slate-800/60 dark:text-white outline-none focus:border-red-500 focus:ring-2 focus:ring-red-200 dark:focus:ring-red-500/50 shadow-sm" required />
+                  <select value={newUser.role} onChange={e => setNewUser({...newUser, role: e.target.value as UserRole})} className="p-3 border-2 border-gray-200 dark:border-slate-700 rounded-xl bg-gray-100 dark:bg-slate-800/60 dark:text-white outline-none focus:border-red-500 focus:ring-2 focus:ring-red-200 dark:focus:ring-red-500/50 shadow-sm appearance-none">
                     <option value={UserRole.STAFF}>Personal</option><option value={UserRole.ADMIN}>Admin</option>
                   </select>
                 </div>
                  {newUser.role === UserRole.STAFF && (
                   <div className="pt-2">
-                    <label className="flex items-center gap-3 p-3 border-2 border-transparent rounded-xl bg-gray-50 dark:bg-slate-700/50 cursor-pointer">
+                    <label className="flex items-center gap-3 p-3 border-2 border-transparent rounded-xl bg-gray-100 dark:bg-slate-800/60 cursor-pointer">
                       <input
                         type="checkbox"
-                        className="w-5 h-5 rounded text-red-600 focus:ring-red-500 border-gray-300 dark:border-slate-600 bg-gray-100 dark:bg-slate-700"
+                        className="w-5 h-5 rounded text-red-600 focus:ring-red-500 border-gray-300 dark:border-slate-600 bg-gray-200 dark:bg-slate-700"
                         checked={!!newUser.permissions?.includes('CAN_MANAGE_TASKS')}
                         onChange={e => {
                           const newPermissions = e.target.checked
@@ -204,10 +199,10 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
             </div>
             <div className="space-y-3">
               {users.map(u => (
-                <div key={u.id} className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-gray-100 dark:border-slate-700/50 flex items-center justify-between hover:shadow-lg transition-shadow group">
+                <div key={u.id} className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-gray-100 dark:border-slate-800 flex items-center justify-between hover:shadow-lg transition-shadow group">
                   <div className="flex items-center gap-3">
-                    <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg shadow-sm ${u.role === UserRole.ADMIN ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-gray-600'}`}>{u.name.charAt(0)}</div>
-                    <div><h4 className="font-bold text-gray-900 dark:text-white drop-shadow-sm">{u.name}</h4><p className="text-xs text-gray-500 dark:text-slate-400 drop-shadow-sm">{u.role} • PIN: {u.pin}</p></div>
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg shadow-sm ${u.role === UserRole.ADMIN ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400' : 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300'}`}>{u.name.charAt(0)}</div>
+                    <div><h4 className="font-bold text-gray-900 dark:text-white">{u.name}</h4><p className="text-xs text-gray-500 dark:text-slate-400">{u.role} • PIN: {u.pin}</p></div>
                   </div>
                   <div className="flex items-center gap-2">
                     <button onClick={() => setEditingUser(u)} className="p-2 text-blue-600 bg-blue-50 dark:bg-blue-900/20 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30 active:scale-95 transition-colors shadow-sm"><Edit2 size={18} /></button>
@@ -221,8 +216,8 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
 
         {activeTab === 'reports' && (
            <div className="space-y-8">
-             <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-card-soft dark:shadow-card-dark border border-gray-100 dark:border-slate-700/50">
-               <h3 className="text-lg font-bold mb-4 text-gray-900 dark:text-white drop-shadow-sm flex items-center gap-2">
+             <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-md border border-gray-100 dark:border-slate-800">
+               <h3 className="text-lg font-bold mb-4 text-gray-900 dark:text-white flex items-center gap-2">
                  <BarChartIcon size={20} className="text-red-600 dark:text-red-400" /> Top 10 Productos en Stock Crítico
                </h3>
                <div className="h-64 w-full">
@@ -233,13 +228,7 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
                         <XAxis dataKey="name" tick={{ fontSize: 10, fill: 'currentColor' }} interval={0} angle={-45} textAnchor="end" height={50} />
                         <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: 'currentColor' }} />
                         <Tooltip
-                            contentStyle={{
-                                backgroundColor: 'rgba(255, 255, 255, 0.8)',
-                                backdropFilter: 'blur(4px)',
-                                border: '1px solid rgba(200, 200, 200, 0.5)',
-                                borderRadius: '1rem',
-                                color: '#333'
-                            }}
+                            contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(4px)', border: '1px solid rgba(200, 200, 200, 0.5)', borderRadius: '1rem', color: '#333' }}
                             cursor={{ fill: 'rgba(220, 38, 38, 0.1)' }}
                         />
                         <Bar dataKey="stock" name="Stock Actual" radius={[4, 4, 0, 0]}>
@@ -250,24 +239,19 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
                       </BarChart>
                     </ResponsiveContainer>
                   ) : (
-                    <div className="flex h-full items-center justify-center text-gray-400 dark:text-slate-500">
-                      <p>No hay datos de stock bajo para mostrar.</p>
-                    </div>
+                    <div className="flex h-full items-center justify-center text-gray-400 dark:text-slate-500"><p>No hay datos de stock bajo.</p></div>
                   )}
                </div>
              </div>
              
-             <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-card-soft dark:shadow-card-dark border border-gray-100 dark:border-slate-700/50">
+             <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-md border border-gray-100 dark:border-slate-800">
                 <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg font-bold text-gray-900 dark:text-white drop-shadow-sm flex items-center gap-2">
+                  <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
                     <BellRing size={20} className="text-red-600 dark:text-red-400" />
                     Registro de Actividad y Notificaciones
                   </h3>
                   {unreadNotificationsCount > 0 && (
-                    <button
-                      onClick={handleMarkAllNotificationsAsRead}
-                      className="text-sm font-bold text-red-600 dark:text-red-400 hover:underline flex items-center gap-1 drop-shadow-sm"
-                    >
+                    <button onClick={handleMarkAllNotificationsAsRead} className="text-sm font-bold text-red-600 dark:text-red-400 hover:underline flex items-center gap-1">
                       <CheckCircle2 size={16} /> Marcar todas como leídas
                     </button>
                   )}
@@ -277,12 +261,12 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
                     <p className="text-gray-400 dark:text-slate-500 text-center py-8">No hay notificaciones.</p>
                   ) : (
                     notifications.map(notif => (
-                      <div key={notif.id} className={`flex items-start gap-3 p-4 rounded-xl border transition-all ${notif.readStatus ? 'bg-gray-50/50 dark:bg-slate-800/50 border-gray-100 dark:border-slate-700/50 opacity-70' : 'bg-red-50/50 dark:bg-red-900/10 border-red-100 dark:border-red-900/30 shadow-sm'}`}>
+                      <div key={notif.id} className={`flex items-start gap-3 p-4 rounded-xl border transition-all ${notif.readStatus ? 'bg-gray-50/50 dark:bg-slate-800/50 border-gray-100 dark:border-slate-800 opacity-70' : 'bg-red-50/50 dark:bg-red-900/10 border-red-100 dark:border-red-900/30 shadow-sm'}`}>
                         <div className="pt-1">
                           <NotificationIcon iconName={notif.icon} size={20} className={notif.readStatus ? 'text-gray-400' : 'text-red-600'} />
                         </div>
                         <div className="flex-1">
-                          <p className="font-bold text-gray-800 dark:text-slate-200 text-sm drop-shadow-sm">{notif.title}</p>
+                          <p className="font-bold text-gray-800 dark:text-slate-200 text-sm">{notif.title}</p>
                           <p className="text-gray-600 dark:text-slate-400 text-sm mt-1">{notif.message}</p>
                           <div className="text-xs text-gray-400 dark:text-slate-500 mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
                              <span>{new Date(notif.timestamp).toLocaleString()}</span>
@@ -290,11 +274,7 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
                           </div>
                         </div>
                         {!notif.readStatus && (
-                          <button
-                            onClick={() => handleMarkNotificationAsRead(notif.id)}
-                            className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-100 dark:hover:bg-green-900/20 rounded-full transition-colors"
-                            title="Marcar como leída"
-                          >
+                          <button onClick={() => handleMarkNotificationAsRead(notif.id)} className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-100 dark:hover:bg-green-900/20 rounded-full transition-colors" title="Marcar como leída">
                             <CheckCircle2 size={20} />
                           </button>
                         )}
@@ -312,22 +292,20 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
           <div className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-md p-6 shadow-pop-in animate-pop-in">
             <div className="flex justify-between items-center mb-4"><h3 className="font-bold text-xl text-gray-900 dark:text-white">Editar Usuario</h3><button onClick={() => setEditingUser(null)} className="text-gray-400 hover:text-gray-600"><X /></button></div>
             <div className="space-y-4">
-              <input type="text" placeholder="Nombre" value={editingUser.name} onChange={e => setEditingUser({...editingUser, name: e.target.value})} className="w-full p-3 border-2 border-gray-200 dark:border-slate-700/50 rounded-xl bg-gray-50 dark:bg-slate-700/50 dark:text-white outline-none focus:border-red-500 focus:ring-4 focus:ring-red-100 dark:focus:ring-red-500/30 shadow-sm" required />
-              <input type="text" placeholder="PIN" value={editingUser.pin} onChange={e => setEditingUser({...editingUser, pin: e.target.value})} className="w-full p-3 border-2 border-gray-200 dark:border-slate-700/50 rounded-xl bg-gray-50 dark:bg-slate-700/50 dark:text-white outline-none focus:border-red-500 focus:ring-4 focus:ring-red-100 dark:focus:ring-red-500/30 shadow-sm" required />
-              <select value={editingUser.role} onChange={e => setEditingUser({...editingUser, role: e.target.value as UserRole})} className="w-full p-3 border-2 border-gray-200 dark:border-slate-700/50 rounded-xl bg-gray-50 dark:bg-slate-700/50 dark:text-white outline-none focus:border-red-500 focus:ring-4 focus:ring-red-100 dark:focus:ring-red-500/30 shadow-sm appearance-none">
+              <input type="text" placeholder="Nombre" value={editingUser.name} onChange={e => setEditingUser({...editingUser, name: e.target.value})} className="w-full p-3 border-2 border-gray-200 dark:border-slate-700/50 rounded-xl bg-gray-100 dark:bg-slate-800/60 dark:text-white outline-none focus:border-red-500 focus:ring-2 focus:ring-red-200 dark:focus:ring-red-500/50 shadow-sm" required />
+              <input type="text" placeholder="PIN" value={editingUser.pin} onChange={e => setEditingUser({...editingUser, pin: e.target.value})} className="w-full p-3 border-2 border-gray-200 dark:border-slate-700/50 rounded-xl bg-gray-100 dark:bg-slate-800/60 dark:text-white outline-none focus:border-red-500 focus:ring-2 focus:ring-red-200 dark:focus:ring-red-500/50 shadow-sm" required />
+              <select value={editingUser.role} onChange={e => setEditingUser({...editingUser, role: e.target.value as UserRole})} className="w-full p-3 border-2 border-gray-200 dark:border-slate-700/50 rounded-xl bg-gray-100 dark:bg-slate-800/60 dark:text-white outline-none focus:border-red-500 focus:ring-2 focus:ring-red-200 dark:focus:ring-red-500/50 shadow-sm appearance-none">
                 <option value={UserRole.STAFF}>Personal</option><option value={UserRole.ADMIN}>Admin</option>
               </select>
               {editingUser.role === UserRole.STAFF && (
                 <div className="pt-2">
-                    <label className="flex items-center gap-3 p-3 border-2 border-transparent rounded-xl bg-gray-50 dark:bg-slate-700/50 cursor-pointer">
+                    <label className="flex items-center gap-3 p-3 border-2 border-transparent rounded-xl bg-gray-100 dark:bg-slate-800/60 cursor-pointer">
                         <input
                             type="checkbox"
-                            className="w-5 h-5 rounded text-red-600 focus:ring-red-500 border-gray-300 dark:border-slate-600 bg-gray-100 dark:bg-slate-700"
+                            className="w-5 h-5 rounded text-red-600 focus:ring-red-500 border-gray-300 dark:border-slate-600 bg-gray-200 dark:bg-slate-700"
                             checked={!!editingUser.permissions?.includes('CAN_MANAGE_TASKS')}
                             onChange={e => {
-                                const newPermissions = e.target.checked
-                                    ? ['CAN_MANAGE_TASKS']
-                                    : [];
+                                const newPermissions = e.target.checked ? ['CAN_MANAGE_TASKS'] : [];
                                 setEditingUser({ ...editingUser, permissions: newPermissions as ('CAN_MANAGE_TASKS')[] });
                             }}
                         />
@@ -369,22 +347,7 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
             </div>
           </div>
           <div id="pdf-preview-content" className="bg-white text-black p-6 md:p-12 rounded-t-2xl md:rounded-2xl shadow-2xl max-w-3xl w-full h-auto animate-slide-up" onClick={e => e.stopPropagation()}>
-            <div className="flex justify-between items-start border-b-2 border-black pb-8 mb-8">
-              <div className="flex items-center gap-4"><Logo size="lg" solid /><div className="mt-2"><h1 className="text-3xl font-black uppercase tracking-tighter">Hub</h1><p className="text-red-600 font-bold uppercase tracking-[0.3em] text-sm">Reporte de Pedido</p></div></div>
-              <div className="text-right"><h2 className="text-2xl font-mono font-bold">#{selectedOrder.batchId}</h2><p className="text-sm font-semibold text-gray-500 mt-1">{selectedOrder.date}</p></div>
-            </div>
-            <div className="grid grid-cols-2 gap-8 mb-10"><p><span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Departamento</span><br /><span className="text-2xl font-extrabold">{selectedOrder.departmentName}</span></p><p><span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Solicitante</span><br /><span className="text-2xl font-extrabold">{selectedOrder.requestedBy}</span></p></div>
-            <table className="w-full mb-12">
-              <thead><tr className="border-b-2 border-black"><th className="text-left py-3 text-sm font-black uppercase tracking-wider">Producto</th><th className="text-center py-3 text-sm font-black uppercase tracking-wider w-32">Cant.</th><th className="hidden md:table-cell text-right py-3 text-sm font-black uppercase tracking-wider w-24">Unidad</th><th className="text-right py-3 text-sm font-black uppercase tracking-wider w-20">Check</th></tr></thead>
-              <tbody>
-                {selectedOrder.items.map((item, idx) => (
-                  <tr key={idx} className="border-b border-gray-200"><td className="py-4 font-bold text-lg">{item.productName}</td><td className="py-4 text-center font-black text-xl">{item.quantity}</td><td className="hidden md:table-cell py-4 text-right text-gray-500 font-semibold">{item.unit || 'uds.'}</td><td className="py-4 text-right"><div className="w-8 h-8 border-2 border-gray-300 rounded-lg inline-block"></div></td></tr>
-                ))}
-              </tbody>
-            </table>
-            <div className="mt-12 pt-12 text-center border-t-2 border-gray-200">
-              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Generado Digitalmente por Hub</p>
-            </div>
+            <OrderPdfDocument order={selectedOrder} />
           </div>
           <div className="h-24 w-full no-print"></div>
         </div>

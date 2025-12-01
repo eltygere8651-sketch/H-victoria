@@ -235,7 +235,7 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCar
   }
 
   return (
-    <div className="h-full flex flex-col lg:flex-row bg-gray-50 dark:bg-slate-900 relative font-sans transition-colors duration-300">
+    <div className="h-full flex flex-col lg:flex-row bg-gray-50 dark:bg-slate-950 relative font-sans transition-colors duration-300">
       
       {selectedProduct && (
         <div className="fixed inset-0 z-[70] flex items-end md:items-center justify-center bg-black/70 dark:bg-slate-900/90 backdrop-blur-sm animate-fade-in">
@@ -381,36 +381,36 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCar
         </div>
       )}
 
-      <div className="flex-1 flex flex-col h-full pb-20 lg:pb-0">
-        <div className="bg-white dark:bg-slate-800 px-4 py-4 md:px-6 md:py-6 border-b border-gray-200 dark:border-slate-700/50 shadow-sm z-10 space-y-4 transition-colors duration-300">
+      <div className="flex-1 flex flex-col h-full lg:pb-0">
+        <div className="bg-white dark:bg-slate-900 px-4 py-4 md:px-6 md:py-6 border-b border-gray-100 dark:border-slate-800 shadow-sm z-10 space-y-4 transition-colors duration-300">
            <div className="relative">
               <label htmlFor="catalog-department-select" className="sr-only">Filtrar Productos por Departamento</label>
               <select
                 id="catalog-department-select"
                 value={selectedDepartmentForOrder}
                 onChange={(e) => setSelectedDepartmentForOrder(e.target.value)}
-                className="w-full px-4 py-3 rounded-2xl border-2 border-gray-200 dark:border-slate-600/50 focus:ring-4 focus:ring-red-100 dark:focus:ring-red-500/30 focus:border-red-500 outline-none transition-all bg-gray-50 dark:bg-slate-700/50 dark:text-white focus:bg-white dark:focus:bg-slate-700 shadow-sm appearance-none pr-10"
+                className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-slate-700 focus:ring-2 focus:ring-red-200 dark:focus:ring-red-500/50 focus:border-red-500 outline-none transition-all bg-gray-100 dark:bg-slate-800/60 dark:text-white focus:bg-white dark:focus:bg-slate-900 shadow-sm appearance-none pr-10"
               >
                 {departments.map((dep) => (
                   <option key={dep.id} value={dep.id}>{dep.name}</option>
                 ))}
               </select>
-              <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500 pointer-events-none" size={22} />
+              <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500 pointer-events-none" size={20} />
             </div>
 
            <div className="relative">
-             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" size={24} />
+             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" size={20} />
              <input 
                type="text" 
                placeholder="Buscar producto..." 
                value={searchTerm}
                onChange={(e) => setSearchTerm(e.target.value)}
-               className="w-full pl-12 pr-4 py-4 rounded-2xl border-2 border-gray-200 dark:border-slate-700/50 bg-gray-50 dark:bg-slate-700/50 text-lg focus:bg-white dark:focus:bg-slate-800 focus:border-red-500 dark:focus:border-red-500 focus:ring-4 focus:ring-red-100 dark:focus:ring-red-500/30 outline-none transition-all dark:text-white placeholder-gray-400 dark:placeholder-slate-500 shadow-sm"
+               className="w-full pl-12 pr-4 py-3 rounded-xl border-2 border-gray-200 dark:border-slate-700 text-base focus:bg-white dark:focus:bg-slate-900 focus:border-red-500 focus:ring-2 focus:ring-red-200 dark:focus:ring-red-500/50 outline-none transition-all bg-gray-100 dark:bg-slate-800/60 dark:text-white placeholder-gray-400 dark:placeholder-slate-500 shadow-sm"
              />
            </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4 md:p-6 bg-gray-50 dark:bg-slate-900 transition-colors duration-300">
+        <div className="flex-1 overflow-y-auto p-4 md:p-6 bg-gray-50 dark:bg-slate-950 transition-colors duration-300">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {filteredProducts.map(product => {
                const inCart = cart.find(c => c.product.id === product.id);
@@ -422,26 +422,26 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCar
                   key={product.id} 
                   onClick={() => available > 0 && openQtyModal(product)}
                   disabled={available <= 0}
-                  className={`text-left group relative bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-card-soft dark:shadow-card-dark border-2 border-gray-100 dark:border-slate-700/50 transition-all duration-200 min-h-[140px] flex flex-col justify-between
+                  className={`text-left group relative bg-white dark:bg-slate-900 p-5 rounded-2xl shadow-md border border-gray-100 dark:border-slate-800 transition-all duration-200 min-h-[140px] flex flex-col justify-between
                     ${available <= 0 
                       ? 'opacity-60 bg-gray-100 dark:bg-slate-800/60 cursor-not-allowed grayscale' 
-                      : 'hover:border-red-500 dark:hover:border-red-500 hover:shadow-xl dark:hover:shadow-red-900/20 active:scale-[0.98]'}
+                      : 'hover:border-red-500 dark:hover:border-red-500 hover:shadow-lg active:scale-[0.98]'}
                   `}
                 >
                   <div className="flex justify-between items-start mb-2">
                     <div className="flex-1 pr-2">
-                      <h3 className="text-lg md:text-xl font-extrabold text-gray-900 dark:text-white leading-snug line-clamp-2 drop-shadow-sm">{product.name}</h3>
-                      <p className="text-sm font-semibold text-gray-400 dark:text-slate-500 mt-1 uppercase tracking-wide drop-shadow-sm">{product.category}</p>
+                      <h3 className="text-base md:text-lg font-extrabold text-gray-900 dark:text-white leading-snug line-clamp-2">{product.name}</h3>
+                      <p className="text-xs font-semibold text-gray-400 dark:text-slate-500 mt-1 uppercase tracking-wider">{product.category}</p>
                     </div>
                     {inCart && (
-                      <span className="bg-red-600 text-white text-sm font-bold px-2.5 py-1 rounded-lg shadow-md animate-fade-in shrink-0 drop-shadow-sm">
+                      <span className="bg-red-600 text-white text-sm font-bold px-2.5 py-1 rounded-lg shadow-md animate-fade-in shrink-0">
                         {inCart.quantity}
                       </span>
                     )}
                   </div>
                   
                   <div className="mt-2 flex items-center justify-between">
-                    <div className={`text-sm font-bold px-3 py-1.5 rounded-lg drop-shadow-sm ${available <= 0 ? 'bg-gray-200 text-gray-500 dark:bg-slate-700 dark:text-slate-400' : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'}`}>
+                    <div className={`text-sm font-bold px-3 py-1.5 rounded-lg ${available <= 0 ? 'bg-gray-200 text-gray-500 dark:bg-slate-700 dark:text-slate-400' : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'}`}>
                       {available <= 0 ? 'AGOTADO' : `${available} ${product.unit}`}
                     </div>
                   </div>
@@ -455,9 +455,9 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCar
       <div className={`
           fixed lg:relative inset-x-0 bottom-0 z-50 lg:z-auto
           w-full lg:w-96 
-          bg-white dark:bg-slate-800 
-          border-t lg:border-l lg:border-t-0 border-gray-200 dark:border-slate-700/50 
-          shadow-[0_-10px_40px_rgba(0,0,0,0.2)] lg:shadow-2xl 
+          bg-white dark:bg-slate-900 
+          border-t lg:border-l lg:border-t-0 border-gray-100 dark:border-slate-800 
+          shadow-[0_-10px_40px_rgba(0,0,0,0.1)] lg:shadow-xl 
           flex flex-col 
           h-[85vh] lg:h-full 
           transition-transform duration-300 ease-out
@@ -465,41 +465,41 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCar
           ${showMobileCart ? 'translate-y-0' : 'translate-y-full lg:translate-y-0'}
       `}>
         <div 
-          className="lg:hidden w-full p-4 flex justify-center items-center border-b border-gray-100 dark:border-slate-700/50 cursor-pointer"
+          className="lg:hidden w-full p-4 flex justify-center items-center border-b border-gray-100 dark:border-slate-800 cursor-pointer"
           onClick={() => setShowMobileCart(false)}
         >
-           <div className="w-12 h-1.5 bg-gray-300 dark:bg-slate-600 rounded-full mb-1"></div>
+           <div className="w-12 h-1.5 bg-gray-300 dark:bg-slate-700 rounded-full mb-1"></div>
         </div>
 
-        <div className="p-6 border-b border-gray-100 dark:border-slate-700/50 bg-gray-50 dark:bg-slate-800/50 flex justify-between items-center rounded-t-3xl lg:rounded-none">
+        <div className="p-6 border-b border-gray-100 dark:border-slate-800 bg-gray-50 dark:bg-slate-900 flex justify-between items-center rounded-t-3xl lg:rounded-none">
           <div>
-            <h3 className="font-extrabold text-gray-900 dark:text-white text-xl tracking-tight drop-shadow-sm">Tu Pedido</h3>
+            <h3 className="font-extrabold text-gray-900 dark:text-white text-xl tracking-tight">Tu Pedido</h3>
             <p className="text-sm text-gray-500 dark:text-slate-400 font-medium mt-1">
-              {cart.length > 0 ? `Para: ${selectedDepartmentNameForOrder}` : 'Añade productos para empezar un pedido.'}
+              {cart.length > 0 ? `Para: ${selectedDepartmentNameForOrder}` : 'Añade productos para empezar.'}
             </p>
           </div>
-          <div className="bg-gray-900 dark:bg-white dark:text-slate-900 text-white w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm shadow-sm drop-shadow-sm">
+          <div className="bg-gray-900 dark:bg-white dark:text-slate-900 text-white w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm shadow-sm">
             {cart.length}
           </div>
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 space-y-3">
           {cart.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-gray-300 dark:text-slate-600 space-y-4">
+            <div className="h-full flex flex-col items-center justify-center text-gray-300 dark:text-slate-700 space-y-4">
               <ShoppingCart size={64} strokeWidth={1.5} />
               <p className="text-lg font-bold">Carrito Vacío</p>
             </div>
           ) : (
             cart.map(item => (
-              <div key={item.product.id} className="flex items-center justify-between bg-white dark:bg-slate-700/50 border-2 border-gray-100 dark:border-slate-700 p-4 rounded-2xl shadow-sm group hover:border-red-100 dark:hover:border-red-500/30 transition-colors">
+              <div key={item.product.id} className="flex items-center justify-between bg-white dark:bg-slate-800/50 border border-gray-100 dark:border-slate-700/50 p-4 rounded-2xl shadow-sm group hover:border-red-100 dark:hover:border-red-500/30 transition-colors">
                 <div className="flex-1 min-w-0 pr-4">
-                  <p className="font-bold text-base text-gray-900 dark:text-white truncate drop-shadow-sm">{item.product.name}</p>
-                  <p className="text-xs text-gray-500 dark:text-slate-400 truncate mt-1 drop-shadow-sm">{item.product.departmentName}</p>
+                  <p className="font-bold text-base text-gray-900 dark:text-white truncate">{item.product.name}</p>
+                  <p className="text-xs text-gray-500 dark:text-slate-400 truncate mt-1">{item.product.departmentName}</p>
                 </div>
                 <div className="flex items-center gap-3">
-                  <button onClick={() => updateQuantityInCart(item.product.id, -1)} className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-slate-600 flex items-center justify-center hover:bg-gray-200 dark:hover:bg-slate-500 font-bold active:scale-95 transition-all"><Minus size={14} /></button>
-                  <span className="font-black text-lg w-8 text-center text-gray-900 dark:text-white drop-shadow-sm">{item.quantity}</span>
-                  <button onClick={() => updateQuantityInCart(item.product.id, 1)} className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-slate-600 flex items-center justify-center hover:bg-gray-200 dark:hover:bg-slate-500 font-bold active:scale-95 transition-all"><Plus size={14} /></button>
+                  <button onClick={() => updateQuantityInCart(item.product.id, -1)} className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-slate-700 flex items-center justify-center hover:bg-gray-200 dark:hover:bg-slate-600 font-bold active:scale-95 transition-all"><Minus size={14} /></button>
+                  <span className="font-black text-lg w-8 text-center text-gray-900 dark:text-white">{item.quantity}</span>
+                  <button onClick={() => updateQuantityInCart(item.product.id, 1)} className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-slate-700 flex items-center justify-center hover:bg-gray-200 dark:hover:bg-slate-600 font-bold active:scale-95 transition-all"><Plus size={14} /></button>
                   <button onClick={() => removeFromCart(item.product.id)} className="text-gray-300 hover:text-red-500 ml-2 transition-colors p-2 -mr-2 rounded-full hover:bg-red-50 dark:hover:bg-red-900/20 active:scale-95"><Trash2 size={18} /></button>
                 </div>
               </div>
@@ -507,7 +507,7 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCar
           )}
         </div>
 
-        <div className="p-6 border-t border-gray-200 dark:border-slate-700/50 bg-white dark:bg-slate-800 pb-safe lg:pb-6">
+        <div className="p-6 border-t border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-900 pb-safe lg:pb-6">
           <button 
             onClick={() => setShowConfirmModal(true)}
             disabled={isOrderButtonDisabled}

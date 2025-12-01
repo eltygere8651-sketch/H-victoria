@@ -30,7 +30,6 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
   const [viewingImages, setViewingImages] = useState<{ images: string[], startIndex: number } | null>(null);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
 
-  // New permission check logic
   const canManageTasks = currentUser.role === UserRole.ADMIN || (currentUser.permissions?.includes('CAN_MANAGE_TASKS') ?? false);
 
   useEffect(() => {
@@ -75,7 +74,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
       }));
     } catch (error: any) {
       console.error("Image processing failed:", error);
-      alert("Hubo un error al procesar las imágenes. Por favor, inténtalo de nuevo.");
+      alert("Hubo un error al procesar las imágenes.");
     } finally {
       setIsCompressing(false);
       if (e.target) e.target.value = "";
@@ -91,7 +90,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
 
   const handleSaveTask = async () => {
     if (!editingTask || !editingTask.title || !editingTask.departmentId) {
-      alert('El título y el departamento asignado son obligatorios.');
+      alert('El título y el departamento son obligatorios.');
       return;
     }
     
@@ -101,20 +100,14 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
       const taskData: Partial<Task> = {
         ...editingTask,
         title: editingTask.title,
-        description: editingTask.description || '',
-        location: editingTask.location || '',
-        status: editingTask.status || TaskStatus.PENDING,
-        priority: editingTask.priority || TaskPriority.MEDIUM,
         departmentId: editingTask.departmentId,
         departmentName: departments.find(d => d.id === editingTask.departmentId)?.name || 'N/A',
         createdBy: editingTask.id ? editingTask.createdBy! : currentUser.name,
         createdById: editingTask.id ? editingTask.createdById! : currentUser.id,
         createdAt: editingTask.id ? editingTask.createdAt! : Date.now(),
-        imagesBase64: editingTask.imagesBase64 || [],
       };
       
       await storageService.saveTask(taskData);
-      
       setShowTaskModal(false);
       setEditingTask(null);
 
@@ -228,16 +221,16 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
   };
 
   return (
-    <div className="pb-24 md:pb-6 font-sans">
-      <div className="sticky top-0 z-10 bg-white/95 dark:bg-slate-900/95 backdrop-blur pt-6 pb-4 px-4 md:px-6 border-b border-gray-200 dark:border-slate-800">
+    <div className="font-sans">
+      <div className="sticky top-0 z-10 bg-white/95 dark:bg-slate-950/95 backdrop-blur pt-6 pb-4 px-4 md:px-6 border-b border-gray-100 dark:border-slate-800">
         <div className="flex justify-between items-center mb-5">
-          <h2 className="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">Tareas e Incidencias</h2>
+          <h2 className="text-4xl font-extrabold text-gray-900 dark:text-white tracking-tighter">Tareas</h2>
           {canManageTasks && (
-            <button onClick={openNewTaskModal} className="bg-red-600 text-white p-3 rounded-full shadow-lg shadow-button-red hover:bg-red-700 active:scale-95"><Plus size={24} /></button>
+            <button onClick={openNewTaskModal} className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 w-12 h-12 rounded-full flex items-center justify-center shadow-lg hover:bg-red-600 dark:hover:bg-slate-200 transition-all active:scale-95"><Plus size={24} /></button>
           )}
         </div>
-        <div className="flex gap-2 bg-gray-100 dark:bg-slate-800 p-1.5 rounded-xl">
-            {(['ALL', TaskStatus.PENDING, TaskStatus.IN_PROGRESS, TaskStatus.COMPLETED] as const).map(s => <button key={s} onClick={() => setStatusFilter(s)} className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${statusFilter === s ? 'bg-white dark:bg-slate-700 text-red-600 dark:text-red-400 shadow-md' : 'text-gray-500 dark:text-slate-400 hover:bg-white/50 dark:hover:bg-slate-700/50'}`}>{s === 'ALL' ? 'Todas' : statusTextMap[s]}</button>)}
+        <div className="flex gap-2 bg-gray-100 dark:bg-slate-800/60 p-1.5 rounded-xl">
+            {(['ALL', TaskStatus.PENDING, TaskStatus.IN_PROGRESS, TaskStatus.COMPLETED] as const).map(s => <button key={s} onClick={() => setStatusFilter(s)} className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${statusFilter === s ? 'bg-white dark:bg-slate-900 text-red-500 shadow-md' : 'text-gray-500 dark:text-slate-400 hover:bg-white/50 dark:hover:bg-slate-700/50'}`}>{s === 'ALL' ? 'Todas' : statusTextMap[s]}</button>)}
         </div>
       </div>
       
@@ -249,8 +242,8 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
               <button onClick={() => {setShowTaskModal(false); setEditingTask(null);}} className="text-gray-400 p-2 -mr-2 rounded-full hover:bg-gray-50 dark:hover:bg-slate-700/50"><X size={24} /></button>
             </div>
             <div className="space-y-4">
-              <input value={editingTask?.title || ''} onChange={e => setEditingTask({...editingTask, title: e.target.value})} placeholder="Título de la tarea (ej. Arreglar luz Hab. 205)" className="w-full p-4 border-2 rounded-xl bg-gray-50 dark:bg-slate-700/50 focus:border-red-500 outline-none font-bold text-gray-900 dark:text-white shadow-sm" />
-              <textarea value={editingTask?.description || ''} onChange={e => setEditingTask({...editingTask, description: e.target.value})} placeholder="Descripción adicional (opcional)" className="w-full p-4 border-2 rounded-xl bg-gray-50 dark:bg-slate-700/50 focus:border-red-500 outline-none dark:text-white shadow-sm h-24" />
+              <input value={editingTask?.title || ''} onChange={e => setEditingTask({...editingTask, title: e.target.value})} placeholder="Título de la tarea" className="w-full p-4 border-2 rounded-xl bg-gray-50 dark:bg-slate-700/50 focus:border-red-500 outline-none font-bold text-gray-900 dark:text-white shadow-sm" />
+              <textarea value={editingTask?.description || ''} onChange={e => setEditingTask({...editingTask, description: e.target.value})} placeholder="Descripción (opcional)" className="w-full p-4 border-2 rounded-xl bg-gray-50 dark:bg-slate-700/50 focus:border-red-500 outline-none dark:text-white shadow-sm h-24" />
               
               <div>
                 <label className="text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wide mb-2 block">Imágenes</label>
@@ -276,7 +269,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                <input value={editingTask?.location || ''} onChange={e => setEditingTask({...editingTask, location: e.target.value})} placeholder="Ubicación (ej. Baño Hab. 205)" className="w-full p-4 border-2 rounded-xl bg-gray-50 dark:bg-slate-700/50 focus:border-red-500 outline-none dark:text-white shadow-sm" />
+                <input value={editingTask?.location || ''} onChange={e => setEditingTask({...editingTask, location: e.target.value})} placeholder="Ubicación (ej. Hab. 205)" className="w-full p-4 border-2 rounded-xl bg-gray-50 dark:bg-slate-700/50 focus:border-red-500 outline-none dark:text-white shadow-sm" />
                 <select value={editingTask?.priority || TaskPriority.MEDIUM} onChange={e => setEditingTask({...editingTask, priority: e.target.value as TaskPriority})} className="w-full p-4 border-2 rounded-xl bg-gray-50 dark:bg-slate-700/50 focus:border-red-500 outline-none dark:text-white shadow-sm"><option value={TaskPriority.LOW}>Prioridad Baja</option><option value={TaskPriority.MEDIUM}>Prioridad Media</option><option value={TaskPriority.HIGH}>Prioridad Alta</option></select>
               </div>
               <select value={editingTask?.departmentId || ''} onChange={e => setEditingTask({...editingTask, departmentId: e.target.value})} className="w-full p-4 border-2 rounded-xl bg-gray-50 dark:bg-slate-700/50 focus:border-red-500 outline-none dark:text-white shadow-sm">
@@ -284,7 +277,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
                 {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
               </select>
             </div>
-            {saveError && <div className="...">{/* (unchanged) */}</div>}
+            {saveError && <div className="mt-4 text-center text-red-500 bg-red-50 dark:bg-red-900/20 p-3 rounded-lg text-sm">{saveError}</div>}
             <div className="flex gap-4 mt-8">
               <button onClick={() => {setShowTaskModal(false); setEditingTask(null);}} className="flex-1 py-4 text-gray-600 font-bold bg-gray-100 dark:bg-slate-700/50 rounded-xl hover:bg-gray-200 active:scale-[0.98]">Cancelar</button>
               <button onClick={handleSaveTask} disabled={isSaving || isCompressing} className="flex-1 py-4 text-white font-bold bg-red-600 rounded-xl hover:bg-red-700 shadow-lg shadow-button-red flex items-center justify-center gap-2 active:scale-[0.98] disabled:bg-red-400 disabled:cursor-not-allowed">
@@ -298,20 +291,12 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
       {taskToDelete && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
           <div className="bg-white dark:bg-slate-800 rounded-3xl w-full max-w-sm shadow-pop-in p-6 animate-pop-in border border-gray-100 dark:border-slate-700/50 text-center">
-            <div className="w-16 h-16 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-4 text-red-600 dark:text-red-500 shadow-md">
-              <Trash2 size={32} />
-            </div>
+            <div className="w-16 h-16 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-4 text-red-600 dark:text-red-500 shadow-md"><Trash2 size={32} /></div>
             <h3 className="text-xl font-black text-gray-900 dark:text-white mb-2">¿Eliminar Tarea?</h3>
-            <p className="text-gray-500 dark:text-slate-400 mb-6">
-              Estás a punto de eliminar la tarea <strong className="text-gray-800 dark:text-slate-200">"{taskToDelete.title}"</strong>.
-            </p>
+            <p className="text-gray-500 dark:text-slate-400 mb-6">Estás a punto de eliminar la tarea <strong className="text-gray-800 dark:text-slate-200">"{taskToDelete.title}"</strong>.</p>
             <div className="flex gap-3">
-              <button onClick={() => setTaskToDelete(null)} className="flex-1 py-3 font-bold text-gray-600 dark:text-slate-400 bg-gray-100 dark:bg-slate-700/50 rounded-xl hover:bg-gray-200 dark:hover:bg-slate-700 active:scale-[0.98]">
-                Cancelar
-              </button>
-              <button onClick={confirmDelete} className="flex-1 py-3 font-bold text-white bg-red-600 rounded-xl hover:bg-red-700 shadow-lg shadow-button-red active:scale-[0.98]">
-                Sí, Eliminar
-              </button>
+              <button onClick={() => setTaskToDelete(null)} className="flex-1 py-3 font-bold text-gray-600 dark:text-slate-400 bg-gray-100 dark:bg-slate-700/50 rounded-xl hover:bg-gray-200 dark:hover:bg-slate-700 active:scale-[0.98]">Cancelar</button>
+              <button onClick={confirmDelete} className="flex-1 py-3 font-bold text-white bg-red-600 rounded-xl hover:bg-red-700 shadow-lg shadow-button-red active:scale-[0.98]">Sí, Eliminar</button>
             </div>
           </div>
         </div>
@@ -320,14 +305,8 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
       {viewingImages && (
         <div className="fixed inset-0 bg-black/90 z-[100] flex items-center justify-center p-0 animate-fade-in" onClick={() => setViewingImages(null)}>
           <button className="absolute top-4 right-4 text-white bg-black/50 p-2 rounded-full hover:bg-black/80 z-20"><X size={32}/></button>
-          <button 
-             onClick={(e) => { e.stopPropagation(); setViewingImages(prev => prev ? { ...prev, startIndex: (prev.startIndex - 1 + prev.images.length) % prev.images.length } : null); }}
-             className="absolute left-4 top-1/2 -translate-y-1/2 text-white bg-black/50 p-3 rounded-full hover:bg-black/80 z-20"
-          ><ArrowLeft size={32}/></button>
-          <button 
-             onClick={(e) => { e.stopPropagation(); setViewingImages(prev => prev ? { ...prev, startIndex: (prev.startIndex + 1) % prev.images.length } : null); }}
-             className="absolute right-4 top-1/2 -translate-y-1/2 text-white bg-black/50 p-3 rounded-full hover:bg-black/80 z-20"
-          ><ArrowRight size={32}/></button>
+          <button onClick={(e) => { e.stopPropagation(); setViewingImages(prev => prev ? { ...prev, startIndex: (prev.startIndex - 1 + prev.images.length) % prev.images.length } : null); }} className="absolute left-4 top-1/2 -translate-y-1/2 text-white bg-black/50 p-3 rounded-full hover:bg-black/80 z-20"><ArrowLeft size={32}/></button>
+          <button onClick={(e) => { e.stopPropagation(); setViewingImages(prev => prev ? { ...prev, startIndex: (prev.startIndex + 1) % prev.images.length } : null); }} className="absolute right-4 top-1/2 -translate-y-1/2 text-white bg-black/50 p-3 rounded-full hover:bg-black/80 z-20"><ArrowRight size={32}/></button>
           
           <div className="relative w-full h-full flex items-center justify-center">
             <img src={viewingImages.images[viewingImages.startIndex]} alt="Vista ampliada" className="max-w-[90vw] max-h-[90vh] rounded-lg shadow-2xl object-contain"/>
@@ -337,21 +316,16 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
       )}
 
       <div className="p-4 md:p-6 grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-        {loading && tasks.length === 0 && <div className="col-span-full flex h-64 items-center justify-center"><Loader2 size={40} className="animate-spin text-red-600" /></div>}
+        {loading && tasks.length === 0 && <div className="col-span-full flex h-64 items-center justify-center"><Loader2 size={40} className="animate-spin text-red-500" /></div>}
         {filteredTasks.map(task => (
-          <div key={task.id} className={`bg-white dark:bg-slate-800 rounded-2xl shadow-card-soft border dark:border-slate-700/50 overflow-hidden flex flex-col transition-opacity duration-300 ${task.status === TaskStatus.COMPLETED ? 'opacity-60' : ''}`}>
-            <div className={`flex-shrink-0 h-4 w-full ${getPriorityStyles(task.priority).split(' ')[0].replace('border-', 'bg-')}`}></div>
+          <div key={task.id} className={`bg-white dark:bg-slate-900 rounded-2xl shadow-md border dark:border-slate-800 overflow-hidden flex flex-col transition-opacity duration-300 ${task.status === TaskStatus.COMPLETED ? 'opacity-60 grayscale-[50%]' : ''}`}>
+            <div className={`flex-shrink-0 h-2 w-full ${getPriorityStyles(task.priority).split(' ')[0].replace('border-', 'bg-')}`}></div>
             
             {task.imagesBase64 && task.imagesBase64.length > 0 && (
-              <div
-                onClick={() => setViewingImages({ images: task.imagesBase64!, startIndex: 0 })}
-                className="relative h-48 bg-gray-100 dark:bg-slate-700 cursor-pointer group"
-              >
+              <div onClick={() => setViewingImages({ images: task.imagesBase64!, startIndex: 0 })} className="relative h-48 bg-gray-100 dark:bg-slate-800 cursor-pointer group">
                 <img src={task.imagesBase64[0]} className="w-full h-full object-cover" alt="Imagen de tarea" />
                 {task.imagesBase64.length > 1 && (
-                  <div className="absolute bottom-2 right-2 bg-black/60 text-white text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1">
-                    <ImageIcon size={14}/> +{task.imagesBase64.length - 1}
-                  </div>
+                  <div className="absolute bottom-2 right-2 bg-black/60 text-white text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1"><ImageIcon size={14}/> +{task.imagesBase64.length - 1}</div>
                 )}
                 <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
                     <Plus size={40} className="text-white transform scale-75 group-hover:scale-100 transition-transform"/>
@@ -371,14 +345,14 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
                   {task.description && <p className="flex items-start gap-2"><MessageSquare size={14} className="mt-0.5 shrink-0"/><span>{task.description}</span></p>}
               </div>
 
-              <div className="mt-auto pt-4 border-t border-gray-100 dark:border-slate-700/50 space-y-2 text-xs text-gray-500 dark:text-slate-500">
+              <div className="mt-auto pt-4 border-t border-gray-100 dark:border-slate-800 space-y-2 text-xs text-gray-500 dark:text-slate-500">
                 <p className="flex items-center gap-2"><UserIcon size={12} /><span>Creada por {task.createdBy}</span></p>
                 <p className="flex items-center gap-2"><Clock size={12} /><span>{new Date(task.createdAt).toLocaleString()}</span></p>
                 {task.status === TaskStatus.COMPLETED && task.completedBy && <p className="flex items-center gap-2 text-green-600 dark:text-green-400 font-bold"><Check size={12} /><span>Completada por {task.completedBy}</span></p>}
               </div>
             </div>
 
-            <div className="flex items-center justify-between gap-2 p-3 bg-gray-50 dark:bg-slate-800/50 border-t border-gray-100 dark:border-slate-700/50">
+            <div className="flex items-center justify-between gap-2 p-3 bg-gray-50 dark:bg-slate-800/50 border-t border-gray-100 dark:border-slate-800">
               <div className="flex-1">
                  <StatusChanger task={task}/>
               </div>

@@ -4,7 +4,6 @@ import Inventory from './pages/Inventory';
 import Replenishment from './pages/Replenishment';
 import Admin from './pages/Admin';
 import Tasks from './pages/Tasks';
-// Fix: Changed storageService import to import all exported functions as a namespace, as 'storageService' is not a named export.
 import * as storageService from './services/storageService';
 import { Logo } from './components/Logo';
 import { LayoutGrid, ClipboardList, ShieldCheck, LogOut, Moon, Sun, Download, Share, PlusSquare, X, Bell, ShoppingCart, ClipboardCheck } from 'lucide-react';
@@ -25,7 +24,6 @@ const App: React.FC = () => {
 
      if (lastView === 'inventory' || lastView === 'replenish' || lastView === 'admin' || lastView === 'tasks') {
        if (sessionUser?.role === UserRole.STAFF && (lastView === 'admin' || lastView === 'inventory')) return defaultView;
-       if (sessionUser?.role === UserRole.ADMIN && lastView === 'replenish') return defaultView;
        // @ts-ignore
        return lastView;
      }
@@ -61,7 +59,6 @@ const App: React.FC = () => {
       storageService.cleanupCompletedTasks();
       cleanupPerformed.current = true;
     }
-    // Reset on logout so it can run again for the next admin session
     if (!user) {
       cleanupPerformed.current = false;
     }
@@ -90,12 +87,13 @@ const App: React.FC = () => {
   useEffect(() => {
     document.documentElement.classList.toggle('dark', darkMode);
     localStorage.setItem('theme', darkMode ? 'dark' : 'light');
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', darkMode ? '#111827' : '#ffffff');
   }, [darkMode]);
 
   useEffect(() => { if (user) storageService.saveLastView(view); }, [view, user]);
   useEffect(() => { storageService.saveDraftCart(cart); }, [cart]);
 
-  const playNotificationSound = () => { /* ... existing sound logic ... */ };
+  const playNotificationSound = () => { /* ... sound logic ... */ };
 
   useEffect(() => {
     let unsubscribe: () => void = () => {};
@@ -141,17 +139,27 @@ const App: React.FC = () => {
   if (!user) return <Login onLogin={(u) => { setUser(u); setView(u.role === UserRole.ADMIN ? 'inventory' : 'replenish'); }} />;
 
   const NavButton = ({ icon: Icon, label, isActive, onClick, notificationCount = 0, isCart = false }: any) => (
-    <button onClick={onClick} className={`relative flex flex-col md:flex-row items-center justify-center md:justify-start w-full text-left gap-1 md:gap-3 px-2 md:px-4 py-2 md:py-3 rounded-xl text-xs md:text-base font-bold transition-all ${isActive ? 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 shadow-sm' : 'text-slate-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700/50'}`}>
-      <Icon size={24} />
-      <span className="md:inline">{label}</span>
-      {notificationCount > 0 && <span className="absolute top-0 right-0 md:top-2 md:right-2 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-[10px] font-bold ring-2 ring-white dark:ring-slate-800">{notificationCount}</span>}
-      {isCart && cart.length > 0 && <span className="absolute top-0 right-0 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-[10px] font-bold ring-2 ring-white dark:ring-slate-800">{cart.length}</span>}
+    <button onClick={onClick} className={`relative flex flex-col items-center justify-center w-full text-center gap-1 p-2 rounded-xl transition-all duration-200 ${isActive ? 'text-red-500' : 'text-slate-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800'}`}>
+      <div className={`relative w-14 h-8 rounded-full flex items-center justify-center transition-all duration-200 ${isActive ? 'bg-red-500/10 dark:bg-red-500/10' : ''}`}>
+        <Icon size={24} strokeWidth={isActive ? 2.5 : 2} />
+      </div>
+      <span className={`text-xs font-bold transition-colors ${isActive ? 'text-slate-800 dark:text-slate-100' : ''}`}>{label}</span>
+      {notificationCount > 0 && <span className="absolute top-1 right-3 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-[10px] font-bold ring-2 ring-white dark:ring-slate-950">{notificationCount}</span>}
+      {isCart && cart.length > 0 && <span className="absolute top-1 right-3 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-[10px] font-bold ring-2 ring-white dark:ring-slate-950">{cart.length}</span>}
+    </button>
+  );
+
+  const DesktopNavButton = ({ icon: Icon, label, isActive, onClick, notificationCount = 0 }: any) => (
+    <button onClick={onClick} className={`relative flex items-center justify-start w-full text-left gap-3 px-4 py-3 rounded-xl font-bold transition-all ${isActive ? 'bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400' : 'text-slate-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700/50'}`}>
+      <Icon size={22} strokeWidth={2.5} />
+      <span>{label}</span>
+      {notificationCount > 0 && <span className="absolute top-2 right-2 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold ring-2 ring-white dark:ring-slate-800">{notificationCount}</span>}
     </button>
   );
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-gray-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-sans">
-      <aside className="hidden md:flex flex-col w-72 bg-white dark:bg-slate-800 border-r border-gray-200 dark:border-slate-700/50 p-6">
+    <div className="flex h-screen w-screen overflow-hidden bg-gray-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans">
+      <aside className="hidden md:flex flex-col w-72 bg-white dark:bg-slate-900 border-r border-gray-100 dark:border-slate-800 p-6">
         <div className="flex items-center gap-3 mb-8">
           <Logo size="md" />
           <div>
@@ -160,10 +168,10 @@ const App: React.FC = () => {
           </div>
         </div>
         <nav className="flex-1 space-y-2">
-          {user.role === UserRole.ADMIN && <NavButton icon={LayoutGrid} label="Inventario" isActive={view === 'inventory'} onClick={() => setView('inventory')} />}
-          <NavButton icon={ClipboardList} label="Hacer Pedido" isActive={view === 'replenish'} onClick={() => setView('replenish')} />
-          <NavButton icon={ClipboardCheck} label="Tareas" isActive={view === 'tasks'} onClick={() => setView('tasks')} />
-          {user.role === UserRole.ADMIN && <NavButton icon={ShieldCheck} label="Admin" isActive={view === 'admin'} onClick={() => setView('admin')} notificationCount={unreadAdminNotifications.length} />}
+          {user.role === UserRole.ADMIN && <DesktopNavButton icon={LayoutGrid} label="Inventario" isActive={view === 'inventory'} onClick={() => setView('inventory')} />}
+          <DesktopNavButton icon={ClipboardList} label="Hacer Pedido" isActive={view === 'replenish'} onClick={() => setView('replenish')} />
+          <DesktopNavButton icon={ClipboardCheck} label="Tareas" isActive={view === 'tasks'} onClick={() => setView('tasks')} />
+          {user.role === UserRole.ADMIN && <DesktopNavButton icon={ShieldCheck} label="Admin" isActive={view === 'admin'} onClick={() => setView('admin')} notificationCount={unreadAdminNotifications.length} />}
         </nav>
         <div className="space-y-2">
           {!isInstalled && (deferredPrompt || isIOS) && <button onClick={handleInstallClick} className="flex items-center w-full text-left gap-3 px-4 py-3 rounded-lg text-base font-bold text-slate-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700/50"><Download size={22} /> Instalar App</button>}
@@ -173,7 +181,7 @@ const App: React.FC = () => {
       </aside>
 
       <main className="flex-1 flex flex-col h-screen overflow-hidden relative">
-        <header className="md:hidden flex justify-between items-center bg-white/80 dark:bg-slate-800/80 backdrop-blur-md border-b border-gray-200 dark:border-slate-700/50 p-4 pt-safe z-30">
+        <header className="md:hidden flex justify-between items-center bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-gray-100 dark:border-slate-800 p-4 pt-safe z-30">
           <div className="flex items-center gap-2"><Logo size="sm" /><h1 className="font-extrabold text-lg text-gray-900 dark:text-white">Hub</h1></div>
           <div className="flex items-center gap-2">
              <button onClick={() => setDarkMode(!darkMode)} className="p-2 text-slate-600 dark:text-slate-400"><span className="sr-only">Toggle Theme</span>{darkMode ? <Sun size={22} /> : <Moon size={22} />}</button>
@@ -181,14 +189,14 @@ const App: React.FC = () => {
           </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto pb-24 md:pb-0">
           {view === 'inventory' && user.role === UserRole.ADMIN && <Inventory currentUser={user} />}
           {view === 'replenish' && <Replenishment currentUser={user} cart={cart} setCart={setCart} showMobileCart={showMobileCart} setShowMobileCart={setShowMobileCart} />}
           {view === 'tasks' && <Tasks currentUser={user} />}
           {view === 'admin' && user.role === UserRole.ADMIN && <Admin currentUser={user} unreadNotificationsCount={unreadAdminNotifications.length} initialTab={initialAdminTab} />}
         </div>
         
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white/80 dark:bg-slate-800/80 backdrop-blur-md border-t border-gray-200 dark:border-slate-700/50 flex justify-around p-2 pb-safe z-30">
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-t border-gray-100 dark:border-slate-800 flex justify-around p-1 pb-safe z-30">
           {user.role === UserRole.ADMIN && <NavButton icon={LayoutGrid} label="Inventario" isActive={view === 'inventory'} onClick={() => setView('inventory')} />}
           <NavButton icon={ClipboardList} label="Pedido" isActive={view === 'replenish'} onClick={() => setView('replenish')} />
           <NavButton icon={ClipboardCheck} label="Tareas" isActive={view === 'tasks'} onClick={() => setView('tasks')} />
