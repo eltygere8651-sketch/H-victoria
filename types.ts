@@ -1,15 +1,17 @@
-export type UserRole = 'ADMIN' | 'STAFF';
+export enum UserRole {
+  ADMIN = 'ADMIN',
+  STAFF = 'STAFF'
+}
 
 export interface User {
   id: string;
   name: string;
   role: UserRole;
-  pin: string;
+  pin: string; // Simplified password for this demo
+  permissions?: ('CAN_MANAGE_TASKS')[]; // New: Granular permissions
 }
 
-// This is the user object available globally after login
-export type AuthenticatedUser = User;
-
+// New dynamic Department interface
 export interface Department {
   id: string;
   name: string;
@@ -20,25 +22,29 @@ export interface Product {
   name: string;
   category: string;
   quantity: number;
-  unit: string;
-  minThreshold: number;
-  departmentId: string;
-  departmentName: string;
+  unit: string; // e.g., 'unidades', 'litros', 'cajas'
+  minThreshold: number; // For low stock alerts
+  departmentId: string; // New: Link to a department
+  departmentName: string; // New: For display purposes
 }
 
 export interface ReplenishmentRequest {
   id: string;
-  batchId?: string;
+  batchId?: string; // Group requests into a single order
   productId: string;
   productName: string;
-  departmentId: string;
-  departmentName: string;
+  departmentId: string; // Updated: Use department ID
+  departmentName: string; // Updated: For display purposes
   requestedBy: string;
   quantity: number;
   status: 'PENDING' | 'COMPLETED';
   date: string;
-  timestamp?: number;
+  timestamp?: number; // Numeric timestamp for auto-cleanup
   unit?: string;
+}
+
+export interface AppState {
+  currentUser: User | null;
 }
 
 export interface CartItem {
@@ -55,6 +61,7 @@ export interface OrderBatch {
   items: ReplenishmentRequest[];
 }
 
+// --- New Task Management Types ---
 export enum TaskStatus {
   PENDING = 'PENDING',
   IN_PROGRESS = 'IN_PROGRESS',
@@ -74,16 +81,17 @@ export interface Task {
   status: TaskStatus;
   priority: TaskPriority;
   location?: string;
-  departmentId: string;
+  departmentId: string; // The department this task is assigned to
   departmentName: string;
-  createdBy: string;
-  createdById: string;
-  createdAt: number;
+  createdBy: string; // User's name
+  createdById: string; // User's ID
+  createdAt: number; // Timestamp
   completedBy?: string;
   completedAt?: number;
-  imagesBase64?: string[];
+  imagesBase64?: string[]; // Store compressed images as Base64 strings
 }
 
+// --- Notification System Types ---
 export enum NotificationType {
   LOW_STOCK = 'LOW_STOCK',
   NEW_ORDER = 'NEW_ORDER',
@@ -96,19 +104,19 @@ export interface NotificationPayload {
   orderBatchId?: string;
   departmentId?: string;
   departmentName?: string;
-  taskId?: string;
+  taskId?: string; // For new task notifications
   taskTitle?: string;
 }
 
 export interface AppNotification {
-  id: string;
+  id: string; // Firestore document ID
   type: NotificationType;
   title: string;
   message: string;
-  icon: string;
-  timestamp: number;
+  icon: string; // Lucide icon name, e.g., 'AlertTriangle', 'BellRing'
+  timestamp: number; // Unix timestamp for sorting and display
   readStatus: boolean;
-  reviewedBy?: string;
-  reviewedAt?: number;
+  reviewedBy?: string; // User ID who marked it as read/reviewed
+  reviewedAt?: number; // Unix timestamp when it was reviewed
   payload: NotificationPayload;
 }
