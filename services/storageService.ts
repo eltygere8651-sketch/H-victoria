@@ -94,6 +94,7 @@ const createNotification = async (type: NotificationType, payload: NotificationP
 // --- AUTH & SESSION ---
 export const login = async (name: string, pin: string): Promise<User | null> => {
   // FIX: Use compat query syntax
+  // FIX: Corrected arguments in where clause. The comma was inside the string literal.
   const q = db.collection("users").where("name", "==", name).where("pin", "==", pin);
   const querySnapshot = await q.get();
   if (!querySnapshot.empty) {
