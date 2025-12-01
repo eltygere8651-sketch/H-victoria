@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
 // Fix: Changed storageService import to import all exported functions as a namespace, as 'storageService' is not a named export.
 import * as storageService from '../services/storageService';
-import { User, UserRole, Department, OrderBatch } from '../types';
-import { FileText, Printer, Trash2, X, Eye, Package, Download, Loader2 } from 'lucide-react';
+import { User, UserRole, OrderBatch } from '../types';
+import { FileText, Trash2, X, Eye, Package, Download, Loader2 } from 'lucide-react';
 import { Logo } from '../components/Logo';
-import { generatePdfFromElement } from '../utils/pdfGenerator';
+// FIX: Use generatePdfFromReactComponent and import the OrderPdfDocument component
+import { generatePdfFromReactComponent } from '../utils/pdfGenerator';
+import { OrderPdfDocument } from '../components/OrderPdfDocument';
+
 
 interface OrdersHistoryProps {
   currentUser: User;
@@ -25,7 +28,8 @@ const OrdersHistory: React.FC<OrdersHistoryProps> = ({ currentUser }) => {
     setIsGeneratingPdf(true);
     try {
       const filename = `Pedido_${selectedOrder.batchId}_${selectedOrder.departmentName}.pdf`;
-      await generatePdfFromElement('print-area', filename);
+      // FIX: Use generatePdfFromReactComponent with the dedicated PDF component
+      await generatePdfFromReactComponent(<OrderPdfDocument order={selectedOrder} />, filename);
     } catch (error) {
       console.error("PDF Generation Failed:", error);
       alert('Hubo un error al generar el PDF. Por favor, inténtalo de nuevo.');
@@ -229,20 +233,9 @@ const OrdersHistory: React.FC<OrdersHistoryProps> = ({ currentUser }) => {
               </table>
             </div>
 
-            {/* Footer Signatures */}
-            <div className="grid grid-cols-2 gap-8 md:gap-16 mt-auto pt-12 border-t-2 border-gray-200 page-break-inside-avoid">
-              <div className="text-center">
-                 <div className="h-20 md:h-24 border-b-2 border-gray-300 mb-3 border-dashed"></div>
-                 <p className="text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-widest drop-shadow-sm">Firma Entregado (Almacén)</p>
-              </div>
-              <div className="text-center">
-                 <div className="h-20 md:h-24 border-b-2 border-gray-300 mb-3 border-dashed"></div>
-                 <p className="text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-widest drop-shadow-sm">Firma Recibido ({selectedOrder.departmentName})</p>
-              </div>
-            </div>
-            
-            <div className="mt-12 text-center">
-              <p className="text-[10px] text-gray-400 uppercase tracking-widest font-bold drop-shadow-sm">Generado Digitalmente por Hub</p>
+            {/* Footer */}
+            <div className="mt-12 pt-12 text-center border-t-2 border-gray-200 page-break-inside-avoid">
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Generado Digitalmente por Hub</p>
             </div>
 
           </div>
