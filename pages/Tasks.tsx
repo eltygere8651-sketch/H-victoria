@@ -13,6 +13,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<TaskStatus | 'ALL'>('ALL');
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [editingTask, setEditingTask] = useState<Partial<Task> | null>(null);
@@ -23,7 +24,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
   const [viewingImages, setViewingImages] = useState<{ images: string[], startIndex: number } | null>(null);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   
-  const canManageTasks = currentUser.permissions.includes('CAN_MANAGE_TASKS');
+  const canManageTasks = currentUser.role === 'ADMIN';
 
   useEffect(() => {
     const unsubscribeTasks = storageService.subscribeToTasks((data) => { setTasks(data); setLoading(false); });
@@ -41,14 +42,17 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
     setIsCompressing(true);
+    setSaveError(null);
     try {
-      // FIX: Explicitly type `file` as `File` to resolve TS inference issue.
       const processedImages = await Promise.all(files.map(async (file: File) => {
         const compressedFile = await compressImage(file);
         return await fileToBase64(compressedFile);
       }));
       setEditingTask(prev => ({ ...prev, imagesBase64: [...(prev?.imagesBase64 || []), ...processedImages] }));
-    } catch (error) { console.error("Image processing failed:", error); } 
+    } catch (error: any) { 
+      console.error("Image processing failed:", error); 
+      setSaveError(error.message || "Error al procesar la imagen.");
+    } 
     finally { setIsCompressing(false); if (e.target) e.target.value = ""; }
   };
 
@@ -59,6 +63,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
   const handleSaveTask = async () => {
     if (!editingTask || !editingTask.title || !editingTask.departmentId) return;
     setIsSaving(true);
+    setSaveError(null);
     try {
       const taskData: Partial<Task> = {
         ...editingTask,
@@ -70,7 +75,10 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
       await storageService.saveTask(taskData);
       setShowTaskModal(false);
       setEditingTask(null);
-    } catch (error) { console.error("Failed to save task:", error); } 
+    } catch (error: any) { 
+      console.error("Failed to save task:", error); 
+      setSaveError(error.message || "No se pudo guardar la tarea.");
+    } 
     finally { setIsSaving(false); }
   };
   
@@ -92,8 +100,8 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
     }
   };
 
-  const openNewTaskModal = () => { setEditingTask({ imagesBase64: [] }); setShowTaskModal(true); };
-  const openEditTaskModal = (task: Task) => { setEditingTask({ ...task }); setShowTaskModal(true); };
+  const openNewTaskModal = () => { setEditingTask({ imagesBase64: [] }); setSaveError(null); setShowTaskModal(true); };
+  const openEditTaskModal = (task: Task) => { setEditingTask({ ...task }); setSaveError(null); setShowTaskModal(true); };
   
   const filteredTasks = tasks.filter(task => statusFilter === 'ALL' || task.status === statusFilter);
   const getPriorityStyles = (priority: TaskPriority) => ({ [TaskPriority.HIGH]:'border-red-500 text-red-700',[TaskPriority.MEDIUM]:'border-amber-500 text-amber-700',[TaskPriority.LOW]:'border-blue-500 text-blue-700'}[priority] || 'border-gray-300');
@@ -129,6 +137,9 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
             <input value={editingTask?.location || ''} onChange={e=>setEditingTask({...editingTask, location: e.target.value})} placeholder="Ubicación" />
             <select value={editingTask?.priority || TaskPriority.MEDIUM} onChange={e=>setEditingTask({...editingTask, priority: e.target.value as TaskPriority})}><option value={TaskPriority.LOW}>Baja</option><option value={TaskPriority.MEDIUM}>Media</option><option value={TaskPriority.HIGH}>Alta</option></select>
             <select value={editingTask?.departmentId || ''} onChange={e=>setEditingTask({...editingTask, departmentId: e.target.value})}><option value="" disabled>Asignar a...</option>{departments.map(d=><option key={d.id} value={d.id}>{d.name}</option>)}</select>
+            
+            {saveError && <div className="bg-red-50 text-red-700 p-3 rounded-lg text-center mt-4">{saveError}</div>}
+            
             <button onClick={handleSaveTask} disabled={isSaving||isCompressing}>{isSaving||isCompressing?<Loader2/>:<Save/>}Guardar</button>
             <button onClick={()=>setShowTaskModal(false)}>Cancelar</button>
           </div>

@@ -30,7 +30,11 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
       }
     } catch (err: any) {
       console.error("Login failed:", err);
-      setError("Error al iniciar sesión. Revisa la consola.");
+      // More descriptive error for the user
+      const errorMessage = err.message.includes('undefined') 
+        ? "Error de permisos. Contacta al administrador." 
+        : "Error al iniciar sesión. Revisa la consola.";
+      setError(errorMessage);
       setLoading(false);
     }
   };

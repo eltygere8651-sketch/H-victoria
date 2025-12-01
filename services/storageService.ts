@@ -1,4 +1,4 @@
-import { Product, User, ReplenishmentRequest, Department, CartItem, AppNotification, NotificationType, NotificationPayload, OrderBatch, Task, TaskStatus, Role, Permission, AuthenticatedUser, ALL_PERMISSIONS } from '../types';
+import { Product, User, ReplenishmentRequest, Department, CartItem, AppNotification, NotificationType, NotificationPayload, OrderBatch, Task, TaskStatus, UserRole } from '../types';
 import { 
   collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where, onSnapshot, writeBatch,
   getDoc, setDoc, orderBy, limit
@@ -15,17 +15,11 @@ const KEYS = {
   LAST_VIEW: 'hub_last_view',
   NOTIFICATIONS: 'hub_notifications',
   TASKS: 'hub_tasks',
-  ROLES: 'hub_roles',
 };
 
-const INITIAL_ROLES: Role[] = [
-  { id: 'admin', name: 'Administrador', permissions: ALL_PERMISSIONS.map(p => p.id), isEditable: false },
-  { id: 'staff', name: 'Personal Básico', permissions: ['CAN_MAKE_ORDERS'], isEditable: true },
-];
-
 const INITIAL_USERS: Omit<User, 'id'>[] = [
-  { name: 'Admin', roleId: 'admin', pin: '1234' },
-  { name: 'Staff', roleId: 'staff', pin: '1234' },
+  { name: 'Admin', role: 'ADMIN', pin: '1234' },
+  { name: 'Staff', role: 'STAFF', pin: '1234' },
 ];
 
 const INITIAL_DEPARTMENTS: Department[] = [
@@ -40,7 +34,6 @@ const INITIAL_PRODUCTS: Product[] = [
 
 async function initFirestoreWithInitialData() {
   const collectionsToInit = [
-    { name: 'roles', data: INITIAL_ROLES },
     { name: 'users', data: INITIAL_USERS },
     { name: 'departments', data: INITIAL_DEPARTMENTS },
     { name: 'products', data: INITIAL_PRODUCTS },
@@ -86,34 +79,19 @@ const createNotification = async (type: NotificationType, payload: NotificationP
   await addDoc(collection(db, 'notifications'), newNotification);
 };
 
-export const login = async (name: string, pin: string): Promise<AuthenticatedUser | null> => {
+export const login = async (name: string, pin: string): Promise<User | null> => {
   const q = query(collection(db, "users"), where("name", "==", name), where("pin", "==", pin));
   const querySnapshot = await getDocs(q);
   if (!querySnapshot.empty) {
     const user = { ...querySnapshot.docs[0].data(), id: querySnapshot.docs[0].id } as User;
-    
-    // Fetch the role associated with the user
-    const roleDoc = await getDoc(doc(db, 'roles', user.roleId));
-    if (!roleDoc.exists()) {
-      console.error(`Role with ID ${user.roleId} not found for user ${user.name}`);
-      return null;
-    }
-    const role = { ...roleDoc.data(), id: roleDoc.id } as Role;
-
-    const authenticatedUser: AuthenticatedUser = {
-      ...user,
-      role: role,
-      permissions: role.permissions,
-    };
-    
-    saveSession(authenticatedUser);
-    return authenticatedUser;
+    saveSession(user);
+    return user;
   }
   return null;
 };
 
-export const saveSession = (user: AuthenticatedUser) => localStorage.setItem(KEYS.CURRENT_SESSION, JSON.stringify(user));
-export const getSession = (): AuthenticatedUser | null => JSON.parse(localStorage.getItem(KEYS.CURRENT_SESSION) || 'null');
+export const saveSession = (user: User) => localStorage.setItem(KEYS.CURRENT_SESSION, JSON.stringify(user));
+export const getSession = (): User | null => JSON.parse(localStorage.getItem(KEYS.CURRENT_SESSION) || 'null');
 export const clearSession = () => localStorage.removeItem(KEYS.CURRENT_SESSION);
 export const saveLastView = (view: string) => localStorage.setItem(KEYS.LAST_VIEW, view);
 export const getLastView = (): string | null => localStorage.getItem(KEYS.LAST_VIEW);
@@ -132,7 +110,7 @@ export const saveProduct = async (product: Partial<Product>) => {
 };
 export const deleteProduct = async (id: string) => await deleteDoc(doc(db, 'products', id));
 
-export const submitOrderBatch = async (cart: CartItem[], departmentId: string, departmentName: string, user: AuthenticatedUser) => {
+export const submitOrderBatch = async (cart: CartItem[], departmentId: string, departmentName: string, user: User) => {
   const batch = writeBatch(db);
   const batchId = Date.now().toString().slice(-6);
 
@@ -217,10 +195,3 @@ export const cleanupCompletedTasks = async () => {
     await batch.commit();
   }
 };
-
-export const subscribeToRoles = (callback: (data: Role[]) => void) => onSnapshot(query(collection(db, 'roles'), orderBy('name')), snapshot => callback(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Role))));
-export const saveRole = async (role: Partial<Role>) => {
-  const docRef = role.id ? doc(db, 'roles', role.id) : doc(collection(db, 'roles'));
-  await setDoc(docRef, { ...role, id: docRef.id }, { merge: true });
-};
-export const deleteRole = async (id: string) => await deleteDoc(doc(db, 'roles', id));

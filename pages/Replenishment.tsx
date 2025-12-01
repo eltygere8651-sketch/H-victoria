@@ -64,7 +64,6 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCar
 
   const filteredProducts = products.filter(p => p.quantity > 0 && p.departmentId === selectedDepartmentForOrder && p.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
-  if (!currentUser.permissions.includes('CAN_MAKE_ORDERS')) return <div className="p-8 text-center text-red-600">Acceso Denegado</div>;
   if (isLoading) return <div className="flex h-full items-center justify-center"><Loader2 className="animate-spin" /></div>;
   if (departments.length === 0) return <div className="p-8 text-center"><ListTree /> Debes crear departamentos en Inventario.</div>;
   

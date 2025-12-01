@@ -7,7 +7,7 @@ import Tasks from './pages/Tasks';
 import * as storageService from './services/storageService';
 import { Logo } from './components/Logo';
 import { LayoutGrid, ClipboardList, ShieldCheck, LogOut, Moon, Sun, Download, Share, PlusSquare, X, ShoppingCart, ClipboardCheck } from 'lucide-react';
-import { AuthenticatedUser, AppNotification, CartItem, Permission } from './types';
+import { AuthenticatedUser, AppNotification, CartItem } from './types';
 import { NotificationToast } from './components/NotificationToast';
 
 type View = 'inventory' | 'replenish' | 'admin' | 'tasks';
@@ -31,7 +31,7 @@ const App: React.FC = () => {
 
   const [toasts, setToasts] = useState<AppNotification[]>([]);
   const [unreadAdminNotifications, setUnreadAdminNotifications] = useState<AppNotification[]>([]);
-  const [initialAdminTab, setInitialAdminTab] = useState<'requests' | 'users' | 'reports' | 'roles'>('requests');
+  const [initialAdminTab, setInitialAdminTab] = useState<'requests' | 'users' | 'reports'>('requests');
   const displayedToastIds = useRef<Set<string>>(new Set());
 
   const [cart, setCart] = useState<CartItem[]>(storageService.getDraftCart());
@@ -39,12 +39,10 @@ const App: React.FC = () => {
   
   const cleanupPerformed = useRef(false);
 
-  const hasPermission = (permission: Permission) => user?.permissions.includes(permission) ?? false;
-
   const getDefaultView = (authedUser: AuthenticatedUser): View => {
-    if (authedUser.permissions.includes('CAN_VIEW_INVENTORY')) return 'inventory';
-    if (authedUser.permissions.includes('CAN_MAKE_ORDERS')) return 'replenish';
-    return 'tasks'; // Fallback to tasks if no other primary view is available
+    if (authedUser.role === 'ADMIN') return 'inventory';
+    if (authedUser.role === 'STAFF') return 'replenish';
+    return 'tasks'; // Fallback
   };
 
   useEffect(() => {
@@ -53,11 +51,10 @@ const App: React.FC = () => {
       const lastView = storageService.getLastView() as View | null;
       const defaultView = getDefaultView(sessionUser);
       if (lastView) {
-        // Validate if the user still has permission for the last view
         let canAccessLastView = true;
-        if (lastView === 'inventory' && !sessionUser.permissions.includes('CAN_VIEW_INVENTORY')) canAccessLastView = false;
-        if (lastView === 'admin' && sessionUser.role.id !== 'admin') canAccessLastView = false; // Simplified: only 'admin' role can see admin page
-        
+        if ((lastView === 'inventory' || lastView === 'admin') && sessionUser.role !== 'ADMIN') {
+            canAccessLastView = false;
+        }
         setView(canAccessLastView ? lastView : defaultView);
       } else {
         setView(defaultView);
@@ -66,7 +63,7 @@ const App: React.FC = () => {
   }, [user]);
   
   useEffect(() => {
-    if (user && user.role.id === 'admin' && !cleanupPerformed.current) {
+    if (user && user.role === 'ADMIN' && !cleanupPerformed.current) {
       storageService.cleanupCompletedTasks();
       cleanupPerformed.current = true;
     }
@@ -92,7 +89,7 @@ const App: React.FC = () => {
 
   useEffect(() => {
     let unsubscribe: () => void = () => {};
-    if (user && hasPermission('CAN_VIEW_REPORTS')) {
+    if (user && user.role === 'ADMIN') {
       unsubscribe = storageService.subscribeToNotifications((notifications) => {
         const newUnread = notifications.filter(n => !n.readStatus);
         setUnreadAdminNotifications(newUnread);
@@ -151,10 +148,10 @@ const App: React.FC = () => {
       <aside className="hidden md:flex flex-col w-72 bg-white dark:bg-slate-800 border-r border-gray-200 dark:border-slate-700/50 p-6">
         <div className="flex items-center gap-3 mb-8"><Logo size="md" /><div><h1 className="font-extrabold text-xl tracking-tight text-gray-900 dark:text-white">Hub</h1><p className="text-xs text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-widest">Control proactivo</p></div></div>
         <nav className="flex-1 space-y-2">
-          {hasPermission('CAN_VIEW_INVENTORY') && <NavButton icon={LayoutGrid} label="Inventario" isActive={view === 'inventory'} onClick={() => setView('inventory')} />}
-          {hasPermission('CAN_MAKE_ORDERS') && <NavButton icon={ClipboardList} label="Hacer Pedido" isActive={view === 'replenish'} onClick={() => setView('replenish')} />}
+          {user.role === 'ADMIN' && <NavButton icon={LayoutGrid} label="Inventario" isActive={view === 'inventory'} onClick={() => setView('inventory')} />}
+          <NavButton icon={ClipboardList} label="Hacer Pedido" isActive={view === 'replenish'} onClick={() => setView('replenish')} />
           <NavButton icon={ClipboardCheck} label="Tareas" isActive={view === 'tasks'} onClick={() => setView('tasks')} />
-          {user.role.id === 'admin' && <NavButton icon={ShieldCheck} label="Admin" isActive={view === 'admin'} onClick={() => setView('admin')} notificationCount={unreadAdminNotifications.length} />}
+          {user.role === 'ADMIN' && <NavButton icon={ShieldCheck} label="Admin" isActive={view === 'admin'} onClick={() => setView('admin')} notificationCount={unreadAdminNotifications.length} />}
         </nav>
         <div className="space-y-2">
           {!isInstalled && (deferredPrompt || isIOS) && <button onClick={handleInstallClick} className="flex items-center w-full text-left gap-3 px-4 py-3 rounded-lg text-base font-bold text-slate-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700/50"><Download size={22} /> Instalar App</button>}
@@ -173,17 +170,17 @@ const App: React.FC = () => {
         </header>
 
         <div className="flex-1 overflow-y-auto">
-          {view === 'inventory' && hasPermission('CAN_VIEW_INVENTORY') && <Inventory currentUser={user} />}
-          {view === 'replenish' && hasPermission('CAN_MAKE_ORDERS') && <Replenishment currentUser={user} cart={cart} setCart={setCart} showMobileCart={showMobileCart} setShowMobileCart={setShowMobileCart} />}
+          {view === 'inventory' && user.role === 'ADMIN' && <Inventory currentUser={user} />}
+          {view === 'replenish' && <Replenishment currentUser={user} cart={cart} setCart={setCart} showMobileCart={showMobileCart} setShowMobileCart={setShowMobileCart} />}
           {view === 'tasks' && <Tasks currentUser={user} />}
-          {view === 'admin' && user.role.id === 'admin' && <Admin currentUser={user} unreadNotificationsCount={unreadAdminNotifications.length} initialTab={initialAdminTab} />}
+          {view === 'admin' && user.role === 'ADMIN' && <Admin currentUser={user} unreadNotificationsCount={unreadAdminNotifications.length} initialTab={initialAdminTab} />}
         </div>
         
         <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white/80 dark:bg-slate-800/80 backdrop-blur-md border-t border-gray-200 dark:border-slate-700/50 flex justify-around p-2 pb-safe z-30">
-          {hasPermission('CAN_VIEW_INVENTORY') && <NavButton icon={LayoutGrid} label="Inventario" isActive={view === 'inventory'} onClick={() => setView('inventory')} />}
-          {hasPermission('CAN_MAKE_ORDERS') && <NavButton icon={ClipboardList} label="Pedido" isActive={view === 'replenish'} onClick={() => setView('replenish')} />}
+          {user.role === 'ADMIN' && <NavButton icon={LayoutGrid} label="Inventario" isActive={view === 'inventory'} onClick={() => setView('inventory')} />}
+          <NavButton icon={ClipboardList} label="Pedido" isActive={view === 'replenish'} onClick={() => setView('replenish')} />
           <NavButton icon={ClipboardCheck} label="Tareas" isActive={view === 'tasks'} onClick={() => setView('tasks')} />
-          {user.role.id === 'admin' && <NavButton icon={ShieldCheck} label="Admin" isActive={view === 'admin'} onClick={() => setView('admin')} notificationCount={unreadAdminNotifications.length} />}
+          {user.role === 'ADMIN' && <NavButton icon={ShieldCheck} label="Admin" isActive={view === 'admin'} onClick={() => setView('admin')} notificationCount={unreadAdminNotifications.length} />}
           {view === 'replenish' && <NavButton icon={ShoppingCart} label="Carrito" isActive={showMobileCart} onClick={() => setShowMobileCart(true)} isCart={true} />}
         </nav>
       </main>

@@ -1,41 +1,14 @@
-export type Permission =
-  | 'CAN_VIEW_INVENTORY'
-  | 'CAN_MANAGE_INVENTORY'
-  | 'CAN_MAKE_ORDERS'
-  | 'CAN_MANAGE_TASKS'
-  | 'CAN_MANAGE_USERS'
-  | 'CAN_MANAGE_ROLES'
-  | 'CAN_VIEW_REPORTS';
-
-export const ALL_PERMISSIONS: { id: Permission, name: string }[] = [
-  { id: 'CAN_VIEW_INVENTORY', name: 'Ver Inventario' },
-  { id: 'CAN_MANAGE_INVENTORY', name: 'Gestionar Inventario (Crear/Editar/Eliminar Productos y Dptos.)' },
-  { id: 'CAN_MAKE_ORDERS', name: 'Realizar Pedidos' },
-  { id: 'CAN_MANAGE_TASKS', name: 'Gestionar Tareas (Crear/Editar/Eliminar)' },
-  { id: 'CAN_MANAGE_USERS', name: 'Gestionar Usuarios' },
-  { id: 'CAN_MANAGE_ROLES', name: 'Gestionar Roles y Permisos' },
-  { id: 'CAN_VIEW_REPORTS', name: 'Ver Reportes y Notificaciones' },
-];
-
-export interface Role {
-  id: string;
-  name: string;
-  permissions: Permission[];
-  isEditable: boolean; // Prevent editing core roles like Admin
-}
+export type UserRole = 'ADMIN' | 'STAFF';
 
 export interface User {
   id: string;
   name: string;
-  roleId: string;
+  role: UserRole;
   pin: string;
 }
 
 // This is the user object available globally after login
-export interface AuthenticatedUser extends User {
-  role: Role; // The resolved role object
-  permissions: Permission[]; // The resolved permissions for quick checking
-}
+export type AuthenticatedUser = User;
 
 export interface Department {
   id: string;

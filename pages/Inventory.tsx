@@ -22,7 +22,7 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser }) => {
   const [editingDepartment, setEditingDepartment] = useState<Department | null>(null);
   const [newDepartmentName, setNewDepartmentName] = useState('');
 
-  const canManageInventory = currentUser.permissions.includes('CAN_MANAGE_INVENTORY');
+  const canManageInventory = currentUser.role === 'ADMIN';
 
   useEffect(() => {
     const unsubscribeProducts = storageService.subscribeToProducts((data) => { setProducts(data); setLoading(false); });
@@ -72,7 +72,7 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser }) => {
     p.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  if (!currentUser.permissions.includes('CAN_VIEW_INVENTORY')) return <div className="p-8 text-center text-red-600">Acceso Denegado</div>;
+  if (currentUser.role !== 'ADMIN') return <div className="p-8 text-center text-red-600">Acceso Denegado</div>;
   if (loading && products.length === 0) return <div className="flex h-full items-center justify-center"><Loader2 className="animate-spin" /></div>;
 
   return (
