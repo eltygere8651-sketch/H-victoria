@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 // Fix: Changed storageService import to import all exported functions as a namespace, as 'storageService' is not a named export.
 import * as storageService from '../services/storageService';
-import { User, UserRole, Department, OrderBatch } from '../types';
+// FIX: Replaced non-existent UserRole and incorrect User type with AuthenticatedUser.
+import { AuthenticatedUser, Department, OrderBatch } from '../types';
 import { FileText, Printer, Trash2, X, Eye, Package, Download, Loader2 } from 'lucide-react';
 import { Logo } from '../components/Logo';
 import { generatePdfFromElement } from '../utils/pdfGenerator';
 
 interface OrdersHistoryProps {
-  currentUser: User;
+  // FIX: Use AuthenticatedUser to access the 'role' object.
+  currentUser: AuthenticatedUser;
 }
 
 const OrdersHistory: React.FC<OrdersHistoryProps> = ({ currentUser }) => {
@@ -93,7 +95,8 @@ const OrdersHistory: React.FC<OrdersHistoryProps> = ({ currentUser }) => {
                 <Eye size={18} /> Ver Albarán
               </button>
               
-              {currentUser.role === UserRole.ADMIN && (
+              {/* FIX: Check admin privileges using role ID. */}
+              {currentUser.role.id === 'admin' && (
                 <button 
                   onClick={(e) => { e.stopPropagation(); handleDelete(order.batchId); }}
                   className="p-3 text-gray-400 dark:text-slate-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors border border-gray-100 dark:border-slate-700/50 hover:border-red-100 shadow-sm active:scale-95"
@@ -132,7 +135,8 @@ const OrdersHistory: React.FC<OrdersHistoryProps> = ({ currentUser }) => {
             <h2 className="text-white font-bold text-lg hidden md:block drop-shadow-sm">Vista Previa</h2>
             
             <div className="flex gap-2 ml-auto w-full md:w-auto">
-              {currentUser.role === UserRole.ADMIN && (
+              {/* FIX: Check admin privileges using role ID. */}
+              {currentUser.role.id === 'admin' && (
                 <button 
                   onClick={() => handleDelete(selectedOrder.batchId)}
                   className="flex-1 md:flex-none bg-red-600/20 text-red-200 border border-red-500/50 px-4 py-3 rounded-xl font-bold backdrop-blur-md flex items-center justify-center gap-2 hover:bg-red-600 hover:text-white transition-all active:scale-95 shadow-sm text-base"

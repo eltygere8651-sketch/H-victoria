@@ -1,17 +1,42 @@
-export enum UserRole {
-  ADMIN = 'ADMIN',
-  STAFF = 'STAFF'
+export type Permission =
+  | 'CAN_VIEW_INVENTORY'
+  | 'CAN_MANAGE_INVENTORY'
+  | 'CAN_MAKE_ORDERS'
+  | 'CAN_MANAGE_TASKS'
+  | 'CAN_MANAGE_USERS'
+  | 'CAN_MANAGE_ROLES'
+  | 'CAN_VIEW_REPORTS';
+
+export const ALL_PERMISSIONS: { id: Permission, name: string }[] = [
+  { id: 'CAN_VIEW_INVENTORY', name: 'Ver Inventario' },
+  { id: 'CAN_MANAGE_INVENTORY', name: 'Gestionar Inventario (Crear/Editar/Eliminar Productos y Dptos.)' },
+  { id: 'CAN_MAKE_ORDERS', name: 'Realizar Pedidos' },
+  { id: 'CAN_MANAGE_TASKS', name: 'Gestionar Tareas (Crear/Editar/Eliminar)' },
+  { id: 'CAN_MANAGE_USERS', name: 'Gestionar Usuarios' },
+  { id: 'CAN_MANAGE_ROLES', name: 'Gestionar Roles y Permisos' },
+  { id: 'CAN_VIEW_REPORTS', name: 'Ver Reportes y Notificaciones' },
+];
+
+export interface Role {
+  id: string;
+  name: string;
+  permissions: Permission[];
+  isEditable: boolean; // Prevent editing core roles like Admin
 }
 
 export interface User {
   id: string;
   name: string;
-  role: UserRole;
-  pin: string; // Simplified password for this demo
-  permissions?: ('CAN_MANAGE_TASKS')[]; // New: Granular permissions
+  roleId: string;
+  pin: string;
 }
 
-// New dynamic Department interface
+// This is the user object available globally after login
+export interface AuthenticatedUser extends User {
+  role: Role; // The resolved role object
+  permissions: Permission[]; // The resolved permissions for quick checking
+}
+
 export interface Department {
   id: string;
   name: string;
@@ -22,29 +47,25 @@ export interface Product {
   name: string;
   category: string;
   quantity: number;
-  unit: string; // e.g., 'unidades', 'litros', 'cajas'
-  minThreshold: number; // For low stock alerts
-  departmentId: string; // New: Link to a department
-  departmentName: string; // New: For display purposes
+  unit: string;
+  minThreshold: number;
+  departmentId: string;
+  departmentName: string;
 }
 
 export interface ReplenishmentRequest {
   id: string;
-  batchId?: string; // Group requests into a single order
+  batchId?: string;
   productId: string;
   productName: string;
-  departmentId: string; // Updated: Use department ID
-  departmentName: string; // Updated: For display purposes
+  departmentId: string;
+  departmentName: string;
   requestedBy: string;
   quantity: number;
   status: 'PENDING' | 'COMPLETED';
   date: string;
-  timestamp?: number; // Numeric timestamp for auto-cleanup
+  timestamp?: number;
   unit?: string;
-}
-
-export interface AppState {
-  currentUser: User | null;
 }
 
 export interface CartItem {
@@ -61,7 +82,6 @@ export interface OrderBatch {
   items: ReplenishmentRequest[];
 }
 
-// --- New Task Management Types ---
 export enum TaskStatus {
   PENDING = 'PENDING',
   IN_PROGRESS = 'IN_PROGRESS',
@@ -81,17 +101,16 @@ export interface Task {
   status: TaskStatus;
   priority: TaskPriority;
   location?: string;
-  departmentId: string; // The department this task is assigned to
+  departmentId: string;
   departmentName: string;
-  createdBy: string; // User's name
-  createdById: string; // User's ID
-  createdAt: number; // Timestamp
+  createdBy: string;
+  createdById: string;
+  createdAt: number;
   completedBy?: string;
   completedAt?: number;
-  imagesBase64?: string[]; // Store compressed images as Base64 strings
+  imagesBase64?: string[];
 }
 
-// --- Notification System Types ---
 export enum NotificationType {
   LOW_STOCK = 'LOW_STOCK',
   NEW_ORDER = 'NEW_ORDER',
@@ -104,19 +123,19 @@ export interface NotificationPayload {
   orderBatchId?: string;
   departmentId?: string;
   departmentName?: string;
-  taskId?: string; // For new task notifications
+  taskId?: string;
   taskTitle?: string;
 }
 
 export interface AppNotification {
-  id: string; // Firestore document ID
+  id: string;
   type: NotificationType;
   title: string;
   message: string;
-  icon: string; // Lucide icon name, e.g., 'AlertTriangle', 'BellRing'
-  timestamp: number; // Unix timestamp for sorting and display
+  icon: string;
+  timestamp: number;
   readStatus: boolean;
-  reviewedBy?: string; // User ID who marked it as read/reviewed
-  reviewedAt?: number; // Unix timestamp when it was reviewed
+  reviewedBy?: string;
+  reviewedAt?: number;
   payload: NotificationPayload;
 }

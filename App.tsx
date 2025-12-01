@@ -4,33 +4,17 @@ import Inventory from './pages/Inventory';
 import Replenishment from './pages/Replenishment';
 import Admin from './pages/Admin';
 import Tasks from './pages/Tasks';
-// Fix: Changed storageService import to import all exported functions as a namespace, as 'storageService' is not a named export.
 import * as storageService from './services/storageService';
 import { Logo } from './components/Logo';
-import { LayoutGrid, ClipboardList, ShieldCheck, LogOut, Moon, Sun, Download, Share, PlusSquare, X, Bell, ShoppingCart, ClipboardCheck } from 'lucide-react';
-import { User, UserRole, AppNotification, CartItem } from './types';
+import { LayoutGrid, ClipboardList, ShieldCheck, LogOut, Moon, Sun, Download, Share, PlusSquare, X, ShoppingCart, ClipboardCheck } from 'lucide-react';
+import { AuthenticatedUser, AppNotification, CartItem, Permission } from './types';
 import { NotificationToast } from './components/NotificationToast';
 
-const App: React.FC = () => {
-  const [user, setUser] = useState<User | null>(storageService.getSession());
-  
-  const [view, setView] = useState<'inventory' | 'replenish' | 'admin' | 'tasks'>(() => {
-     const lastView = storageService.getLastView();
-     const sessionUser = storageService.getSession();
-     
-     let defaultView: 'inventory' | 'replenish' | 'tasks' = 'replenish';
-     if (sessionUser?.role === UserRole.ADMIN) {
-        defaultView = 'inventory';
-     }
+type View = 'inventory' | 'replenish' | 'admin' | 'tasks';
 
-     if (lastView === 'inventory' || lastView === 'replenish' || lastView === 'admin' || lastView === 'tasks') {
-       if (sessionUser?.role === UserRole.STAFF && (lastView === 'admin' || lastView === 'inventory')) return defaultView;
-       if (sessionUser?.role === UserRole.ADMIN && lastView === 'replenish') return defaultView;
-       // @ts-ignore
-       return lastView;
-     }
-     return defaultView;
-  });
+const App: React.FC = () => {
+  const [user, setUser] = useState<AuthenticatedUser | null>(storageService.getSession());
+  const [view, setView] = useState<View>('replenish');
   
   const [darkMode, setDarkMode] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -47,7 +31,7 @@ const App: React.FC = () => {
 
   const [toasts, setToasts] = useState<AppNotification[]>([]);
   const [unreadAdminNotifications, setUnreadAdminNotifications] = useState<AppNotification[]>([]);
-  const [initialAdminTab, setInitialAdminTab] = useState<'requests' | 'users' | 'reports'>('requests');
+  const [initialAdminTab, setInitialAdminTab] = useState<'requests' | 'users' | 'reports' | 'roles'>('requests');
   const displayedToastIds = useRef<Set<string>>(new Set());
 
   const [cart, setCart] = useState<CartItem[]>(storageService.getDraftCart());
@@ -55,51 +39,60 @@ const App: React.FC = () => {
   
   const cleanupPerformed = useRef(false);
 
+  const hasPermission = (permission: Permission) => user?.permissions.includes(permission) ?? false;
+
+  const getDefaultView = (authedUser: AuthenticatedUser): View => {
+    if (authedUser.permissions.includes('CAN_VIEW_INVENTORY')) return 'inventory';
+    if (authedUser.permissions.includes('CAN_MAKE_ORDERS')) return 'replenish';
+    return 'tasks'; // Fallback to tasks if no other primary view is available
+  };
+
   useEffect(() => {
-    if (user && user.role === UserRole.ADMIN && !cleanupPerformed.current) {
-      console.log("Admin session started, running task cleanup...");
+    const sessionUser = storageService.getSession();
+    if (sessionUser) {
+      const lastView = storageService.getLastView() as View | null;
+      const defaultView = getDefaultView(sessionUser);
+      if (lastView) {
+        // Validate if the user still has permission for the last view
+        let canAccessLastView = true;
+        if (lastView === 'inventory' && !sessionUser.permissions.includes('CAN_VIEW_INVENTORY')) canAccessLastView = false;
+        if (lastView === 'admin' && sessionUser.role.id !== 'admin') canAccessLastView = false; // Simplified: only 'admin' role can see admin page
+        
+        setView(canAccessLastView ? lastView : defaultView);
+      } else {
+        setView(defaultView);
+      }
+    }
+  }, [user]);
+  
+  useEffect(() => {
+    if (user && user.role.id === 'admin' && !cleanupPerformed.current) {
       storageService.cleanupCompletedTasks();
       cleanupPerformed.current = true;
     }
-    // Reset on logout so it can run again for the next admin session
-    if (!user) {
-      cleanupPerformed.current = false;
-    }
+    if (!user) cleanupPerformed.current = false;
   }, [user]);
 
   useEffect(() => {
-    if (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true) {
-      setIsInstalled(true);
-    }
-    
-    const userAgent = window.navigator.userAgent.toLowerCase();
-    setIsIOS(/iphone|ipad|ipod/.test(userAgent));
-    
+    if (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true) setIsInstalled(true);
+    setIsIOS(/iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase()));
     const handleBeforeInstallPrompt = (e: any) => { e.preventDefault(); setDeferredPrompt(e); };
     const handleAppInstalled = () => { setIsInstalled(true); setDeferredPrompt(null); };
-
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     window.addEventListener('appinstalled', handleAppInstalled);
-
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
       window.removeEventListener('appinstalled', handleAppInstalled);
     };
   }, []);
 
-  useEffect(() => {
-    document.documentElement.classList.toggle('dark', darkMode);
-    localStorage.setItem('theme', darkMode ? 'dark' : 'light');
-  }, [darkMode]);
-
+  useEffect(() => { document.documentElement.classList.toggle('dark', darkMode); localStorage.setItem('theme', darkMode ? 'dark' : 'light'); }, [darkMode]);
   useEffect(() => { if (user) storageService.saveLastView(view); }, [view, user]);
   useEffect(() => { storageService.saveDraftCart(cart); }, [cart]);
 
-  const playNotificationSound = () => { /* ... existing sound logic ... */ };
-
   useEffect(() => {
     let unsubscribe: () => void = () => {};
-    if (user && user.role === UserRole.ADMIN) {
+    if (user && hasPermission('CAN_VIEW_REPORTS')) {
       unsubscribe = storageService.subscribeToNotifications((notifications) => {
         const newUnread = notifications.filter(n => !n.readStatus);
         setUnreadAdminNotifications(newUnread);
@@ -107,7 +100,6 @@ const App: React.FC = () => {
         if (newToasts.length > 0) {
           setToasts((prev) => [...prev, ...newToasts]);
           newToasts.forEach(n => displayedToastIds.current.add(n.id));
-          playNotificationSound();
         }
       }, true);
     } else {
@@ -131,14 +123,19 @@ const App: React.FC = () => {
   
   const handleReadAndNavigate = async (notification: AppNotification) => {
     if (user) {
-      await storageService.markNotificationAsRead(notification.id, user.id, user.name);
+      await storageService.markNotificationAsRead(notification.id, user.name);
       setInitialAdminTab('reports');
       setView('admin');
       removeToast(notification.id);
     }
   };
+
+  const handleLogin = (authedUser: AuthenticatedUser) => {
+    setUser(authedUser);
+    setView(getDefaultView(authedUser));
+  };
   
-  if (!user) return <Login onLogin={(u) => { setUser(u); setView(u.role === UserRole.ADMIN ? 'inventory' : 'replenish'); }} />;
+  if (!user) return <Login onLogin={handleLogin} />;
 
   const NavButton = ({ icon: Icon, label, isActive, onClick, notificationCount = 0, isCart = false }: any) => (
     <button onClick={onClick} className={`relative flex flex-col md:flex-row items-center justify-center md:justify-start w-full text-left gap-1 md:gap-3 px-2 md:px-4 py-2 md:py-3 rounded-xl text-xs md:text-base font-bold transition-all ${isActive ? 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 shadow-sm' : 'text-slate-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700/50'}`}>
@@ -152,18 +149,12 @@ const App: React.FC = () => {
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-gray-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-sans">
       <aside className="hidden md:flex flex-col w-72 bg-white dark:bg-slate-800 border-r border-gray-200 dark:border-slate-700/50 p-6">
-        <div className="flex items-center gap-3 mb-8">
-          <Logo size="md" />
-          <div>
-            <h1 className="font-extrabold text-xl tracking-tight text-gray-900 dark:text-white">Hub</h1>
-            <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-widest">Control proactivo</p>
-          </div>
-        </div>
+        <div className="flex items-center gap-3 mb-8"><Logo size="md" /><div><h1 className="font-extrabold text-xl tracking-tight text-gray-900 dark:text-white">Hub</h1><p className="text-xs text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-widest">Control proactivo</p></div></div>
         <nav className="flex-1 space-y-2">
-          {user.role === UserRole.ADMIN && <NavButton icon={LayoutGrid} label="Inventario" isActive={view === 'inventory'} onClick={() => setView('inventory')} />}
-          <NavButton icon={ClipboardList} label="Hacer Pedido" isActive={view === 'replenish'} onClick={() => setView('replenish')} />
+          {hasPermission('CAN_VIEW_INVENTORY') && <NavButton icon={LayoutGrid} label="Inventario" isActive={view === 'inventory'} onClick={() => setView('inventory')} />}
+          {hasPermission('CAN_MAKE_ORDERS') && <NavButton icon={ClipboardList} label="Hacer Pedido" isActive={view === 'replenish'} onClick={() => setView('replenish')} />}
           <NavButton icon={ClipboardCheck} label="Tareas" isActive={view === 'tasks'} onClick={() => setView('tasks')} />
-          {user.role === UserRole.ADMIN && <NavButton icon={ShieldCheck} label="Admin" isActive={view === 'admin'} onClick={() => setView('admin')} notificationCount={unreadAdminNotifications.length} />}
+          {user.role.id === 'admin' && <NavButton icon={ShieldCheck} label="Admin" isActive={view === 'admin'} onClick={() => setView('admin')} notificationCount={unreadAdminNotifications.length} />}
         </nav>
         <div className="space-y-2">
           {!isInstalled && (deferredPrompt || isIOS) && <button onClick={handleInstallClick} className="flex items-center w-full text-left gap-3 px-4 py-3 rounded-lg text-base font-bold text-slate-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700/50"><Download size={22} /> Instalar App</button>}
@@ -182,17 +173,17 @@ const App: React.FC = () => {
         </header>
 
         <div className="flex-1 overflow-y-auto">
-          {view === 'inventory' && user.role === UserRole.ADMIN && <Inventory currentUser={user} />}
-          {view === 'replenish' && <Replenishment currentUser={user} cart={cart} setCart={setCart} showMobileCart={showMobileCart} setShowMobileCart={setShowMobileCart} />}
+          {view === 'inventory' && hasPermission('CAN_VIEW_INVENTORY') && <Inventory currentUser={user} />}
+          {view === 'replenish' && hasPermission('CAN_MAKE_ORDERS') && <Replenishment currentUser={user} cart={cart} setCart={setCart} showMobileCart={showMobileCart} setShowMobileCart={setShowMobileCart} />}
           {view === 'tasks' && <Tasks currentUser={user} />}
-          {view === 'admin' && user.role === UserRole.ADMIN && <Admin currentUser={user} unreadNotificationsCount={unreadAdminNotifications.length} initialTab={initialAdminTab} />}
+          {view === 'admin' && user.role.id === 'admin' && <Admin currentUser={user} unreadNotificationsCount={unreadAdminNotifications.length} initialTab={initialAdminTab} />}
         </div>
         
         <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white/80 dark:bg-slate-800/80 backdrop-blur-md border-t border-gray-200 dark:border-slate-700/50 flex justify-around p-2 pb-safe z-30">
-          {user.role === UserRole.ADMIN && <NavButton icon={LayoutGrid} label="Inventario" isActive={view === 'inventory'} onClick={() => setView('inventory')} />}
-          <NavButton icon={ClipboardList} label="Pedido" isActive={view === 'replenish'} onClick={() => setView('replenish')} />
+          {hasPermission('CAN_VIEW_INVENTORY') && <NavButton icon={LayoutGrid} label="Inventario" isActive={view === 'inventory'} onClick={() => setView('inventory')} />}
+          {hasPermission('CAN_MAKE_ORDERS') && <NavButton icon={ClipboardList} label="Pedido" isActive={view === 'replenish'} onClick={() => setView('replenish')} />}
           <NavButton icon={ClipboardCheck} label="Tareas" isActive={view === 'tasks'} onClick={() => setView('tasks')} />
-          {user.role === UserRole.ADMIN && <NavButton icon={ShieldCheck} label="Admin" isActive={view === 'admin'} onClick={() => setView('admin')} notificationCount={unreadAdminNotifications.length} />}
+          {user.role.id === 'admin' && <NavButton icon={ShieldCheck} label="Admin" isActive={view === 'admin'} onClick={() => setView('admin')} notificationCount={unreadAdminNotifications.length} />}
           {view === 'replenish' && <NavButton icon={ShoppingCart} label="Carrito" isActive={showMobileCart} onClick={() => setShowMobileCart(true)} isCart={true} />}
         </nav>
       </main>
