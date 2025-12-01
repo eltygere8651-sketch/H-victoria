@@ -42,6 +42,8 @@ export const generatePdfFromReactComponent = async (component: React.ReactElemen
           logging: false
         },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        // Add pagebreak options to avoid splitting content
+        pagebreak: { mode: ['avoid-all'] }
       };
 
       (window as any).html2pdf().set(options).from(elementToPrint).save()
