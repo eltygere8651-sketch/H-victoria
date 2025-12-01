@@ -1,4 +1,4 @@
-import { Product, User, ReplenishmentRequest, UserRole, Department, CartItem, AppNotification, NotificationType, NotificationPayload, OrderBatch, Task, TaskStatus, TaskPriority, Announcement } from '../types';
+import { Product, User, ReplenishmentRequest, UserRole, Department, CartItem, AppNotification, NotificationType, NotificationPayload, OrderBatch, Task, TaskStatus, TaskPriority } from '../types';
 import { 
   collection, 
   getDocs, 
@@ -15,226 +15,234 @@ import {
   orderBy,
   limit
 } from 'firebase/firestore';
-// Import only 'db' instance, storage is no longer needed for tasks
 import { db } from '../firebaseConfig';
 
-// Helper to handle circular references for localStorage (unchanged)
-function stringifyWithCircularGuard(obj: any) {
-  const cache = new Set();
-  return JSON.stringify(obj, (key, value) => {
-    if (typeof value === 'object' && value !== null) {
-      if (value.constructor && (
-          value.constructor.name.includes('DocumentReference') ||
-          value.constructor.name.includes('Query') ||
-          value.constructor.name.includes('Firestore') ||
-          value.constructor.name.includes('FirebaseAppImpl') ||
-          value.constructor.name.includes('Snapshot')
-        )) {
-        return undefined;
-      }
-      if (cache.has(value)) { return; }
-      cache.add(value);
-    }
-    return value;
-  });
-}
-
-// LOCAL STORAGE FALLBACK KEYS (unchanged)
+// LOCAL STORAGE FALLBACK KEYS
 const KEYS = {
   USERS: 'hotel_victoria_users',
   PRODUCTS: 'hotel_victoria_products',
+  DEPARTMENTS: 'hotel_victoria_departments',
   REQUESTS: 'hotel_victoria_requests',
   CURRENT_SESSION: 'hotel_victoria_session',
   DRAFT_CART: 'hotel_victoria_draft_cart',
   LAST_VIEW: 'hotel_victoria_last_view',
-  DEPARTMENTS: 'hotel_victoria_departments',
   NOTIFICATIONS: 'hotel_victoria_notifications',
   TASKS: 'hotel_victoria_tasks',
-  ANNOUNCEMENTS: 'hotel_victoria_announcements',
 };
 
-// INITIAL DATA (omitted for brevity, remains unchanged)
+// INITIAL DATA
 const INITIAL_USERS: User[] = [
-  { id: '1', name: 'Administrador', role: UserRole.ADMIN, pin: '1234' },
+  { id: '1', name: 'Administrador', role: UserRole.ADMIN, pin: '1234', permissions: ['CAN_MANAGE_TASKS'] },
   { id: '2', name: 'Camarero Bar', role: UserRole.STAFF, pin: '1234' },
   { id: '3', name: 'Chef Cocina', role: UserRole.STAFF, pin: '1234' }
 ];
 const INITIAL_DEPARTMENTS: Department[] = [
-  { id: 'd-bar', name: 'Bar' }, { id: 'd-gastrobar', name: 'Gastro Bar' }, { id: 'd-cocina', name: 'Cocina' }, { id: 'd-limpieza', name: 'Limpieza' }, { id: 'd-tienda', name: 'Tienda de Regalos' }, { id: 'd-general', name: 'General' }, { id: 'd-comedor', name: 'Comedor' }, { id: 'd-spa', name: 'SPA' }, { id: 'd-mantenimiento', name: 'Mantenimiento' },
+  { id: 'd-bar', name: 'Bar' },
+  { id: 'd-cocina', name: 'Cocina' },
+  { id: 'd-limpieza', name: 'Limpieza' }
 ];
 const INITIAL_PRODUCTS: Product[] = [
-  { id: 'p1', name: 'Coca Cola', category: 'Bebidas', quantity: 150, unit: 'latas', minThreshold: 20, departmentId: 'd-bar', departmentName: 'Bar' }, { id: 'p2', name: 'Bitter Kas', category: 'Bebidas', quantity: 45, unit: 'botellines', minThreshold: 10, departmentId: 'd-bar', departmentName: 'Bar' }, { id: 'p3', name: 'Cerveza Barril', category: 'Alcohol', quantity: 8, unit: 'barriles', minThreshold: 2, departmentId: 'd-bar', departmentName: 'Bar' }, { id: 'p4', name: 'Leche Entera', category: 'Lácteos', quantity: 60, unit: 'litros', minThreshold: 12, departmentId: 'd-cocina', departmentName: 'Cocina' }, { id: 'p5', name: 'Galletas María', category: 'Desayuno', quantity: 30, unit: 'paquetes', minThreshold: 5, departmentId: 'd-comedor', departmentName: 'Comedor' }, { id: 'p6', name: 'Jabón Lavavajillas', category: 'Limpieza', quantity: 10, unit: 'bidones', minThreshold: 2, departmentId: 'd-limpieza', departmentName: 'Limpieza' }, { id: 'p7', name: 'Servilletas', category: 'Material', quantity: 20, unit: 'paquetes', minThreshold: 5, departmentId: 'd-gastrobar', departmentName: 'Gastro Bar' }, { id: 'p8', name: 'Pan de Molde', category: 'Panadería', quantity: 10, unit: 'bolsas', minThreshold: 3, departmentId: 'd-cocina', departmentName: 'Cocina' }, { id: 'p9', name: 'Bombilla LED', category: 'Material', quantity: 50, unit: 'uds', minThreshold: 10, departmentId: 'd-mantenimiento', departmentName: 'Mantenimiento' }, { id: 'p10', name: 'Chocolate Negro', category: 'Golosinas', quantity: 50, unit: 'barras', minThreshold: 10, departmentId: 'd-tienda', departmentName: 'Tienda de Regalos' },
+  { id: 'p1', name: 'Coca Cola', category: 'Bebidas', quantity: 24, unit: 'latas', minThreshold: 12, departmentId: 'd-bar', departmentName: 'Bar' },
+  { id: 'p2', name: 'Agua Mineral', category: 'Bebidas', quantity: 48, unit: 'botellas', minThreshold: 24, departmentId: 'd-bar', departmentName: 'Bar' },
+  { id: 'p3', name: 'Harina de Trigo', category: 'Secos', quantity: 15, unit: 'kg', minThreshold: 5, departmentId: 'd-cocina', departmentName: 'Cocina' },
+  { id: 'p4', name: 'Lejía', category: 'Limpieza', quantity: 10, unit: 'litros', minThreshold: 4, departmentId: 'd-limpieza', departmentName: 'Limpieza' },
 ];
 
-const isFirebaseReady = typeof db !== 'undefined' && db !== null;
+async function initFirestoreWithInitialData() {
+  const collectionsToInit = [
+    { name: 'users', data: INITIAL_USERS, key: KEYS.USERS },
+    { name: 'departments', data: INITIAL_DEPARTMENTS, key: KEYS.DEPARTMENTS },
+    { name: 'products', data: INITIAL_PRODUCTS, key: KEYS.PRODUCTS },
+  ];
 
-// --- Refactored notification creation to avoid circular dependency issues ---
-const createNotification = async (notification: Omit<AppNotification, 'id' | 'timestamp' | 'readStatus' | 'reviewedBy' | 'reviewedAt'>) => {
-  return addDoc(collection(db, 'notifications'), { ...notification, timestamp: Date.now(), readStatus: false });
+  for (const { name, data, key } of collectionsToInit) {
+    const q = query(collection(db, name), limit(1));
+    const snapshot = await getDocs(q);
+    if (snapshot.empty) {
+      console.log(`Initializing ${name} collection...`);
+      const batch = writeBatch(db);
+      data.forEach(item => {
+        const docRef = item.id ? doc(db, name, item.id) : doc(collection(db, name));
+        batch.set(docRef, { ...item, id: item.id || docRef.id });
+      });
+      await batch.commit();
+      localStorage.setItem(key, JSON.stringify(data));
+    }
+  }
+}
+initFirestoreWithInitialData();
+
+// --- NOTIFICATION HELPERS ---
+const createNotification = async (type: NotificationType, payload: NotificationPayload) => {
+  let title = '', message = '', icon = 'Bell';
+  switch (type) {
+    case NotificationType.LOW_STOCK:
+      title = 'Alerta de Stock Bajo';
+      message = `El producto "${payload.productName}" ha alcanzado el umbral mínimo.`;
+      icon = 'AlertTriangle';
+      break;
+    case NotificationType.NEW_ORDER:
+      title = 'Nuevo Pedido Recibido';
+      message = `Nuevo pedido del departamento "${payload.departmentName}".`;
+      icon = 'Package';
+      break;
+    case NotificationType.NEW_TASK:
+      title = 'Nueva Tarea Creada';
+      message = `Tarea "${payload.taskTitle}" para el dpto. ${payload.departmentName}.`;
+      icon = 'ClipboardCheck';
+      break;
+  }
+  const newNotification: Omit<AppNotification, 'id'> = {
+    type, title, message, icon,
+    timestamp: Date.now(),
+    readStatus: false,
+    payload,
+  };
+  await addDoc(collection(db, 'notifications'), newNotification);
 };
 
+// --- AUTH & SESSION ---
+export const login = async (name: string, pin: string): Promise<User | null> => {
+  const q = query(collection(db, "users"), where("name", "==", name), where("pin", "==", pin));
+  const querySnapshot = await getDocs(q);
+  if (!querySnapshot.empty) {
+    const user = { ...querySnapshot.docs[0].data(), id: querySnapshot.docs[0].id } as User;
+    saveSession(user);
+    return user;
+  }
+  return null;
+};
+export const saveSession = (user: User) => localStorage.setItem(KEYS.CURRENT_SESSION, JSON.stringify(user));
+export const getSession = (): User | null => JSON.parse(localStorage.getItem(KEYS.CURRENT_SESSION) || 'null');
+export const clearSession = () => localStorage.removeItem(KEYS.CURRENT_SESSION);
+export const saveLastView = (view: string) => localStorage.setItem(KEYS.LAST_VIEW, view);
+export const getLastView = (): string | null => localStorage.getItem(KEYS.LAST_VIEW);
 
-export const storageService = {
-  // --- AUTH & SESSION (unchanged) ---
-  login: async (name: string, pin: string): Promise<User | null> => {
-    if (isFirebaseReady) {
-      try {
-        const snapshot = await getDocs(collection(db, 'users'));
-        if (!snapshot.empty) {
-           const users = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as User));
-           const match = users.find(u => u.name.trim().toLowerCase() === name.trim().toLowerCase() && u.pin === pin);
-           if (match) {
-             localStorage.setItem(KEYS.CURRENT_SESSION, stringifyWithCircularGuard(match));
-             return match;
-           }
-        }
-        if (snapshot.empty) {
-            console.log("Database is empty. Seeding initial data...");
-            const batch = writeBatch(db);
-            INITIAL_USERS.forEach(u => batch.set(doc(db, 'users', u.id), u));
-            INITIAL_DEPARTMENTS.forEach(d => batch.set(doc(db, 'departments', d.id), d));
-            INITIAL_PRODUCTS.forEach(p => batch.set(doc(db, 'products', p.id), p));
-            await batch.commit();
-            const match = INITIAL_USERS.find(u => u.name.toLowerCase() === name.trim().toLowerCase() && u.pin === pin);
-            if (match) {
-                const q = query(collection(db, 'users'), where('name', '==', match.name));
-                const snap = await getDocs(q);
-                if (!snap.empty) {
-                     const userData = snap.docs[0].data() as User;
-                     const user = { ...userData, id: snap.docs[0].id };
-                     localStorage.setItem(KEYS.CURRENT_SESSION, stringifyWithCircularGuard(user));
-                     return user;
-                }
-            }
-        }
-        return null;
-      } catch (e: any) {
-        console.error("Firebase login error:", e);
-        if (e.code === 'permission-denied') alert("Error de Permisos: Verifica que las reglas de Firestore estén en 'Test Mode'.");
-        else alert(`Error de conexión: ${e.message}`);
-        return null;
-      }
-    } else {
-      const users = JSON.parse(localStorage.getItem(KEYS.USERS) || stringifyWithCircularGuard(INITIAL_USERS));
-      const user = users.find((u: User) => u.name.toLowerCase() === name.toLowerCase() && u.pin === pin);
-      if (user) localStorage.setItem(KEYS.CURRENT_SESSION, stringifyWithCircularGuard(user));
-      return user || null;
-    }
-  },
-  getSession: (): User | null => JSON.parse(localStorage.getItem(KEYS.CURRENT_SESSION) || 'null'),
-  clearSession: () => { localStorage.removeItem(KEYS.CURRENT_SESSION); localStorage.removeItem(KEYS.LAST_VIEW); },
+// --- CART ---
+export const saveDraftCart = (cart: CartItem[]) => localStorage.setItem(KEYS.DRAFT_CART, JSON.stringify(cart));
+export const getDraftCart = (): CartItem[] => JSON.parse(localStorage.getItem(KEYS.DRAFT_CART) || '[]');
 
-  // --- REALTIME SUBSCRIPTIONS (unchanged) ---
-  subscribeToProducts: (callback: (products: Product[]) => void) => onSnapshot(collection(db, 'products'), (s) => callback(s.docs.map(d => ({ ...d.data(), id: d.id } as Product)))),
-  subscribeToDepartments: (callback: (departments: Department[]) => void) => onSnapshot(collection(db, 'departments'), (s) => callback(s.docs.map(d => ({ ...d.data(), id: d.id } as Department)))),
-  subscribeToUsers: (callback: (users: User[]) => void) => onSnapshot(collection(db, 'users'), (s) => callback(s.docs.map(d => ({ ...d.data(), id: d.id } as User)))),
-  subscribeToBatches: (callback: (batches: OrderBatch[]) => void) => onSnapshot(query(collection(db, 'requests'), orderBy('timestamp', 'desc')), (s) => {
-    const groups: {[key: string]: OrderBatch} = {};
-    s.docs.map(d => d.data() as ReplenishmentRequest).forEach(r => {
-      const bid = r.batchId || `legacy_${r.date}`;
-      if (!groups[bid]) groups[bid] = { batchId: bid, date: r.date, departmentId: r.departmentId, departmentName: r.departmentName, requestedBy: r.requestedBy, items: [] };
-      groups[bid].items.push(r);
-    });
-    callback(Object.values(groups));
-  }),
-  subscribeToTasks: (callback: (tasks: Task[]) => void) => onSnapshot(query(collection(db, 'tasks'), orderBy('createdAt', 'desc')), (s) => callback(s.docs.map(d => ({ ...d.data(), id: d.id } as Task)))),
-  subscribeToAnnouncements: (callback: (announcements: Announcement[]) => void) => onSnapshot(query(collection(db, 'announcements'), orderBy('createdAt', 'desc')), (s) => callback(s.docs.map(d => ({ ...d.data(), id: d.id } as Announcement)))),
+// --- DEPARTMENTS ---
+export const subscribeToDepartments = (callback: (data: Department[]) => void) => onSnapshot(query(collection(db, 'departments'), orderBy('name')), snapshot => callback(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Department))));
+export const saveDepartment = async (department: Partial<Department>) => {
+  const docRef = department.id ? doc(db, 'departments', department.id) : doc(collection(db, 'departments'));
+  await setDoc(docRef, { ...department, id: docRef.id }, { merge: true });
+};
+export const deleteDepartment = async (id: string) => await deleteDoc(doc(db, 'departments', id));
 
-  // --- NOTIFICATION ACTIONS (unchanged) ---
-  addNotification: createNotification,
-  subscribeToNotifications: (callback: (notifications: AppNotification[]) => void, unreadOnly = false) => {
-    let q: any = collection(db, 'notifications');
-    if (unreadOnly) q = query(q, where('readStatus', '==', false));
-    q = query(q, orderBy('timestamp', 'desc'));
-    return onSnapshot(q, (s) => callback(s.docs.map(d => ({ ...d.data(), id: d.id } as AppNotification))));
-  },
-  markNotificationAsRead: async (notificationId: string, userId: string, userName: string) => updateDoc(doc(db, 'notifications', notificationId), { readStatus: true, reviewedBy: userName, reviewedAt: Date.now() }),
-  markAllNotificationsAsRead: async (userId: string, userName: string) => {
-    const q = query(collection(db, 'notifications'), where('readStatus', '==', false));
-    const s = await getDocs(q);
-    if (!s.empty) {
-      const batch = writeBatch(db);
-      s.docs.forEach(d => batch.update(d.ref, { readStatus: true, reviewedBy: userName, reviewedAt: Date.now() }));
-      await batch.commit();
-    }
-  },
+// --- PRODUCTS ---
+export const subscribeToProducts = (callback: (data: Product[]) => void) => onSnapshot(query(collection(db, 'products'), orderBy('name')), snapshot => callback(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Product))));
+export const saveProduct = async (product: Partial<Product>) => {
+  const docRef = product.id ? doc(db, 'products', product.id) : doc(collection(db, 'products'));
+  await setDoc(docRef, { ...product, id: docRef.id }, { merge: true });
+};
+export const deleteProduct = async (id: string) => await deleteDoc(doc(db, 'products', id));
 
-  // --- ACTIONS (Products, Departments, Orders - simplified for brevity, logic unchanged) ---
-  saveProduct: async (product: Product) => { /* ... existing logic ... */ },
-  deleteProduct: async (id: string) => deleteDoc(doc(db, 'products', id)),
-  saveDepartment: async (department: Department) => { /* ... existing logic ... */ },
-  deleteDepartment: async (id: string) => deleteDoc(doc(db, 'departments', id)),
-  submitOrderBatch: async (items: CartItem[], departmentId: string, departmentName: string, user: User) => { /* ... existing logic ... */ return { success: true, batchId: '', lowStockItems: [] } },
-  deleteBatch: async (batchId: string) => { /* ... existing logic ... */ },
+// --- ORDERS / REPLENISHMENT ---
+export const submitOrderBatch = async (cart: CartItem[], departmentId: string, departmentName: string, user: User) => {
+  const batch = writeBatch(db);
+  const lowStockItems: string[] = [];
+  const batchId = Date.now().toString().slice(-6);
 
-  // --- TASK ACTIONS (RE-ARCHITECTED FOR MULTI-IMAGE & SIMPLIFIED) ---
-  saveTask: async (taskData: Partial<Task>) => {
-    const isNewTask = !taskData.id;
+  for (const item of cart) {
+    const productRef = doc(db, 'products', item.product.id);
+    const newQuantity = item.product.quantity - item.quantity;
+    batch.update(productRef, { quantity: newQuantity });
 
-    // The component now prepares the full object, including the imagesBase64 array.
-    const dataForFirestore: Partial<Task> = {
-      ...taskData,
-      imagesBase64: taskData.imagesBase64 || [], // Ensure it's always an array
+    const request: Omit<ReplenishmentRequest, 'id'> = {
+      batchId, productId: item.product.id, productName: item.product.name,
+      departmentId, departmentName, requestedBy: user.name,
+      quantity: item.quantity, status: 'COMPLETED',
+      date: new Date().toLocaleString(), timestamp: Date.now(), unit: item.product.unit
     };
+    const requestRef = doc(collection(db, 'requests'));
+    batch.set(requestRef, request);
     
-    // Remove undefined keys before saving to prevent Firestore errors
-    Object.keys(dataForFirestore).forEach(key => {
-        const k = key as keyof typeof dataForFirestore;
-        if (dataForFirestore[k] === undefined) {
-            delete dataForFirestore[k];
-        }
-    });
-
-    if (isNewTask) {
-        // Create new task
-        const { id, ...dataToCreate } = dataForFirestore;
-        const docRef = await addDoc(collection(db, 'tasks'), dataToCreate);
-        await createNotification({
-            type: NotificationType.NEW_TASK,
-            title: 'Nueva Tarea Asignada',
-            message: `"${dataToCreate.createdBy}" creó la tarea "${dataToCreate.title}".`,
-            icon: 'ClipboardCheck',
-            payload: { taskId: docRef.id, taskTitle: dataToCreate.title }
-        });
-    } else {
-        // Update existing task
-        const { id, ...dataToUpdate } = dataForFirestore;
-        await updateDoc(doc(db, 'tasks', id!), dataToUpdate);
+    if (newQuantity <= item.product.minThreshold) {
+      lowStockItems.push(item.product.name);
+      await createNotification(NotificationType.LOW_STOCK, { productName: item.product.name });
     }
-  },
+  }
 
-  deleteTask: async (taskId: string) => {
-    // Deleting the document from Firestore is enough, as the image data is self-contained.
-    await deleteDoc(doc(db, 'tasks', taskId));
-  },
-  
-  // --- ANNOUNCEMENT ACTIONS ---
-  saveAnnouncement: async (announcementData: Partial<Announcement>, currentUser: User) => {
-    const isNew = !announcementData.id;
-    if (isNew) {
-      const newAnnouncement: Omit<Announcement, 'id'> = {
-        title: announcementData.title!,
-        content: announcementData.content!,
-        authorName: currentUser.name,
-        createdAt: Date.now(),
+  await batch.commit();
+  await createNotification(NotificationType.NEW_ORDER, { departmentName, orderBatchId: batchId });
+  return { success: true, lowStockItems };
+};
+
+export const subscribeToBatches = (callback: (batches: OrderBatch[]) => void) => {
+  const q = query(collection(db, 'requests'), orderBy('timestamp', 'desc'));
+  return onSnapshot(q, snapshot => {
+    const requests = snapshot.docs.map(d => ({ ...d.data(), id: d.id } as ReplenishmentRequest));
+    const batches = requests.reduce((acc, req) => {
+      if (!req.batchId) return acc;
+      acc[req.batchId] = acc[req.batchId] || {
+        batchId: req.batchId, date: req.date, departmentId: req.departmentId,
+        departmentName: req.departmentName, requestedBy: req.requestedBy, items: []
       };
-      await addDoc(collection(db, 'announcements'), newAnnouncement);
-    } else {
-      const { id, ...dataToUpdate } = announcementData;
-      await updateDoc(doc(db, 'announcements', id!), dataToUpdate);
-    }
-  },
+      acc[req.batchId].items.push(req);
+      return acc;
+    }, {} as Record<string, OrderBatch>);
+    callback(Object.values(batches));
+  });
+};
+export const deleteBatch = async (batchId: string) => {
+  const q = query(collection(db, 'requests'), where('batchId', '==', batchId));
+  const snapshot = await getDocs(q);
+  const batch = writeBatch(db);
+  snapshot.docs.forEach(d => batch.delete(d.ref));
+  await batch.commit();
+};
 
-  deleteAnnouncement: async (announcementId: string) => {
-    await deleteDoc(doc(db, 'announcements', announcementId));
-  },
+// --- USERS ---
+export const subscribeToUsers = (callback: (users: User[]) => void) => onSnapshot(query(collection(db, 'users'), orderBy('name')), snapshot => callback(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as User))));
+export const addUser = async (user: Omit<User, 'id'>) => await addDoc(collection(db, 'users'), user);
+export const updateUser = async (user: User) => await updateDoc(doc(db, 'users', user.id), { ...user });
+export const deleteUser = async (id: string) => await deleteDoc(doc(db, 'users', id));
 
-  // --- USER ACTIONS & HELPERS (unchanged) ---
-  addUser: async (user: User) => setDoc(doc(db, 'users', user.id), user),
-  updateUser: async (user: User) => updateDoc(doc(db, 'users', user.id), { ...user }),
-  deleteUser: async (id: string) => deleteDoc(doc(db, 'users', id)),
-  getDraftCart: (): CartItem[] => JSON.parse(localStorage.getItem(KEYS.DRAFT_CART) || '[]'),
-  saveDraftCart: (cart: CartItem[]) => localStorage.setItem(KEYS.DRAFT_CART, stringifyWithCircularGuard(cart)),
-  getLastView: () => localStorage.getItem(KEYS.LAST_VIEW),
-  saveLastView: (view: string) => localStorage.setItem(KEYS.LAST_VIEW, view)
+// --- NOTIFICATIONS ---
+export const subscribeToNotifications = (callback: (data: AppNotification[]) => void, unreadOnly = false) => {
+  let q = query(collection(db, 'notifications'), orderBy('timestamp', 'desc'));
+  if (unreadOnly) q = query(q, where('readStatus', '==', false));
+  return onSnapshot(q, snapshot => callback(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as AppNotification))));
+};
+export const markNotificationAsRead = async (id: string, userId: string, userName: string) => await updateDoc(doc(db, 'notifications', id), { readStatus: true, reviewedBy: userName, reviewedAt: Date.now() });
+export const markAllNotificationsAsRead = async (userId: string, userName: string) => {
+  const q = query(collection(db, 'notifications'), where('readStatus', '==', false));
+  const snapshot = await getDocs(q);
+  const batch = writeBatch(db);
+  snapshot.docs.forEach(d => batch.update(d.ref, { readStatus: true, reviewedBy: userName, reviewedAt: Date.now() }));
+  await batch.commit();
+};
+
+// --- TASKS ---
+export const subscribeToTasks = (callback: (data: Task[]) => void) => onSnapshot(query(collection(db, 'tasks'), orderBy('createdAt', 'desc')), snapshot => callback(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Task))));
+export const saveTask = async (task: Partial<Task>) => {
+  const isNew = !task.id;
+  const docRef = isNew ? doc(collection(db, 'tasks')) : doc(db, 'tasks', task.id!);
+  const taskData = { ...task, id: docRef.id };
+  await setDoc(docRef, taskData, { merge: true });
+
+  if(isNew) {
+    await createNotification(NotificationType.NEW_TASK, {
+      taskId: docRef.id,
+      taskTitle: task.title,
+      departmentName: task.departmentName
+    });
+  }
+};
+export const deleteTask = async (id: string) => await deleteDoc(doc(db, 'tasks', id));
+export const cleanupCompletedTasks = async () => {
+  const twelveHoursAgo = Date.now() - (12 * 60 * 60 * 1000);
+  const q = query(
+    collection(db, 'tasks'), 
+    where('status', '==', TaskStatus.COMPLETED),
+    where('completedAt', '<', twelveHoursAgo)
+  );
+  const snapshot = await getDocs(q);
+  if (!snapshot.empty) {
+    console.log(`Cleaning up ${snapshot.size} completed tasks...`);
+    const batch = writeBatch(db);
+    snapshot.docs.forEach(d => batch.delete(d.ref));
+    await batch.commit();
+  }
 };

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Product, User, CartItem, Department, OrderBatch } from '../types';
-import { storageService } from '../services/storageService';
+// Fix: Changed storageService import to import all exported functions as a namespace, as 'storageService' is not a named export.
+import * as storageService from '../services/storageService';
 import { Search, ShoppingCart, Plus, Minus, Trash2, CheckCircle2, X, ArrowRight, Package, ChevronUp, AlertTriangle, Siren, Loader2, ChevronDown, ListTree } from 'lucide-react';
 
 interface ReplenishmentProps {

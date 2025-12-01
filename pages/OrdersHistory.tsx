@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { storageService } from '../services/storageService';
+// Fix: Changed storageService import to import all exported functions as a namespace, as 'storageService' is not a named export.
+import * as storageService from '../services/storageService';
 import { User, UserRole, Department, OrderBatch } from '../types';
 import { FileText, Printer, Trash2, X, Eye, Package, Download, Loader2 } from 'lucide-react';
 import { Logo } from '../components/Logo';

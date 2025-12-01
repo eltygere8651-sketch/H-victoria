@@ -8,6 +8,7 @@ export interface User {
   name: string;
   role: UserRole;
   pin: string; // Simplified password for this demo
+  permissions?: ('CAN_MANAGE_TASKS')[]; // New: Granular permissions
 }
 
 // New dynamic Department interface
@@ -118,13 +119,4 @@ export interface AppNotification {
   reviewedBy?: string; // User ID who marked it as read/reviewed
   reviewedAt?: number; // Unix timestamp when it was reviewed
   payload: NotificationPayload;
-}
-
-// --- Announcement System Types ---
-export interface Announcement {
-  id: string;
-  title: string;
-  content: string;
-  authorName: string; // User's name who created it
-  createdAt: number; // Timestamp
 }

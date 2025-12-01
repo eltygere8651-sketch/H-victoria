@@ -4,7 +4,8 @@ import Inventory from './pages/Inventory';
 import Replenishment from './pages/Replenishment';
 import Admin from './pages/Admin';
 import Tasks from './pages/Tasks';
-import { storageService } from './services/storageService';
+// Fix: Changed storageService import to import all exported functions as a namespace, as 'storageService' is not a named export.
+import * as storageService from './services/storageService';
 import { Logo } from './components/Logo';
 import { LayoutGrid, ClipboardList, ShieldCheck, LogOut, Moon, Sun, Download, Share, PlusSquare, X, Bell, ShoppingCart, ClipboardCheck } from 'lucide-react';
 import { User, UserRole, AppNotification, CartItem } from './types';
@@ -51,6 +52,20 @@ const App: React.FC = () => {
 
   const [cart, setCart] = useState<CartItem[]>(storageService.getDraftCart());
   const [showMobileCart, setShowMobileCart] = useState(false);
+  
+  const cleanupPerformed = useRef(false);
+
+  useEffect(() => {
+    if (user && user.role === UserRole.ADMIN && !cleanupPerformed.current) {
+      console.log("Admin session started, running task cleanup...");
+      storageService.cleanupCompletedTasks();
+      cleanupPerformed.current = true;
+    }
+    // Reset on logout so it can run again for the next admin session
+    if (!user) {
+      cleanupPerformed.current = false;
+    }
+  }, [user]);
 
   useEffect(() => {
     if (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true) {

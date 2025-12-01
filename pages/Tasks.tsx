@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Task, User, Department, TaskStatus, TaskPriority, UserRole } from '../types';
-import { storageService } from '../services/storageService';
+// Fix: Changed storageService import to import all exported functions as a namespace.
+import * as storageService from '../services/storageService';
 import { ClipboardCheck, Plus, X, Save, Loader2, Edit2, Trash2, ChevronDown, Flag, MapPin, MessageSquare, Clock, Check, Image as ImageIcon, Camera, ArrowLeft, ArrowRight, MoreVertical, User as UserIcon } from 'lucide-react';
 import { compressImage } from '../utils/imageCompressor';
 import { fileToBase64 } from '../utils/imageCompressor';
@@ -28,6 +29,9 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
 
   const [viewingImages, setViewingImages] = useState<{ images: string[], startIndex: number } | null>(null);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
+
+  // New permission check logic
+  const canManageTasks = currentUser.role === UserRole.ADMIN || (currentUser.permissions?.includes('CAN_MANAGE_TASKS') ?? false);
 
   useEffect(() => {
     const unsubscribeTasks = storageService.subscribeToTasks((data) => {
@@ -60,7 +64,8 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
 
     setIsCompressing(true);
     try {
-      const processedImages = await Promise.all(files.map(async file => {
+      // Fix: Explicitly typed 'file' as 'File' to resolve a TypeScript type inference issue.
+      const processedImages = await Promise.all(files.map(async (file: File) => {
         const compressedFile = await compressImage(file);
         return await fileToBase64(compressedFile);
       }));
@@ -68,8 +73,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
         ...prev,
         imagesBase64: [...(prev?.imagesBase64 || []), ...processedImages]
       }));
-// FIX: Changed 'catch (error: any)' to 'catch (error)' to improve type safety and resolve a potential type inference issue.
-    } catch (error) {
+    } catch (error: any) {
       console.error("Image processing failed:", error);
       alert("Hubo un error al procesar las imágenes. Por favor, inténtalo de nuevo.");
     } finally {
@@ -228,7 +232,9 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
       <div className="sticky top-0 z-10 bg-white/95 dark:bg-slate-900/95 backdrop-blur pt-6 pb-4 px-4 md:px-6 border-b border-gray-200 dark:border-slate-800">
         <div className="flex justify-between items-center mb-5">
           <h2 className="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">Tareas e Incidencias</h2>
-          <button onClick={openNewTaskModal} className="bg-red-600 text-white p-3 rounded-full shadow-lg shadow-button-red hover:bg-red-700 active:scale-95"><Plus size={24} /></button>
+          {canManageTasks && (
+            <button onClick={openNewTaskModal} className="bg-red-600 text-white p-3 rounded-full shadow-lg shadow-button-red hover:bg-red-700 active:scale-95"><Plus size={24} /></button>
+          )}
         </div>
         <div className="flex gap-2 bg-gray-100 dark:bg-slate-800 p-1.5 rounded-xl">
             {(['ALL', TaskStatus.PENDING, TaskStatus.IN_PROGRESS, TaskStatus.COMPLETED] as const).map(s => <button key={s} onClick={() => setStatusFilter(s)} className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${statusFilter === s ? 'bg-white dark:bg-slate-700 text-red-600 dark:text-red-400 shadow-md' : 'text-gray-500 dark:text-slate-400 hover:bg-white/50 dark:hover:bg-slate-700/50'}`}>{s === 'ALL' ? 'Todas' : statusTextMap[s]}</button>)}
@@ -271,7 +277,6 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
                 <input value={editingTask?.location || ''} onChange={e => setEditingTask({...editingTask, location: e.target.value})} placeholder="Ubicación (ej. Baño Hab. 205)" className="w-full p-4 border-2 rounded-xl bg-gray-50 dark:bg-slate-700/50 focus:border-red-500 outline-none dark:text-white shadow-sm" />
-{/* FIX: Corrected typo from 'TastPriority' to 'TaskPriority'. */}
                 <select value={editingTask?.priority || TaskPriority.MEDIUM} onChange={e => setEditingTask({...editingTask, priority: e.target.value as TaskPriority})} className="w-full p-4 border-2 rounded-xl bg-gray-50 dark:bg-slate-700/50 focus:border-red-500 outline-none dark:text-white shadow-sm"><option value={TaskPriority.LOW}>Prioridad Baja</option><option value={TaskPriority.MEDIUM}>Prioridad Media</option><option value={TaskPriority.HIGH}>Prioridad Alta</option></select>
               </div>
               <select value={editingTask?.departmentId || ''} onChange={e => setEditingTask({...editingTask, departmentId: e.target.value})} className="w-full p-4 border-2 rounded-xl bg-gray-50 dark:bg-slate-700/50 focus:border-red-500 outline-none dark:text-white shadow-sm">
@@ -290,7 +295,27 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
         </div>
       )}
       
-      {taskToDelete && <div className="...">{/* (unchanged) */}</div>}
+      {taskToDelete && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white dark:bg-slate-800 rounded-3xl w-full max-w-sm shadow-pop-in p-6 animate-pop-in border border-gray-100 dark:border-slate-700/50 text-center">
+            <div className="w-16 h-16 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-4 text-red-600 dark:text-red-500 shadow-md">
+              <Trash2 size={32} />
+            </div>
+            <h3 className="text-xl font-black text-gray-900 dark:text-white mb-2">¿Eliminar Tarea?</h3>
+            <p className="text-gray-500 dark:text-slate-400 mb-6">
+              Estás a punto de eliminar la tarea <strong className="text-gray-800 dark:text-slate-200">"{taskToDelete.title}"</strong>.
+            </p>
+            <div className="flex gap-3">
+              <button onClick={() => setTaskToDelete(null)} className="flex-1 py-3 font-bold text-gray-600 dark:text-slate-400 bg-gray-100 dark:bg-slate-700/50 rounded-xl hover:bg-gray-200 dark:hover:bg-slate-700 active:scale-[0.98]">
+                Cancelar
+              </button>
+              <button onClick={confirmDelete} className="flex-1 py-3 font-bold text-white bg-red-600 rounded-xl hover:bg-red-700 shadow-lg shadow-button-red active:scale-[0.98]">
+                Sí, Eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       
       {viewingImages && (
         <div className="fixed inset-0 bg-black/90 z-[100] flex items-center justify-center p-0 animate-fade-in" onClick={() => setViewingImages(null)}>
@@ -357,7 +382,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
               <div className="flex-1">
                  <StatusChanger task={task}/>
               </div>
-              {currentUser.role === UserRole.ADMIN && (
+              {canManageTasks && (
                 <AdminActions task={task} />
               )}
             </div>
