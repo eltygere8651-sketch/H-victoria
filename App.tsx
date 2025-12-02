@@ -65,8 +65,9 @@ const App: React.FC = () => {
   const taskAudioRef = useRef<AudioContext | null>(null);
   
   useEffect(() => {
-    if (user && user.role === UserRole.ADMIN) {
-      console.log('Admin user detected, initializing push notifications...');
+    // FIX: Remove role restriction. Any logged-in user can register for notifications.
+    if (user) {
+      console.log(`User '${user.name}' detected, initializing push notifications...`);
       initializePushNotifications(user);
     }
   }, [user]);
