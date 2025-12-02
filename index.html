@@ -107,15 +107,5 @@
   <body class="bg-gray-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 antialiased selection:bg-red-100 dark:selection:bg-red-900/50">
     <div id="root"></div>
     <script type="module" src="/index.tsx?v=1710000003"></script>
-    <script>
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          const swUrl = `${window.location.origin}/sw.js`;
-          navigator.serviceWorker.register(swUrl).catch(error => {
-            console.warn('ServiceWorker registration failed. This can happen in sandboxed environments and is not critical for app functionality, but PWA features may be disabled.', error);
-          });
-        });
-      }
-    </script>
   </body>
 </html>
