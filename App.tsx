@@ -6,8 +6,8 @@ import Admin from './pages/Admin';
 import Tasks from './pages/Tasks';
 import * as storageService from './services/storageService';
 import { Logo } from './components/Logo';
-import { LayoutGrid, ClipboardList, ShieldCheck, LogOut, Moon, Sun, Download, Share, PlusSquare, X, Bell, ShoppingCart, ClipboardCheck } from 'lucide-react';
-import { User, UserRole, AppNotification, CartItem } from './types';
+import { LayoutGrid, ClipboardList, ShieldCheck, LogOut, Moon, Sun, Download, Share, PlusSquare, X, Bell, ShoppingCart, ClipboardCheck, AlertCircle } from 'lucide-react';
+import { User, UserRole, AppNotification, CartItem, Task } from './types';
 import { NotificationToast } from './components/NotificationToast';
 import { initializePushNotifications } from './services/pushNotificationService';
 
@@ -59,12 +59,13 @@ const App: React.FC = () => {
     intervalId: number | null;
     isPlaying: boolean;
   }>({ context: null, intervalId: null, isPlaying: false });
+
+  // New state for task notifications
+  const [hasUnreadTasks, setHasUnreadTasks] = useState(false);
+  const taskAudioRef = useRef<AudioContext | null>(null);
   
   useEffect(() => {
-    // This effect runs when the user state changes.
     if (user && user.role === UserRole.ADMIN) {
-      // If an admin is logged in, initialize the push notification service.
-      // This will request permission and save the device token.
       console.log('Admin user detected, initializing push notifications...');
       initializePushNotifications(user);
     }
@@ -155,6 +156,50 @@ const App: React.FC = () => {
     }
     return () => unsubscribe();
   }, [user]);
+
+  const playTaskAlertSound = () => {
+    try {
+      if (!taskAudioRef.current) {
+        const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+        if (!AudioContext) return;
+        taskAudioRef.current = new AudioContext();
+      }
+      const ctx = taskAudioRef.current;
+      if (ctx.state === 'suspended') ctx.resume();
+
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(1000, ctx.currentTime);
+      gain.gain.setValueAtTime(0.2, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.3);
+    } catch (e) {
+      console.warn("Could not play task alert sound.", e);
+    }
+  };
+
+  useEffect(() => {
+    if (!user) {
+      setHasUnreadTasks(false);
+      return;
+    }
+
+    const unsubscribe = storageService.subscribeToTasks((allTasks: Task[]) => {
+      const isUnread = allTasks.some(task => !task.seenBy?.includes(user.id));
+      
+      if (isUnread && !hasUnreadTasks) {
+        playTaskAlertSound();
+      }
+      setHasUnreadTasks(isUnread);
+    });
+
+    return () => unsubscribe();
+  }, [user, hasUnreadTasks]);
+
 
   const stopAlertSound = () => {
     if (audioAlertRef.current.intervalId) {
@@ -247,10 +292,11 @@ const App: React.FC = () => {
   
   if (!user) return <Login onLogin={(u) => { setUser(u); setView(u.role === UserRole.ADMIN ? 'inventory' : 'replenish'); }} />;
 
-  const NavButton = ({ icon: Icon, label, isActive, onClick, notificationCount = 0, isCart = false }: any) => (
+  const NavButton = ({ icon: Icon, label, isActive, onClick, notificationCount = 0, isCart = false, hasAlert = false }: any) => (
     <button onClick={onClick} className={`relative flex flex-col items-center justify-center w-full text-center gap-1 p-2 rounded-xl transition-all duration-200 ${isActive ? 'text-red-500' : 'text-slate-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800'}`}>
       <div className={`relative w-14 h-8 rounded-full flex items-center justify-center transition-all duration-200 ${isActive ? 'bg-red-500/10 dark:bg-red-500/10' : ''}`}>
         <Icon size={24} strokeWidth={isActive ? 2.5 : 2} />
+         {hasAlert && <AlertCircle size={16} className="absolute top-0 right-0 text-white fill-red-500 animate-pulse" />}
       </div>
       <span className={`text-xs font-bold transition-colors ${isActive ? 'text-slate-800 dark:text-slate-100' : ''}`}>{label}</span>
       {notificationCount > 0 && <span className="absolute top-1 right-3 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-[10px] font-bold ring-2 ring-white dark:ring-slate-950">{notificationCount}</span>}
@@ -258,11 +304,12 @@ const App: React.FC = () => {
     </button>
   );
 
-  const DesktopNavButton = ({ icon: Icon, label, isActive, onClick, notificationCount = 0 }: any) => (
+  const DesktopNavButton = ({ icon: Icon, label, isActive, onClick, notificationCount = 0, hasAlert = false }: any) => (
     <button onClick={onClick} className={`relative flex items-center justify-start w-full text-left gap-3 px-4 py-3 rounded-xl font-bold transition-all ${isActive ? 'bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400' : 'text-slate-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700/50'}`}>
       <Icon size={22} strokeWidth={2.5} />
       <span>{label}</span>
       {notificationCount > 0 && <span className="absolute top-2 right-2 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold ring-2 ring-white dark:ring-slate-800">{notificationCount}</span>}
+      {hasAlert && <AlertCircle size={18} className="absolute top-3 right-3 text-white fill-red-500 animate-pulse" />}
     </button>
   );
 
@@ -279,7 +326,7 @@ const App: React.FC = () => {
         <nav className="flex-1 space-y-2">
           {user.role === UserRole.ADMIN && <DesktopNavButton icon={LayoutGrid} label="Inventario" isActive={view === 'inventory'} onClick={() => setView('inventory')} />}
           <DesktopNavButton icon={ClipboardList} label="Hacer Pedido" isActive={view === 'replenish'} onClick={() => setView('replenish')} />
-          <DesktopNavButton icon={ClipboardCheck} label="Tareas" isActive={view === 'tasks'} onClick={() => setView('tasks')} />
+          <DesktopNavButton icon={ClipboardCheck} label="Tareas" isActive={view === 'tasks'} onClick={() => setView('tasks')} hasAlert={hasUnreadTasks} />
           {user.role === UserRole.ADMIN && <DesktopNavButton icon={ShieldCheck} label="Admin" isActive={view === 'admin'} onClick={() => setView('admin')} notificationCount={unreadAdminNotifications.length} />}
         </nav>
         <div className="space-y-2">
@@ -291,41 +338,59 @@ const App: React.FC = () => {
 
       <main className="flex-1 flex flex-col h-screen overflow-hidden relative">
         <header className="md:hidden flex justify-between items-center bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-gray-100 dark:border-slate-800 p-4 pt-safe z-30">
-          <div className="flex items-center gap-2"><Logo size="sm" /><h1 className="font-extrabold text-lg text-gray-900 dark:text-white">Hub</h1></div>
           <div className="flex items-center gap-2">
-             <button onClick={() => setDarkMode(!darkMode)} className="p-2 text-slate-600 dark:text-slate-400"><span className="sr-only">Toggle Theme</span>{darkMode ? <Sun size={22} /> : <Moon size={22} />}</button>
-             <button onClick={handleLogout} className="p-2 text-slate-600 dark:text-slate-400"><span className="sr-only">Logout</span><LogOut size={22} /></button>
+            <Logo size="sm" />
+            <h1 className="font-extrabold text-lg text-gray-900 dark:text-white">Hub</h1>
+          </div>
+          <div className="flex items-center gap-2">
+            <button onClick={() => setDarkMode(!darkMode)} className="p-2 text-slate-600 dark:text-slate-400">
+              <span className="sr-only">Toggle Theme</span>
+              {darkMode ? <Sun size={22} /> : <Moon size={22} />}
+            </button>
+            <button onClick={handleLogout} className="p-2 text-slate-600 dark:text-slate-400">
+              <span className="sr-only">Logout</span>
+              <LogOut size={22} />
+            </button>
           </div>
         </header>
-
-        <div className="flex-1 overflow-y-auto pb-24 md:pb-0">
-          {view === 'inventory' && user.role === UserRole.ADMIN && <Inventory currentUser={user} />}
-          {view === 'replenish' && <Replenishment currentUser={user} cart={cart} setCart={setCart} showMobileCart={showMobileCart} setShowMobileCart={setShowMobileCart} />}
-          {view === 'tasks' && <Tasks currentUser={user} />}
-          {view === 'admin' && user.role === UserRole.ADMIN && <Admin currentUser={user} unreadNotificationsCount={unreadAdminNotifications.length} initialTab={initialAdminTab} />}
-        </div>
         
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-t border-gray-100 dark:border-slate-800 flex justify-around p-1 pb-safe z-30">
-          {user.role === UserRole.ADMIN && <NavButton icon={LayoutGrid} label="Inventario" isActive={view === 'inventory'} onClick={() => setView('inventory')} />}
-          <NavButton icon={ClipboardList} label="Pedido" isActive={view === 'replenish'} onClick={() => setView('replenish')} />
-          <NavButton icon={ClipboardCheck} label="Tareas" isActive={view === 'tasks'} onClick={() => setView('tasks')} />
-          {user.role === UserRole.ADMIN && <NavButton icon={ShieldCheck} label="Admin" isActive={view === 'admin'} onClick={() => setView('admin')} notificationCount={unreadAdminNotifications.length} />}
-          {view === 'replenish' && <NavButton icon={ShoppingCart} label="Carrito" isActive={showMobileCart} onClick={() => setShowMobileCart(true)} isCart={true} />}
-        </nav>
+        <div className="flex-1 overflow-y-auto overflow-x-hidden">
+            {view === 'inventory' && <Inventory currentUser={user} />}
+            {view === 'replenish' && <Replenishment currentUser={user} cart={cart} setCart={setCart} showMobileCart={showMobileCart} setShowMobileCart={setShowMobileCart} />}
+            {view === 'admin' && <Admin currentUser={user} unreadNotificationsCount={unreadAdminNotifications.length} initialTab={initialAdminTab} />}
+            {view === 'tasks' && <Tasks currentUser={user} />}
+        </div>
+
+        <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-t border-gray-100 dark:border-slate-800 px-2 pb-safe z-20">
+          <div className="flex justify-around items-center h-20">
+            {user.role === UserRole.ADMIN && <NavButton icon={LayoutGrid} label="Inventario" isActive={view === 'inventory'} onClick={() => setView('inventory')} />}
+            <NavButton icon={ClipboardList} label="Pedido" isActive={view === 'replenish'} onClick={() => setView('replenish')} />
+            <NavButton icon={ShoppingCart} label="Carrito" isActive={showMobileCart} onClick={() => setShowMobileCart(!showMobileCart)} isCart />
+            <NavButton icon={ClipboardCheck} label="Tareas" isActive={view === 'tasks'} onClick={() => setView('tasks')} hasAlert={hasUnreadTasks} />
+            {user.role === UserRole.ADMIN && <NavButton icon={ShieldCheck} label="Admin" isActive={view === 'admin'} onClick={() => setView('admin')} notificationCount={unreadAdminNotifications.length} />}
+          </div>
+        </div>
       </main>
 
-      <div aria-live="assertive" className="fixed inset-0 flex items-end px-4 py-6 pointer-events-none sm:p-6 sm:items-start z-[100]">
+      <div aria-live="assertive" className="fixed inset-0 flex flex-col items-end px-4 py-6 pt-safe pointer-events-none sm:p-6 sm:items-start z-[100]">
         <div className="w-full flex flex-col items-center space-y-4 sm:items-end">
-          {toasts.map(toast => <NotificationToast key={toast.id} notification={toast} onDismiss={removeToast} onReadAndNavigate={() => handleReadAndNavigate(toast)} />)}
+          {toasts.map(toast => (
+            <NotificationToast 
+              key={toast.id} 
+              notification={toast} 
+              onDismiss={removeToast}
+              onReadAndNavigate={() => handleReadAndNavigate(toast)}
+            />
+          ))}
         </div>
       </div>
-
-      {showIOSPrompt && (
-        <div className="fixed inset-0 bg-black/60 z-[100] flex items-end justify-center p-4 backdrop-blur-sm" onClick={() => setShowIOSPrompt(false)}>
-          <div className="bg-white dark:bg-slate-800 rounded-t-2xl md:rounded-2xl w-full max-w-md p-6 text-center animate-slide-up" onClick={e => e.stopPropagation()}>
-            <h3 className="font-bold text-xl text-gray-900 dark:text-white mb-2">Instalar App en tu iPhone</h3>
-            <p className="text-gray-600 dark:text-slate-400 mb-4">Para instalar, pulsa el botón <Share className="inline-block mx-1" /> y luego selecciona <PlusSquare className="inline-block mx-1" /> "Añadir a pantalla de inicio".</p>
-            <button onClick={() => setShowIOSPrompt(false)} className="w-full py-3 bg-red-600 text-white font-bold rounded-xl active:scale-95">Entendido</button>
+      
+       {showIOSPrompt && (
+        <div className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm flex items-end justify-center animate-fade-in">
+          <div className="bg-white dark:bg-slate-800 w-full rounded-t-3xl p-6 text-center animate-slide-up">
+            <X onClick={() => setShowIOSPrompt(false)} className="absolute top-4 right-4 text-gray-400" />
+            <h3 className="font-bold text-xl mb-4">Instalar en tu iPhone</h3>
+            <p className="mb-4">Para instalar la app, toca el botón de <Share className="inline-block mx-1" /> y después selecciona <PlusSquare className="inline-block mx-1" /> "Añadir a pantalla de inicio".</p>
           </div>
         </div>
       )}

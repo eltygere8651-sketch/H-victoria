@@ -109,6 +109,7 @@ export interface Task {
   imagesBase64?: string[]; // Store compressed images as Base64 strings
   type: TaskType; // New: Differentiates between task and announcement
   comments?: TaskComment[]; // New: Thread for discussions
+  seenBy?: string[]; // New: Array of user IDs who have seen the latest update
 }
 
 // --- Notification System Types ---

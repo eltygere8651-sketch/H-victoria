@@ -237,11 +237,17 @@ export const markAllNotificationsAsRead = async (userId: string, userName: strin
 // --- TASKS ---
 // FIX: Use compat query syntax for onSnapshot
 export const subscribeToTasks = (callback: (data: Task[]) => void) => db.collection('tasks').orderBy('createdAt', 'desc').onSnapshot(snapshot => callback(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Task))));
+
 export const saveTask = async (task: Partial<Task>) => {
   const isNew = !task.id;
   // FIX: Use compat doc reference and set syntax
   const docRef = isNew ? db.collection('tasks').doc() : db.collection('tasks').doc(task.id!);
-  const taskData = { ...task, id: docRef.id };
+  
+  let taskData: Partial<Task> = { ...task, id: docRef.id };
+  if (isNew) {
+    taskData.seenBy = [task.createdById!]; // Mark as seen by creator
+  }
+
   await docRef.set(taskData, { merge: true });
 
   if(isNew) {
@@ -253,8 +259,10 @@ export const saveTask = async (task: Partial<Task>) => {
     });
   }
 };
+
 // FIX: Use compat delete syntax
 export const deleteTask = async (id: string) => await db.collection('tasks').doc(id).delete();
+
 export const cleanupCompletedTasks = async () => {
   const thirtyMinutesAgo = Date.now() - (30 * 60 * 1000);
   // FIX: Use compat query syntax
@@ -280,6 +288,15 @@ export const addCommentToTask = async (taskId: string, comment: Omit<TaskComment
   };
   const taskRef = db.collection('tasks').doc(taskId);
   await taskRef.update({
-    comments: firebase.firestore.FieldValue.arrayUnion(newComment)
+    comments: firebase.firestore.FieldValue.arrayUnion(newComment),
+    seenBy: [comment.userId] // Reset seenBy to just the commenter
+  });
+};
+
+// New: Function to mark a task as seen by the current user
+export const markTaskAsSeen = async (taskId: string, userId: string) => {
+  const taskRef = db.collection('tasks').doc(taskId);
+  await taskRef.update({
+    seenBy: firebase.firestore.FieldValue.arrayUnion(userId)
   });
 };

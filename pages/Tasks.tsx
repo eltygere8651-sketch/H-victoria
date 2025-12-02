@@ -1,11 +1,11 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Task, User, Department, TaskStatus, TaskPriority, UserRole, TaskType, TaskComment } from '../types';
-// Fix: Changed storageService import to import all exported functions as a namespace.
 import * as storageService from '../services/storageService';
 import { ClipboardCheck, Plus, X, Save, Loader2, Edit2, Trash2, ChevronDown, Flag, MapPin, MessageSquare, Clock, Check, Image as ImageIcon, Camera, ArrowLeft, ArrowRight, MoreVertical, User as UserIcon, Megaphone, Send } from 'lucide-react';
 import { compressImage } from '../utils/imageCompressor';
 import { fileToBase64 } from '../utils/imageCompressor';
 import { ImageViewer } from '../components/ImageViewer';
+import { DeletionTimer } from '../components/DeletionTimer';
 
 interface TasksProps {
   currentUser: User;
@@ -29,7 +29,6 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
   const [viewingImages, setViewingImages] = useState<{ images: string[], startIndex: number } | null>(null);
-  const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
 
   // New: State for viewing task details and comments
   const [selectedTaskForDetails, setSelectedTaskForDetails] = useState<Task | null>(null);
@@ -53,25 +52,23 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
       setDepartments(data);
     });
 
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as HTMLElement;
-      if (activeDropdown && !target.closest('.dropdown-container')) {
-        setActiveDropdown(null);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-
     return () => {
       unsubscribeTasks();
       unsubscribeDepartments();
-      document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [activeDropdown, selectedTaskForDetails]);
+  }, [selectedTaskForDetails]);
 
   useEffect(() => {
     commentsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [selectedTaskForDetails?.comments]);
+
+  const handleViewDetails = (task: Task) => {
+    // Mark as seen when the user opens the details
+    if (!task.seenBy?.includes(currentUser.id)) {
+      storageService.markTaskAsSeen(task.id, currentUser.id);
+    }
+    setSelectedTaskForDetails(task);
+  };
 
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -80,7 +77,6 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
 
     setIsCompressing(true);
     try {
-      // Fix: Explicitly typed 'file' as 'File' to resolve a TypeScript type inference issue.
       const processedImages = await Promise.all(files.map(async (file: File) => {
         const compressedFile = await compressImage(file);
         return await fileToBase64(compressedFile);
@@ -138,7 +134,6 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
   };
   
   const handleStatusChange = async (task: Task, newStatus: TaskStatus) => {
-    setActiveDropdown(null);
     const updatedTask: Task = { ...task, status: newStatus };
     if (newStatus === TaskStatus.COMPLETED) {
         updatedTask.completedAt = Date.now();
@@ -159,7 +154,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
   };
 
   const openNewTaskModal = () => {
-    setEditingTask({ imagesBase64: [], type: TaskType.TASK });
+    setEditingTask({ imagesBase64: [], type: TaskType.TASK, status: TaskStatus.PENDING });
     setSaveError(null);
     setShowTaskModal(true);
   };
@@ -176,7 +171,6 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
     if (!newComment.trim() || !selectedTaskForDetails) return;
     
     setIsSendingComment(true);
-    // FIX: Add `timestamp` to the comment object to match the expected type for `addCommentToTask`.
     const comment: Omit<TaskComment, 'id'> = {
         userId: currentUser.id,
         userName: currentUser.name,
@@ -198,15 +192,6 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
       default: return 'border-gray-300 bg-gray-50 text-gray-700 dark:bg-gray-700 dark:text-gray-300';
     }
   };
-
-  const getStatusStyles = (status: TaskStatus) => {
-    switch (status) {
-        case TaskStatus.PENDING: return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400';
-        case TaskStatus.IN_PROGRESS: return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400';
-        case TaskStatus.COMPLETED: return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400';
-        default: return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
-    }
-  };
   
   const statusTextMap = {
     [TaskStatus.PENDING]: 'Pendiente',
@@ -214,49 +199,35 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
     [TaskStatus.COMPLETED]: 'Completada',
   };
 
-  const StatusChanger = ({ task }: { task: Task }) => {
-    const isOpen = activeDropdown === task.id;
+  // New Status Buttons Component
+  const StatusButtons = ({ task }: { task: Task }) => {
+    const buttons = [
+      { status: TaskStatus.PENDING, label: 'Pendiente', color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400' },
+      { status: TaskStatus.IN_PROGRESS, label: 'En Progreso', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' },
+      { status: TaskStatus.COMPLETED, label: 'Completada', color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' },
+    ];
+
     return (
-      <div className="relative dropdown-container">
-        <button
-          onClick={() => setActiveDropdown(isOpen ? null : task.id)}
-          className={`flex items-center justify-between w-full text-left text-sm font-bold px-3 py-2 rounded-lg transition-colors ${getStatusStyles(task.status)}`}
-        >
-          <span>{statusTextMap[task.status]}</span>
-          <ChevronDown size={16} className={`transition-transform ${isOpen ? 'rotate-180' : ''}`} />
-        </button>
-        {isOpen && (
-          <div className="absolute bottom-full mb-2 w-full bg-white dark:bg-slate-700 rounded-lg shadow-xl border border-gray-100 dark:border-slate-600 z-10 animate-pop-in">
-            {Object.values(TaskStatus).map(status => (
-              <button
-                key={status}
-                onClick={() => handleStatusChange(task, status)}
-                className="w-full text-left px-3 py-2 hover:bg-gray-50 dark:hover:bg-slate-600 first:rounded-t-lg last:rounded-b-lg font-semibold"
-              >
-                {statusTextMap[status]}
-              </button>
-            ))}
-          </div>
-        )}
+      <div className="flex bg-gray-100 dark:bg-slate-700/50 p-1 rounded-lg">
+        {buttons.map(({ status, label, color }) => (
+          <button
+            key={status}
+            onClick={(e) => {
+              e.stopPropagation(); // Prevent card click
+              handleStatusChange(task, status);
+            }}
+            className={`flex-1 text-center text-xs font-bold px-2 py-1.5 rounded-md transition-all duration-200
+              ${task.status === status
+                ? `bg-white dark:bg-slate-900 shadow-sm ${color.split(' ')[1]} dark:${color.split(' ')[3]}`
+                : 'text-gray-500 dark:text-slate-400 hover:bg-white/50 dark:hover:bg-slate-600/50'
+              }
+            `}
+          >
+            {label}
+          </button>
+        ))}
       </div>
     );
-  };
-  
-  const AdminActions = ({ task }: { task: Task }) => {
-      const [isOpen, setIsOpen] = useState(false);
-      return (
-        <div className="relative dropdown-container">
-            <button onClick={() => setIsOpen(!isOpen)} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-500 dark:text-slate-400">
-                <MoreVertical size={20} />
-            </button>
-            {isOpen && (
-                <div className="absolute right-0 bottom-full mb-2 w-32 bg-white dark:bg-slate-700 rounded-lg shadow-xl border border-gray-100 dark:border-slate-600 z-10 animate-pop-in">
-                    <button onClick={() => { openEditTaskModal(task); setIsOpen(false); }} className="w-full flex items-center gap-2 text-left px-3 py-2 hover:bg-gray-50 dark:hover:bg-slate-600 first:rounded-t-lg last:rounded-b-lg font-semibold"><Edit2 size={14}/> Editar</button>
-                    <button onClick={() => { handleDeleteClick(task); setIsOpen(false); }} className="w-full flex items-center gap-2 text-left px-3 py-2 hover:bg-gray-50 dark:hover:bg-slate-600 text-red-600 dark:text-red-400 first:rounded-t-lg last:rounded-b-lg font-semibold"><Trash2 size={14}/> Eliminar</button>
-                </div>
-            )}
-        </div>
-      )
   };
 
   return (
@@ -362,6 +333,14 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
                 {selectedTaskForDetails.type === TaskType.TASK && <span className={`font-bold uppercase px-2 py-1 rounded-md border text-xs text-center ${getPriorityStyles(selectedTaskForDetails.priority)}`}>{selectedTaskForDetails.priority}</span>}
                 {selectedTaskForDetails.location && <span className="flex items-center gap-2"><MapPin size={14}/> {selectedTaskForDetails.location}</span>}
               </div>
+
+              {selectedTaskForDetails.type === TaskType.TASK && (
+                  <div className="my-4">
+                    <label className="text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wide mb-2 block">Estado</label>
+                    <StatusButtons task={selectedTaskForDetails} />
+                  </div>
+              )}
+
               {selectedTaskForDetails.description && <p className="mb-4 whitespace-pre-wrap">{selectedTaskForDetails.description}</p>}
               
               {selectedTaskForDetails.imagesBase64 && selectedTaskForDetails.imagesBase64.length > 0 && (
@@ -408,8 +387,11 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
 
       <div className="p-4 md:p-6 grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
         {loading && tasks.length === 0 && <div className="col-span-full flex h-64 items-center justify-center"><Loader2 size={40} className="animate-spin text-red-500" /></div>}
-        {filteredTasks.map(task => (
-          <div key={task.id} onClick={() => setSelectedTaskForDetails(task)} className={`bg-white dark:bg-slate-900 rounded-2xl shadow-md border dark:border-slate-800 overflow-hidden flex flex-col transition-all duration-300 cursor-pointer hover:shadow-lg hover:border-red-500/50 ${task.status === TaskStatus.COMPLETED && task.type === TaskType.TASK ? 'opacity-60 grayscale-[50%]' : ''}`}>
+        {filteredTasks.map(task => {
+          const isUnread = !task.seenBy?.includes(currentUser.id);
+          return (
+          <div key={task.id} onClick={() => handleViewDetails(task)} className={`relative bg-white dark:bg-slate-900 rounded-2xl shadow-md border dark:border-slate-800 overflow-hidden flex flex-col transition-all duration-300 cursor-pointer hover:shadow-lg hover:border-red-500/50 ${task.status === TaskStatus.COMPLETED && task.type === TaskType.TASK ? 'opacity-60 grayscale-[50%]' : ''}`}>
+            {isUnread && <div className="absolute top-4 right-4 w-3 h-3 bg-blue-500 rounded-full ring-4 ring-white dark:ring-slate-900 animate-pulse"></div>}
             {task.type === TaskType.TASK && <div className={`flex-shrink-0 h-2 w-full ${getPriorityStyles(task.priority).split(' ')[0].replace('border-', 'bg-')}`}></div>}
             
             {task.imagesBase64 && task.imagesBase64.length > 0 && (
@@ -450,18 +432,35 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
               </div>
             </div>
 
-            {task.type === TaskType.TASK && (
-              <div className="flex items-center justify-between gap-2 p-3 bg-gray-50 dark:bg-slate-800/50 border-t border-gray-100 dark:border-slate-800">
-                <div className="flex-1">
-                   <StatusChanger task={task}/>
+            <div className="flex items-center justify-between gap-2 p-3 bg-gray-50 dark:bg-slate-800/50 border-t border-gray-100 dark:border-slate-800">
+                 <div className="flex-1">
+                  {task.status === TaskStatus.COMPLETED && task.completedAt ? (
+                    <DeletionTimer completedAt={task.completedAt} />
+                  ) : (
+                    task.type === TaskType.TASK && <StatusButtons task={task} />
+                  )}
                 </div>
-                {canManageTasks && (
-                  <AdminActions task={task} />
+                {canManageTasks && task.status !== TaskStatus.COMPLETED && (
+                  <div className="flex items-center gap-1">
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); openEditTaskModal(task); }} 
+                      className="p-2 rounded-full text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
+                      title="Editar Tarea"
+                    >
+                      <Edit2 size={18} />
+                    </button>
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); handleDeleteClick(task); }}
+                      className="p-2 rounded-full text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
+                      title="Eliminar Tarea"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
                 )}
               </div>
-            )}
           </div>
-        ))}
+        )})}
         {!loading && filteredTasks.length === 0 && <div className="col-span-full text-center py-20 text-gray-400 dark:text-slate-600"><ClipboardCheck size={48} className="mx-auto mb-4 opacity-50"/><p className="font-bold text-lg">No hay tareas en esta vista</p></div>}
       </div>
     </div>
