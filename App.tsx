@@ -94,6 +94,7 @@ const App: React.FC = () => {
   }, []);
   
   useEffect(() => {
+    // FIX: Remove role check. Allow ANY user to register for push notifications.
     if (user) {
       console.log(`User '${user.name}' detected, initializing push notifications...`);
       initializePushNotifications(user);

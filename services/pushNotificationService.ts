@@ -26,11 +26,17 @@ export const initializePushNotifications = async (user: User) => {
     if (permission === 'granted') {
       console.log('Permiso para notificaciones concedido.');
 
-      // Obtiene el token de registro del dispositivo
-      // FIX: Use compat getToken method
+      // --- NEW ROBUST METHOD ---
+      // Wait for our manually registered service worker to be ready.
+      const registration = await navigator.serviceWorker.ready;
+      console.log('Service worker is ready. Using it for FCM token.');
+
+      // Obtiene el token de registro del dispositivo, explicitly using our SW registration
       const currentToken = await messaging.getToken({
         vapidKey: VAPID_KEY,
+        serviceWorkerRegistration: registration, // Explicitly provide the registration
       });
+      // --- END OF NEW METHOD ---
       
       if (currentToken) {
         console.log('Token FCM obtenido:', currentToken);
