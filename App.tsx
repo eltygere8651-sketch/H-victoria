@@ -63,9 +63,37 @@ const App: React.FC = () => {
   // New state for task notifications
   const [hasUnreadTasks, setHasUnreadTasks] = useState(false);
   const taskAudioRef = useRef<AudioContext | null>(null);
+
+  // New: Ref to track if audio has been unlocked by user gesture
+  const audioContextUnlocked = useRef(false);
+
+  // New: Function to unlock audio contexts on first user interaction
+  const unlockAudio = () => {
+    if (audioContextUnlocked.current) return;
+    
+    if (audioAlertRef.current.context && audioAlertRef.current.context.state === 'suspended') {
+      audioAlertRef.current.context.resume();
+    }
+    if (taskAudioRef.current && taskAudioRef.current.state === 'suspended') {
+      taskAudioRef.current.resume();
+    }
+    audioContextUnlocked.current = true;
+    window.removeEventListener('click', unlockAudio);
+    window.removeEventListener('touchstart', unlockAudio);
+  };
+
+  // New: Effect to add event listeners for unlocking audio
+  useEffect(() => {
+    window.addEventListener('click', unlockAudio);
+    window.addEventListener('touchstart', unlockAudio);
+    
+    return () => {
+      window.removeEventListener('click', unlockAudio);
+      window.removeEventListener('touchstart', unlockAudio);
+    }
+  }, []);
   
   useEffect(() => {
-    // FIX: Remove role restriction. Any logged-in user can register for notifications.
     if (user) {
       console.log(`User '${user.name}' detected, initializing push notifications...`);
       initializePushNotifications(user);
@@ -166,7 +194,10 @@ const App: React.FC = () => {
         taskAudioRef.current = new AudioContext();
       }
       const ctx = taskAudioRef.current;
-      if (ctx.state === 'suspended') ctx.resume();
+      if (ctx.state === 'suspended') {
+        ctx.resume().catch(console.error);
+        return; // Play on next trigger after resume
+      }
 
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
@@ -226,7 +257,8 @@ const App: React.FC = () => {
       const ctx = audioAlertRef.current.context;
       
       if (ctx.state === 'suspended') {
-        ctx.resume();
+        ctx.resume().catch(console.error);
+        return; // Play on next trigger after resume
       }
 
       const playBeep = () => {
