@@ -256,11 +256,11 @@ export const saveTask = async (task: Partial<Task>) => {
 // FIX: Use compat delete syntax
 export const deleteTask = async (id: string) => await db.collection('tasks').doc(id).delete();
 export const cleanupCompletedTasks = async () => {
-  const twelveHoursAgo = Date.now() - (12 * 60 * 60 * 1000);
+  const thirtyMinutesAgo = Date.now() - (30 * 60 * 1000);
   // FIX: Use compat query syntax
   const q = db.collection('tasks')
     .where('status', '==', TaskStatus.COMPLETED)
-    .where('completedAt', '<', twelveHoursAgo);
+    .where('completedAt', '<', thirtyMinutesAgo);
   const snapshot = await q.get();
   if (!snapshot.empty) {
     console.log(`Cleaning up ${snapshot.size} completed tasks...`);
