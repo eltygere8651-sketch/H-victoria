@@ -255,7 +255,8 @@ export const saveTask = async (task: Partial<Task>) => {
     await createNotification(notificationType, {
       taskId: docRef.id,
       taskTitle: task.title,
-      departmentName: task.departmentName
+      departmentName: task.departmentName,
+      departmentId: task.departmentId,
     });
   }
 };
