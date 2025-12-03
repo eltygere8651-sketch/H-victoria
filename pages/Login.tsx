@@ -26,20 +26,20 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     if (user) {
       onLogin(user);
     } else {
-      setError('Credenciales incorrectas. Intenta "Admin" y "1234"');
+      setError('Credenciales incorrectas. Intenta "Administrador" y "1234"');
     }
   };
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex flex-col items-center justify-center p-6 transition-colors duration-300">
       <div className="w-full max-w-md bg-white dark:bg-slate-800 rounded-3xl shadow-pop-in overflow-hidden border border-gray-100 dark:border-slate-700/50 transition-colors duration-300 animate-pop-in">
-        <div className="bg-gradient-to-br from-red-600 to-red-800 dark:from-red-700 dark:to-red-900 p-8 flex flex-col items-center justify-center text-white relative overflow-hidden">
+        <div className="bg-gradient-to-br from-red-600 to-red-800 dark:from-red-700 dark:to-red-900 p-6 flex flex-col items-center justify-center text-white relative overflow-hidden">
           {/* Background Pattern */}
           <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-white via-transparent to-transparent" />
           
-          <Logo size="xl" className="shadow-2xl shadow-red-900/50 drop-shadow-lg mb-6 bg-white/10 backdrop-blur-sm border border-white/20" />
+          <Logo size="lg" className="shadow-2xl shadow-red-900/50 drop-shadow-lg mb-4 bg-white/10 backdrop-blur-sm border border-white/20" />
           <h1 className="text-4xl font-extrabold tracking-tight text-center drop-shadow-md">Hub</h1>
-          <p className="font-bold text-red-100/95 mt-2 text-sm max-w-xs text-center drop-shadow-md">La inteligencia operativa que impulsa tu rentabilidad.</p>
+          <p className="font-semibold bg-gradient-to-br from-white to-red-200 bg-clip-text text-transparent mt-2 text-base max-w-xs text-center drop-shadow-sm tracking-wide">La estrategia inteligente detrás de tus mejores resultados</p>
         </div>
 
         <div className="p-8">
@@ -51,7 +51,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-slate-600/50 focus:ring-4 focus:ring-red-100 dark:focus:ring-red-500/30 focus:border-red-500 outline-none transition-all bg-gray-50 dark:bg-slate-700/50 dark:text-white focus:bg-white dark:focus:bg-slate-700 placeholder-gray-400 dark:placeholder-slate-500 shadow-sm"
-                placeholder="Ej. Admin"
+                placeholder="Ej. Administrador"
                 required
                 disabled={loading}
               />

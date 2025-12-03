@@ -62,8 +62,7 @@ const App: React.FC = () => {
 
   // New state for task notifications
   const [hasUnreadTasks, setHasUnreadTasks] = useState(false);
-  const taskAudioRef = useRef<AudioContext | null>(null);
-
+  
   // New: Ref to track if audio has been unlocked by user gesture
   const audioContextUnlocked = useRef(false);
 
@@ -71,15 +70,20 @@ const App: React.FC = () => {
   const unlockAudio = () => {
     if (audioContextUnlocked.current) return;
     
-    if (audioAlertRef.current.context && audioAlertRef.current.context.state === 'suspended') {
-      audioAlertRef.current.context.resume();
+    try {
+      if (audioAlertRef.current.context && audioAlertRef.current.context.state === 'suspended') {
+        audioAlertRef.current.context.resume();
+      } else if (!audioAlertRef.current.context) {
+        const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+        if (AudioContext) audioAlertRef.current.context = new AudioContext();
+      }
+      audioContextUnlocked.current = true;
+      window.removeEventListener('click', unlockAudio);
+      window.removeEventListener('touchstart', unlockAudio);
+      console.log("AudioContext unlocked.");
+    } catch (e) {
+      console.warn("Could not unlock AudioContext.", e);
     }
-    if (taskAudioRef.current && taskAudioRef.current.state === 'suspended') {
-      taskAudioRef.current.resume();
-    }
-    audioContextUnlocked.current = true;
-    window.removeEventListener('click', unlockAudio);
-    window.removeEventListener('touchstart', unlockAudio);
   };
 
   // New: Effect to add event listeners for unlocking audio
@@ -94,8 +98,8 @@ const App: React.FC = () => {
   }, []);
   
   useEffect(() => {
-    // FIX: Remove role check. Allow ANY user to register for push notifications.
-    if (user) {
+    const isSandboxed = window.location.origin.includes('usercontent.goog');
+    if (user && !isSandboxed) {
       console.log(`User '${user.name}' detected, initializing push notifications...`);
       initializePushNotifications(user);
     }
@@ -146,9 +150,9 @@ const App: React.FC = () => {
        if (document.hidden) { // Only show native notification if tab is not active
          const n = new Notification(notification.title, {
             body: notification.message,
-            icon: '/logo192.png', // Make sure you have this icon
-            badge: '/logo192.png',
-            tag: notification.id, // Use ID to prevent duplicate notifications
+            icon: '/favicon.svg',
+            badge: '/favicon.svg',
+            tag: notification.id,
          });
          n.onclick = () => {
             window.focus();
@@ -187,53 +191,6 @@ const App: React.FC = () => {
     return () => unsubscribe();
   }, [user]);
 
-  const playTaskAlertSound = () => {
-    try {
-      if (!taskAudioRef.current) {
-        const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-        if (!AudioContext) return;
-        taskAudioRef.current = new AudioContext();
-      }
-      const ctx = taskAudioRef.current;
-      if (ctx.state === 'suspended') {
-        ctx.resume().catch(console.error);
-        return; // Play on next trigger after resume
-      }
-
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(1000, ctx.currentTime);
-      gain.gain.setValueAtTime(0.2, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
-      osc.start(ctx.currentTime);
-      osc.stop(ctx.currentTime + 0.3);
-    } catch (e) {
-      console.warn("Could not play task alert sound.", e);
-    }
-  };
-
-  useEffect(() => {
-    if (!user) {
-      setHasUnreadTasks(false);
-      return;
-    }
-
-    const unsubscribe = storageService.subscribeToTasks((allTasks: Task[]) => {
-      const isUnread = allTasks.some(task => !task.seenBy?.includes(user.id));
-      
-      if (isUnread && !hasUnreadTasks) {
-        playTaskAlertSound();
-      }
-      setHasUnreadTasks(isUnread);
-    });
-
-    return () => unsubscribe();
-  }, [user, hasUnreadTasks]);
-
-
   const stopAlertSound = () => {
     if (audioAlertRef.current.intervalId) {
       clearInterval(audioAlertRef.current.intervalId);
@@ -243,25 +200,15 @@ const App: React.FC = () => {
   };
 
   const startAlertSound = () => {
-    if (audioAlertRef.current.isPlaying) return;
+    if (audioAlertRef.current.isPlaying || !audioContextUnlocked.current) return;
 
     try {
-      const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-      if (!AudioContext) {
-        console.warn("Web Audio API is not supported.");
+      const ctx = audioAlertRef.current.context;
+      if (!ctx || ctx.state !== 'running') {
+        console.warn("AudioContext not running, cannot play alert.");
         return;
       }
-
-      if (!audioAlertRef.current.context) {
-        audioAlertRef.current.context = new AudioContext();
-      }
-      const ctx = audioAlertRef.current.context;
       
-      if (ctx.state === 'suspended') {
-        ctx.resume().catch(console.error);
-        return; // Play on next trigger after resume
-      }
-
       const playBeep = () => {
           if (ctx.state !== 'running') return;
           const osc = ctx.createOscillator();
@@ -288,20 +235,38 @@ const App: React.FC = () => {
       stopAlertSound();
     }
   };
-
+  
+  const hasUnreadAdminAlerts = unreadAdminNotifications.length > 0;
+  
   useEffect(() => {
-    const hasUnread = unreadAdminNotifications.length > 0;
+    const shouldPlayAdminAlert = hasUnreadAdminAlerts && view !== 'admin';
+    const shouldPlayTaskAlert = hasUnreadTasks && view !== 'tasks';
     
-    if (hasUnread && view !== 'admin') {
+    if (shouldPlayAdminAlert || shouldPlayTaskAlert) {
       startAlertSound();
     } else {
       stopAlertSound();
     }
-
+    
     return () => {
       stopAlertSound();
-    };
-  }, [unreadAdminNotifications.length, view]);
+    }
+  }, [hasUnreadAdminAlerts, hasUnreadTasks, view]);
+  
+  useEffect(() => {
+    if (!user) {
+      setHasUnreadTasks(false);
+      return;
+    }
+    const unsubscribe = storageService.subscribeToTasks((allTasks: Task[]) => {
+      const isUnread = allTasks.some(task => !task.seenBy?.includes(user.id));
+      if(isUnread && view !== 'tasks' && document.hidden) {
+        startAlertSound();
+      }
+      setHasUnreadTasks(isUnread);
+    });
+    return () => unsubscribe();
+  }, [user, view]);
 
   const handleInstallClick = async () => {
     if (isIOS) setShowIOSPrompt(true);
