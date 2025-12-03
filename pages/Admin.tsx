@@ -29,8 +29,12 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [batchToDelete, setBatchToDelete] = useState<string | null>(null);
 
-  // New: State for notification filter
   const [notificationFilter, setNotificationFilter] = useState<'all' | 'unread'>('unread');
+
+  // New states for clearing history
+  const [showClearOrdersConfirm, setShowClearOrdersConfirm] = useState(false);
+  const [showClearNotificationsConfirm, setShowClearNotificationsConfirm] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
 
   useEffect(() => {
     setActiveTab(initialTab);
@@ -114,6 +118,23 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
   const handleMarkAllNotificationsAsRead = async () => {
     await storageService.markAllNotificationsAsRead(currentUser.id, currentUser.name);
   };
+  
+  // New handler for clearing all orders
+  const handleClearAllOrders = async () => {
+    setIsClearing(true);
+    await storageService.deleteAllBatches();
+    setIsClearing(false);
+    setShowClearOrdersConfirm(false);
+  };
+  
+  // New handler for clearing all notifications
+  const handleClearAllNotifications = async () => {
+    setIsClearing(true);
+    await storageService.deleteAllNotifications();
+    setIsClearing(false);
+    setShowClearNotificationsConfirm(false);
+  };
+
 
   const lowStockData = products
     .filter(p => p.quantity <= p.minThreshold * 2)
@@ -121,7 +142,6 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
     .sort((a, b) => a.stock - b.stock)
     .slice(0, 10);
 
-  // New: Derived state for filtered notifications
   const filteredNotifications = notificationFilter === 'unread'
     ? notifications.filter(n => !n.readStatus)
     : notifications;
@@ -148,27 +168,40 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
 
       <div className="p-4 bg-gray-50 dark:bg-slate-950 min-h-[calc(100vh-140px)] transition-colors duration-300">
         {activeTab === 'requests' && (
-          <div className="space-y-4">
-             {orders.length === 0 && <div className="col-span-full py-20 text-center text-gray-400 dark:text-slate-600"><Package size={40} className="mx-auto mb-2 opacity-50" /><p>No hay pedidos registrados.</p></div>}
-             <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-                {orders.map((order) => (
-                  <div key={order.batchId} className="bg-white dark:bg-slate-900 rounded-2xl shadow-md border border-gray-100 dark:border-slate-800 p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 hover:border-red-500/50 dark:hover:border-red-500/50 hover:shadow-lg transition-all group">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-xs font-black px-2 py-1 rounded uppercase tracking-wider border border-red-100 dark:border-red-900/30">{order.departmentName}</span>
-                        <span className="text-xs text-gray-400 dark:text-slate-500 font-mono">{order.date}</span>
+          <div>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-bold">Historial de Pedidos</h3>
+              {orders.length > 0 && (
+                <button 
+                  onClick={() => setShowClearOrdersConfirm(true)}
+                  className="flex items-center gap-2 text-sm font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 px-3 py-2 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
+                >
+                  <Trash2 size={16} /> Vaciar Historial
+                </button>
+              )}
+            </div>
+            <div className="space-y-4">
+               {orders.length === 0 && <div className="col-span-full py-20 text-center text-gray-400 dark:text-slate-600"><Package size={40} className="mx-auto mb-2 opacity-50" /><p>No hay pedidos registrados.</p></div>}
+               <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                  {orders.map((order) => (
+                    <div key={order.batchId} className="bg-white dark:bg-slate-900 rounded-2xl shadow-md border border-gray-100 dark:border-slate-800 p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 hover:border-red-500/50 dark:hover:border-red-500/50 hover:shadow-lg transition-all group">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-xs font-black px-2 py-1 rounded uppercase tracking-wider border border-red-100 dark:border-red-900/30">{order.departmentName}</span>
+                          <span className="text-xs text-gray-400 dark:text-slate-500 font-mono">{order.date}</span>
+                        </div>
+                        <h3 className="font-bold text-gray-900 dark:text-white text-lg">Pedido <span className="font-mono text-gray-500 dark:text-slate-400">#{order.batchId}</span></h3>
+                        <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">Solicitado por: <span className="font-bold text-gray-700 dark:text-slate-300">{order.requestedBy}</span></p>
+                        <p className="text-sm font-extrabold text-gray-600 dark:text-slate-400 mt-2 flex items-center gap-2"><Package size={16} /> {order.items.reduce((acc, i) => acc + i.quantity, 0)} productos</p>
                       </div>
-                      <h3 className="font-bold text-gray-900 dark:text-white text-lg">Pedido <span className="font-mono text-gray-500 dark:text-slate-400">#{order.batchId}</span></h3>
-                      <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">Solicitado por: <span className="font-bold text-gray-700 dark:text-slate-300">{order.requestedBy}</span></p>
-                      <p className="text-sm font-extrabold text-gray-600 dark:text-slate-400 mt-2 flex items-center gap-2"><Package size={16} /> {order.items.reduce((acc, i) => acc + i.quantity, 0)} productos</p>
+                      <div className="flex items-center gap-3 w-full md:w-auto">
+                        <button onClick={() => setSelectedOrder(order)} className="flex-1 md:flex-none bg-gray-900 dark:bg-white dark:text-slate-900 text-white px-5 py-3 rounded-xl font-bold hover:bg-red-600 dark:hover:bg-slate-200 transition-colors flex items-center justify-center gap-2 shadow-md active:scale-95"><Eye size={18} /> Ver Albarán</button>
+                        <button onClick={() => handleDeleteBatchClick(order.batchId)} className="p-3 text-gray-400 dark:text-slate-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors border border-gray-100 dark:border-slate-700 shadow-sm active:scale-95"><Trash2 size={18} /></button>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-3 w-full md:w-auto">
-                      <button onClick={() => setSelectedOrder(order)} className="flex-1 md:flex-none bg-gray-900 dark:bg-white dark:text-slate-900 text-white px-5 py-3 rounded-xl font-bold hover:bg-red-600 dark:hover:bg-slate-200 transition-colors flex items-center justify-center gap-2 shadow-md active:scale-95"><Eye size={18} /> Ver Albarán</button>
-                      <button onClick={() => handleDeleteBatchClick(order.batchId)} className="p-3 text-gray-400 dark:text-slate-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors border border-gray-100 dark:border-slate-700 shadow-sm active:scale-95"><Trash2 size={18} /></button>
-                    </div>
-                  </div>
-                ))}
-             </div>
+                  ))}
+               </div>
+            </div>
           </div>
         )}
 
@@ -258,13 +291,22 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
                     <BellRing size={20} className="text-red-600 dark:text-red-400" />
                     Registro de Actividad y Notificaciones
                   </h3>
-                  {unreadNotificationsCount > 0 && (
-                    <button onClick={handleMarkAllNotificationsAsRead} className="text-sm font-bold text-red-600 dark:text-red-400 hover:underline flex items-center gap-1">
-                      <CheckCircle2 size={16} /> Marcar todas como leídas
-                    </button>
-                  )}
+                  <div className="flex items-center gap-4">
+                    {notifications.length > 0 && (
+                      <button 
+                        onClick={() => setShowClearNotificationsConfirm(true)}
+                        className="flex items-center gap-2 text-sm font-bold text-red-600 dark:text-red-400 hover:underline"
+                      >
+                        <Trash2 size={16} /> Limpiar Registro
+                      </button>
+                    )}
+                    {unreadNotificationsCount > 0 && (
+                      <button onClick={handleMarkAllNotificationsAsRead} className="text-sm font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1">
+                        <CheckCircle2 size={16} /> Marcar todas como leídas
+                      </button>
+                    )}
+                  </div>
                 </div>
-                {/* New: Filter for notifications */}
                 <div className="flex gap-2 bg-gray-100 dark:bg-slate-800/60 p-1.5 rounded-xl mb-4">
                   <button onClick={() => setNotificationFilter('unread')} className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${notificationFilter === 'unread' ? 'bg-white dark:bg-slate-900 text-red-500 shadow-md' : 'text-gray-500 dark:text-slate-400 hover:bg-white/50 dark:hover:bg-slate-700/50'}`}>
                     No Leídas ({unreadNotificationsCount})
@@ -347,6 +389,38 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
             <div className="flex gap-4">
               <button onClick={() => setBatchToDelete(null)} className="flex-1 py-3 bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-300 rounded-xl font-bold active:scale-95">Cancelar</button>
               <button onClick={confirmDeleteBatch} className="flex-1 py-3 bg-red-600 text-white rounded-xl font-bold shadow-lg shadow-button-red active:scale-95">Eliminar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showClearOrdersConfirm && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white dark:bg-slate-800 rounded-3xl w-full max-w-sm shadow-pop-in p-6 animate-pop-in border border-gray-100 dark:border-slate-700/50 text-center">
+            <div className="w-16 h-16 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-4 text-red-600 dark:text-red-500 shadow-md"><Trash2 size={32} /></div>
+            <h3 className="text-xl font-black text-gray-900 dark:text-white mb-2">¿Vaciar Historial?</h3>
+            <p className="text-gray-500 dark:text-slate-400 mb-6">Esta acción eliminará permanentemente <strong>todos</strong> los registros de pedidos. No se podrá deshacer.</p>
+            <div className="flex gap-3">
+              <button onClick={() => setShowClearOrdersConfirm(false)} disabled={isClearing} className="flex-1 py-3 font-bold text-gray-600 dark:text-slate-400 bg-gray-100 dark:bg-slate-700/50 rounded-xl hover:bg-gray-200 dark:hover:bg-slate-700 active:scale-[0.98]">Cancelar</button>
+              <button onClick={handleClearAllOrders} disabled={isClearing} className="flex-1 py-3 font-bold text-white bg-red-600 rounded-xl hover:bg-red-700 shadow-lg shadow-button-red active:scale-[0.98] flex items-center justify-center gap-2">
+                {isClearing ? <Loader2 className="animate-spin" /> : 'Sí, Vaciar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showClearNotificationsConfirm && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white dark:bg-slate-800 rounded-3xl w-full max-w-sm shadow-pop-in p-6 animate-pop-in border border-gray-100 dark:border-slate-700/50 text-center">
+            <div className="w-16 h-16 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-4 text-red-600 dark:text-red-500 shadow-md"><Trash2 size={32} /></div>
+            <h3 className="text-xl font-black text-gray-900 dark:text-white mb-2">¿Limpiar Registro?</h3>
+            <p className="text-gray-500 dark:text-slate-400 mb-6">Esta acción eliminará permanentemente <strong>todas</strong> las notificaciones y registros de actividad.</p>
+            <div className="flex gap-3">
+              <button onClick={() => setShowClearNotificationsConfirm(false)} disabled={isClearing} className="flex-1 py-3 font-bold text-gray-600 dark:text-slate-400 bg-gray-100 dark:bg-slate-700/50 rounded-xl hover:bg-gray-200 dark:hover:bg-slate-700 active:scale-[0.98]">Cancelar</button>
+              <button onClick={handleClearAllNotifications} disabled={isClearing} className="flex-1 py-3 font-bold text-white bg-red-600 rounded-xl hover:bg-red-700 shadow-lg shadow-button-red active:scale-[0.98] flex items-center justify-center gap-2">
+                {isClearing ? <Loader2 className="animate-spin" /> : 'Sí, Limpiar'}
+              </button>
             </div>
           </div>
         </div>

@@ -301,3 +301,23 @@ export const markTaskAsSeen = async (taskId: string, userId: string) => {
     seenBy: firebase.firestore.FieldValue.arrayUnion(userId)
   });
 };
+
+// New: Function to delete all order batches
+export const deleteAllBatches = async () => {
+  const q = db.collection('requests');
+  const snapshot = await q.get();
+  if (snapshot.empty) return;
+  const batch = db.batch();
+  snapshot.docs.forEach(d => batch.delete(d.ref));
+  await batch.commit();
+};
+
+// New: Function to delete all notifications
+export const deleteAllNotifications = async () => {
+  const q = db.collection('notifications');
+  const snapshot = await q.get();
+  if (snapshot.empty) return;
+  const batch = db.batch();
+  snapshot.docs.forEach(d => batch.delete(d.ref));
+  await batch.commit();
+};

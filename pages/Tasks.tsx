@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Task, User, Department, TaskStatus, TaskPriority, UserRole, TaskType, TaskComment } from '../types';
 import * as storageService from '../services/storageService';
-import { ClipboardCheck, Plus, X, Save, Loader2, Edit2, Trash2, ChevronDown, Flag, MapPin, MessageSquare, Clock, Check, Image as ImageIcon, Camera, ArrowLeft, ArrowRight, MoreVertical, User as UserIcon, Megaphone, ArrowUpCircle } from 'lucide-react';
+import { ClipboardCheck, Plus, X, Save, Loader2, Edit2, Trash2, ChevronDown, Flag, MapPin, MessagesSquare, Clock, Check, Image as ImageIcon, Camera, ArrowLeft, ArrowRight, MoreVertical, User as UserIcon, Megaphone, Send } from 'lucide-react';
 import { compressImage } from '../utils/imageCompressor';
 import { fileToBase64 } from '../utils/imageCompressor';
 import { ImageViewer } from '../components/ImageViewer';
@@ -335,13 +335,13 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
 
       {selectedTaskForDetails && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in" onClick={() => setSelectedTaskForDetails(null)}>
-          <div className="bg-white dark:bg-slate-850 rounded-3xl w-full max-w-2xl shadow-pop-in border border-gray-100 dark:border-slate-700/50 max-h-[90vh] flex flex-col relative" onClick={e => e.stopPropagation()}>
+          <div className="bg-white dark:bg-slate-850 rounded-3xl w-full max-w-2xl shadow-pop-in border border-gray-100 dark:border-slate-700/50 max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
             <div className="p-5 flex justify-between items-center border-b border-gray-100 dark:border-slate-700/50 flex-shrink-0">
                <h3 className="text-xl font-black text-gray-900 dark:text-white">{selectedTaskForDetails.type === TaskType.ANNOUNCEMENT ? 'Anuncio' : 'Detalles de Tarea'}</h3>
                <button onClick={() => setSelectedTaskForDetails(null)} className="text-gray-400 p-2 -mr-2 rounded-full hover:bg-gray-50 dark:hover:bg-slate-700/50"><X size={24} /></button>
             </div>
             
-            <div className="flex-grow overflow-y-auto no-scrollbar p-5 pb-24">
+            <div className="flex-grow overflow-y-auto no-scrollbar p-5 pb-4">
               <h2 className="font-bold text-2xl mb-4">{selectedTaskForDetails.title}</h2>
               <div className="flex flex-wrap gap-x-4 gap-y-2 mb-4 text-sm">
                 <span className="flex items-center gap-2"><ClipboardCheck size={14}/> <strong>Dpto:</strong> {selectedTaskForDetails.departmentName}</span>
@@ -379,12 +379,13 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
                       </div>
                     </div>
                   ))}
+                   <div className="h-4"></div>
                   <div ref={commentsEndRef} />
                 </div>
               </div>
             </div>
 
-            <form onSubmit={handleAddComment} className="absolute bottom-0 left-0 right-0 bg-white dark:bg-slate-850 p-4 border-t border-gray-100 dark:border-slate-700/50 flex items-end gap-2">
+            <form onSubmit={handleAddComment} className="flex-shrink-0 bg-white dark:bg-slate-850 p-4 border-t border-gray-100 dark:border-slate-700/50 flex items-end gap-3 pb-safe">
               <textarea
                 ref={textareaRef}
                 value={newComment}
@@ -395,16 +396,16 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
                         handleAddComment(e as any);
                     }
                 }}
-                placeholder="Escribe una consulta..."
+                placeholder="Escribe un mensaje..."
                 rows={1}
-                className="flex-1 p-3 border-2 rounded-xl bg-gray-50 dark:bg-slate-700 focus:border-red-500 outline-none shadow-sm resize-none max-h-32 no-scrollbar"
+                className="flex-1 py-2 px-4 border-2 rounded-full bg-gray-100 dark:bg-slate-700 focus:border-red-500 outline-none shadow-sm resize-none max-h-28 no-scrollbar"
               />
               <button
                 type="submit"
                 disabled={isSendingComment || !newComment.trim()}
-                className="bg-red-600 text-white w-12 h-12 flex-shrink-0 flex items-center justify-center rounded-full shadow-lg shadow-button-red active:scale-95 transition-all duration-200 disabled:bg-gray-300 dark:disabled:bg-slate-600 disabled:shadow-none disabled:cursor-not-allowed"
+                className="bg-red-600 text-white w-11 h-11 flex-shrink-0 flex items-center justify-center rounded-full shadow-lg shadow-button-red active:scale-95 transition-all duration-200 disabled:bg-gray-300 dark:disabled:bg-slate-600 disabled:shadow-none disabled:cursor-not-allowed"
               >
-                {isSendingComment ? <Loader2 className="animate-spin" size={24} /> : <ArrowUpCircle size={28} />}
+                {isSendingComment ? <Loader2 className="animate-spin" size={20} /> : <Send size={20} />}
               </button>
             </form>
           </div>
@@ -458,8 +459,8 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
                   <p className="flex items-center gap-2 mt-1"><Clock size={12} /><span>{new Date(task.createdAt).toLocaleDateString()}</span></p>
                 </div>
                 {task.comments && task.comments.length > 0 && (
-                  <div className="flex items-center gap-2 text-sm font-bold text-gray-500 dark:text-slate-400">
-                    <MessageSquare size={16} />
+                  <div className="flex items-center gap-2 text-sm font-bold text-blue-600 dark:text-blue-400">
+                    <MessagesSquare size={16} />
                     <span>{task.comments.length}</span>
                   </div>
                 )}
