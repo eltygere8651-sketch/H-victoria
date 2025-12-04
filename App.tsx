@@ -12,6 +12,7 @@ import { NotificationToast } from './components/NotificationToast';
 import { initializePushNotifications } from './services/pushNotificationService';
 
 const App: React.FC = () => {
+  const [isInitializing, setIsInitializing] = useState(true);
   const [user, setUser] = useState<User | null>(storageService.getSession());
   
   const [view, setView] = useState<'inventory' | 'replenish' | 'admin' | 'tasks'>(() => {
@@ -65,6 +66,14 @@ const App: React.FC = () => {
   
   // New: Ref to track if audio has been unlocked by user gesture
   const audioContextUnlocked = useRef(false);
+
+  useEffect(() => {
+    const initializeApp = async () => {
+      await storageService.ensureAnonymousAuth();
+      setIsInitializing(false);
+    };
+    initializeApp();
+  }, []);
 
   // New: Function to unlock audio contexts on first user interaction
   const unlockAudio = () => {
@@ -288,6 +297,17 @@ const App: React.FC = () => {
       removeToast(notification.id);
     }
   };
+
+  if (isInitializing) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-gray-50 dark:bg-slate-950">
+        <div className="flex flex-col items-center gap-4">
+           <Logo size="lg" className="animate-pulse" />
+           <p className="font-bold text-slate-500 dark:text-slate-400">Conectando de forma segura...</p>
+        </div>
+      </div>
+    );
+  }
   
   if (!user) return <Login onLogin={(u) => { setUser(u); setView(u.role === UserRole.ADMIN ? 'inventory' : 'replenish'); }} />;
 

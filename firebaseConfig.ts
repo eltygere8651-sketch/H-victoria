@@ -1,5 +1,6 @@
 // FIX: Use compat library to resolve initializeApp import error and align with sw.js
 import firebase from 'firebase/compat/app';
+import 'firebase/compat/auth';
 import 'firebase/compat/firestore';
 
 const firebaseConfig = {
@@ -19,4 +20,5 @@ if (!firebase.apps.length) {
 
 export const app = firebase.app();
 export const db = firebase.firestore();
+export const auth = firebase.auth();
 // Storage is no longer initialized as it's not used.

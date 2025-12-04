@@ -1,6 +1,6 @@
 import { Product, User, ReplenishmentRequest, UserRole, Department, CartItem, AppNotification, NotificationType, NotificationPayload, OrderBatch, Task, TaskStatus, TaskPriority, TaskType, TaskComment } from '../types';
 // FIX: Remove modular imports and use compat 'db' instance directly
-import { db } from '../firebaseConfig';
+import { db, auth } from '../firebaseConfig';
 import firebase from 'firebase/compat/app';
 
 // LOCAL STORAGE FALLBACK KEYS
@@ -97,6 +97,20 @@ const createNotification = async (type: NotificationType, payload: NotificationP
 };
 
 // --- AUTH & SESSION ---
+export const ensureAnonymousAuth = async () => {
+  if (auth.currentUser) {
+    return;
+  }
+  try {
+    await auth.signInAnonymously();
+  } catch (error) {
+    console.error("Anonymous sign-in failed:", error);
+    // This is a critical failure, the app won't work without authentication
+    // for the security rules to pass.
+    alert("Error de conexión con el servidor. Por favor, refresca la página.");
+  }
+};
+
 export const login = async (name: string, pin: string): Promise<User | null> => {
   // FIX: Use compat query syntax
   // FIX: Corrected arguments in where clause. The comma was inside the string literal.
