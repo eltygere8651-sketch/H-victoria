@@ -96,7 +96,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
     try {
       const compressedFiles = await Promise.all(files.map(file => compressImage(file)));
       setFilesToUpload(prev => [...prev, ...compressedFiles]);
-    } catch (error) {
+    } catch (error: unknown) {
       // FIX: Improved error handling for image compression. This addresses the potential type mismatch from the error message by handling the caught error safely.
       console.error("Image processing failed:", error);
       let message = "Hubo un error al procesar las imágenes.";
