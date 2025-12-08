@@ -2,8 +2,15 @@
 importScripts("https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js");
 importScripts("https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging-compat.js");
 
-// This config is copied from firebaseConfig.ts.
-// It's necessary for the service worker to initialize Firebase in the background.
+// ====================================================================================
+// IMPORTANTE: CONFIGURACIÓN MANUAL
+// ====================================================================================
+// El Service Worker se ejecuta en un entorno separado y no puede acceder
+// a las variables de entorno (VITE_...) de la aplicación principal.
+// Debes asegurarte de que esta configuración de Firebase esté COPIADA EXACTAMENTE
+// desde tus variables de entorno o tu archivo .env.local.
+// Si cambias las claves en tu app, ¡debes actualizarlas aquí también!
+// ====================================================================================
 const firebaseConfig = {
   apiKey: "AIzaSyD_rwoYEzfFo8b4b_KQCNQs3OwwlScPNls",
   authDomain: "bm-contigo-a8ca6.firebaseapp.com",
@@ -25,7 +32,7 @@ messaging.onBackgroundMessage((payload) => {
   );
   
   const notificationTitle = payload.notification.title;
-  const iconDataUri = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB4PSIwIiB5PSIwIiB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjIyIiByeT0iMjIiIGZpbGw9IiNkYzI2MjYiLz48cGF0aCBkPSJNMzAgMzUgTDUwIDc1IEw3MCAzNSBINTggTDUwIDUxIEw0MiAzNSBaIiBmaWxsPSIjZmZmZmZmIi8+PC9zdmc+";
+  const iconDataUri = "/favicon.svg";
   
   const notificationOptions = {
     body: payload.notification.body,

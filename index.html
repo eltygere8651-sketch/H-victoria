@@ -12,13 +12,6 @@
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
     <title>Hub</title>
     
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" integrity="sha512-GsLlZN/3F2ErC5ifS5QtgpiJtWd43JWSuIgh7mbzZ8zBps+dvLusV+eNQATqgA/HdeKFVgA5v3S/cIrLF7QnIg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-    
-    <!-- Tailwind Play CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
@@ -30,8 +23,8 @@
             },
             colors: {
               slate: {
-                850: '#1e293b',
-                950: '#0a0f1e',
+                850: '#1e293b', // A custom intermediate dark color
+                950: '#0a0f1e', // A deeper dark for backgrounds
               }
             },
             boxShadow: {
@@ -64,48 +57,33 @@
               'fade-in': 'fade-in 0.2s ease-out forwards',
             },
           },
-        }
+        },
+        plugins: [],
       }
     </script>
     
-    <style type="text/tailwindcss">
-      body {
-        font-family: 'Poppins', sans-serif;
-        -webkit-tap-highlight-color: transparent;
-      }
-      /* Hide scrollbar */
-      .no-scrollbar::-webkit-scrollbar { display: none; }
-      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-      /* PWA Safe Area Insets for iOS */
-      .pt-safe { padding-top: env(safe-area-inset-top); }
-      .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
-      .pl-safe { padding-left: env(safe-area-inset-left); }
-      .pr-safe { padding-right: env(safe-area-inset-right); }
-    </style>
-
-    <!-- Correct importmap -->
-    <script type="importmap">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" integrity="sha512-GsLlZN/3F2ErC5ifS5QtgpiJtWd43JWSuIgh7mbzZ8zBps+dvLusV+eNQATqgA/HdeKFVgA5v3S/cIrLF7QnIg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    
+  <script type="importmap">
 {
   "imports": {
-    "react": "https://esm.sh/react@18.2.0",
-    "react-dom": "https://esm.sh/react-dom@18.2.0",
-    "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
-    "react/jsx-runtime": "https://esm.sh/react@18.2.0/jsx-runtime",
-    "firebase/app": "https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js",
-    "firebase/auth": "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js",
-    "firebase/firestore": "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js",
-    "firebase/messaging": "https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging-compat.js",
-    "lucide-react": "https://esm.sh/lucide-react@0.344.0",
-    "recharts": "https://esm.sh/recharts@2.12.0",
-    "firebase/": "https://aistudiocdn.com/firebase@^12.6.0/",
-    "vite": "https://aistudiocdn.com/vite@^7.2.6",
-    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.1",
+    "vite": "https://aistudiocdn.com/vite@^7.2.7",
+    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.2",
     "react/": "https://aistudiocdn.com/react@^19.2.1/",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.1/"
+    "react": "https://aistudiocdn.com/react@^19.2.1",
+    "react-dom": "https://aistudiocdn.com/react-dom@^19.2.1",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.1/",
+    "firebase/": "https://aistudiocdn.com/firebase@^12.6.0/",
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.556.0",
+    "recharts": "https://aistudiocdn.com/recharts@^3.5.1"
   }
 }
 </script>
-  </head>
+</head>
   <body class="bg-gray-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 antialiased selection:bg-red-100 dark:selection:bg-red-900/50">
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>

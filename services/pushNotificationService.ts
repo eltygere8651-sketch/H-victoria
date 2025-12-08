@@ -1,11 +1,17 @@
-// FIX: Use Firebase compat libraries for consistency
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/messaging';
 import * as storageService from './storageService';
 import { User } from '../types';
 
-// Clave pública VAPID de Firebase Cloud Messaging.
-const VAPID_KEY = "BGqFBv56gYXrK319J3D8i9u45AlbNA5g1IEDS94C8B2w_QWFpmHSv-97FYcdseP2lYrqx5M7olVRcLlf3IQfKX8";
+// ====================================================================================
+// IMPORTANTE: CONFIGURACIÓN MANUAL REQUERIDA
+// ====================================================================================
+// Reemplaza "TU_VAPID_KEY_AQUI" con la clave VAPID de tu proyecto de Firebase
+// para que las notificaciones push funcionen correctamente.
+// Puedes encontrar esta clave en tu Consola de Firebase:
+// Engranaje (Ajustes) > Configuración del proyecto > Cloud Messaging > Certificados de notificaciones push web.
+// ====================================================================================
+const VAPID_KEY = "TU_VAPID_KEY_AQUI";
 
 // FIX: Use compat messaging type
 let messagingInstance: firebase.messaging.Messaging | null = null;
@@ -13,6 +19,11 @@ let messagingInstance: firebase.messaging.Messaging | null = null;
 export const initializePushNotifications = async (user: User) => {
   if (typeof window === 'undefined' || !('serviceWorker' in navigator) || !('PushManager' in window)) {
     console.warn('Las notificaciones push no son compatibles con este navegador.');
+    return;
+  }
+
+  if (!VAPID_KEY || VAPID_KEY === "TU_VAPID_KEY_AQUI") {
+    console.error("VAPID_KEY no está configurada en services/pushNotificationService.ts. Las notificaciones push no funcionarán.");
     return;
   }
 
@@ -63,7 +74,7 @@ export const initializePushNotifications = async (user: User) => {
     // Muestra una notificación del navegador para consistencia
     new Notification(payload.notification?.title || 'Nueva Notificación', {
       body: payload.notification?.body,
-      icon: '/logo192.png' // Asegúrate de tener este ícono en tu carpeta pública
+      icon: '/favicon.svg'
     });
   });
 };
