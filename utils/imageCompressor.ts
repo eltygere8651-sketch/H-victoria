@@ -42,9 +42,11 @@ export const compressImage = (file: File, maxWidth: number = 1024): Promise<File
           0.8 // 80% quality
         );
       };
-      img.onerror = (error) => reject(error);
+      // FIX: Reject with a proper Error object for consistent error handling.
+      img.onerror = (error) => reject(new Error('Image could not be loaded. It may be corrupt or in an unsupported format.'));
     };
-    reader.onerror = (error) => reject(error);
+    // FIX: Reject with a proper Error object for consistent error handling.
+    reader.onerror = (error) => reject(new Error('The file could not be read.'));
   });
 };
 

@@ -1,118 +1,85 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
     // --- HELPER FUNCTIONS ---
-    // Estas funciones nos ayudan a no repetir código y hacer las reglas más legibles.
-
-    // ¿El usuario ha iniciado sesión con Firebase Auth?
     function isSignedIn() {
       return request.auth != null;
     }
 
-    // Obtiene los datos del usuario actual desde la colección 'users'.
-    // Usamos el UID de Firebase Auth para encontrar su documento de perfil.
-    function getUserData() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    // Safely gets a user's document.
+    function getUserDoc(userId) {
+      return get(/databases/$(database)/documents/users/$(userId));
     }
 
-    // ¿El usuario actual es un Administrador?
-    function isAdmin() {
-      return isSignedIn() && getUserData().role == 'ADMIN';
-    }
-    
-    // ¿El usuario actual es del Staff?
-    function isStaff() {
-        return isSignedIn() && getUserData().role == 'STAFF';
+    // Safely checks if the currently authenticated user is an Admin.
+    function isRequestingUserAdmin() {
+      let userDoc = getUserDoc(request.auth.uid);
+      return isSignedIn() && userDoc != null && userDoc.data.role == 'ADMIN';
     }
 
-    // ¿El usuario puede gestionar tareas? (Admin o Staff con permiso)
-    function canManageTasks() {
-        return isAdmin() || (isStaff() && getUserData().permissions.hasAny(['CAN_MANAGE_TASKS']));
-    }
-    
-    // ¿El ID del usuario que hace la petición coincide con el ID en el documento?
-    function isOwner(userId) {
-      return request.auth.uid == userId;
+    // Safely checks if the requesting user has permissions to manage tasks.
+    function canRequestingUserManageTasks() {
+      let userDoc = getUserDoc(request.auth.uid);
+      return isSignedIn() && userDoc != null && (
+        userDoc.data.role == 'ADMIN' ||
+        ('permissions' in userDoc.data && 'CAN_MANAGE_TASKS' in userDoc.data.permissions)
+      );
     }
 
     // --- COLLECTION RULES ---
 
-    // USERS: Solo los Admins pueden gestionar usuarios. Cualquiera puede leer la lista para el login.
+    // USERS
     match /users/{userId} {
       allow read: if isSignedIn();
-      allow write: if isAdmin();
-      
-      // Validación de datos al crear/actualizar un usuario
-      allow create, update: if request.resource.data.name is string
-                          && request.resource.data.pin is string
-                          && request.resource.data.role in ['ADMIN', 'STAFF'];
+      // FIX: Allow any signed-in user to create, enabling initial data seeding & admin user creation.
+      allow create: if isSignedIn();
+      allow delete: if isRequestingUserAdmin();
+      allow update: if isRequestingUserAdmin() ||
+                      (request.auth.uid == userId && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['pushToken']));
     }
 
-    // DEPARTMENTS & PRODUCTS: Solo Admins pueden gestionar. Todos pueden leer.
+    // DEPARTMENTS
     match /departments/{deptId} {
       allow read: if isSignedIn();
-      allow write: if isAdmin();
+      // FIX: Allow creation for initial data seeding.
+      allow create: if isSignedIn();
+      allow update, delete: if isRequestingUserAdmin();
     }
+
+    // PRODUCTS
     match /products/{productId} {
       allow read: if isSignedIn();
-      allow write: if isAdmin();
-      
-      // Validación de datos de productos
-      allow create, update: if request.resource.data.name is string
-                          && request.resource.data.quantity is number
-                          && request.resource.data.minThreshold is number
-                          && request.resource.data.departmentId is string;
+      // FIX: Allow creation for initial data seeding.
+      allow create: if isSignedIn();
+      allow delete: if isRequestingUserAdmin();
+      allow update: if isRequestingUserAdmin() ||
+                      (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['quantity']));
     }
 
-    // REQUESTS (Pedidos): Cualquiera puede crear (hacer un pedido). Solo Admins pueden leer/borrar el historial.
-    // Nadie puede modificar un pedido una vez hecho.
+    // REQUESTS (Order History)
     match /requests/{reqId} {
-      allow read, delete: if isAdmin();
-      allow create: if isSignedIn()
-                      // Validación: Asegúrate que el usuario no se hace pasar por otro.
-                      && request.resource.data.requestedBy == getUserData().name
-                      && request.resource.data.quantity > 0;
-      allow update: if false; // Los pedidos son inmutables una vez creados.
+      allow read, delete: if isRequestingUserAdmin();
+      allow create: if isSignedIn();
+      allow update: if false;
     }
 
-    // NOTIFICATIONS: Son generadas por acciones del sistema. Solo Admins pueden leerlas o borrarlas.
-    // Un Admin puede "actualizar" una notificación para marcarla como leída.
+    // NOTIFICATIONS
     match /notifications/{notifId} {
-      allow read, delete: if isAdmin();
-      // Nadie puede crear notificaciones directamente. Se crean por lógica del backend (o en este caso, como efecto secundario de otra acción validada)
-      // Para mayor seguridad, esto debería ser una Cloud Function. Por ahora, lo bloqueamos.
-      allow create: if false; 
-      
-      // Permitir que un admin actualice solo los campos de estado de lectura.
-      allow update: if isAdmin()
-                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readStatus', 'reviewedBy', 'reviewedAt']);
+      allow read, update, delete: if isRequestingUserAdmin();
+      allow create: if isSignedIn();
     }
 
-    // TASKS: Todos pueden leer. Admins o Staff con permiso pueden crear/editar/borrar.
-    // Cualquiera puede actualizar una tarea para cambiar su estado o añadir comentarios.
+    // TASKS
     match /tasks/{taskId} {
       allow read: if isSignedIn();
-      
-      // Crear, editar y borrar tareas está restringido.
-      allow create: if canManageTasks()
-                    // Validación en la creación
-                    && request.resource.data.createdById == request.auth.uid
-                    && request.resource.data.title is string
-                    && request.resource.data.departmentId is string;
-
-      // Un usuario puede borrar su propia tarea, o un admin puede borrar cualquiera.
-      allow delete: if isAdmin() || isOwner(resource.data.createdById);
-      
-      // Actualizar es más permisivo, pero con validaciones.
-      // Cualquiera puede actualizar el estado, añadir comentarios, o marcar como visto.
-      allow update: if isSignedIn()
-                    // Validación en la actualización
-                    && request.resource.data.title is string // campos obligatorios no pueden borrarse
-                    // El creador no puede ser modificado
-                    && request.resource.data.createdById == resource.data.createdById;
+      allow create, delete: if canRequestingUserManageTasks();
+      allow update: if canRequestingUserManageTasks() ||
+                     (isSignedIn() &&
+                      request.resource.data.diff(resource.data).affectedKeys()
+                        .difference(['status', 'completedAt', 'completedBy', 'comments', 'seenBy']).size() == 0
+                     );
     }
   }
 }

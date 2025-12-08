@@ -2,6 +2,7 @@
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/auth';
 import 'firebase/compat/firestore';
+import 'firebase/compat/storage';
 
 const firebaseConfig = {
   apiKey: "AIzaSyD_rwoYEzfFo8b4b_KQCNQs3OwwlScPNls",
@@ -21,4 +22,18 @@ if (!firebase.apps.length) {
 export const app = firebase.app();
 export const db = firebase.firestore();
 export const auth = firebase.auth();
-// Storage is no longer initialized as it's not used.
+export const storage = firebase.storage();
+
+// Habilitar la persistencia offline de Firestore
+// Esto permite que la aplicación funcione sin conexión y sincronice los datos cuando se restablezca la conexión.
+// synchronizeTabs: true asegura una experiencia consistente si el usuario abre la app en múltiples pestañas.
+db.enablePersistence({ synchronizeTabs: true })
+  .catch((err) => {
+    if (err.code === 'failed-precondition') {
+      // Esto suele ocurrir si hay múltiples pestañas abiertas. La persistencia se habilitará en una sola.
+      console.warn('Firebase persistence failed: multiple tabs open. Offline features might be limited.');
+    } else if (err.code === 'unimplemented') {
+      // El navegador actual no soporta la persistencia (ej. modo incógnito en algunos navegadores).
+      console.warn('Firebase persistence is not available in this browser. The app will not work offline.');
+    }
+  });

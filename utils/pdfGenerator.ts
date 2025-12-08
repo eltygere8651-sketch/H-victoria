@@ -1,5 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import { flushSync } from 'react-dom';
 
 /**
  * Generates a PDF from a React component by rendering it off-screen.
@@ -20,46 +21,48 @@ export const generatePdfFromReactComponent = async (component: React.ReactElemen
     container.style.left = '-9999px'; // Position it off-screen
     document.body.appendChild(container);
 
-    // Use ReactDOM to render the component into the container
     const root = ReactDOM.createRoot(container);
-    root.render(React.createElement(React.StrictMode, null, component));
     
-    // Give React a moment to render the component
-    setTimeout(() => {
-      const elementToPrint = container.firstChild as HTMLElement;
-      if (!elementToPrint) {
-        document.body.removeChild(container);
-        return reject(new Error('Failed to render the PDF component.'));
-      }
-      
-      const options = {
-        margin: 0,
-        filename,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { 
-          scale: 2, 
-          useCORS: true,
-          logging: false
-        },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-        // Add pagebreak options to avoid splitting content
-        pagebreak: { mode: ['avoid-all'] }
-      };
+    // Use flushSync to ensure the component is fully rendered before proceeding.
+    // This is crucial for React 19 and concurrent rendering.
+    flushSync(() => {
+      root.render(React.createElement(React.StrictMode, null, component));
+    });
 
-      (window as any).html2pdf().set(options).from(elementToPrint).save()
-        .then(() => {
-          resolve();
-        })
-        .catch((err: any) => {
-          reject(err);
-        })
-        .finally(() => {
-          // Clean up: unmount the component and remove the container
+    const elementToPrint = container.firstChild as HTMLElement;
+    if (!elementToPrint) {
+      document.body.removeChild(container);
+      return reject(new Error('Failed to render the PDF component.'));
+    }
+    
+    const options = {
+      margin: 0,
+      filename,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { 
+        scale: 2, 
+        useCORS: true,
+        logging: false
+      },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      pagebreak: { mode: ['avoid-all'] }
+    };
+
+    (window as any).html2pdf().set(options).from(elementToPrint).save()
+      .then(() => {
+        resolve();
+      })
+      .catch((err: any) => {
+        reject(err);
+      })
+      .finally(() => {
+        // Clean up: unmount the component and remove the container
+        flushSync(() => {
           root.unmount();
-          if (document.body.contains(container)) {
-            document.body.removeChild(container);
-          }
         });
-    }, 200); // A short delay ensures all styles and images are loaded
+        if (document.body.contains(container)) {
+          document.body.removeChild(container);
+        }
+      });
   });
 };

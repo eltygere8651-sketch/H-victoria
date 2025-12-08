@@ -14,28 +14,24 @@ import { initializePushNotifications } from './services/pushNotificationService'
 const App: React.FC = () => {
   const [isInitializing, setIsInitializing] = useState(true);
   const [user, setUser] = useState<User | null>(storageService.getSession());
-  
-  const [view, setView] = useState<'inventory' | 'replenish' | 'admin' | 'tasks'>(() => {
-     const lastView = storageService.getLastView();
-     const sessionUser = storageService.getSession();
-     
-     let defaultView: 'inventory' | 'replenish' | 'tasks' = 'replenish';
-     if (sessionUser?.role === UserRole.ADMIN) {
-        defaultView = 'inventory';
-     }
 
-     if (lastView === 'inventory' || lastView === 'replenish' || lastView === 'admin' || lastView === 'tasks') {
-       if (sessionUser?.role === UserRole.STAFF && (lastView === 'admin' || lastView === 'inventory')) return defaultView;
-       // @ts-ignore
-       return lastView;
-     }
-     return defaultView;
+  const [view, setView] = useState<'inventory' | 'replenish' | 'admin' | 'tasks'>(() => {
+    const lastView = storageService.getLastView();
+    const sessionUser = storageService.getSession();
+
+    let defaultView: 'inventory' | 'replenish' | 'tasks' = 'replenish';
+    if (sessionUser?.role === UserRole.ADMIN) defaultView = 'inventory';
+    if (lastView === 'inventory' || lastView === 'replenish' || lastView === 'admin' || lastView === 'tasks') {
+      if (sessionUser?.role === UserRole.STAFF && (lastView === 'admin' || lastView === 'inventory')) return defaultView;
+      return lastView as any;
+    }
+    return defaultView;
   });
-  
+
   const [darkMode, setDarkMode] = useState(() => {
     if (typeof window !== 'undefined') {
-        const saved = localStorage.getItem('theme');
-        return saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      const saved = localStorage.getItem('theme');
+      return saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches);
     }
     return false;
   });
@@ -44,29 +40,24 @@ const App: React.FC = () => {
   const [isInstalled, setIsInstalled] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
   const [showIOSPrompt, setShowIOSPrompt] = useState(false);
-
   const [toasts, setToasts] = useState<AppNotification[]>([]);
   const [unreadAdminNotifications, setUnreadAdminNotifications] = useState<AppNotification[]>([]);
   const [initialAdminTab, setInitialAdminTab] = useState<'requests' | 'users' | 'reports'>('requests');
   const displayedToastIds = useRef<Set<string>>(new Set());
   const displayedNativeNotificationIds = useRef<Set<string>>(new Set());
-
   const [cart, setCart] = useState<CartItem[]>(storageService.getDraftCart());
   const [showMobileCart, setShowMobileCart] = useState(false);
-  
+
   const cleanupPerformed = useRef(false);
   const audioAlertRef = useRef<{
     context: AudioContext | null;
     intervalId: number | null;
     isPlaying: boolean;
   }>({ context: null, intervalId: null, isPlaying: false });
-
-  // New state for task notifications
   const [hasUnreadTasks, setHasUnreadTasks] = useState(false);
-  
-  // New: Ref to track if audio has been unlocked by user gesture
   const audioContextUnlocked = useRef(false);
 
+  // Inicialización de la app
   useEffect(() => {
     const initializeApp = async () => {
       await storageService.ensureAnonymousAuth();
@@ -75,10 +66,9 @@ const App: React.FC = () => {
     initializeApp();
   }, []);
 
-  // New: Function to unlock audio contexts on first user interaction
+  // Desbloquear AudioContext en interacción del usuario
   const unlockAudio = () => {
     if (audioContextUnlocked.current) return;
-    
     try {
       if (audioAlertRef.current.context && audioAlertRef.current.context.state === 'suspended') {
         audioAlertRef.current.context.resume();
@@ -89,62 +79,36 @@ const App: React.FC = () => {
       audioContextUnlocked.current = true;
       window.removeEventListener('click', unlockAudio);
       window.removeEventListener('touchstart', unlockAudio);
-      console.log("AudioContext unlocked.");
     } catch (e) {
       console.warn("Could not unlock AudioContext.", e);
     }
   };
 
-  // New: Effect to add event listeners for unlocking audio
   useEffect(() => {
     window.addEventListener('click', unlockAudio);
     window.addEventListener('touchstart', unlockAudio);
-    
     return () => {
       window.removeEventListener('click', unlockAudio);
       window.removeEventListener('touchstart', unlockAudio);
-    }
-  }, []);
-  
-  useEffect(() => {
-    const isSandboxed = window.location.origin.includes('usercontent.goog');
-    if (user && !isSandboxed) {
-      console.log(`User '${user.name}' detected, initializing push notifications...`);
-      initializePushNotifications(user);
-    }
-  }, [user]);
-
-  useEffect(() => {
-    if (user && user.role === UserRole.ADMIN && !cleanupPerformed.current) {
-      console.log("Admin session started, running task cleanup...");
-      storageService.cleanupCompletedTasks();
-      cleanupPerformed.current = true;
-    }
-    if (!user) {
-      cleanupPerformed.current = false;
-    }
-  }, [user]);
-
-  useEffect(() => {
-    if (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true) {
-      setIsInstalled(true);
-    }
-    
-    const userAgent = window.navigator.userAgent.toLowerCase();
-    setIsIOS(/iphone|ipad|ipod/.test(userAgent));
-    
-    const handleBeforeInstallPrompt = (e: any) => { e.preventDefault(); setDeferredPrompt(e); };
-    const handleAppInstalled = () => { setIsInstalled(true); setDeferredPrompt(null); };
-
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-    window.addEventListener('appinstalled', handleAppInstalled);
-
-    return () => {
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-      window.removeEventListener('appinstalled', handleAppInstalled);
     };
   }, []);
 
+  // Inicializar notificaciones push
+  useEffect(() => {
+    const isSandboxed = window.location.origin.includes('usercontent.goog');
+    if (user && !isSandboxed) initializePushNotifications(user);
+  }, [user]);
+
+  // Limpieza de tareas completadas para admin
+  useEffect(() => {
+    if (user && user.role === UserRole.ADMIN && !cleanupPerformed.current) {
+      storageService.cleanupCompletedTasks();
+      cleanupPerformed.current = true;
+    }
+    if (!user) cleanupPerformed.current = false;
+  }, [user]);
+
+  // Manejo de PWA y tema
   useEffect(() => {
     document.documentElement.classList.toggle('dark', darkMode);
     localStorage.setItem('theme', darkMode ? 'dark' : 'light');
@@ -155,33 +119,31 @@ const App: React.FC = () => {
   useEffect(() => { storageService.saveDraftCart(cart); }, [cart]);
 
   const showNativeNotification = (notification: AppNotification) => {
-    if ('Notification' in window && Notification.permission === 'granted') {
-       if (document.hidden) { // Only show native notification if tab is not active
-         const n = new Notification(notification.title, {
-            body: notification.message,
-            icon: '/favicon.svg',
-            badge: '/favicon.svg',
-            tag: notification.id,
-         });
-         n.onclick = () => {
-            window.focus();
-            setView('admin');
-            setInitialAdminTab('reports');
-         };
-       }
+    if ('Notification' in window && Notification.permission === 'granted' && document.hidden) {
+      const n = new Notification(notification.title, {
+        body: notification.message,
+        icon: '/favicon.svg',
+        badge: '/favicon.svg',
+        tag: notification.id,
+      });
+      n.onclick = () => {
+        window.focus();
+        setView('admin');
+        setInitialAdminTab('reports');
+      };
     }
   };
 
+  // Suscripción a notificaciones admin
   useEffect(() => {
     let unsubscribe: () => void = () => {};
     if (user && user.role === UserRole.ADMIN) {
       unsubscribe = storageService.subscribeToNotifications((notifications) => {
         const newUnread = notifications.filter(n => !n.readStatus);
         setUnreadAdminNotifications(newUnread);
-
         const newToasts = newUnread.filter(n => !displayedToastIds.current.has(n.id));
         if (newToasts.length > 0) {
-          setToasts((prev) => [...prev, ...newToasts]);
+          setToasts(prev => [...prev, ...newToasts]);
           newToasts.forEach(n => {
             displayedToastIds.current.add(n.id);
             if (!displayedNativeNotificationIds.current.has(n.id)) {
@@ -200,78 +162,58 @@ const App: React.FC = () => {
     return () => unsubscribe();
   }, [user]);
 
+  // Alertas de sonido
   const stopAlertSound = () => {
-    if (audioAlertRef.current.intervalId) {
-      clearInterval(audioAlertRef.current.intervalId);
-    }
+    if (audioAlertRef.current.intervalId) clearInterval(audioAlertRef.current.intervalId);
     audioAlertRef.current.isPlaying = false;
     audioAlertRef.current.intervalId = null;
   };
 
   const startAlertSound = () => {
     if (audioAlertRef.current.isPlaying || !audioContextUnlocked.current) return;
-
     try {
       const ctx = audioAlertRef.current.context;
-      if (!ctx || ctx.state !== 'running') {
-        console.warn("AudioContext not running, cannot play alert.");
-        return;
-      }
-      
+      if (!ctx || ctx.state !== 'running') return;
+
       const playBeep = () => {
-          if (ctx.state !== 'running') return;
-          const osc = ctx.createOscillator();
-          const gain = ctx.createGain();
-          osc.connect(gain);
-          gain.connect(ctx.destination);
-
-          osc.type = 'sine';
-          osc.frequency.setValueAtTime(900, ctx.currentTime);
-          osc.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.1);
-          gain.gain.setValueAtTime(0.15, ctx.currentTime);
-          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
-
-          osc.start(ctx.currentTime);
-          osc.stop(ctx.currentTime + 0.4);
+        if (ctx.state !== 'running') return;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(900, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.1);
+        gain.gain.setValueAtTime(0.15, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.4);
       };
-      
+
       playBeep();
       const intervalId = window.setInterval(playBeep, 2000);
-
-      audioAlertRef.current = { ...audioAlertRef.current, isPlaying: true, intervalId: intervalId };
+      audioAlertRef.current = { ...audioAlertRef.current, isPlaying: true, intervalId };
     } catch (e) {
       console.warn("Could not start alert sound.", e);
       stopAlertSound();
     }
   };
-  
+
   const hasUnreadAdminAlerts = unreadAdminNotifications.length > 0;
-  
+
   useEffect(() => {
     const shouldPlayAdminAlert = hasUnreadAdminAlerts && view !== 'admin';
     const shouldPlayTaskAlert = hasUnreadTasks && view !== 'tasks';
-    
-    if (shouldPlayAdminAlert || shouldPlayTaskAlert) {
-      startAlertSound();
-    } else {
-      stopAlertSound();
-    }
-    
-    return () => {
-      stopAlertSound();
-    }
+    if (shouldPlayAdminAlert || shouldPlayTaskAlert) startAlertSound();
+    else stopAlertSound();
+    return () => stopAlertSound();
   }, [hasUnreadAdminAlerts, hasUnreadTasks, view]);
-  
+
   useEffect(() => {
-    if (!user) {
-      setHasUnreadTasks(false);
-      return;
-    }
+    if (!user) { setHasUnreadTasks(false); return; }
     const unsubscribe = storageService.subscribeToTasks((allTasks: Task[]) => {
       const isUnread = allTasks.some(task => !task.seenBy?.includes(user.id));
-      if(isUnread && view !== 'tasks' && document.hidden) {
-        startAlertSound();
-      }
+      if (isUnread && view !== 'tasks' && document.hidden) startAlertSound();
       setHasUnreadTasks(isUnread);
     });
     return () => unsubscribe();
@@ -285,10 +227,9 @@ const App: React.FC = () => {
       setDeferredPrompt(null);
     }
   };
-  
+
   const handleLogout = () => { storageService.clearSession(); setUser(null); setCart([]); };
   const removeToast = (id: string) => setToasts(prev => prev.filter(t => t.id !== id));
-  
   const handleReadAndNavigate = async (notification: AppNotification) => {
     if (user) {
       await storageService.markNotificationAsRead(notification.id, user.id, user.name);
@@ -298,24 +239,23 @@ const App: React.FC = () => {
     }
   };
 
-  if (isInitializing) {
-    return (
-      <div className="flex h-screen w-screen items-center justify-center bg-gray-50 dark:bg-slate-950">
-        <div className="flex flex-col items-center gap-4">
-           <Logo size="lg" className="animate-pulse" />
-           <p className="font-bold text-slate-500 dark:text-slate-400">Conectando de forma segura...</p>
-        </div>
+  if (isInitializing) return (
+    <div className="flex h-screen w-screen items-center justify-center bg-gray-50 dark:bg-slate-950">
+      <div className="flex flex-col items-center gap-4">
+         <Logo size="lg" className="animate-pulse" />
+         <p className="font-bold text-slate-500 dark:text-slate-400">Conectando de forma segura...</p>
       </div>
-    );
-  }
-  
+    </div>
+  );
+
   if (!user) return <Login onLogin={(u) => { setUser(u); setView(u.role === UserRole.ADMIN ? 'inventory' : 'replenish'); }} />;
 
+  // Botones de navegación
   const NavButton = ({ icon: Icon, label, isActive, onClick, notificationCount = 0, isCart = false, hasAlert = false }: any) => (
     <button onClick={onClick} className={`relative flex flex-col items-center justify-center w-full text-center gap-1 p-2 rounded-xl transition-all duration-200 ${isActive ? 'text-red-500' : 'text-slate-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800'}`}>
       <div className={`relative w-14 h-8 rounded-full flex items-center justify-center transition-all duration-200 ${isActive ? 'bg-red-500/10 dark:bg-red-500/10' : ''}`}>
         <Icon size={24} strokeWidth={isActive ? 2.5 : 2} />
-         {hasAlert && <AlertCircle size={16} className="absolute top-0 right-0 text-white fill-red-500 animate-pulse" />}
+        {hasAlert && <AlertCircle size={16} className="absolute top-0 right-0 text-white fill-red-500 animate-pulse" />}
       </div>
       <span className={`text-xs font-bold transition-colors ${isActive ? 'text-slate-800 dark:text-slate-100' : ''}`}>{label}</span>
       {notificationCount > 0 && <span className="absolute top-1 right-3 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-[10px] font-bold ring-2 ring-white dark:ring-slate-950">{notificationCount}</span>}
@@ -356,63 +296,68 @@ const App: React.FC = () => {
       </aside>
 
       <main className="flex-1 flex flex-col h-screen overflow-hidden relative">
+        {/* Header móvil */}
         <header className="md:hidden flex justify-between items-center bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-gray-100 dark:border-slate-800 p-4 pt-safe z-30">
           <div className="flex items-center gap-2">
             <Logo size="sm" />
             <h1 className="font-extrabold text-lg text-gray-900 dark:text-white">Hub</h1>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={() => setDarkMode(!darkMode)} className="p-2 text-slate-600 dark:text-slate-400">
-              <span className="sr-only">Toggle Theme</span>
-              {darkMode ? <Sun size={22} /> : <Moon size={22} />}
-            </button>
-            <button onClick={handleLogout} className="p-2 text-slate-600 dark:text-slate-400">
-              <span className="sr-only">Logout</span>
-              <LogOut size={22} />
-            </button>
+            <button onClick={() => setDarkMode(!darkMode)} className="p-2 text-slate-600 dark:text-slate-400">{darkMode ? <Sun size={22} /> : <Moon size={22} />}</button>
+            <button onClick={handleLogout} className="p-2 text-slate-600 dark:text-slate-400"><LogOut size={22} /></button>
           </div>
         </header>
-        
+
         <div className="flex-1 overflow-y-auto overflow-x-hidden">
-            {view === 'inventory' && <Inventory currentUser={user} />}
-            {view === 'replenish' && <Replenishment currentUser={user} cart={cart} setCart={setCart} showMobileCart={showMobileCart} setShowMobileCart={setShowMobileCart} />}
-            {view === 'admin' && <Admin currentUser={user} unreadNotificationsCount={unreadAdminNotifications.length} initialTab={initialAdminTab} />}
-            {view === 'tasks' && <Tasks currentUser={user} />}
+          {view === 'inventory' && <Inventory currentUser={user} />}
+          {view === 'replenish' && <Replenishment currentUser={user} cart={cart} setCart={setCart} showMobileCart={showMobileCart} setShowMobileCart={setShowMobileCart} />}
+          {view === 'admin' && <Admin currentUser={user} unreadNotificationsCount={unreadAdminNotifications.length} initialTab={initialAdminTab} />}
+          {view === 'tasks' && <Tasks currentUser={user} />}
         </div>
-
-        <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-t border-gray-100 dark:border-slate-800 px-2 pb-safe z-20">
-          <div className="flex justify-around items-center h-20">
-            {user.role === UserRole.ADMIN && <NavButton icon={LayoutGrid} label="Inventario" isActive={view === 'inventory'} onClick={() => setView('inventory')} />}
-            <NavButton icon={ClipboardList} label="Pedido" isActive={view === 'replenish'} onClick={() => setView('replenish')} />
-            <NavButton icon={ShoppingCart} label="Carrito" isActive={showMobileCart} onClick={() => setShowMobileCart(!showMobileCart)} isCart />
-            <NavButton icon={ClipboardCheck} label="Tareas" isActive={view === 'tasks'} onClick={() => setView('tasks')} hasAlert={hasUnreadTasks} />
-            {user.role === UserRole.ADMIN && <NavButton icon={ShieldCheck} label="Admin" isActive={view === 'admin'} onClick={() => setView('admin')} notificationCount={unreadAdminNotifications.length} />}
-          </div>
+        
+        {/* Mobile Nav */}
+        <div className="md:hidden w-full bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-t border-gray-100 dark:border-slate-800 p-2 pb-safe z-30">
+            <div className="flex justify-around items-start">
+              {user.role === UserRole.ADMIN && <NavButton icon={LayoutGrid} label="Inventario" isActive={view === 'inventory'} onClick={() => setView('inventory')} />}
+              <NavButton 
+                icon={ClipboardList} 
+                label="Pedido" 
+                isActive={view === 'replenish'} 
+                onClick={() => setView('replenish')}
+                isCart={true}
+              />
+              {view === 'replenish' && (
+                <button 
+                  onClick={() => setShowMobileCart(!showMobileCart)}
+                  className="absolute bottom-20 right-4 bg-red-600 text-white w-16 h-16 rounded-full flex items-center justify-center shadow-lg shadow-button-red active:scale-95 transition-transform duration-300"
+                  style={{ transform: showMobileCart ? 'scale(0.8) translateY(10px)' : 'scale(1)' }}
+                >
+                  {showMobileCart ? <X size={32} /> : <ShoppingCart size={28} />}
+                  {cart.length > 0 && !showMobileCart && <span className="absolute -top-1 -right-1 w-6 h-6 bg-gray-900 rounded-full flex items-center justify-center text-white text-xs font-bold ring-2 ring-white">{cart.length}</span>}
+                </button>
+              )}
+              <NavButton icon={ClipboardCheck} label="Tareas" isActive={view === 'tasks'} onClick={() => setView('tasks')} hasAlert={hasUnreadTasks} />
+              {user.role === UserRole.ADMIN && <NavButton icon={ShieldCheck} label="Admin" isActive={view === 'admin'} onClick={() => setView('admin')} notificationCount={unreadAdminNotifications.length} />}
+            </div>
         </div>
-      </main>
-
-      <div aria-live="assertive" className="fixed inset-0 flex flex-col items-end px-4 py-6 pt-safe pointer-events-none sm:p-6 sm:items-start z-[100]">
-        <div className="w-full flex flex-col items-center space-y-4 sm:items-end">
+        
+        {/* Toasts Container */}
+        <div className="absolute top-4 md:top-6 right-4 md:right-6 z-[60] space-y-3 w-[calc(100%-2rem)] md:w-auto">
           {toasts.map(toast => (
-            <NotificationToast 
-              key={toast.id} 
-              notification={toast} 
-              onDismiss={removeToast}
-              onReadAndNavigate={() => handleReadAndNavigate(toast)}
-            />
+            <NotificationToast key={toast.id} notification={toast} onDismiss={removeToast} onReadAndNavigate={() => handleReadAndNavigate(toast)} />
           ))}
         </div>
-      </div>
-      
-       {showIOSPrompt && (
-        <div className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm flex items-end justify-center animate-fade-in">
-          <div className="bg-white dark:bg-slate-800 w-full rounded-t-3xl p-6 text-center animate-slide-up">
-            <X onClick={() => setShowIOSPrompt(false)} className="absolute top-4 right-4 text-gray-400" />
-            <h3 className="font-bold text-xl mb-4">Instalar en tu iPhone</h3>
-            <p className="mb-4">Para instalar la app, toca el botón de <Share className="inline-block mx-1" /> y después selecciona <PlusSquare className="inline-block mx-1" /> "Añadir a pantalla de inicio".</p>
+        
+        {showIOSPrompt && (
+          <div className="fixed inset-0 bg-black/70 z-[100] flex items-end justify-center animate-fade-in" onClick={() => setShowIOSPrompt(false)}>
+            <div className="bg-white dark:bg-slate-800 p-6 rounded-t-2xl max-w-md text-center" onClick={(e) => e.stopPropagation()}>
+              <h3 className="font-bold text-lg mb-2">Instalar App</h3>
+              <p className="text-sm text-gray-600 dark:text-slate-400 mb-4">Para instalar la app, toca el ícono <Share className="inline-block mx-1" /> y luego selecciona 'Añadir a pantalla de inicio' <PlusSquare className="inline-block mx-1" />.</p>
+              <button onClick={() => setShowIOSPrompt(false)} className="bg-red-600 text-white font-bold w-full py-3 rounded-lg">Entendido</button>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </main>
     </div>
   );
 };

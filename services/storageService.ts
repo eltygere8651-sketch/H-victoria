@@ -1,6 +1,6 @@
 import { Product, User, ReplenishmentRequest, UserRole, Department, CartItem, AppNotification, NotificationType, NotificationPayload, OrderBatch, Task, TaskStatus, TaskPriority, TaskType, TaskComment } from '../types';
 // FIX: Remove modular imports and use compat 'db' instance directly
-import { db, auth } from '../firebaseConfig';
+import { db, auth, storage } from '../firebaseConfig';
 import firebase from 'firebase/compat/app';
 
 // LOCAL STORAGE FALLBACK KEYS
@@ -59,7 +59,6 @@ async function initFirestoreWithInitialData() {
     }
   }
 }
-initFirestoreWithInitialData();
 
 // --- NOTIFICATION HELPERS ---
 const createNotification = async (type: NotificationType, payload: NotificationPayload) => {
@@ -97,16 +96,20 @@ const createNotification = async (type: NotificationType, payload: NotificationP
 };
 
 // --- AUTH & SESSION ---
+let authInitializationAttempted = false;
+
 export const ensureAnonymousAuth = async () => {
-  if (auth.currentUser) {
+  if (auth.currentUser || authInitializationAttempted) {
     return;
   }
+  authInitializationAttempted = true;
   try {
     await auth.signInAnonymously();
+    console.log("Anonymous sign-in successful.");
+    // Now that we are authenticated, initialize the database.
+    await initFirestoreWithInitialData();
   } catch (error) {
-    console.error("Anonymous sign-in failed:", error);
-    // This is a critical failure, the app won't work without authentication
-    // for the security rules to pass.
+    console.error("Critical initialization failed (Auth or Firestore init):", error);
     alert("Error de conexión con el servidor. Por favor, refresca la página.");
   }
 };
@@ -191,7 +194,7 @@ export const submitOrderBatch = async (cart: CartItem[], departmentId: string, d
 
 export const subscribeToBatches = (callback: (batches: OrderBatch[]) => void) => {
   // FIX: Use compat query syntax for onSnapshot
-  const q = db.collection('requests').orderBy('timestamp', 'desc');
+  const q = db.collection('requests').orderBy('timestamp', 'desc').limit(200);
   return q.onSnapshot(snapshot => {
     const requests = snapshot.docs.map(d => ({ ...d.data(), id: d.id } as ReplenishmentRequest));
     const batches = requests.reduce((acc, req) => {
@@ -249,15 +252,41 @@ export const markAllNotificationsAsRead = async (userId: string, userName: strin
 };
 
 // --- TASKS ---
-// FIX: Use compat query syntax for onSnapshot
-export const subscribeToTasks = (callback: (data: Task[]) => void) => db.collection('tasks').orderBy('createdAt', 'desc').onSnapshot(snapshot => callback(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Task))));
+// New function to upload an image to Firebase Storage
+export const uploadImage = async (file: File, path: string): Promise<string> => {
+  const storageRef = storage.ref();
+  const fileRef = storageRef.child(path);
+  await fileRef.put(file);
+  const url = await fileRef.getDownloadURL();
+  return url;
+};
 
-export const saveTask = async (task: Partial<Task>) => {
+
+// FIX: Use compat query syntax for onSnapshot
+export const subscribeToTasks = (callback: (data: Task[]) => void) => db.collection('tasks').orderBy('createdAt', 'desc').limit(50).onSnapshot(snapshot => callback(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Task))));
+
+export const saveTask = async (task: Partial<Task>, newFiles: File[] = []) => {
   const isNew = !task.id;
-  // FIX: Use compat doc reference and set syntax
   const docRef = isNew ? db.collection('tasks').doc() : db.collection('tasks').doc(task.id!);
+  const taskId = docRef.id;
+
+  let newImageUrls: string[] = [];
+  if (newFiles.length > 0) {
+      const uploadPromises = newFiles.map(file => {
+          const path = `task-images/${taskId}/${Date.now()}-${file.name}`;
+          return uploadImage(file, path);
+      });
+      newImageUrls = await Promise.all(uploadPromises);
+  }
+
+  const finalImageUrls = [...(task.imageUrls || []), ...newImageUrls];
+
+  let taskData: Partial<Task> = {
+    ...task,
+    id: taskId,
+    imageUrls: finalImageUrls.length > 0 ? finalImageUrls : firebase.firestore.FieldValue.delete() as any,
+  };
   
-  let taskData: Partial<Task> = { ...task, id: docRef.id };
   if (isNew) {
     taskData.seenBy = [task.createdById!]; // Mark as seen by creator
   }

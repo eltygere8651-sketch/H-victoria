@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useId } from 'react';
 
 export const Logo: React.FC<{ size?: 'sm' | 'md' | 'lg' | 'xl', className?: string, solid?: boolean }> = ({ size = 'md', className = '', solid = false }) => {
   // Explicit pixel sizes are crucial for PDF generation tools to render correctly
@@ -11,8 +11,8 @@ export const Logo: React.FC<{ size?: 'sm' | 'md' | 'lg' | 'xl', className?: stri
 
   const pxSize = sizeMap[size];
   
-  // Generate a unique ID for this instance's gradient
-  const gradientId = useMemo(() => `grad-${Math.random().toString(36).substr(2, 9)}`, []);
+  // Generate a unique and stable ID for this instance's gradient
+  const gradientId = useId();
 
   return (
     <svg 

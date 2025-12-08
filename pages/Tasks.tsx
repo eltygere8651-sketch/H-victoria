@@ -3,7 +3,6 @@ import { Task, User, Department, TaskStatus, TaskPriority, UserRole, TaskType, T
 import * as storageService from '../services/storageService';
 import { ClipboardCheck, Plus, X, Save, Loader2, Edit2, Trash2, ChevronDown, Flag, MapPin, MessagesSquare, Clock, Check, Image as ImageIcon, Camera, ArrowLeft, ArrowRight, MoreVertical, User as UserIcon, Megaphone, Send } from 'lucide-react';
 import { compressImage } from '../utils/imageCompressor';
-import { fileToBase64 } from '../utils/imageCompressor';
 import { ImageViewer } from '../components/ImageViewer';
 import { DeletionTimer } from '../components/DeletionTimer';
 
@@ -30,19 +29,21 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
 
   const [viewingImages, setViewingImages] = useState<{ images: string[], startIndex: number } | null>(null);
 
-  // New: State for viewing task details and comments
   const [selectedTaskForDetails, setSelectedTaskForDetails] = useState<Task | null>(null);
   const [newComment, setNewComment] = useState('');
   const [isSendingComment, setIsSendingComment] = useState(false);
   const commentsEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  // New state for handling file uploads separately from existing URLs
+  const [filesToUpload, setFilesToUpload] = useState<File[]>([]);
+  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
+
   const canManageTasks = currentUser.role === UserRole.ADMIN || (currentUser.permissions?.includes('CAN_MANAGE_TASKS') ?? false);
 
   useEffect(() => {
     const unsubscribeTasks = storageService.subscribeToTasks((data) => {
       setTasks(data);
-      // Update the detailed view if it's open
       if (selectedTaskForDetails) {
         const updatedTask = data.find(t => t.id === selectedTaskForDetails.id);
         setSelectedTaskForDetails(updatedTask || null);
@@ -63,16 +64,23 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
     commentsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [selectedTaskForDetails?.comments]);
   
-  // Auto-resize textarea
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
       textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
     }
   }, [newComment]);
+  
+  // Effect to manage object URLs for previews
+  useEffect(() => {
+    const newPreviewUrls = filesToUpload.map(file => URL.createObjectURL(file));
+    setPreviewUrls(newPreviewUrls);
+    return () => {
+      newPreviewUrls.forEach(url => URL.revokeObjectURL(url));
+    };
+  }, [filesToUpload]);
 
   const handleViewDetails = (task: Task) => {
-    // Mark as seen when the user opens the details
     if (!task.seenBy?.includes(currentUser.id)) {
       storageService.markTaskAsSeen(task.id, currentUser.id);
     }
@@ -86,29 +94,35 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
 
     setIsCompressing(true);
     try {
-      const processedImages = await Promise.all(files.map(async (file: File) => {
-        const compressedFile = await compressImage(file);
-        return await fileToBase64(compressedFile);
-      }));
-      setEditingTask(prev => ({
-        ...prev,
-        imagesBase64: [...(prev?.imagesBase64 || []), ...processedImages]
-      }));
-    } catch (error: any) {
+      const compressedFiles = await Promise.all(files.map(file => compressImage(file)));
+      setFilesToUpload(prev => [...prev, ...compressedFiles]);
+    } catch (error) {
+      // FIX: Improved error handling for image compression. This addresses the potential type mismatch from the error message by handling the caught error safely.
       console.error("Image processing failed:", error);
-      alert("Hubo un error al procesar las imágenes.");
+      let message = "Hubo un error al procesar las imágenes.";
+      if (error instanceof Error) {
+        message = `Error al procesar la imagen: ${error.message}`;
+      } else if (typeof error === 'string') {
+        message = error;
+      }
+      alert(message);
     } finally {
       setIsCompressing(false);
       if (e.target) e.target.value = "";
     }
   };
 
-  const handleRemoveImage = (indexToRemove: number) => {
+  const handleRemoveExistingImage = (indexToRemove: number) => {
     setEditingTask(prev => ({
       ...prev,
-      imagesBase64: prev?.imagesBase64?.filter((_, index) => index !== indexToRemove)
+      imageUrls: prev?.imageUrls?.filter((_, index) => index !== indexToRemove)
     }));
   };
+
+  const handleRemoveNewImage = (indexToRemove: number) => {
+    setFilesToUpload(prev => prev.filter((_, index) => index !== indexToRemove));
+  };
+
 
   const handleSaveTask = async () => {
     if (!editingTask || !editingTask.title || !editingTask.departmentId) {
@@ -130,9 +144,10 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
         createdAt: editingTask.id ? editingTask.createdAt! : Date.now(),
       };
       
-      await storageService.saveTask(taskData);
+      await storageService.saveTask(taskData, filesToUpload);
       setShowTaskModal(false);
       setEditingTask(null);
+      setFilesToUpload([]);
 
     } catch (error: any) {
         console.error("Failed to save task:", error);
@@ -163,17 +178,25 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
   };
 
   const openNewTaskModal = () => {
-    setEditingTask({ imagesBase64: [], type: TaskType.TASK, status: TaskStatus.PENDING });
+    setEditingTask({ imageUrls: [], type: TaskType.TASK, status: TaskStatus.PENDING });
+    setFilesToUpload([]);
     setSaveError(null);
     setShowTaskModal(true);
   };
 
   const openEditTaskModal = (task: Task) => {
-    setSelectedTaskForDetails(null); // Close details view if open
+    setSelectedTaskForDetails(null); 
     setEditingTask({ ...task });
+    setFilesToUpload([]);
     setSaveError(null);
     setShowTaskModal(true);
   };
+
+  const closeModal = () => {
+    setShowTaskModal(false); 
+    setEditingTask(null);
+    setFilesToUpload([]);
+  }
 
   const handleAddComment = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -264,7 +287,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
           <div className="bg-white dark:bg-slate-800 rounded-3xl w-full max-w-lg shadow-pop-in p-8 animate-pop-in border border-gray-100 dark:border-slate-700/50 max-h-[90vh] overflow-y-auto no-scrollbar">
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-2xl font-black text-gray-900 dark:text-white">{editingTask?.id ? 'Editar' : 'Nuevo'} {editingTask?.type === TaskType.ANNOUNCEMENT ? 'Anuncio' : 'Tarea'}</h3>
-              <button onClick={() => {setShowTaskModal(false); setEditingTask(null);}} className="text-gray-400 p-2 -mr-2 rounded-full hover:bg-gray-50 dark:hover:bg-slate-700/50"><X size={24} /></button>
+              <button onClick={closeModal} className="text-gray-400 p-2 -mr-2 rounded-full hover:bg-gray-50 dark:hover:bg-slate-700/50"><X size={24} /></button>
             </div>
             <div className="space-y-4">
               <div className="flex gap-2 bg-gray-100 dark:bg-slate-700/50 p-1.5 rounded-xl">
@@ -277,10 +300,16 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
               <div>
                 <label className="text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wide mb-2 block">Imágenes</label>
                 <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
-                  {(editingTask?.imagesBase64 || []).map((img, index) => (
-                    <div key={index} className="relative group aspect-square rounded-lg overflow-hidden border-2 border-gray-200 dark:border-slate-700">
-                      <img src={img} className="w-full h-full object-cover" alt={`Preview ${index + 1}`}/>
-                      <button onClick={() => handleRemoveImage(index)} className="absolute top-1 right-1 bg-black/60 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"><X size={14}/></button>
+                  {(editingTask?.imageUrls || []).map((imgUrl, index) => (
+                    <div key={imgUrl} className="relative group aspect-square rounded-lg overflow-hidden border-2 border-gray-200 dark:border-slate-700">
+                      <img src={imgUrl} className="w-full h-full object-cover" alt={`Preview ${index + 1}`}/>
+                      <button onClick={() => handleRemoveExistingImage(index)} className="absolute top-1 right-1 bg-black/60 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"><X size={14}/></button>
+                    </div>
+                  ))}
+                  {previewUrls.map((previewUrl, index) => (
+                    <div key={previewUrl} className="relative group aspect-square rounded-lg overflow-hidden border-2 border-blue-400">
+                      <img src={previewUrl} className="w-full h-full object-cover" alt={`New Preview ${index + 1}`}/>
+                      <button onClick={() => handleRemoveNewImage(index)} className="absolute top-1 right-1 bg-black/60 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"><X size={14}/></button>
                     </div>
                   ))}
                   <div className="flex flex-col gap-2 aspect-square">
@@ -310,7 +339,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
             </div>
             {saveError && <div className="mt-4 text-center text-red-500 bg-red-50 dark:bg-red-900/20 p-3 rounded-lg text-sm">{saveError}</div>}
             <div className="flex gap-4 mt-8">
-              <button onClick={() => {setShowTaskModal(false); setEditingTask(null);}} className="flex-1 py-4 text-gray-600 font-bold bg-gray-100 dark:bg-slate-700/50 rounded-xl hover:bg-gray-200 active:scale-[0.98]">Cancelar</button>
+              <button onClick={closeModal} className="flex-1 py-4 text-gray-600 font-bold bg-gray-100 dark:bg-slate-700/50 rounded-xl hover:bg-gray-200 active:scale-[0.98]">Cancelar</button>
               <button onClick={handleSaveTask} disabled={isSaving || isCompressing} className="flex-1 py-4 text-white font-bold bg-red-600 rounded-xl hover:bg-red-700 shadow-lg shadow-button-red flex items-center justify-center gap-2 active:scale-[0.98] disabled:bg-red-400 disabled:cursor-not-allowed">
                 {(isSaving || isCompressing) ? <Loader2 className="animate-spin" /> : <><Save size={20} /> Guardar</>}
               </button>
@@ -358,10 +387,10 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
 
               {selectedTaskForDetails.description && <p className="mb-4 whitespace-pre-wrap">{selectedTaskForDetails.description}</p>}
               
-              {selectedTaskForDetails.imagesBase64 && selectedTaskForDetails.imagesBase64.length > 0 && (
+              {selectedTaskForDetails.imageUrls && selectedTaskForDetails.imageUrls.length > 0 && (
                 <div className="grid grid-cols-3 gap-2 mb-4">
-                  {selectedTaskForDetails.imagesBase64.map((img, idx) => (
-                    <img key={idx} src={img} onClick={() => setViewingImages({ images: selectedTaskForDetails.imagesBase64!, startIndex: idx })} className="w-full h-24 object-cover rounded-lg cursor-pointer" />
+                  {selectedTaskForDetails.imageUrls.map((imgUrl, idx) => (
+                    <img key={idx} src={imgUrl} onClick={() => setViewingImages({ images: selectedTaskForDetails.imageUrls!, startIndex: idx })} className="w-full h-24 object-cover rounded-lg cursor-pointer" />
                   ))}
                 </div>
               )}
@@ -429,11 +458,11 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
             {isUnread && <div className="absolute top-4 right-4 w-3 h-3 bg-blue-500 rounded-full ring-4 ring-white dark:ring-slate-900 animate-pulse"></div>}
             {task.type === TaskType.TASK && <div className={`flex-shrink-0 h-2 w-full ${getPriorityStyles(task.priority).split(' ')[0].replace('border-', 'bg-')}`}></div>}
             
-            {task.imagesBase64 && task.imagesBase64.length > 0 && (
-              <div onClick={(e) => { e.stopPropagation(); setViewingImages({ images: task.imagesBase64!, startIndex: 0 }); }} className="relative h-48 bg-gray-100 dark:bg-slate-800 cursor-pointer group">
-                <img src={task.imagesBase64[0]} className="w-full h-full object-cover" alt="Imagen de tarea" />
-                {task.imagesBase64.length > 1 && (
-                  <div className="absolute bottom-2 right-2 bg-black/60 text-white text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1"><ImageIcon size={14}/> +{task.imagesBase64.length - 1}</div>
+            {task.imageUrls && task.imageUrls.length > 0 && (
+              <div onClick={(e) => { e.stopPropagation(); setViewingImages({ images: task.imageUrls!, startIndex: 0 }); }} className="relative h-48 bg-gray-100 dark:bg-slate-800 cursor-pointer group">
+                <img src={task.imageUrls[0]} className="w-full h-full object-cover" alt="Imagen de tarea" />
+                {task.imageUrls.length > 1 && (
+                  <div className="absolute bottom-2 right-2 bg-black/60 text-white text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1"><ImageIcon size={14}/> +{task.imageUrls.length - 1}</div>
                 )}
                 <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
                     <Plus size={40} className="text-white transform scale-75 group-hover:scale-100 transition-transform"/>

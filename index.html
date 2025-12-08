@@ -73,11 +73,9 @@
         font-family: 'Poppins', sans-serif;
         -webkit-tap-highlight-color: transparent;
       }
-
       /* Hide scrollbar */
       .no-scrollbar::-webkit-scrollbar { display: none; }
       .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-
       /* PWA Safe Area Insets for iOS */
       .pt-safe { padding-top: env(safe-area-inset-top); }
       .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
@@ -85,10 +83,12 @@
       .pr-safe { padding-right: env(safe-area-inset-right); }
     </style>
 
+    <!-- Correct importmap -->
     <script type="importmap">
 {
   "imports": {
     "react": "https://esm.sh/react@18.2.0",
+    "react-dom": "https://esm.sh/react-dom@18.2.0",
     "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
     "react/jsx-runtime": "https://esm.sh/react@18.2.0/jsx-runtime",
     "firebase/app": "https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js",
@@ -105,7 +105,7 @@
   }
 }
 </script>
-</head>
+  </head>
   <body class="bg-gray-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 antialiased selection:bg-red-100 dark:selection:bg-red-900/50">
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>

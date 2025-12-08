@@ -106,7 +106,7 @@ export interface Task {
   createdAt: number; // Timestamp
   completedBy?: string;
   completedAt?: number;
-  imagesBase64?: string[]; // Store compressed images as Base64 strings
+  imageUrls?: string[]; // New: Store Firebase Storage URLs for images
   type: TaskType; // New: Differentiates between task and announcement
   comments?: TaskComment[]; // New: Thread for discussions
   seenBy?: string[]; // New: Array of user IDs who have seen the latest update
