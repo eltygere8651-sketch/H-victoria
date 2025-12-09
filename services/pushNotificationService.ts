@@ -2,16 +2,7 @@ import firebase from 'firebase/compat/app';
 import 'firebase/compat/messaging';
 import * as storageService from './storageService';
 import { User } from '../types';
-
-// ====================================================================================
-// IMPORTANTE: CONFIGURACIÓN MANUAL REQUERIDA
-// ====================================================================================
-// Reemplaza "TU_VAPID_KEY_AQUI" con la clave VAPID de tu proyecto de Firebase
-// para que las notificaciones push funcionen correctamente.
-// Puedes encontrar esta clave en tu Consola de Firebase:
-// Engranaje (Ajustes) > Configuración del proyecto > Cloud Messaging > Certificados de notificaciones push web.
-// ====================================================================================
-const VAPID_KEY = "TU_VAPID_KEY_AQUI";
+import { VAPID_KEY } from '../firebaseCredentials';
 
 // FIX: Use compat messaging type
 let messagingInstance: firebase.messaging.Messaging | null = null;
@@ -22,8 +13,8 @@ export const initializePushNotifications = async (user: User) => {
     return;
   }
 
-  if (!VAPID_KEY || VAPID_KEY === "TU_VAPID_KEY_AQUI") {
-    console.error("VAPID_KEY no está configurada en services/pushNotificationService.ts. Las notificaciones push no funcionarán.");
+  if (!VAPID_KEY) {
+    console.error("La VAPID key no está configurada en `firebaseCredentials.ts`. Las notificaciones push no funcionarán.");
     return;
   }
 

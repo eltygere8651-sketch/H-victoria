@@ -2,22 +2,11 @@ import firebase from 'firebase/compat/app';
 import 'firebase/compat/auth';
 import 'firebase/compat/firestore';
 import 'firebase/compat/storage';
-
-// La configuración de Firebase está ahora directamente en el código para asegurar la compatibilidad
-// con entornos que no usan un proceso de build (como el que causa el error).
-// Estos valores son una copia de los que ya estaban en `public/firebase-messaging-sw.js`.
-const firebaseConfig = {
-  apiKey: "AIzaSyD_rwoYEzfFo8b4b_KQCNQs3OwwlScPNls",
-  authDomain: "bm-contigo-a8ca6.firebaseapp.com",
-  projectId: "bm-contigo-a8ca6",
-  storageBucket: "bm-contigo-a8ca6.appspot.com",
-  messagingSenderId: "865361841368",
-  appId: "1:865361841368:web:f74b2f3070b75b7230dbad"
-};
+import { firebaseConfig } from './firebaseCredentials';
 
 // Valida que todas las variables de entorno estén presentes
 if (Object.values(firebaseConfig).some(value => !value)) {
-  console.error("Firebase config is missing or incomplete. Check your .env file or Vercel environment variables.");
+  console.error("Firebase config is missing or incomplete. Check your firebaseCredentials.ts file.");
 }
 
 // Initialize Firebase
