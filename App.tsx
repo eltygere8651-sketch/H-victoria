@@ -115,6 +115,36 @@ const App: React.FC = () => {
     document.querySelector('meta[name="theme-color"]')?.setAttribute('content', darkMode ? '#111827' : '#ffffff');
   }, [darkMode]);
 
+  // --- NEW: PWA Installation Logic ---
+  useEffect(() => {
+    const beforeInstallHandler = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+
+    const appInstalledHandler = () => {
+      setIsInstalled(true);
+      setDeferredPrompt(null);
+    };
+
+    window.addEventListener('beforeinstallprompt', beforeInstallHandler);
+    window.addEventListener('appinstalled', appInstalledHandler);
+    
+    // Check if the app is already running in standalone mode
+    if (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true) {
+      setIsInstalled(true);
+    }
+
+    // Detect if the device is iOS
+    const isIOSDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+    setIsIOS(isIOSDevice);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', beforeInstallHandler);
+      window.removeEventListener('appinstalled', appInstalledHandler);
+    };
+  }, []);
+  
   useEffect(() => { if (user) storageService.saveLastView(view); }, [view, user]);
   useEffect(() => { storageService.saveDraftCart(cart); }, [cart]);
 
@@ -273,7 +303,7 @@ const App: React.FC = () => {
   );
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-gray-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans">
+    <div className="flex h-dvh w-screen overflow-hidden bg-gray-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans">
       <aside className="hidden md:flex flex-col w-72 bg-white dark:bg-slate-900 border-r border-gray-100 dark:border-slate-800 p-6">
         <div className="flex items-center gap-3 mb-8">
           <Logo size="md" />
@@ -350,7 +380,7 @@ const App: React.FC = () => {
         
         {showIOSPrompt && (
           <div className="fixed inset-0 bg-black/70 z-[100] flex items-end justify-center animate-fade-in" onClick={() => setShowIOSPrompt(false)}>
-            <div className="bg-white dark:bg-slate-800 p-6 rounded-t-2xl max-w-md text-center" onClick={(e) => e.stopPropagation()}>
+            <div className="bg-white dark:bg-slate-800 p-6 rounded-t-2xl max-w-md text-center pb-safe" onClick={(e) => e.stopPropagation()}>
               <h3 className="font-bold text-lg mb-2">Instalar App</h3>
               <p className="text-sm text-gray-600 dark:text-slate-400 mb-4">Para instalar la app, toca el ícono <Share className="inline-block mx-1" /> y luego selecciona 'Añadir a pantalla de inicio' <PlusSquare className="inline-block mx-1" />.</p>
               <button onClick={() => setShowIOSPrompt(false)} className="bg-red-600 text-white font-bold w-full py-3 rounded-lg">Entendido</button>

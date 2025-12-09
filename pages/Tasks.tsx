@@ -96,14 +96,16 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
     try {
       const compressedFiles = await Promise.all(files.map(file => compressImage(file)));
       setFilesToUpload(prev => [...prev, ...compressedFiles]);
+    // FIX: Improved error handling for image compression. This addresses the potential type mismatch from the error message by handling the caught error safely.
     } catch (error: unknown) {
-      // FIX: Improved error handling for image compression. This addresses the potential type mismatch from the error message by handling the caught error safely.
       console.error("Image processing failed:", error);
       let message = "Hubo un error al procesar las imágenes.";
       if (error instanceof Error) {
         message = `Error al procesar la imagen: ${error.message}`;
       } else if (typeof error === 'string') {
         message = error;
+      } else if (error && typeof error === 'object' && 'message' in error && typeof error.message === 'string') {
+        message = `Error: ${error.message}`;
       }
       alert(message);
     } finally {
@@ -390,7 +392,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
               {selectedTaskForDetails.imageUrls && selectedTaskForDetails.imageUrls.length > 0 && (
                 <div className="grid grid-cols-3 gap-2 mb-4">
                   {selectedTaskForDetails.imageUrls.map((imgUrl, idx) => (
-                    <img key={idx} src={imgUrl} onClick={() => setViewingImages({ images: selectedTaskForDetails.imageUrls!, startIndex: idx })} className="w-full h-24 object-cover rounded-lg cursor-pointer" />
+                    <img key={idx} src={imgUrl} onClick={() => setViewingImages({ images: selectedTaskForDetails.imageUrls!, startIndex: idx })} className="w-full h-24 object-cover rounded-lg cursor-pointer" alt={`Task image ${idx + 1}`} />
                   ))}
                 </div>
               )}
