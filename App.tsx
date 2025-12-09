@@ -325,7 +325,7 @@ const App: React.FC = () => {
         </div>
       </aside>
 
-      <main className="flex-1 flex flex-col h-screen overflow-hidden relative">
+      <main className="flex-1 flex flex-col h-full overflow-hidden relative">
         {/* Header móvil */}
         <header className="md:hidden flex justify-between items-center bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-gray-100 dark:border-slate-800 p-4 pt-safe z-30">
           <div className="flex items-center gap-2">
@@ -346,7 +346,7 @@ const App: React.FC = () => {
         </div>
         
         {/* Mobile Nav */}
-        <div className="md:hidden w-full bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-t border-gray-100 dark:border-slate-800 p-2 pb-safe z-30">
+        <div className="md:hidden relative w-full bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-t border-gray-100 dark:border-slate-800 p-2 pb-safe z-30">
             <div className="flex justify-around items-start">
               {user.role === UserRole.ADMIN && <NavButton icon={LayoutGrid} label="Inventario" isActive={view === 'inventory'} onClick={() => setView('inventory')} />}
               <NavButton 
@@ -356,19 +356,19 @@ const App: React.FC = () => {
                 onClick={() => setView('replenish')}
                 isCart={true}
               />
-              {view === 'replenish' && (
-                <button 
-                  onClick={() => setShowMobileCart(!showMobileCart)}
-                  className="absolute bottom-20 right-4 bg-red-600 text-white w-16 h-16 rounded-full flex items-center justify-center shadow-lg shadow-button-red active:scale-95 transition-transform duration-300"
-                  style={{ transform: showMobileCart ? 'scale(0.8) translateY(10px)' : 'scale(1)' }}
-                >
-                  {showMobileCart ? <X size={32} /> : <ShoppingCart size={28} />}
-                  {cart.length > 0 && !showMobileCart && <span className="absolute -top-1 -right-1 w-6 h-6 bg-gray-900 rounded-full flex items-center justify-center text-white text-xs font-bold ring-2 ring-white">{cart.length}</span>}
-                </button>
-              )}
               <NavButton icon={ClipboardCheck} label="Tareas" isActive={view === 'tasks'} onClick={() => setView('tasks')} hasAlert={hasUnreadTasks} />
               {user.role === UserRole.ADMIN && <NavButton icon={ShieldCheck} label="Admin" isActive={view === 'admin'} onClick={() => setView('admin')} notificationCount={unreadAdminNotifications.length} />}
             </div>
+            {view === 'replenish' && (
+              <button 
+                onClick={() => setShowMobileCart(!showMobileCart)}
+                className="absolute bottom-24 right-4 bg-red-600 text-white w-16 h-16 rounded-full flex items-center justify-center shadow-lg shadow-button-red active:scale-95 transition-transform duration-300"
+                style={{ transform: showMobileCart ? 'scale(0.8) translateY(10px)' : 'scale(1)' }}
+              >
+                {showMobileCart ? <X size={32} /> : <ShoppingCart size={28} />}
+                {cart.length > 0 && !showMobileCart && <span className="absolute -top-1 -right-1 w-6 h-6 bg-gray-900 rounded-full flex items-center justify-center text-white text-xs font-bold ring-2 ring-white">{cart.length}</span>}
+              </button>
+            )}
         </div>
         
         {/* Toasts Container */}

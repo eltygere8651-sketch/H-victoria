@@ -88,28 +88,38 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
   };
 
 
+  // FIX: Refactored to handle image compression errors individually for a more robust user experience.
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
 
     setIsCompressing(true);
     try {
-      const compressedFiles = await Promise.all(files.map(file => compressImage(file)));
-      setFilesToUpload(prev => [...prev, ...compressedFiles]);
-    // FIX: Improved error handling for image compression. This addresses the potential type mismatch from the error message by handling the caught error safely.
-    } catch (error: unknown) {
-      console.error("Image processing failed:", error);
-      let message = "Hubo un error al procesar las imágenes.";
-      if (error instanceof Error) {
-        message = `Error al procesar la imagen: ${error.message}`;
-      } else if (typeof error === 'string') {
-        message = error;
-      } else if (error && typeof error === 'object' && 'message' in error && typeof error.message === 'string') {
-        message = `Error: ${error.message}`;
+      // Create a collection of promises, but handle individual rejections.
+      const compressionPromises = files.map(file =>
+        compressImage(file).catch(error => {
+          console.error(`Error compressing ${file.name}:`, error);
+          // Alert user about the specific file that failed.
+          const message = error instanceof Error ? error.message : 'Puede estar dañado o en un formato no compatible.';
+          alert(`No se pudo procesar el archivo: ${file.name}. ${message}`);
+          return null; // Return null for failed compressions.
+        })
+      );
+
+      const results = await Promise.all(compressionPromises);
+      // Filter out the files that failed to compress.
+      const compressedFiles = results.filter((file): file is File => file !== null);
+      
+      if (compressedFiles.length > 0) {
+        setFilesToUpload(prev => [...prev, ...compressedFiles]);
       }
-      alert(message);
+    } catch (error: unknown) {
+      // This outer catch is a fallback for unexpected errors.
+      console.error("An unexpected error occurred during file processing:", error);
+      alert("Ocurrió un error inesperado al procesar las imágenes.");
     } finally {
       setIsCompressing(false);
+      // Clear the input value to allow selecting the same file again.
       if (e.target) e.target.value = "";
     }
   };
