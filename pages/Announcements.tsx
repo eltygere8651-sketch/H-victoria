@@ -73,10 +73,6 @@ const Announcements: React.FC<AnnouncementsProps> = ({ currentUser }) => {
       <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 shadow-card-soft dark:shadow-card-dark border border-gray-100 dark:border-slate-800 transition-all">
         <div className="flex justify-between items-start mb-3">
           <h3 className="font-extrabold text-lg text-gray-900 dark:text-white leading-tight flex-1 pr-4">{announcement.title}</h3>
-          {/* BOTÓN COMPARTIR ROJO PARPADEANTE */}
-          <button onClick={(e) => handleShareAnnouncement(announcement, e)} className="text-red-600 dark:text-red-400 p-2 -mr-2 rounded-full hover:bg-red-50 dark:hover:bg-red-900/20 transition-all animate-pulse" title="Compartir">
-            <Share2 size={20} />
-          </button>
         </div>
         
         {announcement.description && (
@@ -118,10 +114,11 @@ const Announcements: React.FC<AnnouncementsProps> = ({ currentUser }) => {
              {currentUser.role === UserRole.ADMIN && (
                 <button
                   onClick={handleSharePublicAccess}
-                  className="bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 w-12 h-12 rounded-full flex items-center justify-center shadow-md hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-all active:scale-95"
-                  title="Compartir enlace público"
+                  className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-xl font-bold shadow-lg shadow-indigo-200 dark:shadow-none transition-all active:scale-95 mr-2"
+                  title="Compartir enlace de acceso público para personal"
                 >
-                  <Link size={20} />
+                  <Share2 size={18} />
+                  <span className="hidden sm:inline">Compartir Acceso</span>
                 </button>
              )}
         </div>

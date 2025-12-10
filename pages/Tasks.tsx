@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Task, User, Department, TaskStatus, TaskPriority, UserRole, TaskType, TaskComment } from '../types';
 import * as storageService from '../services/storageService';
-import { ClipboardCheck, Plus, X, Save, Loader2, Edit2, Trash2, ChevronDown, Flag, MapPin, MessagesSquare, Clock, Check, Image as ImageIcon, Camera, ArrowLeft, MoreVertical, User as UserIcon, Megaphone, Send, AlertTriangle, Share2, Link } from 'lucide-react';
+import { ClipboardCheck, Plus, X, Save, Loader2, Edit2, Trash2, ChevronDown, MessagesSquare, Clock, Check, Image as ImageIcon, Camera, ArrowLeft, MoreVertical, User as UserIcon, Send, AlertTriangle, Share2 } from 'lucide-react';
 import { compressImage } from '../utils/imageCompressor';
 import { ImageViewer } from '../components/ImageViewer';
 import { DeletionTimer } from '../components/DeletionTimer';
@@ -12,7 +12,7 @@ interface TasksProps {
 }
 
 const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
-  const [tasks, setTasks] = useState<Task[]>([]);
+  const [allTasks, setAllTasks] = useState<Task[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -38,18 +38,18 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
   const [shareData, setShareData] = useState({ url: '', title: '' });
 
   const isGuest = currentUser.role === UserRole.GUEST;
-  const isAdmin = currentUser.role === UserRole.ADMIN;
 
   useEffect(() => {
-    const unsubscribeTasks = storageService.subscribeToTasks((allTasks) => {
-      // Filter out announcements for this view
-      const filteredTasks = allTasks.filter(task => task.type !== TaskType.ANNOUNCEMENT);
-      setTasks(filteredTasks);
+    // Subscribe to tasks
+    const unsubscribeTasks = storageService.subscribeToTasks((fetchedTasks) => {
+      // Filter out announcements if any still exist in DB, to focus purely on tasks
+      const onlyTasks = fetchedTasks.filter(t => t.type !== TaskType.ANNOUNCEMENT);
+      setAllTasks(onlyTasks);
       setLoading(false);
       
       // Update selected task if it's open (for real-time comments)
       if (selectedTask) {
-        const updated = allTasks.find(t => t.id === selectedTask.id);
+        const updated = onlyTasks.find(t => t.id === selectedTask.id);
         if (updated) setSelectedTask(updated);
       }
     });
@@ -60,7 +60,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
       unsubscribeTasks();
       unsubscribeDepartments();
     };
-  }, [selectedTask]); // Depend on selectedTask to allow updating it inside the effect if needed
+  }, [selectedTask]);
 
   // Lock body scroll when modal is open to prevent background scrolling on iOS
   useEffect(() => {
@@ -76,7 +76,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
     setEditingTask({
       priority: TaskPriority.MEDIUM,
       status: TaskStatus.PENDING,
-      type: TaskType.TASK, // Default to task
+      type: TaskType.TASK, 
       departmentId: '', 
       imageUrls: [] 
     });
@@ -109,7 +109,6 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       setIsCompressing(true);
-      // FIX: Explicitly cast Array.from result to File[] to avoid 'unknown' type inference error
       const files: File[] = Array.from(e.target.files);
       
       try {
@@ -117,8 +116,6 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
           files.map(file => compressImage(file))
         );
         
-        // We store the actual File objects in a temporary property on the editingTask state
-        // creating a custom property 'newFiles' to hold them before save
         setEditingTask(prev => {
           if (!prev) return null;
           const currentNewFiles = (prev as any).newFiles || [];
@@ -130,7 +127,6 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
         alert("Error al procesar las imágenes.");
       } finally {
         setIsCompressing(false);
-        // Clear input
         if (fileInputRef.current) fileInputRef.current.value = '';
         if (cameraInputRef.current) cameraInputRef.current.value = '';
       }
@@ -174,14 +170,10 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
         createdById: editingTask.id ? editingTask.createdById : currentUser.id,
         createdBy: editingTask.id ? editingTask.createdBy : currentUser.name,
         createdAt: editingTask.id ? editingTask.createdAt : Date.now(),
-        // Ensure type is set
-        type: editingTask.type || TaskType.TASK,
+        type: TaskType.TASK, // Force Task Type
       };
 
-      // Extract new files to upload
       const filesToUpload = (editingTask as any).newFiles || [];
-      
-      // Clean up the temporary property before saving to Firestore types
       delete (taskData as any).newFiles;
 
       await storageService.saveTask(taskData, filesToUpload);
@@ -198,7 +190,6 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
 
   const handleStatusChange = async (task: Task, newStatus: TaskStatus, e?: React.MouseEvent) => {
     e?.stopPropagation();
-    // Guests cannot change status
     if (isGuest) return;
 
     const updates: Partial<Task> = { status: newStatus };
@@ -206,7 +197,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
       updates.completedBy = currentUser.name;
       updates.completedAt = Date.now();
     } else {
-      updates.completedBy = undefined; // Clear if un-completing
+      updates.completedBy = undefined; 
       updates.completedAt = undefined;
     }
     await storageService.saveTask({ id: task.id, ...updates });
@@ -216,8 +207,8 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
     e.stopPropagation();
     try {
         const url = new URL(window.location.href);
-        url.search = ''; // Clear query params
-        url.hash = '';   // Clear hash
+        url.search = '';
+        url.hash = '';
         url.searchParams.set('shareId', task.id);
         const shareUrl = url.toString();
 
@@ -228,23 +219,6 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
     }
   };
 
-  // Generate public link for the entire tasks view
-  const handleSharePublicAccess = () => {
-    try {
-      const url = new URL(window.location.href);
-      url.search = ''; 
-      url.hash = '';
-      url.searchParams.set('public', 'true');
-      const publicUrl = url.toString();
-
-      setShareData({ url: publicUrl, title: 'Acceso Invitado: Tareas y Anuncios' });
-      setShowShareModal(true);
-    } catch (error) {
-      console.error("Error creating public URL", error);
-    }
-  };
-
-  // Comments
   const handleSendComment = async () => {
     if (!newComment.trim() || !selectedTask) return;
     
@@ -261,19 +235,16 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
   
   const handleTaskClick = async (task: Task) => {
     setSelectedTask(task);
-    // Mark as seen if not already (skip for guests to avoid write errors if unauthorized)
     if (!isGuest && !task.seenBy?.includes(currentUser.id)) {
         await storageService.markTaskAsSeen(task.id, currentUser.id);
     }
   };
 
-  const filteredTasks = tasks.filter(t => statusFilter === 'ALL' || t.status === statusFilter);
+  const filteredTasks = allTasks.filter(t => statusFilter === 'ALL' || t.status === statusFilter);
 
   if (loading) {
     return <div className="flex h-full items-center justify-center"><Loader2 size={40} className="animate-spin text-red-500" /></div>;
   }
-
-  // --- SUBCOMPONENTS ---
 
   const PriorityBadge = ({ priority }: { priority: TaskPriority }) => {
     const colors = {
@@ -292,17 +263,6 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-4xl font-extrabold text-gray-900 dark:text-white tracking-tighter">Tareas</h2>
               <div className="flex items-center gap-2">
-                {/* SHARE PUBLIC ACCESS BUTTON (ADMIN ONLY) */}
-                {isAdmin && (
-                  <button
-                    onClick={handleSharePublicAccess}
-                    className="bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 w-12 h-12 rounded-full flex items-center justify-center shadow-md hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-all active:scale-95"
-                    title="Compartir enlace público"
-                  >
-                    <Link size={20} />
-                  </button>
-                )}
-                
                 {/* ADD TASK BUTTON (NOT FOR GUESTS) */}
                 {!isGuest && (
                   <button 
@@ -336,83 +296,83 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
       </div>
 
       <div className="flex-1 p-4 md:p-6 overflow-y-auto">
-        <div className="max-w-3xl mx-auto w-full space-y-4">
-            {filteredTasks.length === 0 ? (
-              <div className="py-20 text-center text-gray-400 dark:text-slate-600">
-                <ClipboardCheck size={40} className="mx-auto mb-2 opacity-50" />
-                <p>No hay tareas en esta vista.</p>
-              </div>
-            ) : (
-              filteredTasks.map(task => (
-                <div 
-                  key={task.id} 
-                  onClick={() => handleTaskClick(task)}
-                  className={`bg-white dark:bg-slate-900 rounded-2xl p-4 shadow-card-soft dark:shadow-card-dark border border-gray-100 dark:border-slate-800 hover:shadow-lg dark:hover:border-slate-700 transition-all cursor-pointer group relative overflow-hidden ${task.priority === TaskPriority.HIGH && task.status !== TaskStatus.COMPLETED ? 'border-l-4 border-l-red-500' : ''}`}
-                >
-                  <div className="flex justify-between items-start mb-2">
-                    <div className="flex flex-col gap-1 pr-2">
-                       <div className="flex items-center gap-2">
-                         <span className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider">{task.departmentName}</span>
-                         {!isGuest && !task.seenBy?.includes(currentUser.id) && (
-                           <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" title="Nueva actualización"></span>
-                         )}
-                       </div>
-                       <h3 className={`font-bold text-lg text-gray-900 dark:text-white leading-tight break-words ${task.status === TaskStatus.COMPLETED ? 'line-through decoration-gray-400 text-gray-500' : ''}`}>{task.title}</h3>
-                    </div>
-                     {/* BOTÓN COMPARTIR ROJO PARPADEANTE */}
-                     <button onClick={(e) => handleShareTask(task, e)} className="text-red-600 dark:text-red-400 p-2 -mr-2 rounded-full hover:bg-red-50 dark:hover:bg-red-900/20 transition-all animate-pulse flex-shrink-0" title="Compartir">
-                        <Share2 size={20} />
-                     </button>
-                  </div>
+        <div className="max-w-3xl mx-auto w-full">
+            
+            {/* REGULAR TASKS LIST */}
+            <div>
+               {filteredTasks.length === 0 ? (
+                 <div className="py-20 text-center text-gray-400 dark:text-slate-600 bg-gray-50 dark:bg-slate-900/50 rounded-2xl border-2 border-dashed border-gray-200 dark:border-slate-800 mt-4">
+                   <ClipboardCheck size={48} className="mx-auto mb-4 opacity-50" />
+                   <p className="font-bold text-lg">No hay tareas en esta vista.</p>
+                 </div>
+               ) : (
+                 <div className="space-y-4">
+                  {filteredTasks.map(task => (
+                    <div 
+                      key={task.id} 
+                      onClick={() => handleTaskClick(task)}
+                      className={`bg-white dark:bg-slate-900 rounded-2xl p-5 shadow-sm border border-gray-200 dark:border-slate-800 hover:shadow-md hover:border-red-200 dark:hover:border-red-900/50 transition-all cursor-pointer group relative overflow-hidden ${task.priority === TaskPriority.HIGH && task.status !== TaskStatus.COMPLETED ? 'border-l-4 border-l-red-500' : ''}`}
+                    >
+                      <div className="flex justify-between items-start mb-2">
+                        <div className="flex flex-col gap-1 pr-2 w-full">
+                           <div className="flex items-center justify-between w-full">
+                             <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-extrabold text-gray-400 dark:text-slate-500 uppercase tracking-widest">{task.departmentName}</span>
+                                {!isGuest && !task.seenBy?.includes(currentUser.id) && (
+                                  <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse shadow-sm" title="Nueva actualización"></span>
+                                )}
+                             </div>
+                             <div className="text-[10px] font-bold text-gray-300 dark:text-slate-600 flex items-center gap-1">
+                                <UserIcon size={10} /> {task.createdBy.split(' ')[0]}
+                             </div>
+                           </div>
+                           <h3 className={`font-bold text-lg text-gray-900 dark:text-white leading-snug break-words ${task.status === TaskStatus.COMPLETED ? 'line-through decoration-gray-400 text-gray-500' : ''}`}>{task.title}</h3>
+                        </div>
+                      </div>
 
-                  <div className="flex items-center justify-between mt-4">
-                    <div className="flex items-center gap-2">
-                      <PriorityBadge priority={task.priority} />
-                      {task.imageUrls && task.imageUrls.length > 0 && (
-                        <span className="text-xs font-bold text-gray-500 bg-gray-100 dark:bg-slate-800 px-2 py-1 rounded-md flex items-center gap-1">
-                           <ImageIcon size={12}/> {task.imageUrls.length}
-                        </span>
-                      )}
-                      {task.comments && task.comments.length > 0 && (
-                         <span className="text-xs font-bold text-gray-500 bg-gray-100 dark:bg-slate-800 px-2 py-1 rounded-md flex items-center gap-1">
-                           <MessagesSquare size={12}/> {task.comments.length}
-                         </span>
-                      )}
-                    </div>
-                    
-                    <div className="text-xs text-gray-400 dark:text-slate-500 flex items-center gap-1">
-                       <UserIcon size={12} /> {task.createdBy.split(' ')[0]}
-                    </div>
-                  </div>
+                      <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100 dark:border-slate-800/50">
+                        <div className="flex items-center gap-2">
+                          <PriorityBadge priority={task.priority} />
+                          {task.imageUrls && task.imageUrls.length > 0 && (
+                            <span className="text-xs font-bold text-gray-500 bg-gray-100 dark:bg-slate-800 px-2 py-1 rounded-md flex items-center gap-1">
+                               <ImageIcon size={12}/> {task.imageUrls.length}
+                            </span>
+                          )}
+                          {task.comments && task.comments.length > 0 && (
+                             <span className="text-xs font-bold text-gray-500 bg-gray-100 dark:bg-slate-800 px-2 py-1 rounded-md flex items-center gap-1">
+                               <MessagesSquare size={12}/> {task.comments.length}
+                             </span>
+                          )}
+                        </div>
+                      </div>
 
-                  {task.status === TaskStatus.COMPLETED && task.completedAt && (
-                    <div className="mt-3 pt-3 border-t border-gray-100 dark:border-slate-800 flex justify-between items-center">
-                        <span className="text-xs text-green-600 dark:text-green-400 font-bold flex items-center gap-1"><Check size={12}/> Completada por {task.completedBy}</span>
-                        <DeletionTimer completedAt={task.completedAt} />
+                      {task.status === TaskStatus.COMPLETED && task.completedAt && (
+                        <div className="mt-2 pt-2 border-t border-gray-100 dark:border-slate-800/50 flex justify-between items-center bg-green-50/50 dark:bg-green-900/10 -mx-5 -mb-5 px-5 py-2">
+                            <span className="text-xs text-green-700 dark:text-green-400 font-bold flex items-center gap-1"><Check size={12}/> Hecho por {task.completedBy}</span>
+                            <DeletionTimer completedAt={task.completedAt} />
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-              ))
-            )}
+                  ))}
+                 </div>
+               )}
+            </div>
         </div>
       </div>
 
-      {/* Task Details Modal - OPTIMIZED FOR IOS SCROLLING AND SAFE AREAS */}
+      {/* Task Details Modal */}
       {selectedTask && (
         <div className="fixed inset-0 bg-black/60 dark:bg-slate-900/90 z-[9999] flex justify-center animate-fade-in backdrop-blur-sm overflow-hidden">
            <div className="bg-white dark:bg-slate-900 w-full h-[100dvh] md:h-[90vh] md:max-w-2xl md:mt-10 md:rounded-t-3xl shadow-2xl flex flex-col animate-slide-up md:animate-none relative">
               
-              {/* Header with improved safe area padding */}
               <div className="pt-[max(env(safe-area-inset-top),1rem)] px-4 pb-3 border-b border-gray-100 dark:border-slate-800 flex items-center justify-between bg-white/95 dark:bg-slate-900/95 backdrop-blur-md z-20 flex-shrink-0">
                  <button onClick={() => setSelectedTask(null)} className="p-2 -ml-2 text-gray-500 hover:text-gray-900 dark:text-slate-400 dark:hover:text-white rounded-full active:bg-gray-100 dark:active:bg-slate-800"><ArrowLeft size={24} /></button>
                  
                  <div className="flex items-center gap-3">
-                    {/* BOTÓN COMPARTIR DETALLES */}
-                    <button onClick={(e) => handleShareTask(selectedTask, e)} className="p-2 text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-full hover:bg-red-100 dark:hover:bg-red-900/40 transition-all animate-pulse shadow-sm" title="Compartir">
+                    <button onClick={(e) => handleShareTask(selectedTask, e)} className="p-2 text-gray-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400 bg-gray-100 dark:bg-slate-800 rounded-full transition-all shadow-sm" title="Compartir Tarea">
                        <Share2 size={20} />
                     </button>
 
-                    {/* ACTIONS MENU (NOT FOR GUESTS) */}
                     {!isGuest && (
                       <div className="relative group">
                         <button className="p-2 text-gray-500 hover:text-gray-900 dark:text-slate-400 dark:hover:text-white rounded-full hover:bg-gray-100 dark:hover:bg-slate-800"><MoreVertical size={24} /></button>
@@ -425,7 +385,6 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
                  </div>
               </div>
 
-              {/* Scrollable Content with standard overflow for momentum scrolling */}
               <div className="flex-1 overflow-y-auto overscroll-y-contain p-4 md:p-6 space-y-6">
                  <div>
                     <div className="flex items-center gap-2 mb-2">
@@ -459,29 +418,28 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
                  {/* Status Actions (Disabled for Guests) */}
                  <div className="grid grid-cols-3 gap-3">
                     <button 
-                       onClick={() => handleStatusChange(selectedTask, TaskStatus.PENDING)}
-                       disabled={isGuest}
-                       className={`py-3 rounded-xl font-bold text-sm transition-all ${selectedTask.status === TaskStatus.PENDING ? 'bg-gray-900 dark:bg-white text-white dark:text-slate-900 shadow-md ring-2 ring-offset-2 ring-gray-900 dark:ring-white' : 'bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-slate-400'} ${isGuest ? 'opacity-70 cursor-not-allowed' : ''}`}
+                    onClick={() => handleStatusChange(selectedTask, TaskStatus.PENDING)}
+                    disabled={isGuest}
+                    className={`py-3 rounded-xl font-bold text-sm transition-all ${selectedTask.status === TaskStatus.PENDING ? 'bg-gray-900 dark:bg-white text-white dark:text-slate-900 shadow-md ring-2 ring-offset-2 ring-gray-900 dark:ring-white' : 'bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-slate-400'} ${isGuest ? 'opacity-70 cursor-not-allowed' : ''}`}
                     >
-                       Pendiente
+                    Pendiente
                     </button>
                     <button 
-                       onClick={() => handleStatusChange(selectedTask, TaskStatus.IN_PROGRESS)}
-                       disabled={isGuest}
-                       className={`py-3 rounded-xl font-bold text-sm transition-all ${selectedTask.status === TaskStatus.IN_PROGRESS ? 'bg-blue-600 text-white shadow-md ring-2 ring-offset-2 ring-blue-600' : 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'} ${isGuest ? 'opacity-70 cursor-not-allowed' : ''}`}
+                    onClick={() => handleStatusChange(selectedTask, TaskStatus.IN_PROGRESS)}
+                    disabled={isGuest}
+                    className={`py-3 rounded-xl font-bold text-sm transition-all ${selectedTask.status === TaskStatus.IN_PROGRESS ? 'bg-blue-600 text-white shadow-md ring-2 ring-offset-2 ring-blue-600' : 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'} ${isGuest ? 'opacity-70 cursor-not-allowed' : ''}`}
                     >
-                       En Curso
+                    En Curso
                     </button>
                     <button 
-                       onClick={() => handleStatusChange(selectedTask, TaskStatus.COMPLETED)}
-                       disabled={isGuest}
-                       className={`py-3 rounded-xl font-bold text-sm transition-all ${selectedTask.status === TaskStatus.COMPLETED ? 'bg-green-600 text-white shadow-md ring-2 ring-offset-2 ring-green-600' : 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400'} ${isGuest ? 'opacity-70 cursor-not-allowed' : ''}`}
+                    onClick={() => handleStatusChange(selectedTask, TaskStatus.COMPLETED)}
+                    disabled={isGuest}
+                    className={`py-3 rounded-xl font-bold text-sm transition-all ${selectedTask.status === TaskStatus.COMPLETED ? 'bg-green-600 text-white shadow-md ring-2 ring-offset-2 ring-green-600' : 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400'} ${isGuest ? 'opacity-70 cursor-not-allowed' : ''}`}
                     >
-                       Hecho
+                    Hecho
                     </button>
                  </div>
 
-                 {/* Comments Section */}
                  <div className="pt-6 border-t border-gray-100 dark:border-slate-800">
                     <h3 className="font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2"><MessagesSquare size={18}/> Comentarios</h3>
                     
@@ -505,7 +463,6 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
                  </div>
               </div>
 
-              {/* Comment Input with safe area padding (NOT FOR GUESTS) */}
               {!isGuest && (
                 <div className="p-4 pb-[max(env(safe-area-inset-bottom),1rem)] bg-white dark:bg-slate-900 border-t border-gray-100 dark:border-slate-800 flex-shrink-0 z-20">
                    <div className="flex gap-2 relative">
@@ -531,7 +488,6 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
         </div>
       )}
 
-      {/* New/Edit Task Modal */}
       {showTaskModal && editingTask && (
         <div className="fixed inset-0 bg-black/60 dark:bg-slate-900/90 z-[9999] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
           <div className="bg-white dark:bg-slate-800 rounded-3xl w-full max-w-lg shadow-2xl p-6 md:p-8 animate-pop-in max-h-[90vh] overflow-y-auto">
@@ -543,23 +499,8 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
             </div>
             
             <div className="space-y-5">
-              {/* Type Selection */}
-              <div className="bg-gray-50 dark:bg-slate-900/50 p-1.5 rounded-xl flex gap-1">
-                 <button 
-                    type="button"
-                    onClick={() => setEditingTask({...editingTask, type: TaskType.TASK})}
-                    className={`flex-1 py-2 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all ${editingTask.type === TaskType.TASK ? 'bg-white dark:bg-slate-800 text-red-600 dark:text-red-400 shadow-sm' : 'text-gray-500 dark:text-slate-400 hover:bg-white/50 dark:hover:bg-slate-800/50'}`}
-                 >
-                    <ClipboardCheck size={16}/> Tarea
-                 </button>
-                 <button 
-                    type="button"
-                    onClick={() => setEditingTask({...editingTask, type: TaskType.ANNOUNCEMENT})}
-                    className={`flex-1 py-2 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all ${editingTask.type === TaskType.ANNOUNCEMENT ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-gray-500 dark:text-slate-400 hover:bg-white/50 dark:hover:bg-slate-800/50'}`}
-                 >
-                    <Megaphone size={16}/> Anuncio
-                 </button>
-              </div>
+              
+              {/* Type Selector Removed - Defaulting to Task */}
 
               <div>
                 <label className="text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wide mb-1 block">Título</label>
@@ -567,7 +508,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
                   className="w-full p-4 border-2 border-gray-200 dark:border-slate-700 rounded-xl bg-gray-50 dark:bg-slate-800/50 focus:bg-white dark:focus:bg-slate-900 focus:border-red-500 focus:ring-4 focus:ring-red-100 dark:focus:ring-red-500/30 outline-none font-bold text-gray-900 dark:text-white transition-all"
                   value={editingTask.title || ''}
                   onChange={e => setEditingTask({...editingTask, title: e.target.value})}
-                  placeholder={editingTask.type === TaskType.ANNOUNCEMENT ? "Ej. Reunión de personal..." : "Ej. Reparar aire acondicionado..."}
+                  placeholder="Ej. Reparar aire acondicionado..."
                 />
               </div>
 
@@ -589,37 +530,37 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
               </div>
               
               <div className="grid grid-cols-2 gap-4">
-                 <div>
-                    <label className="text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wide mb-1 block">Prioridad</label>
-                    <div className="relative">
-                       <select 
-                         className="w-full p-4 border-2 border-gray-200 dark:border-slate-700 rounded-xl bg-gray-50 dark:bg-slate-800/50 focus:bg-white dark:focus:bg-slate-900 focus:border-red-500 outline-none font-medium text-gray-900 dark:text-white appearance-none transition-all"
-                         value={editingTask.priority || TaskPriority.MEDIUM}
-                         onChange={e => setEditingTask({...editingTask, priority: e.target.value as TaskPriority})}
-                       >
-                         <option value={TaskPriority.LOW}>Baja</option>
-                         <option value={TaskPriority.MEDIUM}>Media</option>
-                         <option value={TaskPriority.HIGH}>Alta</option>
-                       </select>
-                       <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={20} />
-                    </div>
-                 </div>
-                 <div>
-                    <label className="text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wide mb-1 block">Estado</label>
-                    <div className="relative">
-                       <select 
-                         className="w-full p-4 border-2 border-gray-200 dark:border-slate-700 rounded-xl bg-gray-50 dark:bg-slate-800/50 focus:bg-white dark:focus:bg-slate-900 focus:border-red-500 outline-none font-medium text-gray-900 dark:text-white appearance-none transition-all"
-                         value={editingTask.status || TaskStatus.PENDING}
-                         onChange={e => setEditingTask({...editingTask, status: e.target.value as TaskStatus})}
-                       >
-                         <option value={TaskStatus.PENDING}>Pendiente</option>
-                         <option value={TaskStatus.IN_PROGRESS}>En Curso</option>
-                         <option value={TaskStatus.COMPLETED}>Completada</option>
-                       </select>
-                       <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={20} />
-                    </div>
-                 </div>
-              </div>
+                  <div>
+                      <label className="text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wide mb-1 block">Prioridad</label>
+                      <div className="relative">
+                        <select 
+                          className="w-full p-4 border-2 border-gray-200 dark:border-slate-700 rounded-xl bg-gray-50 dark:bg-slate-800/50 focus:bg-white dark:focus:bg-slate-900 focus:border-red-500 outline-none font-medium text-gray-900 dark:text-white appearance-none transition-all"
+                          value={editingTask.priority || TaskPriority.MEDIUM}
+                          onChange={e => setEditingTask({...editingTask, priority: e.target.value as TaskPriority})}
+                        >
+                          <option value={TaskPriority.LOW}>Baja</option>
+                          <option value={TaskPriority.MEDIUM}>Media</option>
+                          <option value={TaskPriority.HIGH}>Alta</option>
+                        </select>
+                        <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={20} />
+                      </div>
+                  </div>
+                  <div>
+                      <label className="text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wide mb-1 block">Estado</label>
+                      <div className="relative">
+                        <select 
+                          className="w-full p-4 border-2 border-gray-200 dark:border-slate-700 rounded-xl bg-gray-50 dark:bg-slate-800/50 focus:bg-white dark:focus:bg-slate-900 focus:border-red-500 outline-none font-medium text-gray-900 dark:text-white appearance-none transition-all"
+                          value={editingTask.status || TaskStatus.PENDING}
+                          onChange={e => setEditingTask({...editingTask, status: e.target.value as TaskStatus})}
+                        >
+                          <option value={TaskStatus.PENDING}>Pendiente</option>
+                          <option value={TaskStatus.IN_PROGRESS}>En Curso</option>
+                          <option value={TaskStatus.COMPLETED}>Completada</option>
+                        </select>
+                        <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={20} />
+                      </div>
+                  </div>
+                </div>
 
               <div>
                  <label className="text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wide mb-1 block">Descripción</label>
@@ -657,7 +598,6 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
                     <input type="file" ref={cameraInputRef} capture="environment" accept="image/*" className="hidden" onChange={handleFileChange} />
                     <input type="file" ref={fileInputRef} accept="image/*" multiple className="hidden" onChange={handleFileChange} />
 
-                    {/* Previews of existing images */}
                     {editingTask.imageUrls?.map((url, idx) => (
                        <div key={`existing-${idx}`} className="relative flex-shrink-0 w-20 h-20 rounded-xl overflow-hidden border border-gray-200 dark:border-slate-700">
                           <img src={url} alt="preview" className="w-full h-full object-cover" />
@@ -671,7 +611,6 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
                        </div>
                     ))}
 
-                    {/* Previews of new files to upload */}
                     {(editingTask as any).newFiles?.map((file: File, idx: number) => (
                        <div key={`new-${idx}`} className="relative flex-shrink-0 w-20 h-20 rounded-xl overflow-hidden border border-gray-200 dark:border-slate-700">
                           <img src={URL.createObjectURL(file)} alt="preview" className="w-full h-full object-cover opacity-80" />
@@ -716,7 +655,6 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
         </div>
       )}
 
-      {/* Delete Confirmation Modal */}
       {taskToDelete && (
         <div className="fixed inset-0 bg-black/60 dark:bg-slate-900/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
           <div className="bg-white dark:bg-slate-800 rounded-3xl w-full max-w-sm shadow-pop-in p-6 animate-pop-in text-center">
@@ -733,7 +671,6 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
         </div>
       )}
 
-      {/* Share Modal Integration */}
       <ShareModal 
         isOpen={showShareModal} 
         onClose={() => setShowShareModal(false)} 
@@ -741,7 +678,6 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
         title={shareData.title} 
       />
 
-      {/* Image Viewer */}
       {viewingImages && (
          <ImageViewer 
             images={viewingImages.images}

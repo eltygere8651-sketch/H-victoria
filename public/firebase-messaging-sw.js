@@ -28,6 +28,10 @@ messaging.onBackgroundMessage((payload) => {
     body: payload.notification.body,
     icon: "/favicon.svg", // Asegúrate de que este archivo sea accesible
     badge: "/favicon.svg",
+    vibrate: [200, 100, 200, 100, 200], // Patrón de vibración: vibra-pausa-vibra...
+    requireInteraction: true, // La notificación se queda hasta que el usuario interactúa
+    tag: 'hub-notification', // Agrupa notificaciones similares
+    renotify: true, // Vuelve a vibrar si llega una nueva con el mismo tag
     // Datos adicionales para manejar la navegación al hacer clic
     data: {
       url: self.registration.scope

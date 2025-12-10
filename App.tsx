@@ -4,14 +4,14 @@ import Inventory from './pages/Inventory';
 import Replenishment from './pages/Replenishment';
 import Admin from './pages/Admin';
 import Tasks from './pages/Tasks';
-import Announcements from './pages/Announcements';
 import { PublicTaskViewer } from './components/PublicTaskViewer';
 import * as storageService from './services/storageService';
 import { Logo } from './components/Logo';
-import { LayoutGrid, ClipboardList, ShieldCheck, LogOut, Moon, Sun, Download, Share, PlusSquare, ShoppingCart, ClipboardCheck, Megaphone } from 'lucide-react';
+import { LayoutGrid, ClipboardList, ShieldCheck, LogOut, Moon, Sun, Download, Share, PlusSquare, ShoppingCart, ClipboardCheck, Share2 } from 'lucide-react';
 import { User, UserRole, AppNotification, CartItem } from './types';
 import { NotificationToast } from './components/NotificationToast';
 import { initializePushNotifications } from './services/pushNotificationService';
+import { ShareModal } from './components/ShareModal';
 
 const App: React.FC = () => {
   const [isInitializing, setIsInitializing] = useState(true);
@@ -19,13 +19,19 @@ const App: React.FC = () => {
   const [sharedTaskId, setSharedTaskId] = useState<string | null>(null);
   const [isPublicMode, setIsPublicMode] = useState(false);
 
-  const [view, setView] = useState<'inventory' | 'replenish' | 'admin' | 'tasks' | 'announcements'>(() => {
+  // Share Modal State (Global)
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [shareData, setShareData] = useState({ url: '', title: '' });
+
+  const [view, setView] = useState<'inventory' | 'replenish' | 'admin' | 'tasks'>(() => {
     const lastView = storageService.getLastView();
     const sessionUser = storageService.getSession();
 
-    let defaultView: 'inventory' | 'replenish' | 'tasks' | 'announcements' = 'replenish';
+    let defaultView: 'inventory' | 'replenish' | 'tasks' = 'replenish';
     if (sessionUser?.role === UserRole.ADMIN) defaultView = 'inventory';
-    if (lastView === 'inventory' || lastView === 'replenish' || lastView === 'admin' || lastView === 'tasks' || lastView === 'announcements') {
+    if (sessionUser?.role === UserRole.GUEST) defaultView = 'tasks';
+    
+    if (lastView === 'inventory' || lastView === 'replenish' || lastView === 'admin' || lastView === 'tasks') {
       if (sessionUser?.role === UserRole.STAFF && (lastView === 'admin' || lastView === 'inventory')) return defaultView;
       return lastView as any;
     }
@@ -53,13 +59,13 @@ const App: React.FC = () => {
   const [showMobileCart, setShowMobileCart] = useState(false);
 
   const cleanupPerformed = useRef(false);
-  const audioAlertRef = useRef<{
-    context: AudioContext | null;
-    intervalId: number | null;
-    isPlaying: boolean;
-  }>({ context: null, intervalId: null, isPlaying: false });
+  // Separate refs for different sounds to avoid conflict
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const alarmIntervalRef = useRef<number | null>(null);
+  const reminderIntervalRef = useRef<number | null>(null); // New ref for 5s reminder
+  const isAlarmPlayingRef = useRef(false);
+
   const [hasUnreadTasks, setHasUnreadTasks] = useState(false);
-  const audioContextUnlocked = useRef(false);
 
   // Inicialización de la app
   useEffect(() => {
@@ -87,7 +93,7 @@ const App: React.FC = () => {
             pin: '',
           };
           setUser(guestUser);
-          setView('announcements'); // Default view for guests
+          setView('tasks'); // Default view for guests
         }
       }
 
@@ -96,32 +102,123 @@ const App: React.FC = () => {
     initializeApp();
   }, []);
 
-  // Desbloquear AudioContext en interacción del usuario
-  const unlockAudio = () => {
-    if (audioContextUnlocked.current) return;
-    try {
-      if (audioAlertRef.current.context && audioAlertRef.current.context.state === 'suspended') {
-        audioAlertRef.current.context.resume();
-      } else if (!audioAlertRef.current.context) {
-        const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-        if (AudioContext) audioAlertRef.current.context = new AudioContext();
+  // --- AUDIO SYSTEM ---
+  
+  // Initialize Audio Context lazily
+  const getAudioContext = () => {
+    if (!audioContextRef.current) {
+      const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+      if (AudioContext) {
+        audioContextRef.current = new AudioContext();
       }
-      audioContextUnlocked.current = true;
-      window.removeEventListener('click', unlockAudio);
-      window.removeEventListener('touchstart', unlockAudio);
-    } catch (e) {
-      console.warn("Could not unlock AudioContext.", e);
     }
+    return audioContextRef.current;
   };
 
+  // Generic sound player for notifications (Short "Ping")
+  const playPing = async () => {
+    const ctx = getAudioContext();
+    if (!ctx) return;
+
+    // Try to resume if suspended (crucial for browsers with autoplay policy)
+    if (ctx.state === 'suspended') {
+      try {
+        await ctx.resume();
+      } catch (e) {
+        console.warn("AudioContext resume failed", e);
+      }
+    }
+
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    // Friendly "Ping" sound
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(500, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(1000, ctx.currentTime + 0.1);
+    
+    gain.gain.setValueAtTime(0.1, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.3);
+  };
+
+  // Urgent Alarm Player (Siren)
+  const startAlarm = async () => {
+    if (isAlarmPlayingRef.current) return;
+    
+    const ctx = getAudioContext();
+    if (!ctx) return;
+
+    if (ctx.state === 'suspended') {
+      try {
+        await ctx.resume();
+      } catch (e) {
+        // If we can't resume (user hasn't interacted yet), we can't play.
+        // We will retry on interaction.
+        return; 
+      }
+    }
+
+    isAlarmPlayingRef.current = true;
+
+    const playTone = () => {
+        if (!isAlarmPlayingRef.current) return;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(800, ctx.currentTime);
+        osc.frequency.linearRampToValueAtTime(1000, ctx.currentTime + 0.1);
+        osc.frequency.linearRampToValueAtTime(800, ctx.currentTime + 0.2);
+        gain.gain.setValueAtTime(0.15, ctx.currentTime);
+        gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.2);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.2);
+    };
+
+    playTone(); // Play immediately
+    alarmIntervalRef.current = window.setInterval(playTone, 2000); // Loop every 2s
+  };
+  
+  const stopAlarm = () => {
+    if (alarmIntervalRef.current) {
+      clearInterval(alarmIntervalRef.current);
+      alarmIntervalRef.current = null;
+    }
+    isAlarmPlayingRef.current = false;
+  };
+
+  // Unlock Audio on first interaction
   useEffect(() => {
-    window.addEventListener('click', unlockAudio);
-    window.addEventListener('touchstart', unlockAudio);
+    const unlockAudio = async () => {
+      const ctx = getAudioContext();
+      if (ctx && ctx.state === 'suspended') {
+        try {
+          await ctx.resume();
+        } catch (e) {
+          console.warn("Failed to resume audio context on click");
+        }
+      }
+    };
+    
+    window.addEventListener('click', unlockAudio, { once: true });
+    window.addEventListener('touchstart', unlockAudio, { once: true });
+    window.addEventListener('keydown', unlockAudio, { once: true });
+    
     return () => {
       window.removeEventListener('click', unlockAudio);
       window.removeEventListener('touchstart', unlockAudio);
+      window.removeEventListener('keydown', unlockAudio);
     };
   }, []);
+
+  // --- END AUDIO SYSTEM ---
 
   // Inicializar notificaciones push
   useEffect(() => {
@@ -178,6 +275,19 @@ const App: React.FC = () => {
   useEffect(() => { if (user) storageService.saveLastView(view); }, [view, user]);
   useEffect(() => { storageService.saveDraftCart(cart); }, [cart]);
 
+  // --- BADGING SYSTEM ---
+  useEffect(() => {
+    const totalUnread = unreadAdminNotifications.length + (hasUnreadTasks ? 1 : 0);
+    if ('setAppBadge' in navigator) {
+      if (totalUnread > 0) {
+        navigator.setAppBadge(totalUnread).catch(e => console.error("Badging failed", e));
+      } else {
+        navigator.clearAppBadge().catch(e => console.error("Clear badge failed", e));
+      }
+    }
+  }, [unreadAdminNotifications.length, hasUnreadTasks]);
+
+
   const showNativeNotification = (notification: AppNotification) => {
     if ('Notification' in window && Notification.permission === 'granted' && document.hidden) {
       if (displayedNativeNotificationIds.current.has(notification.id)) return;
@@ -209,6 +319,34 @@ const App: React.FC = () => {
     setToasts(prev => prev.filter(t => t.id !== id));
     displayedToastIds.current.delete(id);
   };
+
+  // --- REPETITIVE SOUND REMINDER LOGIC ---
+  useEffect(() => {
+    // If there are toasts (unread visual notifications)
+    if (toasts.length > 0) {
+      // And we don't have an interval running yet
+      if (!reminderIntervalRef.current) {
+        // Start the repetitive loop every 5 seconds
+        reminderIntervalRef.current = window.setInterval(() => {
+          playPing();
+        }, 5000);
+      }
+    } else {
+      // No toasts? Stop the sound loop.
+      if (reminderIntervalRef.current) {
+        clearInterval(reminderIntervalRef.current);
+        reminderIntervalRef.current = null;
+      }
+    }
+
+    // Cleanup on unmount
+    return () => {
+      if (reminderIntervalRef.current) {
+        clearInterval(reminderIntervalRef.current);
+        reminderIntervalRef.current = null;
+      }
+    };
+  }, [toasts]);
   
   useEffect(() => {
     if (!user || user.role === UserRole.GUEST) {
@@ -222,6 +360,9 @@ const App: React.FC = () => {
       const newToasts = unread.filter(n => !displayedToastIds.current.has(n.id));
       
       if (newToasts.length > 0) {
+        // Play sound for ANY new notification immediately
+        playPing();
+        
         setToasts(prev => [...prev, ...newToasts]);
         newToasts.forEach(n => {
           displayedToastIds.current.add(n.id);
@@ -244,10 +385,9 @@ const App: React.FC = () => {
         !t.seenBy?.includes(user.id)
       );
 
-      if (newHighPriorityTasks.length > 0 && audioContextUnlocked.current) {
-        if (!audioAlertRef.current.isPlaying) {
-          startAlarm();
-        }
+      // Alarm logic for high priority
+      if (newHighPriorityTasks.length > 0) {
+        startAlarm();
       } else {
         stopAlarm();
       }
@@ -256,6 +396,7 @@ const App: React.FC = () => {
     return () => {
       unsubNotifications();
       unsubTasks();
+      stopAlarm();
     };
   }, [user]);
 
@@ -263,9 +404,11 @@ const App: React.FC = () => {
     setUser(loggedInUser);
     const lastView = storageService.getLastView();
     if (loggedInUser.role === UserRole.ADMIN) {
-        setView(lastView === 'inventory' || lastView === 'admin' || lastView === 'tasks' || lastView === 'announcements' ? lastView : 'inventory');
+        setView(lastView === 'inventory' || lastView === 'admin' || lastView === 'tasks' ? lastView : 'inventory');
+    } else if (loggedInUser.role === UserRole.GUEST) {
+        setView('tasks');
     } else {
-        setView(lastView === 'replenish' || lastView === 'tasks' || lastView === 'announcements' ? lastView : 'replenish');
+        setView(lastView === 'replenish' || lastView === 'tasks' ? lastView : 'replenish');
     }
   };
 
@@ -274,6 +417,7 @@ const App: React.FC = () => {
     setUser(null);
     setCart([]);
     setView('replenish');
+    stopAlarm();
     
     // If in public mode, remove query param
     if (isPublicMode) {
@@ -282,39 +426,25 @@ const App: React.FC = () => {
     }
   };
 
-  const startAlarm = () => {
-    const ctx = audioAlertRef.current.context;
-    if (!ctx || audioAlertRef.current.isPlaying) return;
+  // Logic to share public link
+  const handleSharePublicAccess = () => {
+    try {
+      const url = new URL(window.location.href);
+      url.search = ''; 
+      url.hash = '';
+      url.searchParams.set('public', 'true');
+      const publicUrl = url.toString();
 
-    audioAlertRef.current.isPlaying = true;
-    const playSound = () => {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(1000, ctx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.1);
-        gain.gain.setValueAtTime(0.2, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
-        osc.start(ctx.currentTime);
-        osc.stop(ctx.currentTime + 0.3);
-    };
-
-    playSound(); 
-    audioAlertRef.current.intervalId = window.setInterval(playSound, 2000);
-  };
-  
-  const stopAlarm = () => {
-    if (audioAlertRef.current.intervalId) {
-      clearInterval(audioAlertRef.current.intervalId);
-      audioAlertRef.current.intervalId = null;
+      setShareData({ url: publicUrl, title: 'Acceso Invitado: Tareas' });
+      setShowShareModal(true);
+    } catch (error) {
+      console.error("Error creating public URL", error);
     }
-    audioAlertRef.current.isPlaying = false;
   };
+
 
   // --- MODERN NAVIGATION BUTTON (FLOATING PILL DESIGN) ---
-  const NavButton = ({ icon: Icon, label, isActive, onClick, hasAlert = false }: any) => (
+  const NavButton = ({ icon: Icon, label, isActive, onClick, hasAlert = false, specialColor = false }: any) => (
     <button 
       onClick={onClick} 
       className={`
@@ -322,7 +452,9 @@ const App: React.FC = () => {
         outline-none select-none touch-manipulation active:scale-95 group
         ${isActive 
           ? 'flex-[2] bg-red-600 text-white shadow-neon dark:shadow-red-900/50' 
-          : 'flex-1 bg-gray-50/80 dark:bg-white/5 hover:bg-gray-100 dark:hover:bg-white/10 text-gray-500 dark:text-slate-400'
+          : specialColor 
+             ? 'flex-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-400'
+             : 'flex-1 bg-gray-50/80 dark:bg-white/5 hover:bg-gray-100 dark:hover:bg-white/10 text-gray-500 dark:text-slate-400'
         }
       `}
       style={{ WebkitTapHighlightColor: 'transparent' }}
@@ -408,7 +540,6 @@ const App: React.FC = () => {
           {view === 'replenish' && user.role !== UserRole.GUEST && <Replenishment currentUser={user} cart={cart} setCart={setCart} showMobileCart={showMobileCart} setShowMobileCart={setShowMobileCart} />}
           {view === 'admin' && user.role === UserRole.ADMIN && <Admin currentUser={user} unreadNotificationsCount={unreadAdminNotifications.length} initialTab={initialAdminTab} />}
           {view === 'tasks' && <Tasks currentUser={user} />}
-          {view === 'announcements' && <Announcements currentUser={user} />}
         </main>
       </div>
 
@@ -417,9 +548,6 @@ const App: React.FC = () => {
         <nav 
           className="pointer-events-auto bg-white/90 dark:bg-slate-900/90 backdrop-blur-2xl border border-white/20 dark:border-white/10 shadow-dock dark:shadow-dock-dark rounded-full p-2 flex items-center justify-between gap-2 w-full max-w-md transition-all duration-300 ring-1 ring-black/5 dark:ring-white/5"
         >
-            {/* ANNOUNCEMENTS (Available to all) */}
-            <NavButton icon={Megaphone} label="Anuncios" isActive={view === 'announcements'} onClick={() => setView('announcements')} />
-
             {/* TASKS (Available to all) */}
             <NavButton icon={ClipboardCheck} label="Tareas" isActive={view === 'tasks'} onClick={() => setView('tasks')} hasAlert={hasUnreadTasks}/>
 
@@ -431,6 +559,11 @@ const App: React.FC = () => {
             {/* ADMIN/INVENTORY - Only for Admins */}
             {user.role === UserRole.ADMIN && <NavButton icon={LayoutGrid} label="Stock" isActive={view === 'inventory'} onClick={() => setView('inventory')} />}
             {user.role === UserRole.ADMIN && <NavButton icon={ShieldCheck} label="Admin" isActive={view === 'admin'} onClick={() => setView('admin')} hasAlert={unreadAdminNotifications.length > 0} />}
+
+            {/* SHARE PUBLIC ACCESS - Replaced Announcements, Only for Admins */}
+            {user.role === UserRole.ADMIN && (
+              <NavButton icon={Share2} label="Compartir" isActive={false} onClick={handleSharePublicAccess} specialColor={true} />
+            )}
         </nav>
       </div>
 
@@ -453,6 +586,14 @@ const App: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* GLOBAL SHARE MODAL */}
+      <ShareModal 
+        isOpen={showShareModal} 
+        onClose={() => setShowShareModal(false)} 
+        url={shareData.url} 
+        title={shareData.title} 
+      />
 
       <div aria-live="assertive" className="fixed inset-0 flex flex-col items-end px-4 py-6 pt-safe pointer-events-none sm:p-6 sm:items-end z-[9999] gap-4">
         {toasts.map((toast) => (
