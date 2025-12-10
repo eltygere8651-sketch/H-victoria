@@ -4,12 +4,11 @@ import Inventory from './pages/Inventory';
 import Replenishment from './pages/Replenishment';
 import Admin from './pages/Admin';
 import Tasks from './pages/Tasks';
-import Documents from './pages/Documents';
 import Announcements from './pages/Announcements';
 import * as storageService from './services/storageService';
 import { Logo } from './components/Logo';
-import { LayoutGrid, ClipboardList, ShieldCheck, LogOut, Moon, Sun, Download, Share, PlusSquare, X, Bell, ShoppingCart, ClipboardCheck, AlertCircle, FileText, Megaphone } from 'lucide-react';
-import { User, UserRole, AppNotification, CartItem, Task } from './types';
+import { LayoutGrid, ClipboardList, ShieldCheck, LogOut, Moon, Sun, Download, Share, PlusSquare, ShoppingCart, ClipboardCheck, Megaphone } from 'lucide-react';
+import { User, UserRole, AppNotification, CartItem } from './types';
 import { NotificationToast } from './components/NotificationToast';
 import { initializePushNotifications } from './services/pushNotificationService';
 
@@ -17,13 +16,13 @@ const App: React.FC = () => {
   const [isInitializing, setIsInitializing] = useState(true);
   const [user, setUser] = useState<User | null>(storageService.getSession());
 
-  const [view, setView] = useState<'inventory' | 'replenish' | 'admin' | 'tasks' | 'documents' | 'announcements'>(() => {
+  const [view, setView] = useState<'inventory' | 'replenish' | 'admin' | 'tasks' | 'announcements'>(() => {
     const lastView = storageService.getLastView();
     const sessionUser = storageService.getSession();
 
-    let defaultView: 'inventory' | 'replenish' | 'tasks' | 'documents' | 'announcements' = 'replenish';
+    let defaultView: 'inventory' | 'replenish' | 'tasks' | 'announcements' = 'replenish';
     if (sessionUser?.role === UserRole.ADMIN) defaultView = 'inventory';
-    if (lastView === 'inventory' || lastView === 'replenish' || lastView === 'admin' || lastView === 'tasks' || lastView === 'documents' || lastView === 'announcements') {
+    if (lastView === 'inventory' || lastView === 'replenish' || lastView === 'admin' || lastView === 'tasks' || lastView === 'announcements') {
       if (sessionUser?.role === UserRole.STAFF && (lastView === 'admin' || lastView === 'inventory')) return defaultView;
       return lastView as any;
     }
@@ -235,9 +234,9 @@ const App: React.FC = () => {
     setUser(loggedInUser);
     const lastView = storageService.getLastView();
     if (loggedInUser.role === UserRole.ADMIN) {
-        setView(lastView === 'inventory' || lastView === 'admin' || lastView === 'tasks' || lastView === 'documents' || lastView === 'announcements' ? lastView : 'inventory');
+        setView(lastView === 'inventory' || lastView === 'admin' || lastView === 'tasks' || lastView === 'announcements' ? lastView : 'inventory');
     } else {
-        setView(lastView === 'replenish' || lastView === 'tasks' || lastView === 'documents' || lastView === 'announcements' ? lastView : 'replenish');
+        setView(lastView === 'replenish' || lastView === 'tasks' || lastView === 'announcements' ? lastView : 'replenish');
     }
   };
 
@@ -367,7 +366,6 @@ const App: React.FC = () => {
           {view === 'replenish' && <Replenishment currentUser={user} cart={cart} setCart={setCart} showMobileCart={showMobileCart} setShowMobileCart={setShowMobileCart} />}
           {view === 'admin' && user.role === UserRole.ADMIN && <Admin currentUser={user} unreadNotificationsCount={unreadAdminNotifications.length} initialTab={initialAdminTab} />}
           {view === 'tasks' && <Tasks currentUser={user} />}
-          {view === 'documents' && <Documents currentUser={user} />}
           {view === 'announcements' && <Announcements currentUser={user} />}
         </main>
       </div>
@@ -384,9 +382,6 @@ const App: React.FC = () => {
 
           {/* ANNOUNCEMENTS */}
           <NavButton icon={Megaphone} label="Anuncios" isActive={view === 'announcements'} onClick={() => setView('announcements')} />
-
-          {/* DOCUMENTS */}
-          <NavButton icon={FileText} label="Docs" isActive={view === 'documents'} onClick={() => setView('documents')} />
 
           {/* ADMIN/INVENTORY - Only for Admins */}
           {user.role === UserRole.ADMIN && <NavButton icon={LayoutGrid} label="Stock" isActive={view === 'inventory'} onClick={() => setView('inventory')} />}

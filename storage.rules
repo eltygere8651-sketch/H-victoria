@@ -1,0 +1,15 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // 1. Regla para Tareas
+    // IMPORTANTE: El código usa 'task-images' (guion medio), no 'task_images' (guion bajo).
+    match /task-images/{allPaths=**} {
+      allow read, write: if request.auth != null;
+    }
+
+    // 2. Regla para Documentos (necesaria para la sección Docs)
+    match /documents/{allPaths=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}

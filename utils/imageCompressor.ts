@@ -4,7 +4,7 @@
  * @param {number} maxWidth The maximum width of the compressed image.
  * @returns {Promise<File>} A promise that resolves with the compressed image file.
  */
-export const compressImage = (file: File, maxWidth: number = 1024): Promise<File> => {
+export const compressImage = (file: File, maxWidth: number = 600): Promise<File> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.readAsDataURL(file);
@@ -39,7 +39,7 @@ export const compressImage = (file: File, maxWidth: number = 1024): Promise<File
             resolve(compressedFile);
           },
           'image/jpeg',
-          0.8 // 80% quality
+          0.6 // 60% quality for Firestore Base64 storage optimization
         );
       };
       // FIX: Reject with a proper Error object for consistent error handling.

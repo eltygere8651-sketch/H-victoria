@@ -2,6 +2,7 @@ import { Product, User, ReplenishmentRequest, UserRole, Department, CartItem, Ap
 // FIX: Remove modular imports and use compat 'db' instance directly
 import { db, auth, storage } from '../firebaseConfig';
 import firebase from 'firebase/compat/app';
+import { fileToBase64 } from '../utils/imageCompressor';
 
 // LOCAL STORAGE FALLBACK KEYS
 const KEYS = {
@@ -315,22 +316,19 @@ export const subscribeToTasks = (callback: (data: Task[]) => void) => {
 export const saveTask = async (task: Partial<Task>, newFiles: File[] = []) => {
   const isNew = !task.id;
   const docRef = isNew ? db.collection('tasks').doc() : db.collection('tasks').doc(task.id!);
-  const taskId = docRef.id;
-
+  
   let newImageUrls: string[] = [];
   if (newFiles.length > 0) {
-      const uploadPromises = newFiles.map(file => {
-          const path = `task-images/${taskId}/${Date.now()}-${file.name}`;
-          return uploadImage(file, path);
-      });
-      newImageUrls = await Promise.all(uploadPromises);
+      // FIX: Use Base64 storage instead of Firebase Storage to avoid retry-limit-exceeded / CORS issues
+      const base64Promises = newFiles.map(file => fileToBase64(file));
+      newImageUrls = await Promise.all(base64Promises);
   }
 
   const finalImageUrls = [...(task.imageUrls || []), ...newImageUrls];
 
   let taskData: Partial<Task> = {
     ...task,
-    id: taskId,
+    id: docRef.id,
     imageUrls: finalImageUrls.length > 0 ? finalImageUrls : firebase.firestore.FieldValue.delete() as any,
   };
   

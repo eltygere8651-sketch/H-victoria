@@ -85,11 +85,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
     setSelectedTaskForDetails(task);
   };
 
-  // FIX: Rewrote file handling to use Promise.allSettled for robust processing.
-  // This prevents the entire batch from failing if one image is invalid and
-  // resolves the underlying cause of the "unknown is not a File" type error.
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    // FIX: Explicitly handle FileList and convert to a typed File[] array to prevent type inference issues.
     const selectedFiles = e.target.files;
     if (!selectedFiles) return;
     const files: File[] = Array.from(selectedFiles);
@@ -97,7 +93,6 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
 
     setIsCompressing(true);
     try {
-      // Use Promise.allSettled to handle multiple files where some might fail to compress
       const results = await Promise.allSettled(
         files.map(file => compressImage(file))
       );
@@ -112,13 +107,10 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
 
       const failedCount = files.length - successfulFiles.length;
       if (failedCount > 0) {
-        console.error(`${failedCount} images failed to compress.`, results.filter(r => r.status === 'rejected'));
-        alert(`No se pudieron procesar ${failedCount} imágen(es). Por favor, asegúrese de que son formatos válidos.`);
+        alert(`No se pudieron procesar ${failedCount} imágen(es).`);
       }
     } catch (error) {
-      // This outer catch is for unexpected errors in the logic itself
       console.error("An unexpected error occurred during file processing:", error);
-      alert("Ocurrió un error inesperado al procesar los archivos.");
     } finally {
       setIsCompressing(false);
       if (e.target) e.target.value = "";
@@ -215,7 +207,6 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
   const handleSendComment = async () => {
     if (!newComment.trim() || !selectedTaskForDetails) return;
     setIsSendingComment(true);
-    // FIX: Add `timestamp` to the comment object to match the expected type `Omit<TaskComment, 'id'>`.
     const comment: Omit<TaskComment, 'id'> = {
       userId: currentUser.id,
       userName: currentUser.name,
@@ -262,12 +253,13 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
     ...previewUrls
   ];
 
-  // FIX: Refactor TaskCard to use React.FC with an explicit props interface to solve the `key` prop type error.
   interface TaskCardProps {
     task: Task;
   }
   const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
     const isUnread = !task.seenBy?.includes(currentUser.id);
+    const hasImages = task.imageUrls && task.imageUrls.length > 0;
+    
     return (
       <div 
         onClick={() => handleViewDetails(task)}
@@ -284,6 +276,23 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
           </div>
           {isUnread && <span className="w-3 h-3 bg-red-500 rounded-full shrink-0 animate-pulse mt-1" title="No leído"></span>}
         </div>
+        
+        {/* NEW: Image Preview Strip in List View */}
+        {hasImages && (
+          <div className="mt-4 flex gap-2 overflow-hidden">
+            {task.imageUrls!.slice(0, 4).map((url, idx) => (
+              <div key={idx} className="w-12 h-12 rounded-lg bg-gray-100 dark:bg-slate-800 overflow-hidden shrink-0 border border-gray-100 dark:border-slate-700">
+                <img src={url} alt="" className="w-full h-full object-cover" loading="lazy" />
+              </div>
+            ))}
+            {task.imageUrls!.length > 4 && (
+              <div className="w-12 h-12 rounded-lg bg-gray-100 dark:bg-slate-800 flex items-center justify-center text-xs font-bold text-gray-500 dark:text-slate-400 border border-gray-100 dark:border-slate-700">
+                +{task.imageUrls!.length - 4}
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="flex items-center justify-between mt-4 border-t border-gray-100 dark:border-slate-800 pt-3">
           <div className={`px-3 py-1.5 rounded-lg text-xs font-extrabold border ${getPriorityInfo(task.priority).color}`}>
             <span className="flex items-center gap-1.5"><Flag size={14} /> {getPriorityInfo(task.priority).text}</span>
@@ -302,17 +311,16 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
     const { color: statusColor, text: statusText } = getStatusInfo(task.status);
     
     return (
-      <div className="h-full bg-gray-50 dark:bg-slate-950 flex flex-col animate-fade-in">
+      <div className="h-full bg-gray-50 dark:bg-slate-950 flex flex-col animate-fade-in relative">
         <header className="sticky top-0 z-20 flex items-center gap-4 p-4 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-gray-100 dark:border-slate-800">
           <button onClick={() => setSelectedTaskForDetails(null)} className="p-2 -ml-2 text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-full"><ArrowLeft size={24} /></button>
           <div className="flex-1 truncate">
              <h2 className="font-extrabold text-lg text-gray-900 dark:text-white truncate">{task.title}</h2>
           </div>
-          {/* Enabled options for ALL users */}
           <div className="relative group">
             <button className="p-2 text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-full"><MoreVertical size={24} /></button>
             <div className="absolute top-full right-0 mt-2 w-48 bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-gray-100 dark:border-slate-700/50 p-2 hidden group-hover:block z-10 animate-fade-in">
-              <button onClick={() => openEditTask(task)} className="w-full text-left flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700/50 font-semibold"><Edit2 size={16}/> Editar</button>
+              <button onClick={() => openEditTask(task)} className="w-full text-left flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700/50 font-semibold dark:text-white"><Edit2 size={16}/> Editar</button>
               <button onClick={() => setTaskToDelete(task)} className="w-full text-left flex items-center gap-3 px-4 py-2 rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 font-semibold"><Trash2 size={16} /> Eliminar</button>
             </div>
           </div>
@@ -374,7 +382,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
                  onChange={e => setNewComment(e.target.value)}
                  placeholder="Escribe un comentario..."
                  rows={1}
-                 className="flex-1 bg-gray-100 dark:bg-slate-800 rounded-lg p-3 text-sm outline-none focus:ring-2 ring-red-300 dark:ring-red-500/50 resize-none"
+                 className="flex-1 bg-gray-100 dark:bg-slate-800 rounded-lg p-3 text-sm outline-none focus:ring-2 ring-red-300 dark:ring-red-500/50 resize-none dark:text-white"
                  onKeyDown={e => {if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendComment(); }}}
                />
                <button onClick={handleSendComment} disabled={isSendingComment || !newComment.trim()} className="w-10 h-10 bg-red-600 text-white rounded-lg flex items-center justify-center shrink-0 shadow-md shadow-button-red hover:bg-red-700 active:scale-95 transition-all disabled:bg-gray-300 dark:disabled:bg-slate-700 disabled:shadow-none">
@@ -396,6 +404,15 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
             </div>
           )}
         </footer>
+        
+        {/* Render ImageViewer here to ensure it is above the detail view content */}
+        {viewingImages && (
+            <ImageViewer 
+            images={viewingImages.images}
+            startIndex={viewingImages.startIndex}
+            onClose={() => setViewingImages(null)}
+            />
+        )}
       </div>
     );
   }
@@ -405,7 +422,6 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
       <div className="sticky top-0 z-10 bg-white/80 dark:bg-slate-950/80 backdrop-blur-lg pt-6 pb-4 px-4 md:px-6 border-b border-gray-100 dark:border-slate-800">
         <div className="flex justify-between items-center mb-5">
           <h2 className="text-4xl font-extrabold text-gray-900 dark:text-white tracking-tighter">Tareas</h2>
-          {/* Enabled Create buttons for everyone if they have permission, but edit/delete is now global in detail view */}
           {canManageTasks && (
             <div className="flex gap-3">
                <button onClick={() => openNewTask(TaskType.ANNOUNCEMENT)} className="bg-blue-600 text-white w-12 h-12 rounded-full flex items-center justify-center shadow-lg shadow-button-blue hover:bg-blue-700 transition-all active:scale-95" title="Crear Anuncio"><Megaphone size={22} /></button>
@@ -519,6 +535,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
         </div>
       )}
       
+      {/* Ensure ImageViewer is at the very root level of the return to respect Z-Index */}
       {viewingImages && (
         <ImageViewer 
           images={viewingImages.images}
