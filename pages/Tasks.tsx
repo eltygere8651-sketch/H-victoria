@@ -59,6 +59,16 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
     };
   }, [selectedTask]); // Depend on selectedTask to allow updating it inside the effect if needed
 
+  // Lock body scroll when modal is open to prevent background scrolling on iOS
+  useEffect(() => {
+    if (selectedTask || showTaskModal) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [selectedTask, showTaskModal]);
+
   const handleNewTask = () => {
     setEditingTask({
       priority: TaskPriority.MEDIUM,
@@ -349,22 +359,23 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
         </div>
       </div>
 
-      {/* Task Details Modal - FIX: Added pt-safe to header and pb-safe to footer for iPhone */}
+      {/* Task Details Modal - OPTIMIZED FOR IOS SCROLLING AND SAFE AREAS */}
       {selectedTask && (
-        <div className="fixed inset-0 bg-black/60 dark:bg-slate-900/90 z-[100] flex justify-end animate-fade-in backdrop-blur-sm">
-           <div className="bg-white dark:bg-slate-900 w-full max-w-2xl h-full shadow-2xl overflow-hidden flex flex-col animate-slide-up md:animate-none md:translate-x-0 transition-transform">
-              {/* Header with safe area padding */}
-              <div className="p-4 pt-safe md:pt-4 border-b border-gray-100 dark:border-slate-800 flex items-center justify-between bg-white/80 dark:bg-slate-900/80 backdrop-blur-md z-10">
-                 <button onClick={() => setSelectedTask(null)} className="p-2 -ml-2 text-gray-500 hover:text-gray-900 dark:text-slate-400 dark:hover:text-white"><ArrowLeft /></button>
+        <div className="fixed inset-0 bg-black/60 dark:bg-slate-900/90 z-[9999] flex justify-center animate-fade-in backdrop-blur-sm overflow-hidden">
+           <div className="bg-white dark:bg-slate-900 w-full h-[100dvh] md:h-[90vh] md:max-w-2xl md:mt-10 md:rounded-t-3xl shadow-2xl flex flex-col animate-slide-up md:animate-none relative">
+              
+              {/* Header with improved safe area padding */}
+              <div className="pt-[max(env(safe-area-inset-top),1rem)] px-4 pb-3 border-b border-gray-100 dark:border-slate-800 flex items-center justify-between bg-white/95 dark:bg-slate-900/95 backdrop-blur-md z-20 flex-shrink-0">
+                 <button onClick={() => setSelectedTask(null)} className="p-2 -ml-2 text-gray-500 hover:text-gray-900 dark:text-slate-400 dark:hover:text-white rounded-full active:bg-gray-100 dark:active:bg-slate-800"><ArrowLeft size={24} /></button>
                  
-                 <div className="flex items-center gap-2">
+                 <div className="flex items-center gap-3">
                     {/* BOTÓN COMPARTIR DETALLES */}
                     <button onClick={(e) => handleShareTask(selectedTask, e)} className="p-2 text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-full hover:bg-red-100 dark:hover:bg-red-900/40 transition-all animate-pulse shadow-sm" title="Compartir">
                        <Share2 size={20} />
                     </button>
 
                     <div className="relative group">
-                       <button className="p-2 text-gray-500 hover:text-gray-900 dark:text-slate-400 dark:hover:text-white rounded-full hover:bg-gray-100 dark:hover:bg-slate-800"><MoreVertical size={20} /></button>
+                       <button className="p-2 text-gray-500 hover:text-gray-900 dark:text-slate-400 dark:hover:text-white rounded-full hover:bg-gray-100 dark:hover:bg-slate-800"><MoreVertical size={24} /></button>
                        <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-gray-100 dark:border-slate-700 overflow-hidden hidden group-hover:block hover:block z-50">
                           <button onClick={() => { handleEditTask(selectedTask); }} className="w-full text-left px-4 py-3 text-sm font-bold text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 flex items-center gap-2"><Edit2 size={16}/> Editar</button>
                           <button onClick={() => { handleDeleteClick(selectedTask); }} className="w-full text-left px-4 py-3 text-sm font-bold text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2"><Trash2 size={16}/> Eliminar</button>
@@ -373,7 +384,8 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
                  </div>
               </div>
 
-              <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
+              {/* Scrollable Content with standard overflow for momentum scrolling */}
+              <div className="flex-1 overflow-y-auto overscroll-y-contain p-4 md:p-6 space-y-6">
                  <div>
                     <div className="flex items-center gap-2 mb-2">
                        <span className="bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 px-2 py-1 rounded text-xs font-bold uppercase tracking-wider">{selectedTask.departmentName}</span>
@@ -450,7 +462,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
               </div>
 
               {/* Comment Input with safe area padding */}
-              <div className="p-4 pb-safe md:pb-4 bg-white dark:bg-slate-900 border-t border-gray-100 dark:border-slate-800">
+              <div className="p-4 pb-[max(env(safe-area-inset-bottom),1rem)] bg-white dark:bg-slate-900 border-t border-gray-100 dark:border-slate-800 flex-shrink-0 z-20">
                  <div className="flex gap-2 relative">
                     <input 
                        type="text" 
@@ -475,7 +487,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
 
       {/* New/Edit Task Modal */}
       {showTaskModal && editingTask && (
-        <div className="fixed inset-0 bg-black/60 dark:bg-slate-900/90 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
+        <div className="fixed inset-0 bg-black/60 dark:bg-slate-900/90 z-[9999] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
           <div className="bg-white dark:bg-slate-800 rounded-3xl w-full max-w-lg shadow-2xl p-6 md:p-8 animate-pop-in max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-2xl font-black text-gray-900 dark:text-white">{editingTask.id ? 'Editar Tarea' : 'Nueva Tarea'}</h3>
