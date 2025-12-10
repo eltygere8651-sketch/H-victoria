@@ -4,17 +4,26 @@
 
 html, body, #root {
     height: 100%;
+    scroll-behavior: smooth;
 }
 
 body {
   font-family: 'Poppins', sans-serif;
   -webkit-tap-highlight-color: transparent;
-  /* PWA Safe Area Insets are now handled directly in App.tsx */
+  /* PWA Safe Area Insets are handled in App.tsx but helpers are needed for sub-components */
 }
 
 /* Hide scrollbar */
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Safe Area Utilities for iOS Home Indicator */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.pt-safe {
+  padding-top: env(safe-area-inset-top);
+}
 
 /* Modern Grid Background Pattern */
 .bg-grid-pattern {

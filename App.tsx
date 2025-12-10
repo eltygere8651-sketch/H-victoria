@@ -297,7 +297,7 @@ const App: React.FC = () => {
         outline-none select-none touch-manipulation active:scale-95 group
         ${isActive 
           ? 'flex-[2] bg-red-600 text-white shadow-neon dark:shadow-red-900/50' 
-          : 'flex-1 bg-transparent hover:bg-gray-100 dark:hover:bg-white/5 text-gray-500 dark:text-slate-400'
+          : 'flex-1 bg-gray-50/80 dark:bg-white/5 hover:bg-gray-100 dark:hover:bg-white/10 text-gray-500 dark:text-slate-400'
         }
       `}
       style={{ WebkitTapHighlightColor: 'transparent' }}
