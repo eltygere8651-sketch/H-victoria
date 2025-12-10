@@ -349,11 +349,12 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
         </div>
       </div>
 
-      {/* Task Details Modal */}
+      {/* Task Details Modal - FIX: Added pt-safe to header and pb-safe to footer for iPhone */}
       {selectedTask && (
-        <div className="fixed inset-0 bg-black/60 dark:bg-slate-900/90 z-40 flex justify-end animate-fade-in backdrop-blur-sm">
+        <div className="fixed inset-0 bg-black/60 dark:bg-slate-900/90 z-[100] flex justify-end animate-fade-in backdrop-blur-sm">
            <div className="bg-white dark:bg-slate-900 w-full max-w-2xl h-full shadow-2xl overflow-hidden flex flex-col animate-slide-up md:animate-none md:translate-x-0 transition-transform">
-              <div className="p-4 border-b border-gray-100 dark:border-slate-800 flex items-center justify-between bg-white/80 dark:bg-slate-900/80 backdrop-blur-md z-10">
+              {/* Header with safe area padding */}
+              <div className="p-4 pt-safe md:pt-4 border-b border-gray-100 dark:border-slate-800 flex items-center justify-between bg-white/80 dark:bg-slate-900/80 backdrop-blur-md z-10">
                  <button onClick={() => setSelectedTask(null)} className="p-2 -ml-2 text-gray-500 hover:text-gray-900 dark:text-slate-400 dark:hover:text-white"><ArrowLeft /></button>
                  
                  <div className="flex items-center gap-2">
@@ -448,8 +449,8 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
                  </div>
               </div>
 
-              {/* Comment Input */}
-              <div className="p-4 bg-white dark:bg-slate-900 border-t border-gray-100 dark:border-slate-800 pb-safe">
+              {/* Comment Input with safe area padding */}
+              <div className="p-4 pb-safe md:pb-4 bg-white dark:bg-slate-900 border-t border-gray-100 dark:border-slate-800">
                  <div className="flex gap-2 relative">
                     <input 
                        type="text" 
