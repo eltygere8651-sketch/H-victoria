@@ -3,6 +3,7 @@ import { Task, TaskType, User } from '../types';
 import * as storageService from '../services/storageService';
 import { Megaphone, Loader2, Clock, User as UserIcon, MapPin, Share2 } from 'lucide-react';
 import { ImageViewer } from '../components/ImageViewer';
+import { ShareModal } from '../components/ShareModal';
 
 interface AnnouncementsProps {
   currentUser: User;
@@ -12,6 +13,10 @@ const Announcements: React.FC<AnnouncementsProps> = ({ currentUser }) => {
   const [announcements, setAnnouncements] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewingImages, setViewingImages] = useState<{ images: string[], startIndex: number } | null>(null);
+
+  // Share Modal State
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [shareData, setShareData] = useState({ url: '', title: '' });
 
   useEffect(() => {
     const unsubscribeTasks = storageService.subscribeToTasks((allTasks) => {
@@ -28,30 +33,16 @@ const Announcements: React.FC<AnnouncementsProps> = ({ currentUser }) => {
   const handleShareAnnouncement = (task: Task, e: React.MouseEvent) => {
     e.stopPropagation();
     
-    // Use URL API for robust URL construction
     try {
       const url = new URL(window.location.href);
       url.search = ''; // Clear existing query params
       url.hash = '';   // Clear existing hash
       url.searchParams.set('shareId', task.id);
-      
       const shareUrl = url.toString();
-      
-      if (navigator.share) {
-        navigator.share({
-          title: task.title,
-          text: `Consulta este anuncio en Hub: ${task.title}`,
-          url: shareUrl,
-        }).catch((error) => {
-          // Ignore user cancellation errors
-          if (error.name !== 'AbortError') {
-            console.error("Error al compartir:", error);
-          }
-        });
-      } else {
-        navigator.clipboard.writeText(shareUrl);
-        alert('Enlace copiado al portapapeles');
-      }
+
+      setShareData({ url: shareUrl, title: task.title });
+      setShowShareModal(true);
+
     } catch (error) {
       console.error("Failed to construct share URL", error);
     }
@@ -66,7 +57,8 @@ const Announcements: React.FC<AnnouncementsProps> = ({ currentUser }) => {
       <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 shadow-card-soft dark:shadow-card-dark border border-gray-100 dark:border-slate-800 transition-all">
         <div className="flex justify-between items-start mb-3">
           <h3 className="font-extrabold text-lg text-gray-900 dark:text-white leading-tight flex-1 pr-4">{announcement.title}</h3>
-          <button onClick={(e) => handleShareAnnouncement(announcement, e)} className="text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 p-1.5 -mr-1.5 rounded-full hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors">
+          {/* BOTÓN COMPARTIR ROJO PARPADEANTE */}
+          <button onClick={(e) => handleShareAnnouncement(announcement, e)} className="text-red-600 dark:text-red-400 p-2 -mr-2 rounded-full hover:bg-red-50 dark:hover:bg-red-900/20 transition-all animate-pulse" title="Compartir">
             <Share2 size={20} />
           </button>
         </div>
@@ -124,6 +116,13 @@ const Announcements: React.FC<AnnouncementsProps> = ({ currentUser }) => {
           onClose={() => setViewingImages(null)}
         />
       )}
+
+      <ShareModal 
+        isOpen={showShareModal} 
+        onClose={() => setShowShareModal(false)} 
+        url={shareData.url} 
+        title={shareData.title} 
+      />
     </div>
   );
 };

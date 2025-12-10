@@ -288,45 +288,43 @@ const App: React.FC = () => {
     audioAlertRef.current.isPlaying = false;
   };
 
-  // --- MODERN NAVIGATION BUTTON COMPONENT ---
+  // --- MODERN NAVIGATION BUTTON (FLOATING PILL DESIGN) ---
   const NavButton = ({ icon: Icon, label, isActive, onClick, hasAlert = false }: any) => (
     <button 
       onClick={onClick} 
-      className={`relative group flex-1 flex flex-col items-center justify-center h-full transition-all duration-300 outline-none select-none touch-manipulation active:scale-95`}
+      className={`
+        relative flex items-center justify-center gap-2 px-3 py-3.5 rounded-full transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] overflow-hidden
+        outline-none select-none touch-manipulation active:scale-95 group
+        ${isActive 
+          ? 'flex-[2] bg-red-600 text-white shadow-neon dark:shadow-red-900/50' 
+          : 'flex-1 bg-transparent hover:bg-gray-100 dark:hover:bg-white/5 text-gray-500 dark:text-slate-400'
+        }
+      `}
       style={{ WebkitTapHighlightColor: 'transparent' }}
     >
-      <div 
-        className={`
-          relative flex items-center justify-center rounded-2xl transition-all duration-300 ease-[cubic-bezier(0.25,1,0.5,1)]
-          ${isActive 
-            ? 'bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 w-14 h-9 mb-1 shadow-sm' 
-            : 'text-gray-400 dark:text-slate-500 w-12 h-8 mb-1 hover:bg-gray-50 dark:hover:bg-slate-800/50'
-          }
-        `}
-      >
+      <div className="relative z-10">
         <Icon 
-          size={isActive ? 22 : 24} 
-          strokeWidth={isActive ? 2.5 : 2} 
-          className="transition-transform duration-300"
+          size={20} 
+          strokeWidth={2.5} 
+          className={`transition-transform duration-300 ${isActive ? 'scale-110' : 'scale-100 group-hover:scale-110'}`}
         />
-        
-        {hasAlert && (
-           <span className="absolute -top-1 -right-1 flex h-3 w-3 z-10">
+        {hasAlert && !isActive && (
+           <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5 z-20">
              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-             <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500 border-2 border-white dark:border-slate-900"></span>
+             <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-600 ring-2 ring-white dark:ring-slate-900"></span>
            </span>
         )}
       </div>
       
-      <span className={`
-        text-[10px] font-bold transition-all duration-300 tracking-wide
-        ${isActive 
-          ? 'text-red-600 dark:text-red-400 scale-105' 
-          : 'text-gray-400 dark:text-slate-500 opacity-70 group-hover:text-gray-600 dark:group-hover:text-slate-300'
-        }
+      {/* Label only visible when active */}
+      <div className={`
+        overflow-hidden transition-all duration-300 ease-out flex flex-col justify-center
+        ${isActive ? 'w-auto opacity-100 max-w-[100px] ml-1' : 'w-0 opacity-0 max-w-0 ml-0'}
       `}>
-        {label}
-      </span>
+        <span className="text-[11px] font-bold leading-none whitespace-nowrap tracking-wide">
+          {label}
+        </span>
+      </div>
     </button>
   );
 
@@ -348,15 +346,15 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className={`h-full w-full flex flex-col font-sans transition-colors duration-300 antialiased ${darkMode ? 'dark' : ''} bg-gray-50 dark:bg-slate-950`}
+    <div className={`h-full w-full flex flex-col font-sans transition-colors duration-300 antialiased ${darkMode ? 'dark' : ''} bg-gray-50 dark:bg-slate-950 bg-grid-pattern`}
       style={{
         paddingTop: 'env(safe-area-inset-top)',
         paddingLeft: 'env(safe-area-inset-left)',
         paddingRight: 'env(safe-area-inset-right)',
       }}
     >
-      <header className="flex-shrink-0 bg-white dark:bg-slate-900 shadow-sm z-30 p-4 border-b border-gray-100 dark:border-slate-800 transition-colors duration-300">
-        <div className="flex justify-between items-center">
+      <header className="flex-shrink-0 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md shadow-sm z-30 p-4 border-b border-gray-100 dark:border-slate-800 transition-colors duration-300 sticky top-0">
+        <div className="flex justify-between items-center max-w-7xl mx-auto w-full">
           <div className="flex items-center gap-3">
             <Logo size="sm" />
             <span className="font-extrabold text-2xl text-gray-900 dark:text-white hidden sm:inline">Hub</span>
@@ -369,14 +367,15 @@ const App: React.FC = () => {
             {!isInstalled && isIOS && !(window.navigator as any).standalone && (
                 <button onClick={() => setShowIOSPrompt(true)} className="bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 px-3 py-2 rounded-lg font-bold text-sm hidden md:flex items-center gap-2 shadow-sm hover:bg-blue-100 dark:hover:bg-blue-900/30 active:scale-95"><PlusSquare size={16} /> Instalar</button>
             )}
-            <button onClick={() => setDarkMode(!darkMode)} className="p-3 bg-gray-100 dark:bg-slate-800 rounded-lg text-gray-500 dark:text-slate-400 hover:bg-gray-200 dark:hover:bg-slate-700 active:scale-95">{darkMode ? <Sun size={20}/> : <Moon size={20}/>}</button>
-            <button onClick={handleLogout} className="p-3 bg-gray-100 dark:bg-slate-800 rounded-lg text-gray-500 dark:text-slate-400 hover:bg-gray-200 dark:hover:bg-slate-700 active:scale-95"><LogOut size={20}/></button>
+            <button onClick={() => setDarkMode(!darkMode)} className="p-3 bg-gray-100 dark:bg-slate-800 rounded-full text-gray-500 dark:text-slate-400 hover:bg-gray-200 dark:hover:bg-slate-700 active:scale-95 transition-colors">{darkMode ? <Sun size={20}/> : <Moon size={20}/>}</button>
+            <button onClick={handleLogout} className="p-3 bg-gray-100 dark:bg-slate-800 rounded-full text-gray-500 dark:text-slate-400 hover:bg-gray-200 dark:hover:bg-slate-700 active:scale-95 transition-colors"><LogOut size={20}/></button>
           </div>
         </div>
       </header>
 
       <div className="flex-1 flex overflow-hidden relative">
-        <main className="flex-1 overflow-y-auto no-scrollbar" style={{ paddingBottom: '90px' }}>
+        {/* Main Content Area - Added padding bottom to prevent content from being hidden behind floating dock */}
+        <main className="flex-1 overflow-y-auto no-scrollbar pb-32">
           {view === 'inventory' && user.role === UserRole.ADMIN && <Inventory currentUser={user} />}
           {view === 'replenish' && <Replenishment currentUser={user} cart={cart} setCart={setCart} showMobileCart={showMobileCart} setShowMobileCart={setShowMobileCart} />}
           {view === 'admin' && user.role === UserRole.ADMIN && <Admin currentUser={user} unreadNotificationsCount={unreadAdminNotifications.length} initialTab={initialAdminTab} />}
@@ -385,35 +384,37 @@ const App: React.FC = () => {
         </main>
       </div>
 
-      <nav 
-        className="fixed bottom-0 left-0 right-0 z-20 bg-white/90 dark:bg-slate-950/90 backdrop-blur-xl border-t border-gray-100 dark:border-slate-800/50 flex justify-between items-end px-2 pb-[env(safe-area-inset-bottom)] shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.1)] h-[84px]"
-      >
-        <div className="flex w-full h-full items-center justify-around pb-1">
-          {/* REPLENISH */}
-          <NavButton icon={ClipboardList} label="Pedido" isActive={view === 'replenish'} onClick={() => setView('replenish')} />
-          
-          {/* TASKS */}
-          <NavButton icon={ClipboardCheck} label="Tareas" isActive={view === 'tasks'} onClick={() => setView('tasks')} hasAlert={hasUnreadTasks}/>
+      {/* FLOATING DOCK NAVIGATION */}
+      <div className="fixed bottom-6 inset-x-0 z-20 flex justify-center px-4 pointer-events-none pb-safe">
+        <nav 
+          className="pointer-events-auto bg-white/90 dark:bg-slate-900/90 backdrop-blur-2xl border border-white/20 dark:border-white/10 shadow-dock dark:shadow-dock-dark rounded-full p-2 flex items-center justify-between gap-2 w-full max-w-md transition-all duration-300 ring-1 ring-black/5 dark:ring-white/5"
+        >
+            {/* REPLENISH */}
+            <NavButton icon={ClipboardList} label="Pedido" isActive={view === 'replenish'} onClick={() => setView('replenish')} />
+            
+            {/* TASKS */}
+            <NavButton icon={ClipboardCheck} label="Tareas" isActive={view === 'tasks'} onClick={() => setView('tasks')} hasAlert={hasUnreadTasks}/>
 
-          {/* ANNOUNCEMENTS */}
-          <NavButton icon={Megaphone} label="Anuncios" isActive={view === 'announcements'} onClick={() => setView('announcements')} />
+            {/* ANNOUNCEMENTS */}
+            <NavButton icon={Megaphone} label="Anuncios" isActive={view === 'announcements'} onClick={() => setView('announcements')} />
 
-          {/* ADMIN/INVENTORY - Only for Admins */}
-          {user.role === UserRole.ADMIN && <NavButton icon={LayoutGrid} label="Stock" isActive={view === 'inventory'} onClick={() => setView('inventory')} />}
-          {user.role === UserRole.ADMIN && <NavButton icon={ShieldCheck} label="Admin" isActive={view === 'admin'} onClick={() => setView('admin')} hasAlert={unreadAdminNotifications.length > 0} />}
-        </div>
-      </nav>
+            {/* ADMIN/INVENTORY - Only for Admins */}
+            {user.role === UserRole.ADMIN && <NavButton icon={LayoutGrid} label="Stock" isActive={view === 'inventory'} onClick={() => setView('inventory')} />}
+            {user.role === UserRole.ADMIN && <NavButton icon={ShieldCheck} label="Admin" isActive={view === 'admin'} onClick={() => setView('admin')} hasAlert={unreadAdminNotifications.length > 0} />}
+        </nav>
+      </div>
 
-      <div className="fixed lg:hidden bottom-24 right-5 z-50">
-        <button onClick={() => setShowMobileCart(true)} className="relative bg-red-600 text-white w-16 h-16 rounded-full flex items-center justify-center shadow-lg shadow-glow hover:bg-red-700 active:scale-95 transition-all">
-          <ShoppingCart size={28} />
-          {cart.length > 0 && <span className="absolute -top-1 -right-1 w-6 h-6 bg-gray-900 dark:bg-white text-white dark:text-black rounded-full flex items-center justify-center text-xs font-bold ring-2 ring-white dark:ring-red-600 animate-bounce">{cart.length}</span>}
+      {/* Mobile Cart Button - Repositioned slightly higher to clear dock */}
+      <div className="fixed lg:hidden bottom-28 right-5 z-50">
+        <button onClick={() => setShowMobileCart(true)} className="relative bg-red-600 text-white w-14 h-14 rounded-full flex items-center justify-center shadow-neon hover:bg-red-700 active:scale-95 transition-all">
+          <ShoppingCart size={24} />
+          {cart.length > 0 && <span className="absolute -top-1 -right-1 w-5 h-5 bg-gray-900 dark:bg-white text-white dark:text-black rounded-full flex items-center justify-center text-[10px] font-bold ring-2 ring-white dark:ring-red-600 animate-bounce">{cart.length}</span>}
         </button>
       </div>
       
       {showIOSPrompt && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-end justify-center p-4 backdrop-blur-sm animate-fade-in" onClick={() => setShowIOSPrompt(false)}>
-          <div className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-md p-6 text-center shadow-pop-in animate-slide-up" onClick={e => e.stopPropagation()}>
+          <div className="bg-white dark:bg-slate-800 rounded-3xl w-full max-w-md p-6 text-center shadow-pop-in animate-slide-up" onClick={e => e.stopPropagation()}>
             <h3 className="font-bold text-lg text-gray-900 dark:text-white">Instalar App en iOS</h3>
             <p className="text-gray-500 dark:text-slate-400 text-sm my-4">Para instalar la aplicación, toca el ícono de <span className="inline-block mx-1"><Share size={16}/></span> en la barra de tu navegador y luego selecciona <span className="font-bold">"Añadir a la pantalla de inicio"</span>.</p>
             <button onClick={() => setShowIOSPrompt(false)} className="w-full py-3 bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-300 rounded-xl font-bold active:scale-95">Entendido</button>

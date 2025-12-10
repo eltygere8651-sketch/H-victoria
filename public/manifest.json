@@ -7,6 +7,7 @@
   "theme_color": "#dc2626",
   "description": "Centraliza el inventario, agiliza los pedidos y conecta a tu equipo.",
   "orientation": "portrait",
+  "gcm_sender_id": "103953800507",
   "icons": [
     {
       "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB4PSIwIiB5PSIwIiB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjIyIiByeT0iMjIiIGZpbGw9IiNkYzI2MjYiLz48cGF0aCBkPSJNMzAgMzUgTDUwIDc1IEw3MCAzNSBINTggTDUwIDUxIEw0MiAzNSBaIiBmaWxsPSIjZmZmZmZmIi8+PC9zdmc+",

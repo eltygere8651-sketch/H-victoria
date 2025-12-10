@@ -3,13 +3,7 @@ importScripts("https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"
 importScripts("https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging-compat.js");
 
 // ====================================================================================
-// IMPORTANTE: CONFIGURACIÓN MANUAL
-// ====================================================================================
-// El Service Worker se ejecuta en un entorno separado y no puede acceder
-// a las variables de entorno (VITE_...) de la aplicación principal.
-// Debes asegurarte de que esta configuración de Firebase esté COPIADA EXACTAMENTE
-// desde tus variables de entorno o tu archivo .env.local.
-// Si cambias las claves en tu app, ¡debes actualizarlas aquí también!
+// CONFIGURACIÓN DE FIREBASE
 // ====================================================================================
 const firebaseConfig = {
   apiKey: "AIzaSyD_rwoYEzfFo8b4b_KQCNQs3OwwlScPNls",
@@ -25,20 +19,45 @@ firebase.initializeApp(firebaseConfig);
 
 const messaging = firebase.messaging();
 
+// 1. MANEJO DE MENSAJES EN SEGUNDO PLANO
 messaging.onBackgroundMessage((payload) => {
-  console.log(
-    "[firebase-messaging-sw.js] Received background message ",
-    payload
-  );
+  console.log("[firebase-messaging-sw.js] Mensaje en background recibido:", payload);
   
   const notificationTitle = payload.notification.title;
-  const iconDataUri = "/favicon.svg";
-  
   const notificationOptions = {
     body: payload.notification.body,
-    icon: iconDataUri,
-    badge: iconDataUri,
+    icon: "/favicon.svg", // Asegúrate de que este archivo sea accesible
+    badge: "/favicon.svg",
+    // Datos adicionales para manejar la navegación al hacer clic
+    data: {
+      url: self.registration.scope
+    }
   };
 
   self.registration.showNotification(notificationTitle, notificationOptions);
+});
+
+// 2. MANEJO DEL CLIC EN LA NOTIFICACIÓN (CRÍTICO PARA APP CERRADA)
+self.addEventListener('notificationclick', function(event) {
+  console.log('[firebase-messaging-sw.js] Notificación clickeada.');
+  
+  // Cierra la notificación
+  event.notification.close();
+
+  // Intenta abrir la ventana de la app o enfocarla si ya está abierta
+  event.waitUntil(
+    clients.matchAll({type: 'window', includeUncontrolled: true}).then(function(windowClients) {
+      // Si hay una ventana abierta, enfócala
+      for (var i = 0; i < windowClients.length; i++) {
+        var client = windowClients[i];
+        if (client.url.indexOf('/') !== -1 && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      // Si no hay ventana abierta, abre una nueva
+      if (clients.openWindow) {
+        return clients.openWindow('/');
+      }
+    })
+  );
 });
