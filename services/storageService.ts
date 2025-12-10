@@ -80,11 +80,6 @@ const createNotification = async (type: NotificationType, payload: NotificationP
       message = `Tarea "${payload.taskTitle}" para el dpto. ${payload.departmentName}.`;
       icon = 'ClipboardCheck';
       break;
-    case NotificationType.NEW_ANNOUNCEMENT:
-      title = 'Nuevo Anuncio Publicado';
-      message = `Anuncio "${payload.taskTitle}" para ${payload.departmentName}.`;
-      icon = 'Megaphone';
-      break;
   }
   const newNotification: Omit<AppNotification, 'id'> = {
     type, title, message, icon,
@@ -360,8 +355,7 @@ export const saveTask = async (task: Partial<Task>, newFiles: File[] = []) => {
   await docRef.set(taskData, { merge: true });
 
   if(isNew) {
-    const notificationType = task.type === TaskType.ANNOUNCEMENT ? NotificationType.NEW_ANNOUNCEMENT : NotificationType.NEW_TASK;
-    await createNotification(notificationType, {
+    await createNotification(NotificationType.NEW_TASK, {
       taskId: docRef.id,
       taskTitle: task.title,
       departmentName: task.departmentName,

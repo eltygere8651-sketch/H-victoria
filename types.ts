@@ -118,7 +118,6 @@ export enum NotificationType {
   LOW_STOCK = 'LOW_STOCK',
   NEW_ORDER = 'NEW_ORDER',
   NEW_TASK = 'NEW_TASK',
-  NEW_ANNOUNCEMENT = 'NEW_ANNOUNCEMENT', // New: For announcements
 }
 
 export interface NotificationPayload {

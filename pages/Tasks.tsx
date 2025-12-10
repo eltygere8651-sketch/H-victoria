@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Task, User, Department, TaskStatus, TaskPriority, UserRole, TaskType, TaskComment } from '../types';
 import * as storageService from '../services/storageService';
-import { ClipboardCheck, Plus, X, Save, Loader2, Edit2, Trash2, ChevronDown, MessagesSquare, Clock, Check, Image as ImageIcon, Camera, ArrowLeft, MoreVertical, User as UserIcon, Send, AlertTriangle, Share2 } from 'lucide-react';
+import { ClipboardCheck, Plus, X, Save, Loader2, Edit2, Trash2, ChevronDown, MessagesSquare, Check, Camera, AlertTriangle, Share2, Send } from 'lucide-react';
 import { compressImage } from '../utils/imageCompressor';
 import { ImageViewer } from '../components/ImageViewer';
 import { DeletionTimer } from '../components/DeletionTimer';
@@ -26,135 +26,37 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
   
   const [isCompressing, setIsCompressing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const cameraInputRef = useRef<HTMLInputElement>(null);
-  
-  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
-  const [newComment, setNewComment] = useState('');
-  
+  const [selectedImages, setSelectedImages] = useState<File[]>([]);
+  const [previews, setPreviews] = useState<string[]>([]);
   const [viewingImages, setViewingImages] = useState<{ images: string[], startIndex: number } | null>(null);
+
+  const [activeCommentTaskId, setActiveCommentTaskId] = useState<string | null>(null);
+  const [newComment, setNewComment] = useState('');
 
   // Share Modal State
   const [showShareModal, setShowShareModal] = useState(false);
   const [shareData, setShareData] = useState({ url: '', title: '' });
 
-  const isGuest = currentUser.role === UserRole.GUEST;
+  const [departmentFilter, setDepartmentFilter] = useState<string>('ALL');
+
+  // Derived state for the task currently being commented on
+  const activeTaskForComments = allTasks.find(t => t.id === activeCommentTaskId);
 
   useEffect(() => {
-    // Subscribe to tasks
-    const unsubscribeTasks = storageService.subscribeToTasks((fetchedTasks) => {
-      // Filter out announcements if any still exist in DB, to focus purely on tasks
-      const onlyTasks = fetchedTasks.filter(t => t.type !== TaskType.ANNOUNCEMENT);
-      setAllTasks(onlyTasks);
+    const unsubscribeTasks = storageService.subscribeToTasks((tasks) => {
+      setAllTasks(tasks);
       setLoading(false);
-      
-      // Update selected task if it's open (for real-time comments)
-      if (selectedTask) {
-        const updated = onlyTasks.find(t => t.id === selectedTask.id);
-        if (updated) setSelectedTask(updated);
-      }
     });
-
     const unsubscribeDepartments = storageService.subscribeToDepartments(setDepartments);
-
     return () => {
       unsubscribeTasks();
       unsubscribeDepartments();
     };
-  }, [selectedTask]);
-
-  // Lock body scroll when modal is open to prevent background scrolling on iOS
-  useEffect(() => {
-    if (selectedTask || showTaskModal) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
-    return () => { document.body.style.overflow = ''; };
-  }, [selectedTask, showTaskModal]);
-
-  const handleNewTask = () => {
-    setEditingTask({
-      priority: TaskPriority.MEDIUM,
-      status: TaskStatus.PENDING,
-      type: TaskType.TASK, 
-      departmentId: '', 
-      imageUrls: [] 
-    });
-    setSaveError(null);
-    setShowTaskModal(true);
-  };
-
-  const handleEditTask = (task: Task, e?: React.MouseEvent) => {
-    e?.stopPropagation();
-    setEditingTask({ ...task });
-    setSaveError(null);
-    setShowTaskModal(true);
-  };
-
-  const handleDeleteClick = (task: Task, e?: React.MouseEvent) => {
-    e?.stopPropagation();
-    setTaskToDelete(task);
-  };
-
-  const confirmDelete = async () => {
-    if (taskToDelete) {
-      await storageService.deleteTask(taskToDelete.id);
-      setTaskToDelete(null);
-      if (selectedTask?.id === taskToDelete.id) {
-        setSelectedTask(null);
-      }
-    }
-  };
-
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      setIsCompressing(true);
-      const files: File[] = Array.from(e.target.files);
-      
-      try {
-        const compressedFiles = await Promise.all(
-          files.map(file => compressImage(file))
-        );
-        
-        setEditingTask(prev => {
-          if (!prev) return null;
-          const currentNewFiles = (prev as any).newFiles || [];
-          return { ...prev, newFiles: [...currentNewFiles, ...compressedFiles] } as any;
-        });
-
-      } catch (error) {
-        console.error("Error compressing images:", error);
-        alert("Error al procesar las imágenes.");
-      } finally {
-        setIsCompressing(false);
-        if (fileInputRef.current) fileInputRef.current.value = '';
-        if (cameraInputRef.current) cameraInputRef.current.value = '';
-      }
-    }
-  };
-
-  const removeNewFile = (index: number) => {
-    setEditingTask(prev => {
-      if (!prev) return null;
-      const files = (prev as any).newFiles ? [...(prev as any).newFiles] : [];
-      files.splice(index, 1);
-      return { ...prev, newFiles: files } as any;
-    });
-  };
-
-  const removeExistingImage = (urlToRemove: string) => {
-    setEditingTask(prev => {
-      if (!prev) return null;
-      return {
-        ...prev,
-        imageUrls: prev.imageUrls?.filter(url => url !== urlToRemove)
-      };
-    });
-  };
+  }, []);
 
   const handleSaveTask = async () => {
     if (!editingTask?.title || !editingTask?.departmentId) {
-      setSaveError('Título y departamento son obligatorios');
+      setSaveError('Título y Departamento son obligatorios');
       return;
     }
 
@@ -162,513 +64,541 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
     setSaveError(null);
 
     try {
-      const selectedDept = departments.find(d => d.id === editingTask.departmentId);
+      const department = departments.find(d => d.id === editingTask.departmentId);
       
       const taskData: Partial<Task> = {
         ...editingTask,
-        departmentName: selectedDept?.name || 'Desconocido',
-        createdById: editingTask.id ? editingTask.createdById : currentUser.id,
-        createdBy: editingTask.id ? editingTask.createdBy : currentUser.name,
-        createdAt: editingTask.id ? editingTask.createdAt : Date.now(),
-        type: TaskType.TASK, // Force Task Type
+        departmentName: department?.name || 'General',
+        priority: editingTask.priority || TaskPriority.MEDIUM,
+        status: editingTask.status || TaskStatus.PENDING,
+        // Default to TASK type
+        type: TaskType.TASK, 
+        createdBy: editingTask.createdBy || currentUser.name,
+        createdById: editingTask.createdById || currentUser.id,
+        createdAt: editingTask.createdAt || Date.now(),
       };
 
-      const filesToUpload = (editingTask as any).newFiles || [];
-      delete (taskData as any).newFiles;
-
-      await storageService.saveTask(taskData, filesToUpload);
-      
+      await storageService.saveTask(taskData, selectedImages);
       setShowTaskModal(false);
       setEditingTask(null);
-    } catch (error: any) {
-      console.error("Error saving task:", error);
-      setSaveError(error.message || 'Error al guardar. Inténtalo de nuevo.');
+      setSelectedImages([]);
+      setPreviews([]);
+    } catch (error) {
+      console.error(error);
+      setSaveError('Error al guardar. Inténtalo de nuevo.');
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleStatusChange = async (task: Task, newStatus: TaskStatus, e?: React.MouseEvent) => {
-    e?.stopPropagation();
-    if (isGuest) return;
-
-    const updates: Partial<Task> = { status: newStatus };
-    if (newStatus === TaskStatus.COMPLETED) {
-      updates.completedBy = currentUser.name;
-      updates.completedAt = Date.now();
-    } else {
-      updates.completedBy = undefined; 
-      updates.completedAt = undefined;
-    }
-    await storageService.saveTask({ id: task.id, ...updates });
-  };
-  
-  const handleShareTask = (task: Task, e: React.MouseEvent) => {
-    e.stopPropagation();
-    try {
-        const url = new URL(window.location.href);
-        url.search = '';
-        url.hash = '';
-        url.searchParams.set('shareId', task.id);
-        const shareUrl = url.toString();
-
-        setShareData({ url: shareUrl, title: task.title });
-        setShowShareModal(true);
-    } catch (error) {
-        console.error("Error creating share URL", error);
+  const handleDeleteTask = async () => {
+    if (taskToDelete) {
+      await storageService.deleteTask(taskToDelete.id);
+      setTaskToDelete(null);
     }
   };
 
-  const handleSendComment = async () => {
-    if (!newComment.trim() || !selectedTask) return;
-    
-    const comment: Omit<TaskComment, 'id'> = {
+  const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      setIsCompressing(true);
+      // Fix: Explicitly cast to File[] or verify typing. 
+      // Array.from on FileList sometimes infers unknown[] in certain TS configs.
+      const filesArray = Array.from(e.target.files);
+      const compressedFiles: File[] = [];
+      const newPreviews: string[] = [];
+
+      try {
+        for (const file of filesArray) {
+          // Explicitly cast file to File to satisfy TS
+          const compressed = await compressImage(file as File);
+          compressedFiles.push(compressed);
+          newPreviews.push(URL.createObjectURL(compressed));
+        }
+        setSelectedImages(prev => [...prev, ...compressedFiles]);
+        setPreviews(prev => [...prev, ...newPreviews]);
+      } catch (error) {
+        console.error("Error compressing images", error);
+        alert("Error al procesar las imágenes.");
+      } finally {
+        setIsCompressing(false);
+      }
+    }
+  };
+
+  const removeImage = (index: number) => {
+    setSelectedImages(prev => prev.filter((_, i) => i !== index));
+    setPreviews(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleAddComment = async (taskId: string) => {
+    if (!newComment.trim()) return;
+    await storageService.addCommentToTask(taskId, {
       userId: currentUser.id,
       userName: currentUser.name,
       message: newComment.trim(),
       timestamp: Date.now()
-    };
-    
-    await storageService.addCommentToTask(selectedTask.id, comment);
+    });
     setNewComment('');
   };
-  
-  const handleTaskClick = async (task: Task) => {
-    setSelectedTask(task);
-    if (!isGuest && !task.seenBy?.includes(currentUser.id)) {
-        await storageService.markTaskAsSeen(task.id, currentUser.id);
+
+  const handleShareTask = (task: Task) => {
+    try {
+      const url = new URL(window.location.href);
+      url.search = ''; 
+      url.hash = '';
+      url.searchParams.set('shareId', task.id);
+      const shareUrl = url.toString();
+
+      setShareData({ url: shareUrl, title: task.title });
+      setShowShareModal(true);
+    } catch (error) {
+      console.error("Failed to construct share URL", error);
     }
   };
 
-  const filteredTasks = allTasks.filter(t => statusFilter === 'ALL' || t.status === statusFilter);
-
-  if (loading) {
-    return <div className="flex h-full items-center justify-center"><Loader2 size={40} className="animate-spin text-red-500" /></div>;
-  }
-
-  const PriorityBadge = ({ priority }: { priority: TaskPriority }) => {
-    const colors = {
-      [TaskPriority.LOW]: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
-      [TaskPriority.MEDIUM]: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
-      [TaskPriority.HIGH]: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
-    };
-    const labels = { [TaskPriority.LOW]: 'Baja', [TaskPriority.MEDIUM]: 'Media', [TaskPriority.HIGH]: 'Alta' };
-    return <span className={`text-xs font-bold px-2 py-1 rounded-md uppercase tracking-wide ${colors[priority]}`}>{labels[priority]}</span>;
+  const getPriorityColor = (priority: TaskPriority) => {
+    switch (priority) {
+      case TaskPriority.HIGH: return 'bg-red-600 text-white shadow-red-200';
+      case TaskPriority.MEDIUM: return 'bg-amber-500 text-white shadow-amber-200';
+      case TaskPriority.LOW: return 'bg-blue-500 text-white shadow-blue-200';
+      default: return 'bg-gray-500 text-white';
+    }
   };
 
+  const getPriorityBorderClass = (priority: TaskPriority) => {
+    switch (priority) {
+      case TaskPriority.HIGH: return 'bg-red-600';
+      case TaskPriority.MEDIUM: return 'bg-amber-500';
+      case TaskPriority.LOW: return 'bg-blue-500';
+      default: return 'bg-gray-300';
+    }
+  };
+
+  const filteredTasks = allTasks.filter(task => {
+    const statusMatch = statusFilter === 'ALL' || task.status === statusFilter;
+    const deptMatch = departmentFilter === 'ALL' || task.departmentId === departmentFilter;
+    return statusMatch && deptMatch;
+  });
+
+  if (loading) return <div className="flex h-full items-center justify-center"><Loader2 size={40} className="animate-spin text-red-600" /></div>;
+
   return (
-    <div className="font-sans h-full flex flex-col relative">
-      <div className="sticky top-0 z-10 bg-white/80 dark:bg-slate-950/80 backdrop-blur-lg pt-4 pb-2 px-4 border-b border-gray-100 dark:border-slate-800">
-        <div className="max-w-3xl mx-auto w-full">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-4xl font-extrabold text-gray-900 dark:text-white tracking-tighter">Tareas</h2>
-              <div className="flex items-center gap-2">
-                {/* ADD TASK BUTTON (NOT FOR GUESTS) */}
-                {!isGuest && (
-                  <button 
-                    onClick={handleNewTask}
-                    className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 w-12 h-12 rounded-full flex items-center justify-center shadow-lg hover:bg-red-600 dark:hover:bg-slate-200 transition-all active:scale-95"
-                  >
-                    <Plus size={24} />
-                  </button>
-                )}
-              </div>
-            </div>
-            
-            <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2 -mx-4 px-4 md:mx-0 md:px-0">
-               {(['ALL', TaskStatus.PENDING, TaskStatus.IN_PROGRESS, TaskStatus.COMPLETED] as const).map(status => (
-                 <button
-                   key={status}
-                   onClick={() => setStatusFilter(status)}
-                   className={`px-4 py-2 rounded-xl text-sm font-bold whitespace-nowrap transition-all flex-shrink-0 ${
-                     statusFilter === status 
-                       ? 'bg-red-600 text-white shadow-md' 
-                       : 'bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-slate-400 hover:bg-gray-200 dark:hover:bg-slate-700'
-                   }`}
-                 >
-                   {status === 'ALL' ? 'Todas' : 
-                    status === TaskStatus.PENDING ? 'Pendientes' : 
-                    status === TaskStatus.IN_PROGRESS ? 'En Curso' : 'Completadas'}
-                 </button>
-               ))}
-            </div>
+    <div className="font-sans pb-24 bg-gray-50 dark:bg-slate-950 min-h-screen">
+      {/* Header */}
+      <div className="sticky top-0 z-10 bg-white/90 dark:bg-slate-950/90 backdrop-blur-xl border-b border-gray-200 dark:border-slate-800 px-4 py-4 md:px-6 shadow-sm">
+        <div className="flex justify-between items-center mb-4">
+          <div>
+            <h2 className="text-4xl font-black text-gray-900 dark:text-white tracking-tighter uppercase italic drop-shadow-sm">
+              Tareas <span className="text-red-600">Activas</span>
+            </h2>
+          </div>
+          <button 
+            onClick={() => {
+              setEditingTask({});
+              setSelectedImages([]);
+              setPreviews([]);
+              setShowTaskModal(true);
+            }}
+            className="bg-gray-900 dark:bg-white text-white dark:text-gray-900 w-14 h-14 rounded-2xl flex items-center justify-center shadow-xl shadow-gray-400/20 hover:scale-105 transition-transform active:scale-95 border-2 border-transparent hover:border-gray-200 dark:hover:border-slate-700"
+          >
+            <Plus size={32} strokeWidth={3} />
+          </button>
+        </div>
+
+        {/* Filters */}
+        <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
+           <select 
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as TaskStatus | 'ALL')}
+            className="px-4 py-3 rounded-xl font-bold text-sm bg-gray-100 dark:bg-slate-800 border-2 border-transparent focus:border-red-500 outline-none dark:text-white shadow-sm"
+          >
+            <option value="ALL">Todos los Estados</option>
+            <option value={TaskStatus.PENDING}>Pendientes</option>
+            <option value={TaskStatus.IN_PROGRESS}>En Curso</option>
+            <option value={TaskStatus.COMPLETED}>Completadas</option>
+          </select>
+
+          <select 
+            value={departmentFilter}
+            onChange={(e) => setDepartmentFilter(e.target.value)}
+            className="px-4 py-3 rounded-xl font-bold text-sm bg-gray-100 dark:bg-slate-800 border-2 border-transparent focus:border-red-500 outline-none dark:text-white shadow-sm"
+          >
+            <option value="ALL">Todos los Dptos.</option>
+            {departments.map(d => (
+              <option key={d.id} value={d.id}>{d.name}</option>
+            ))}
+          </select>
         </div>
       </div>
 
-      <div className="flex-1 p-4 md:p-6 overflow-y-auto">
-        <div className="max-w-3xl mx-auto w-full">
-            
-            {/* REGULAR TASKS LIST */}
-            <div>
-               {filteredTasks.length === 0 ? (
-                 <div className="py-20 text-center text-gray-400 dark:text-slate-600 bg-gray-50 dark:bg-slate-900/50 rounded-2xl border-2 border-dashed border-gray-200 dark:border-slate-800 mt-4">
-                   <ClipboardCheck size={48} className="mx-auto mb-4 opacity-50" />
-                   <p className="font-bold text-lg">No hay tareas en esta vista.</p>
-                 </div>
-               ) : (
-                 <div className="space-y-4">
-                  {filteredTasks.map(task => (
-                    <div 
-                      key={task.id} 
-                      onClick={() => handleTaskClick(task)}
-                      className={`bg-white dark:bg-slate-900 rounded-2xl p-5 shadow-sm border border-gray-200 dark:border-slate-800 hover:shadow-md hover:border-red-200 dark:hover:border-red-900/50 transition-all cursor-pointer group relative overflow-hidden ${task.priority === TaskPriority.HIGH && task.status !== TaskStatus.COMPLETED ? 'border-l-4 border-l-red-500' : ''}`}
-                    >
-                      <div className="flex justify-between items-start mb-2">
-                        <div className="flex flex-col gap-1 pr-2 w-full">
-                           <div className="flex items-center justify-between w-full">
-                             <div className="flex items-center gap-2">
-                                <span className="text-[10px] font-extrabold text-gray-400 dark:text-slate-500 uppercase tracking-widest">{task.departmentName}</span>
-                                {!isGuest && !task.seenBy?.includes(currentUser.id) && (
-                                  <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse shadow-sm" title="Nueva actualización"></span>
-                                )}
-                             </div>
-                             <div className="text-[10px] font-bold text-gray-300 dark:text-slate-600 flex items-center gap-1">
-                                <UserIcon size={10} /> {task.createdBy.split(' ')[0]}
-                             </div>
-                           </div>
-                           <h3 className={`font-bold text-lg text-gray-900 dark:text-white leading-snug break-words ${task.status === TaskStatus.COMPLETED ? 'line-through decoration-gray-400 text-gray-500' : ''}`}>{task.title}</h3>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100 dark:border-slate-800/50">
-                        <div className="flex items-center gap-2">
-                          <PriorityBadge priority={task.priority} />
-                          {task.imageUrls && task.imageUrls.length > 0 && (
-                            <span className="text-xs font-bold text-gray-500 bg-gray-100 dark:bg-slate-800 px-2 py-1 rounded-md flex items-center gap-1">
-                               <ImageIcon size={12}/> {task.imageUrls.length}
-                            </span>
-                          )}
-                          {task.comments && task.comments.length > 0 && (
-                             <span className="text-xs font-bold text-gray-500 bg-gray-100 dark:bg-slate-800 px-2 py-1 rounded-md flex items-center gap-1">
-                               <MessagesSquare size={12}/> {task.comments.length}
-                             </span>
-                          )}
-                        </div>
-                      </div>
-
-                      {task.status === TaskStatus.COMPLETED && task.completedAt && (
-                        <div className="mt-2 pt-2 border-t border-gray-100 dark:border-slate-800/50 flex justify-between items-center bg-green-50/50 dark:bg-green-900/10 -mx-5 -mb-5 px-5 py-2">
-                            <span className="text-xs text-green-700 dark:text-green-400 font-bold flex items-center gap-1"><Check size={12}/> Hecho por {task.completedBy}</span>
-                            <DeletionTimer completedAt={task.completedAt} />
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                 </div>
-               )}
+      <div className="p-4 md:p-6 space-y-10">
+        
+        {/* SECTION: TASKS (HIGH IMPACT ACTION STYLE) */}
+        <div className="space-y-6">
+          {filteredTasks.length === 0 ? (
+            <div className="py-24 text-center bg-white dark:bg-slate-900 rounded-[2.5rem] border-4 border-dashed border-gray-200 dark:border-slate-800 shadow-inner">
+              <ClipboardCheck size={80} className="mx-auto mb-6 text-gray-300 dark:text-slate-700" />
+              <p className="text-3xl font-black text-gray-400 dark:text-slate-600 uppercase tracking-tighter">Sin Tareas Activas</p>
+              <p className="text-gray-400 dark:text-slate-500 font-medium mt-2">¡Todo al día!</p>
             </div>
-        </div>
-      </div>
+          ) : (
+            filteredTasks.map(task => (
+              <div 
+                key={task.id} 
+                className={`
+                  relative bg-white dark:bg-slate-900 rounded-[2rem] shadow-xl dark:shadow-black/50 
+                  border border-gray-100 dark:border-slate-800
+                  hover:shadow-2xl hover:scale-[1.01] transition-all duration-300 group
+                  overflow-hidden w-full
+                `}
+              >
+                {/* Visual Priority Strip (Side) */}
+                <div className={`absolute left-0 top-0 bottom-0 w-3 md:w-4 ${getPriorityBorderClass(task.priority)}`}></div>
 
-      {/* Task Details Modal */}
-      {selectedTask && (
-        <div className="fixed inset-0 bg-black/60 dark:bg-slate-900/90 z-[9999] flex justify-center animate-fade-in backdrop-blur-sm overflow-hidden">
-           <div className="bg-white dark:bg-slate-900 w-full h-[100dvh] md:h-[90vh] md:max-w-2xl md:mt-10 md:rounded-t-3xl shadow-2xl flex flex-col animate-slide-up md:animate-none relative">
-              
-              <div className="pt-[max(env(safe-area-inset-top),1rem)] px-4 pb-3 border-b border-gray-100 dark:border-slate-800 flex items-center justify-between bg-white/95 dark:bg-slate-900/95 backdrop-blur-md z-20 flex-shrink-0">
-                 <button onClick={() => setSelectedTask(null)} className="p-2 -ml-2 text-gray-500 hover:text-gray-900 dark:text-slate-400 dark:hover:text-white rounded-full active:bg-gray-100 dark:active:bg-slate-800"><ArrowLeft size={24} /></button>
-                 
-                 <div className="flex items-center gap-3">
-                    <button onClick={(e) => handleShareTask(selectedTask, e)} className="p-2 text-gray-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400 bg-gray-100 dark:bg-slate-800 rounded-full transition-all shadow-sm" title="Compartir Tarea">
-                       <Share2 size={20} />
-                    </button>
-
-                    {!isGuest && (
-                      <div className="relative group">
-                        <button className="p-2 text-gray-500 hover:text-gray-900 dark:text-slate-400 dark:hover:text-white rounded-full hover:bg-gray-100 dark:hover:bg-slate-800"><MoreVertical size={24} /></button>
-                        <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-gray-100 dark:border-slate-700 overflow-hidden hidden group-hover:block hover:block z-50">
-                            <button onClick={() => { handleEditTask(selectedTask); }} className="w-full text-left px-4 py-3 text-sm font-bold text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 flex items-center gap-2"><Edit2 size={16}/> Editar</button>
-                            <button onClick={() => { handleDeleteClick(selectedTask); }} className="w-full text-left px-4 py-3 text-sm font-bold text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2"><Trash2 size={16}/> Eliminar</button>
-                        </div>
+                <div className="pl-6 md:pl-8 p-6 flex flex-col h-full">
+                   {/* Header Row */}
+                   <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-5">
+                      <div className="flex flex-wrap gap-2 items-center">
+                         <span className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest shadow-sm ${getPriorityColor(task.priority)}`}>
+                            {task.priority === TaskPriority.HIGH ? <><AlertTriangle size={14} className="inline mr-1 mb-0.5"/>URGENTE</> : task.priority === TaskPriority.MEDIUM ? 'PRIORIDAD MEDIA' : 'BAJA'}
+                         </span>
+                         <span className="px-4 py-2 rounded-xl bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-300 text-xs font-black uppercase tracking-wider border border-gray-200 dark:border-slate-700">
+                            {task.departmentName}
+                         </span>
                       </div>
-                    )}
-                 </div>
-              </div>
-
-              <div className="flex-1 overflow-y-auto overscroll-y-contain p-4 md:p-6 space-y-6">
-                 <div>
-                    <div className="flex items-center gap-2 mb-2">
-                       <span className="bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 px-2 py-1 rounded text-xs font-bold uppercase tracking-wider">{selectedTask.departmentName}</span>
-                       <PriorityBadge priority={selectedTask.priority} />
-                    </div>
-                    <h2 className={`text-2xl font-black text-gray-900 dark:text-white leading-tight ${selectedTask.status === TaskStatus.COMPLETED ? 'line-through decoration-gray-400 text-gray-500' : ''}`}>{selectedTask.title}</h2>
-                    <div className="flex items-center gap-4 mt-2 text-sm text-gray-500 dark:text-slate-400 font-medium">
-                       <span className="flex items-center gap-1"><UserIcon size={14}/> {selectedTask.createdBy}</span>
-                       <span className="flex items-center gap-1"><Clock size={14}/> {new Date(selectedTask.createdAt).toLocaleDateString()}</span>
-                    </div>
-                 </div>
-
-                 <div className="bg-gray-50 dark:bg-slate-800/50 p-4 rounded-xl border border-gray-100 dark:border-slate-800">
-                    <p className="text-gray-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed">{selectedTask.description || 'Sin descripción.'}</p>
-                 </div>
-
-                 {selectedTask.imageUrls && selectedTask.imageUrls.length > 0 && (
-                    <div>
-                       <h3 className="font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2"><ImageIcon size={18}/> Adjuntos ({selectedTask.imageUrls.length})</h3>
-                       <div className="grid grid-cols-3 gap-2">
-                          {selectedTask.imageUrls.map((url, idx) => (
-                             <button key={idx} onClick={() => setViewingImages({ images: selectedTask.imageUrls!, startIndex: idx })} className="aspect-square bg-gray-200 dark:bg-slate-800 rounded-xl overflow-hidden shadow-sm hover:opacity-90 transition-all">
-                                <img src={url} alt="adjunto" className="w-full h-full object-cover" />
+                      
+                      <div className="flex items-center gap-2 self-end md:self-auto">
+                        {/* Public Share Button */}
+                        {currentUser.role === UserRole.ADMIN && (
+                          <button onClick={() => handleShareTask(task)} className="p-3 bg-gray-50 dark:bg-slate-800 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-xl transition-colors shadow-sm">
+                            <Share2 size={20} />
+                          </button>
+                        )}
+                        {(currentUser.role === UserRole.ADMIN || (currentUser.permissions?.includes('CAN_MANAGE_TASKS') && task.createdById === currentUser.id)) && (
+                          <>
+                             <button onClick={() => { setEditingTask(task); setShowTaskModal(true); }} className="p-3 bg-gray-50 dark:bg-slate-800 text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-xl transition-colors shadow-sm">
+                                <Edit2 size={20} />
                              </button>
-                          ))}
-                       </div>
-                    </div>
-                 )}
+                             <button onClick={() => setTaskToDelete(task)} className="p-3 bg-gray-50 dark:bg-slate-800 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors shadow-sm">
+                                <Trash2 size={20} />
+                             </button>
+                          </>
+                        )}
+                      </div>
+                   </div>
 
-                 {/* Status Actions (Disabled for Guests) */}
-                 <div className="grid grid-cols-3 gap-3">
-                    <button 
-                    onClick={() => handleStatusChange(selectedTask, TaskStatus.PENDING)}
-                    disabled={isGuest}
-                    className={`py-3 rounded-xl font-bold text-sm transition-all ${selectedTask.status === TaskStatus.PENDING ? 'bg-gray-900 dark:bg-white text-white dark:text-slate-900 shadow-md ring-2 ring-offset-2 ring-gray-900 dark:ring-white' : 'bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-slate-400'} ${isGuest ? 'opacity-70 cursor-not-allowed' : ''}`}
-                    >
-                    Pendiente
-                    </button>
-                    <button 
-                    onClick={() => handleStatusChange(selectedTask, TaskStatus.IN_PROGRESS)}
-                    disabled={isGuest}
-                    className={`py-3 rounded-xl font-bold text-sm transition-all ${selectedTask.status === TaskStatus.IN_PROGRESS ? 'bg-blue-600 text-white shadow-md ring-2 ring-offset-2 ring-blue-600' : 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'} ${isGuest ? 'opacity-70 cursor-not-allowed' : ''}`}
-                    >
-                    En Curso
-                    </button>
-                    <button 
-                    onClick={() => handleStatusChange(selectedTask, TaskStatus.COMPLETED)}
-                    disabled={isGuest}
-                    className={`py-3 rounded-xl font-bold text-sm transition-all ${selectedTask.status === TaskStatus.COMPLETED ? 'bg-green-600 text-white shadow-md ring-2 ring-offset-2 ring-green-600' : 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400'} ${isGuest ? 'opacity-70 cursor-not-allowed' : ''}`}
-                    >
-                    Hecho
-                    </button>
+                   {/* Main Content */}
+                   <div className="mb-6">
+                      <h3 className={`text-3xl md:text-4xl font-black text-gray-900 dark:text-white uppercase tracking-tighter leading-[0.9] mb-4 break-words ${task.status === TaskStatus.COMPLETED ? 'line-through decoration-4 decoration-gray-300 dark:decoration-slate-700 opacity-60' : ''}`}>
+                        {task.title}
+                      </h3>
+                      
+                      {task.description && (
+                         <div className="bg-gray-50 dark:bg-slate-800/50 p-5 rounded-2xl border-l-4 border-gray-300 dark:border-slate-600">
+                           <p className={`text-lg md:text-xl font-bold text-gray-700 dark:text-slate-300 leading-snug whitespace-pre-wrap ${task.status === TaskStatus.COMPLETED ? 'opacity-60' : ''}`}>
+                             {task.description}
+                           </p>
+                         </div>
+                      )}
+                   </div>
+
+                   {/* Images */}
+                   {task.imageUrls && task.imageUrls.length > 0 && (
+                     <div className="flex gap-3 mb-6 overflow-x-auto pb-2 no-scrollbar">
+                        {task.imageUrls.map((url, i) => (
+                          <button key={i} onClick={() => setViewingImages({ images: task.imageUrls!, startIndex: i })} className="relative w-28 h-28 rounded-2xl border-2 border-gray-100 dark:border-slate-700 overflow-hidden flex-shrink-0 hover:border-red-500 transition-colors shadow-md">
+                             <img src={url} className="w-full h-full object-cover" loading="lazy" />
+                          </button>
+                        ))}
+                     </div>
+                   )}
+
+                   {/* Footer Actions */}
+                   <div className="mt-auto pt-5 border-t-2 border-gray-100 dark:border-slate-800 flex flex-wrap justify-between items-center gap-4">
+                      
+                      {/* User Info */}
+                      <div className="flex items-center gap-3">
+                         <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-slate-800 flex items-center justify-center font-bold text-gray-500 dark:text-slate-400 shadow-inner text-sm">
+                           {task.createdBy.charAt(0)}
+                         </div>
+                         <div className="flex flex-col">
+                            <span className="font-bold text-gray-900 dark:text-white text-sm leading-tight">{task.createdBy}</span>
+                            <span className="text-xs font-bold text-gray-400 dark:text-slate-500">{new Date(task.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                         </div>
+                      </div>
+
+                      <div className="flex items-center gap-3">
+                          {/* Comments Button */}
+                          <button 
+                            onClick={() => setActiveCommentTaskId(task.id)}
+                            className={`flex items-center gap-2 px-4 py-3 rounded-xl font-bold text-sm transition-all border-2 ${
+                              (task.comments?.length || 0) > 0 
+                                ? 'bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-900/30' 
+                                : 'bg-white text-gray-500 border-gray-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700 hover:bg-gray-50'
+                            }`}
+                          >
+                             <MessagesSquare size={20} strokeWidth={2.5} />
+                             <span>{task.comments?.length || 0}</span>
+                          </button>
+
+                          {/* Action Buttons */}
+                          {task.status !== TaskStatus.COMPLETED && (
+                            <div className="flex gap-2">
+                               {task.status === TaskStatus.PENDING && (
+                                 <button 
+                                   onClick={() => storageService.saveTask({ id: task.id, status: TaskStatus.IN_PROGRESS })}
+                                   className="px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white text-sm font-black uppercase tracking-wider rounded-xl shadow-lg shadow-blue-200 dark:shadow-none transition-all active:scale-95 flex items-center gap-2"
+                                 >
+                                   Iniciar
+                                 </button>
+                               )}
+                               <button 
+                                 onClick={() => storageService.saveTask({ id: task.id, status: TaskStatus.COMPLETED, completedBy: currentUser.name, completedAt: Date.now() })}
+                                 className="px-5 py-3 bg-green-600 hover:bg-green-700 text-white text-sm font-black uppercase tracking-wider rounded-xl shadow-lg shadow-green-200 dark:shadow-none transition-all active:scale-95 flex items-center gap-2"
+                               >
+                                 <Check size={20} strokeWidth={4} /> Completar
+                               </button>
+                            </div>
+                          )}
+                          
+                          {task.status === TaskStatus.COMPLETED && task.completedAt && (
+                            <DeletionTimer completedAt={task.completedAt} />
+                          )}
+                      </div>
+                   </div>
+                   
+                   {/* Comments Section Removed from here and moved to a global modal */}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
+      {/* NEW COMMENTS MODAL (Bottom Sheet Style for Mobile) */}
+      {activeTaskForComments && (
+        <div className="fixed inset-0 z-[100] flex items-end md:items-center justify-center bg-black/80 backdrop-blur-sm animate-fade-in">
+           {/* Dismiss Overlay */}
+           <div className="absolute inset-0" onClick={() => setActiveCommentTaskId(null)}></div>
+           
+           <div className="relative bg-white dark:bg-slate-900 w-full h-[85vh] md:h-auto md:max-h-[80vh] md:max-w-lg rounded-t-[2.5rem] md:rounded-[2.5rem] shadow-2xl flex flex-col animate-slide-up border-t border-x border-gray-200 dark:border-slate-800 overflow-hidden">
+              
+              {/* Header */}
+              <div className="px-6 py-5 border-b border-gray-100 dark:border-slate-800 flex justify-between items-center bg-white dark:bg-slate-900 shrink-0">
+                 <div>
+                    <h3 className="text-2xl font-black text-gray-900 dark:text-white uppercase tracking-tight">Comentarios</h3>
+                    <p className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wide truncate max-w-[200px]">{activeTaskForComments.title}</p>
                  </div>
-
-                 <div className="pt-6 border-t border-gray-100 dark:border-slate-800">
-                    <h3 className="font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2"><MessagesSquare size={18}/> Comentarios</h3>
-                    
-                    <div className="space-y-4 mb-20">
-                       {selectedTask.comments?.map((comment) => (
-                          <div key={comment.id} className={`flex gap-3 ${comment.userId === currentUser.id ? 'flex-row-reverse' : ''}`}>
-                             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${comment.userId === currentUser.id ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400' : 'bg-gray-200 text-gray-600 dark:bg-slate-700 dark:text-slate-300'}`}>
-                                {comment.userName.charAt(0)}
-                             </div>
-                             <div className={`max-w-[80%] p-3 rounded-2xl text-sm ${comment.userId === currentUser.id ? 'bg-red-50 dark:bg-red-900/20 text-gray-800 dark:text-slate-200 rounded-tr-none' : 'bg-gray-100 dark:bg-slate-800 text-gray-800 dark:text-slate-200 rounded-tl-none'}`}>
-                                <p className="font-bold text-xs mb-1 opacity-70">{comment.userName}</p>
-                                <p>{comment.message}</p>
-                                <p className="text-[10px] opacity-50 mt-1 text-right">{new Date(comment.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
-                             </div>
-                          </div>
-                       ))}
-                       {(!selectedTask.comments || selectedTask.comments.length === 0) && (
-                          <p className="text-center text-gray-400 dark:text-slate-600 text-sm py-4">No hay comentarios aún.</p>
-                       )}
-                    </div>
+                 <button onClick={() => setActiveCommentTaskId(null)} className="bg-gray-100 dark:bg-slate-800 p-2 rounded-full text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors">
+                    <X size={24} />
+                 </button>
+              </div>
+              
+              {/* Comments List */}
+              <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-gray-50 dark:bg-slate-950/50">
+                 {activeTaskForComments.comments?.map(comment => (
+                   <div key={comment.id} className={`p-4 rounded-2xl shadow-sm ${comment.userId === currentUser.id ? 'bg-blue-600 text-white ml-auto rounded-tr-sm' : 'bg-white dark:bg-slate-800 mr-auto rounded-tl-sm border border-gray-100 dark:border-slate-700'}`}>
+                      <p className={`text-[10px] font-black mb-1 flex justify-between gap-4 uppercase tracking-wider ${comment.userId === currentUser.id ? 'text-blue-200' : 'text-gray-400 dark:text-slate-500'}`}>
+                        <span>{comment.userName}</span>
+                        <span>{new Date(comment.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                      </p>
+                      <p className={`text-base font-bold ${comment.userId === currentUser.id ? 'text-white' : 'text-gray-800 dark:text-slate-200'}`}>{comment.message}</p>
+                   </div>
+                 ))}
+                 
+                 {(!activeTaskForComments.comments || activeTaskForComments.comments.length === 0) && (
+                   <div className="flex flex-col items-center justify-center h-full text-center py-10 opacity-50">
+                      <MessagesSquare size={48} className="mb-4 text-gray-400" />
+                      <p className="font-bold text-gray-500 dark:text-slate-400">No hay comentarios aún.</p>
+                      <p className="text-xs font-semibold text-gray-400">¡Sé el primero en escribir!</p>
+                   </div>
+                 )}
+              </div>
+              
+              {/* Input Area (Fixed at bottom) */}
+              <div className="p-4 bg-white dark:bg-slate-900 border-t border-gray-100 dark:border-slate-800 pb-safe md:pb-4">
+                 <div className="flex gap-2 items-center bg-gray-100 dark:bg-slate-800 p-1.5 rounded-[1.25rem]">
+                    <input 
+                      value={newComment}
+                      onChange={(e) => setNewComment(e.target.value)}
+                      placeholder="Escribe un comentario..."
+                      className="flex-1 px-4 py-3 bg-transparent outline-none font-bold text-gray-700 dark:text-white placeholder-gray-400"
+                      autoFocus
+                      onKeyDown={e => e.key === 'Enter' && handleAddComment(activeTaskForComments.id)}
+                    />
+                    <button 
+                       onClick={() => handleAddComment(activeTaskForComments.id)} 
+                       disabled={!newComment.trim()} 
+                       className="bg-blue-600 text-white w-12 h-12 rounded-2xl flex items-center justify-center hover:bg-blue-700 disabled:opacity-50 disabled:bg-gray-400 active:scale-95 transition-all shadow-md"
+                    >
+                       <Send size={20} className="ml-0.5" />
+                    </button>
                  </div>
               </div>
-
-              {!isGuest && (
-                <div className="p-4 pb-[max(env(safe-area-inset-bottom),1rem)] bg-white dark:bg-slate-900 border-t border-gray-100 dark:border-slate-800 flex-shrink-0 z-20">
-                   <div className="flex gap-2 relative">
-                      <input 
-                         type="text" 
-                         value={newComment}
-                         onChange={(e) => setNewComment(e.target.value)}
-                         placeholder="Escribe un comentario..."
-                         onKeyDown={(e) => e.key === 'Enter' && handleSendComment()}
-                         className="flex-1 bg-gray-100 dark:bg-slate-800 border-0 rounded-full px-5 py-3 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-red-500 outline-none"
-                      />
-                      <button 
-                         onClick={handleSendComment}
-                         disabled={!newComment.trim()}
-                         className="bg-red-600 text-white p-3 rounded-full hover:bg-red-700 disabled:bg-gray-300 dark:disabled:bg-slate-700 disabled:text-gray-500 transition-all shadow-md shadow-red-200 dark:shadow-none active:scale-95"
-                      >
-                         <Send size={20} className={newComment.trim() ? 'ml-0.5' : ''}/>
-                      </button>
-                   </div>
-                </div>
-              )}
            </div>
         </div>
       )}
 
-      {showTaskModal && editingTask && (
-        <div className="fixed inset-0 bg-black/60 dark:bg-slate-900/90 z-[9999] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white dark:bg-slate-800 rounded-3xl w-full max-w-lg shadow-2xl p-6 md:p-8 animate-pop-in max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-2xl font-black text-gray-900 dark:text-white">{editingTask.id ? 'Editar Tarea' : 'Nueva Tarea'}</h3>
-              <button onClick={() => setShowTaskModal(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-white p-2 rounded-full hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors">
-                <X size={24} />
-              </button>
-            </div>
-            
-            <div className="space-y-5">
-              
-              {/* Type Selector Removed - Defaulting to Task */}
+      {/* MODAL: NEW / EDIT TASK */}
+      {showTaskModal && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-sm p-0 sm:p-4 animate-fade-in">
+          <div className="bg-white dark:bg-slate-900 w-full sm:max-w-lg h-[95vh] sm:h-auto sm:max-h-[90vh] sm:rounded-[2rem] shadow-2xl overflow-hidden flex flex-col animate-slide-up border-2 border-gray-100 dark:border-slate-700">
+             
+             {/* Modal Header */}
+             <div className="px-6 py-5 border-b border-gray-100 dark:border-slate-800 flex justify-between items-center bg-white dark:bg-slate-900 sticky top-0 z-10">
+                <h3 className="text-2xl font-black text-gray-900 dark:text-white uppercase tracking-tight">
+                  {editingTask?.id ? 'Editar Tarea' : 'Nueva Tarea'}
+                </h3>
+                <button onClick={() => setShowTaskModal(false)} className="bg-gray-100 dark:bg-slate-800 p-2 rounded-full text-gray-500 hover:bg-gray-200 dark:hover:bg-slate-700 hover:text-red-600 transition-colors">
+                  <X size={24} strokeWidth={2.5} />
+                </button>
+             </div>
 
-              <div>
-                <label className="text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wide mb-1 block">Título</label>
-                <input 
-                  className="w-full p-4 border-2 border-gray-200 dark:border-slate-700 rounded-xl bg-gray-50 dark:bg-slate-800/50 focus:bg-white dark:focus:bg-slate-900 focus:border-red-500 focus:ring-4 focus:ring-red-100 dark:focus:ring-red-500/30 outline-none font-bold text-gray-900 dark:text-white transition-all"
-                  value={editingTask.title || ''}
-                  onChange={e => setEditingTask({...editingTask, title: e.target.value})}
-                  placeholder="Ej. Reparar aire acondicionado..."
-                />
-              </div>
+             {/* Modal Body */}
+             <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                
+                {/* Note: Announcement toggle removed by request to focus on Tasks */}
 
-              <div>
-                <label className="text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wide mb-1 block">Departamento</label>
-                <div className="relative">
-                   <select 
-                     className="w-full p-4 border-2 border-gray-200 dark:border-slate-700 rounded-xl bg-gray-50 dark:bg-slate-800/50 focus:bg-white dark:focus:bg-slate-900 focus:border-red-500 focus:ring-4 focus:ring-red-100 dark:focus:ring-red-500/30 outline-none font-medium text-gray-900 dark:text-white appearance-none transition-all"
-                     value={editingTask.departmentId || ''}
-                     onChange={e => setEditingTask({...editingTask, departmentId: e.target.value})}
-                   >
-                     <option value="" disabled>Selecciona un departamento</option>
-                     {departments.map(dep => (
-                       <option key={dep.id} value={dep.id}>{dep.name}</option>
-                     ))}
-                   </select>
-                   <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={20} />
+                <div>
+                   <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Título de la Tarea</label>
+                   <input 
+                     value={editingTask?.title || ''}
+                     onChange={e => setEditingTask({ ...editingTask, title: e.target.value })}
+                     className="w-full px-5 py-4 text-xl font-black bg-gray-50 dark:bg-slate-800/50 border-2 border-gray-200 dark:border-slate-700 rounded-2xl focus:border-red-500 focus:bg-white dark:focus:bg-slate-900 outline-none transition-all dark:text-white placeholder-gray-400"
+                     placeholder="¿QUÉ HAY QUE HACER?"
+                     autoFocus
+                   />
                 </div>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                  <div>
-                      <label className="text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wide mb-1 block">Prioridad</label>
+
+                <div className="grid grid-cols-2 gap-4">
+                   <div>
+                      <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Departamento</label>
                       <div className="relative">
                         <select 
-                          className="w-full p-4 border-2 border-gray-200 dark:border-slate-700 rounded-xl bg-gray-50 dark:bg-slate-800/50 focus:bg-white dark:focus:bg-slate-900 focus:border-red-500 outline-none font-medium text-gray-900 dark:text-white appearance-none transition-all"
-                          value={editingTask.priority || TaskPriority.MEDIUM}
-                          onChange={e => setEditingTask({...editingTask, priority: e.target.value as TaskPriority})}
+                          value={editingTask?.departmentId || ''}
+                          onChange={e => setEditingTask({ ...editingTask, departmentId: e.target.value })}
+                          className="w-full pl-4 pr-10 py-4 font-bold bg-gray-50 dark:bg-slate-800/50 border-2 border-gray-200 dark:border-slate-700 rounded-2xl focus:border-red-500 outline-none appearance-none dark:text-white text-sm"
+                        >
+                          <option value="" disabled>Seleccionar</option>
+                          {departments.map(d => (
+                            <option key={d.id} value={d.id}>{d.name}</option>
+                          ))}
+                        </select>
+                        <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={18} />
+                      </div>
+                   </div>
+                   <div>
+                      <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Prioridad</label>
+                      <div className="relative">
+                        <select 
+                          value={editingTask?.priority || TaskPriority.MEDIUM}
+                          onChange={e => setEditingTask({ ...editingTask, priority: e.target.value as TaskPriority })}
+                          className="w-full pl-4 pr-10 py-4 font-bold bg-gray-50 dark:bg-slate-800/50 border-2 border-gray-200 dark:border-slate-700 rounded-2xl focus:border-red-500 outline-none appearance-none dark:text-white text-sm"
                         >
                           <option value={TaskPriority.LOW}>Baja</option>
-                          <option value={TaskPriority.MEDIUM}>Media</option>
-                          <option value={TaskPriority.HIGH}>Alta</option>
+                          <option value={TaskPriority.MEDIUM}>Normal</option>
+                          <option value={TaskPriority.HIGH}>Alta / Urgente</option>
                         </select>
-                        <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={20} />
+                        <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={18} />
                       </div>
-                  </div>
-                  <div>
-                      <label className="text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wide mb-1 block">Estado</label>
-                      <div className="relative">
-                        <select 
-                          className="w-full p-4 border-2 border-gray-200 dark:border-slate-700 rounded-xl bg-gray-50 dark:bg-slate-800/50 focus:bg-white dark:focus:bg-slate-900 focus:border-red-500 outline-none font-medium text-gray-900 dark:text-white appearance-none transition-all"
-                          value={editingTask.status || TaskStatus.PENDING}
-                          onChange={e => setEditingTask({...editingTask, status: e.target.value as TaskStatus})}
-                        >
-                          <option value={TaskStatus.PENDING}>Pendiente</option>
-                          <option value={TaskStatus.IN_PROGRESS}>En Curso</option>
-                          <option value={TaskStatus.COMPLETED}>Completada</option>
-                        </select>
-                        <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={20} />
-                      </div>
-                  </div>
+                   </div>
                 </div>
 
-              <div>
-                 <label className="text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wide mb-1 block">Descripción</label>
-                 <textarea 
-                    className="w-full p-4 border-2 border-gray-200 dark:border-slate-700 rounded-xl bg-gray-50 dark:bg-slate-800/50 focus:bg-white dark:focus:bg-slate-900 focus:border-red-500 focus:ring-4 focus:ring-red-100 dark:focus:ring-red-500/30 outline-none font-medium text-gray-900 dark:text-white min-h-[100px] resize-none transition-all"
-                    value={editingTask.description || ''}
-                    onChange={e => setEditingTask({...editingTask, description: e.target.value})}
-                    placeholder="Detalles adicionales..."
-                 />
-              </div>
+                <div>
+                   <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Descripción (Opcional)</label>
+                   <textarea 
+                     value={editingTask?.description || ''}
+                     onChange={e => setEditingTask({ ...editingTask, description: e.target.value })}
+                     className="w-full px-5 py-4 font-bold text-base bg-gray-50 dark:bg-slate-800/50 border-2 border-gray-200 dark:border-slate-700 rounded-2xl focus:border-red-500 focus:bg-white dark:focus:bg-slate-900 outline-none transition-all min-h-[140px] dark:text-white placeholder-gray-400 resize-none"
+                     placeholder="Instrucciones detalladas..."
+                   />
+                </div>
 
-              {/* Image Upload */}
-              <div>
-                 <label className="text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wide mb-2 block">Imágenes</label>
-                 <div className="flex gap-3 overflow-x-auto pb-2">
-                    <button 
-                       type="button" 
-                       onClick={() => cameraInputRef.current?.click()}
-                       disabled={isCompressing}
-                       className="flex-shrink-0 w-20 h-20 rounded-xl border-2 border-dashed border-gray-300 dark:border-slate-600 flex flex-col items-center justify-center text-gray-500 hover:border-red-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 transition-all active:scale-95"
-                    >
-                       <Camera size={24} />
-                       <span className="text-[10px] font-bold mt-1">Cámara</span>
-                    </button>
-                    <button 
-                       type="button" 
-                       onClick={() => fileInputRef.current?.click()}
-                       disabled={isCompressing}
-                       className="flex-shrink-0 w-20 h-20 rounded-xl border-2 border-dashed border-gray-300 dark:border-slate-600 flex flex-col items-center justify-center text-gray-500 hover:border-red-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 transition-all active:scale-95"
-                    >
-                       <ImageIcon size={24} />
-                       <span className="text-[10px] font-bold mt-1">Galería</span>
-                    </button>
+                <div>
+                   <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Imágenes</label>
+                   <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar">
+                      <button 
+                        onClick={() => fileInputRef.current?.click()}
+                        className="w-24 h-24 rounded-2xl border-2 border-dashed border-gray-300 dark:border-slate-600 flex flex-col items-center justify-center text-gray-400 hover:text-red-500 hover:border-red-500 hover:bg-red-50 dark:hover:bg-slate-800 transition-all flex-shrink-0"
+                      >
+                        <Camera size={28} />
+                        <span className="text-[10px] font-black mt-1 uppercase tracking-wide">Añadir</span>
+                      </button>
+                      <input 
+                        type="file" 
+                        ref={fileInputRef} 
+                        onChange={handleImageSelect} 
+                        className="hidden" 
+                        accept="image/*" 
+                        multiple
+                      />
+                      
+                      {/* Existing Images (Edit Mode) */}
+                      {editingTask?.imageUrls?.map((url, i) => (
+                        <div key={`existing-${i}`} className="relative w-24 h-24 flex-shrink-0">
+                           <img src={url} className="w-full h-full object-cover rounded-2xl border-2 border-gray-200 dark:border-slate-700" />
+                           <span className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[9px] font-bold text-center py-1 rounded-b-[14px]">Guardada</span>
+                        </div>
+                      ))}
 
-                    <input type="file" ref={cameraInputRef} capture="environment" accept="image/*" className="hidden" onChange={handleFileChange} />
-                    <input type="file" ref={fileInputRef} accept="image/*" multiple className="hidden" onChange={handleFileChange} />
+                      {/* New Preview Images */}
+                      {previews.map((url, i) => (
+                        <div key={`new-${i}`} className="relative w-24 h-24 flex-shrink-0 group">
+                           <img src={url} className="w-full h-full object-cover rounded-2xl border-2 border-red-500 shadow-md" />
+                           <button onClick={() => removeImage(i)} className="absolute top-1 right-1 bg-red-600 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-md hover:scale-110"><X size={14} strokeWidth={3} /></button>
+                        </div>
+                      ))}
+                   </div>
+                </div>
 
-                    {editingTask.imageUrls?.map((url, idx) => (
-                       <div key={`existing-${idx}`} className="relative flex-shrink-0 w-20 h-20 rounded-xl overflow-hidden border border-gray-200 dark:border-slate-700">
-                          <img src={url} alt="preview" className="w-full h-full object-cover" />
-                          <button 
-                             type="button"
-                             onClick={() => removeExistingImage(url)}
-                             className="absolute top-0 right-0 bg-red-500 text-white p-1 rounded-bl-lg hover:bg-red-600 transition-colors"
-                          >
-                             <X size={12} />
-                          </button>
-                       </div>
-                    ))}
+                {saveError && (
+                  <div className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 p-4 rounded-2xl text-center font-bold text-sm border-2 border-red-100 dark:border-red-900/30 flex items-center justify-center gap-2">
+                    <AlertTriangle size={18} /> {saveError}
+                  </div>
+                )}
+             </div>
 
-                    {(editingTask as any).newFiles?.map((file: File, idx: number) => (
-                       <div key={`new-${idx}`} className="relative flex-shrink-0 w-20 h-20 rounded-xl overflow-hidden border border-gray-200 dark:border-slate-700">
-                          <img src={URL.createObjectURL(file)} alt="preview" className="w-full h-full object-cover opacity-80" />
-                          <button 
-                             type="button"
-                             onClick={() => removeNewFile(idx)}
-                             className="absolute top-0 right-0 bg-red-500 text-white p-1 rounded-bl-lg hover:bg-red-600 transition-colors"
-                          >
-                             <X size={12} />
-                          </button>
-                          <div className="absolute bottom-0 inset-x-0 bg-green-500 text-white text-[8px] font-bold text-center py-0.5">NUEVO</div>
-                       </div>
-                    ))}
-                    
-                    {isCompressing && (
-                       <div className="flex-shrink-0 w-20 h-20 rounded-xl bg-gray-100 dark:bg-slate-800 flex items-center justify-center">
-                          <Loader2 className="animate-spin text-gray-400" />
-                       </div>
-                    )}
-                 </div>
-              </div>
-              
-              {saveError && (
-                 <div className="p-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm font-bold rounded-xl flex items-center gap-2">
-                    <AlertTriangle size={16} /> {saveError}
-                 </div>
-              )}
-            </div>
-            
-            <div className="flex gap-4 mt-8">
-               <button onClick={() => setShowTaskModal(false)} className="flex-1 py-4 text-gray-600 dark:text-slate-400 font-bold bg-gray-100 dark:bg-slate-700/50 rounded-xl hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors active:scale-[0.98]">Cancelar</button>
-               <button 
+             {/* Modal Footer */}
+             <div className="p-6 border-t border-gray-100 dark:border-slate-800 bg-gray-50 dark:bg-slate-900 flex gap-4 sticky bottom-0 z-10">
+                <button onClick={() => setShowTaskModal(false)} className="flex-1 py-4 font-bold text-gray-500 dark:text-slate-400 hover:bg-gray-200 dark:hover:bg-slate-800 rounded-2xl transition-colors">
+                  Cancelar
+                </button>
+                <button 
                   onClick={handleSaveTask} 
                   disabled={isSaving || isCompressing}
-                  className="flex-1 py-4 text-white font-bold bg-red-600 rounded-xl hover:bg-red-700 shadow-lg shadow-button-red transition-all flex items-center justify-center gap-2 active:scale-[0.98] disabled:bg-gray-300 dark:disabled:bg-slate-700 disabled:shadow-none"
-               >
-                  {isSaving ? <Loader2 className="animate-spin" /> : <Save size={20} />}
-                  <span>{isSaving ? 'Guardando...' : 'Guardar'}</span>
-               </button>
+                  className="flex-[2] py-4 bg-red-600 hover:bg-red-700 text-white font-black uppercase tracking-wider rounded-2xl shadow-xl shadow-button-red active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:scale-100"
+                >
+                  {isSaving || isCompressing ? <Loader2 className="animate-spin" strokeWidth={3} /> : <Save size={22} strokeWidth={3} />}
+                  {isSaving ? 'Guardando...' : isCompressing ? 'Procesando...' : 'PUBLICAR TAREA'}
+                </button>
+             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {taskToDelete && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="bg-white dark:bg-slate-800 rounded-[2.5rem] w-full max-w-sm p-8 text-center shadow-2xl border-2 border-gray-100 dark:border-slate-700">
+            <div className="w-20 h-20 bg-red-50 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-6 text-red-600 dark:text-red-500 shadow-inner">
+               <Trash2 size={40} />
+            </div>
+            <h3 className="text-2xl font-black text-gray-900 dark:text-white uppercase mb-2 tracking-tight">¿Eliminar Tarea?</h3>
+            <p className="text-gray-500 dark:text-slate-400 mb-8 font-bold text-lg">Esta acción no se puede deshacer.</p>
+            <div className="flex gap-4">
+              <button onClick={() => setTaskToDelete(null)} className="flex-1 py-4 font-bold text-gray-600 dark:text-slate-400 bg-gray-100 dark:bg-slate-700 rounded-2xl hover:bg-gray-200 transition-colors">Cancelar</button>
+              <button onClick={handleDeleteTask} className="flex-1 py-4 font-bold text-white bg-red-600 rounded-2xl hover:bg-red-700 shadow-lg shadow-button-red transition-all">ELIMINAR</button>
             </div>
           </div>
         </div>
       )}
 
-      {taskToDelete && (
-        <div className="fixed inset-0 bg-black/60 dark:bg-slate-900/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white dark:bg-slate-800 rounded-3xl w-full max-w-sm shadow-pop-in p-6 animate-pop-in text-center">
-            <div className="w-16 h-16 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-4 text-red-600 dark:text-red-500 shadow-md">
-               <Trash2 size={32} />
-            </div>
-            <h3 className="text-xl font-black text-gray-900 dark:text-white mb-2">¿Eliminar Tarea?</h3>
-            <p className="text-gray-500 dark:text-slate-400 mb-6">Esta acción no se puede deshacer.</p>
-            <div className="flex gap-3">
-              <button onClick={() => setTaskToDelete(null)} className="flex-1 py-3 font-bold text-gray-600 dark:text-slate-400 bg-gray-100 dark:bg-slate-700/50 rounded-xl hover:bg-gray-200 dark:hover:bg-slate-700 active:scale-[0.98]">Cancelar</button>
-              <button onClick={confirmDelete} className="flex-1 py-3 font-bold text-white bg-red-600 rounded-xl hover:bg-red-700 shadow-lg shadow-button-red active:scale-[0.98]">Eliminar</button>
-            </div>
-          </div>
-        </div>
+      {viewingImages && (
+        <ImageViewer 
+          images={viewingImages.images}
+          startIndex={viewingImages.startIndex}
+          onClose={() => setViewingImages(null)}
+        />
       )}
 
       <ShareModal 
@@ -678,13 +608,6 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
         title={shareData.title} 
       />
 
-      {viewingImages && (
-         <ImageViewer 
-            images={viewingImages.images}
-            startIndex={viewingImages.startIndex}
-            onClose={() => setViewingImages(null)}
-         />
-      )}
     </div>
   );
 };

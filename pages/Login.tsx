@@ -3,7 +3,7 @@ import { Logo } from '../components/Logo';
 // Fix: Changed storageService import to import all exported functions as a namespace, as 'storageService' is not a named export.
 import * as storageService from '../services/storageService';
 import { User } from '../types';
-import { Loader2 } from 'lucide-react';
+import { Loader2, ArrowRight } from 'lucide-react';
 
 interface LoginProps {
   onLogin: (user: User) => void;
@@ -20,50 +20,62 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     setLoading(true);
     setError('');
     
-    const user = await storageService.login(username, pin);
-    setLoading(false);
-    
-    if (user) {
-      onLogin(user);
-    } else {
-      setError('Credenciales incorrectas. Intenta "Administrador" y "1234"');
-    }
+    // Artificial delay for better UX (prevents flickering on fast devices)
+    setTimeout(async () => {
+        const user = await storageService.login(username, pin);
+        setLoading(false);
+        
+        if (user) {
+          onLogin(user);
+        } else {
+          setError('Credenciales incorrectas.');
+        }
+    }, 800);
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex flex-col items-center justify-center p-4 transition-colors duration-300">
-      <div className="w-full max-w-sm bg-white dark:bg-slate-800 rounded-3xl shadow-pop-in overflow-hidden border border-gray-100 dark:border-slate-700/50 transition-colors duration-300 animate-pop-in">
-        <div className="bg-gradient-to-br from-red-600 to-red-800 dark:from-red-700 dark:to-red-900 py-8 px-6 flex flex-col items-center justify-center text-white relative overflow-hidden">
-          {/* Background Pattern */}
-          <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-white via-transparent to-transparent" />
+    <div className="min-h-screen bg-gray-100 dark:bg-slate-950 flex flex-col items-center justify-center p-4 transition-colors duration-300 font-sans">
+      <div className="w-full max-w-sm bg-white dark:bg-slate-800 rounded-[2rem] shadow-2xl overflow-hidden border border-white/50 dark:border-slate-700/50 transition-all duration-300 animate-pop-in">
+        
+        {/* Header Section */}
+        <div className="bg-gradient-to-br from-red-700 to-red-900 py-10 px-6 flex flex-col items-center justify-center text-white relative overflow-hidden">
+          {/* Subtle Texture/Pattern Overlay */}
+          <div className="absolute inset-0 opacity-20 bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:16px_16px]"></div>
           
-          <Logo size="md" className="shadow-2xl shadow-red-900/50 drop-shadow-lg mb-2 bg-white/10 backdrop-blur-sm border border-white/20" />
-          <h1 className="text-3xl font-extrabold tracking-tight text-center drop-shadow-md">Hub</h1>
-          <p className="font-semibold bg-gradient-to-br from-white to-red-200 bg-clip-text text-transparent mt-1 text-sm max-w-xs text-center drop-shadow-sm tracking-wide">La estrategia inteligente detrás de tus mejores resultados</p>
+          <div className="relative z-10 flex flex-col items-center">
+              <div className="p-3 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 shadow-xl mb-4">
+                <Logo size="md" className="drop-shadow-md" />
+              </div>
+              <h1 className="text-4xl font-black tracking-tighter text-center drop-shadow-md mb-2">Hub</h1>
+              <p className="font-medium text-red-100 text-sm max-w-[260px] text-center leading-relaxed opacity-90">
+                La estrategia inteligente detrás de tus mejores resultados.
+              </p>
+          </div>
         </div>
 
+        {/* Form Section */}
         <div className="p-8">
-          <form onSubmit={handleLogin} className="space-y-6">
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">Usuario</label>
+          <form onSubmit={handleLogin} className="space-y-5">
+            <div className="space-y-1.5">
+              <label className="block text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider ml-1">Usuario</label>
               <input
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-slate-600/50 focus:ring-4 focus:ring-red-100 dark:focus:ring-red-500/30 focus:border-red-500 outline-none transition-all bg-gray-50 dark:bg-slate-700/50 dark:text-white focus:bg-white dark:focus:bg-slate-700 placeholder-gray-400 dark:placeholder-slate-500 shadow-sm"
+                className="w-full px-5 py-4 rounded-xl border-2 border-gray-100 dark:border-slate-700 bg-gray-50 dark:bg-slate-900/50 text-gray-900 dark:text-white font-semibold placeholder-gray-400 focus:bg-white dark:focus:bg-slate-800 focus:border-red-500/50 focus:ring-4 focus:ring-red-500/10 outline-none transition-all duration-200"
                 placeholder="Ej. Administrador"
                 required
                 disabled={loading}
               />
             </div>
             
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">PIN de Acceso</label>
+            <div className="space-y-1.5">
+              <label className="block text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider ml-1">PIN de Acceso</label>
               <input
                 type="password"
                 value={pin}
                 onChange={(e) => setPin(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-slate-600/50 focus:ring-4 focus:ring-red-100 dark:focus:ring-red-500/30 focus:border-red-500 outline-none transition-all bg-gray-50 dark:bg-slate-700/50 dark:text-white focus:bg-white dark:focus:bg-slate-700 placeholder-gray-400 dark:placeholder-slate-500 shadow-sm"
+                className="w-full px-5 py-4 rounded-xl border-2 border-gray-100 dark:border-slate-700 bg-gray-50 dark:bg-slate-900/50 text-gray-900 dark:text-white font-semibold placeholder-gray-400 focus:bg-white dark:focus:bg-slate-800 focus:border-red-500/50 focus:ring-4 focus:ring-red-500/10 outline-none transition-all duration-200 tracking-widest"
                 placeholder="••••"
                 required
                 disabled={loading}
@@ -71,22 +83,30 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
             </div>
 
             {error && (
-              <div className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 p-3 rounded-xl text-sm text-center font-medium animate-pulse border border-red-100 dark:border-red-900/30">
-                {error}
+              <div className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 p-4 rounded-xl text-sm font-bold text-center animate-shake border border-red-100 dark:border-red-900/30 flex items-center justify-center gap-2">
+                 <span>⚠️</span> {error}
               </div>
             )}
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-4 rounded-xl transition-all shadow-lg shadow-button-red active:scale-[0.98] flex items-center justify-center gap-2 group"
+              className="w-full mt-4 bg-red-600 hover:bg-red-700 text-white font-bold py-4 rounded-xl transition-all shadow-lg shadow-red-600/30 hover:shadow-red-600/50 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] flex items-center justify-center gap-2 group disabled:opacity-70 disabled:cursor-not-allowed"
             >
-              {loading ? <Loader2 className="animate-spin text-white" /> : 'Iniciar Sesión'}
+              {loading ? (
+                <Loader2 className="animate-spin text-white" />
+              ) : (
+                <>
+                  Iniciar Sesión <ArrowRight size={20} className="opacity-70 group-hover:translate-x-1 transition-transform" />
+                </>
+              )}
             </button>
           </form>
 
-          <div className="mt-8 text-center text-xs text-gray-400 dark:text-slate-500">
-             Sistema de Gestión v1.0
+          <div className="mt-8 pt-6 border-t border-gray-100 dark:border-slate-700/50 text-center">
+             <p className="text-[10px] font-bold text-gray-400 dark:text-slate-600 uppercase tracking-widest">
+               Sistema de Gestión v1.0
+             </p>
           </div>
         </div>
       </div>

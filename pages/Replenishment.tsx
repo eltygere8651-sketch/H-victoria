@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Product, User, CartItem, Department, OrderBatch } from '../types';
 // Fix: Changed storageService import to import all exported functions as a namespace, as 'storageService' is not a named export.
 import * as storageService from '../services/storageService';
-import { Search, ShoppingCart, Plus, Minus, Trash2, CheckCircle2, X, ArrowRight, Package, ChevronUp, AlertTriangle, Siren, Loader2, ChevronDown, ListTree } from 'lucide-react';
+import { Search, ShoppingCart, Plus, Minus, Trash2, CheckCircle2, X, ArrowRight, Package, ChevronUp, AlertTriangle, Siren, Loader2, ChevronDown, ListTree, Filter } from 'lucide-react';
 
 interface ReplenishmentProps {
   currentUser: User;
@@ -389,12 +389,13 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCar
                 id="catalog-department-select"
                 value={selectedDepartmentForOrder}
                 onChange={(e) => setSelectedDepartmentForOrder(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-slate-700 focus:ring-2 focus:ring-red-200 dark:focus:ring-red-500/50 focus:border-red-500 outline-none transition-all bg-gray-100 dark:bg-slate-800/60 dark:text-white focus:bg-white dark:focus:bg-slate-900 shadow-sm appearance-none pr-10"
+                className="w-full px-4 py-3.5 pl-11 rounded-xl border-2 border-gray-200 dark:border-slate-700 focus:ring-4 focus:ring-red-100 dark:focus:ring-red-500/30 focus:border-red-500 outline-none transition-all bg-white dark:bg-slate-800/60 dark:text-white shadow-sm appearance-none font-bold text-gray-700"
               >
                 {departments.map((dep) => (
                   <option key={dep.id} value={dep.id}>{dep.name}</option>
                 ))}
               </select>
+              <Filter className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500 pointer-events-none" size={18} />
               <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500 pointer-events-none" size={20} />
             </div>
 
@@ -405,7 +406,7 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCar
                placeholder="Buscar producto..." 
                value={searchTerm}
                onChange={(e) => setSearchTerm(e.target.value)}
-               className="w-full pl-12 pr-4 py-3 rounded-xl border-2 border-gray-200 dark:border-slate-700 text-base focus:bg-white dark:focus:bg-slate-900 focus:border-red-500 focus:ring-2 focus:ring-red-200 dark:focus:ring-red-500/50 outline-none transition-all bg-gray-100 dark:bg-slate-800/60 dark:text-white placeholder-gray-400 dark:placeholder-slate-500 shadow-sm"
+               className="w-full pl-11 pr-4 py-3.5 rounded-xl border-2 border-gray-200 dark:border-slate-700 text-base focus:border-red-500 focus:ring-4 focus:ring-red-100 dark:focus:ring-red-500/30 outline-none transition-all bg-white dark:bg-slate-800/60 dark:text-white placeholder-gray-500 dark:placeholder-slate-400 shadow-sm font-medium text-gray-900"
              />
            </div>
         </div>

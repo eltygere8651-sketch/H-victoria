@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Task, TaskType, TaskStatus, TaskPriority } from '../types';
 import * as storageService from '../services/storageService';
-import { Loader2, Calendar, User, MapPin, Flag, AlertTriangle, CheckCircle2, Megaphone, ClipboardCheck, ArrowLeft, LogIn } from 'lucide-react';
+import { Loader2, Calendar, User, MapPin, Flag, AlertTriangle, CheckCircle2, ClipboardCheck, LogIn } from 'lucide-react';
 import { Logo } from './Logo';
 import { ImageViewer } from './ImageViewer';
 
@@ -22,7 +22,7 @@ export const PublicTaskViewer: React.FC<PublicTaskViewerProps> = ({ taskId }) =>
         if (data) {
           setTask(data);
         } else {
-          setError('La tarea o anuncio no existe o ha sido eliminado.');
+          setError('La tarea no existe o ha sido eliminada.');
         }
       } catch (err) {
         setError('Error al cargar la información.');
@@ -46,7 +46,7 @@ export const PublicTaskViewer: React.FC<PublicTaskViewerProps> = ({ taskId }) =>
       <div className="min-h-screen bg-gray-50 dark:bg-slate-950 flex flex-col items-center justify-center p-4">
         <Logo size="lg" className="animate-pulse mb-6" />
         <Loader2 size={32} className="animate-spin text-red-600" />
-        <p className="mt-4 text-gray-500 font-medium">Cargando contenido compartido...</p>
+        <p className="mt-4 text-gray-500 font-medium">Cargando tarea compartida...</p>
       </div>
     );
   }
@@ -65,8 +65,6 @@ export const PublicTaskViewer: React.FC<PublicTaskViewerProps> = ({ taskId }) =>
       </div>
     );
   }
-
-  const isAnnouncement = task.type === TaskType.ANNOUNCEMENT;
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-950 font-sans transition-colors duration-300">
@@ -91,26 +89,22 @@ export const PublicTaskViewer: React.FC<PublicTaskViewerProps> = ({ taskId }) =>
         <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-card-soft dark:shadow-card-dark border border-gray-100 dark:border-slate-800 overflow-hidden animate-slide-up">
           
           {/* Banner / Type Indicator */}
-          <div className={`p-6 border-b border-gray-100 dark:border-slate-800 ${isAnnouncement ? 'bg-blue-50/50 dark:bg-blue-900/10' : 'bg-gray-50/50 dark:bg-slate-800/50'}`}>
+          <div className="p-6 border-b border-gray-100 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-800/50">
             <div className="flex justify-between items-start">
-              <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-black uppercase tracking-wider ${
-                isAnnouncement ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' : 'bg-gray-200 text-gray-700 dark:bg-slate-700 dark:text-slate-300'
-              }`}>
-                {isAnnouncement ? <Megaphone size={16} /> : <ClipboardCheck size={16} />}
-                {isAnnouncement ? 'Anuncio Público' : 'Tarea Compartida'}
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-black uppercase tracking-wider bg-gray-200 text-gray-700 dark:bg-slate-700 dark:text-slate-300">
+                <ClipboardCheck size={16} />
+                Tarea Compartida
               </div>
               
-              {!isAnnouncement && (
-                 <div className={`px-3 py-1.5 rounded-lg text-sm font-bold flex items-center gap-1.5 ${
-                    task.status === TaskStatus.COMPLETED ? 'bg-green-100 text-green-700' : 
-                    task.status === TaskStatus.IN_PROGRESS ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'
-                 }`}>
-                   {task.status === TaskStatus.COMPLETED && <CheckCircle2 size={16}/>}
-                   {task.status === TaskStatus.PENDING && 'Pendiente'}
-                   {task.status === TaskStatus.IN_PROGRESS && 'En Progreso'}
-                   {task.status === TaskStatus.COMPLETED && 'Completada'}
-                 </div>
-              )}
+              <div className={`px-3 py-1.5 rounded-lg text-sm font-bold flex items-center gap-1.5 ${
+                task.status === TaskStatus.COMPLETED ? 'bg-green-100 text-green-700' : 
+                task.status === TaskStatus.IN_PROGRESS ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'
+              }`}>
+                {task.status === TaskStatus.COMPLETED && <CheckCircle2 size={16}/>}
+                {task.status === TaskStatus.PENDING && 'Pendiente'}
+                {task.status === TaskStatus.IN_PROGRESS && 'En Progreso'}
+                {task.status === TaskStatus.COMPLETED && 'Completada'}
+              </div>
             </div>
             
             <h1 className="text-2xl md:text-3xl font-black text-gray-900 dark:text-white mt-4 leading-tight">
@@ -149,20 +143,18 @@ export const PublicTaskViewer: React.FC<PublicTaskViewerProps> = ({ taskId }) =>
                    <p className="font-semibold text-gray-900 dark:text-white">{new Date(task.createdAt).toLocaleDateString()} <span className="text-sm font-normal text-gray-500">{new Date(task.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span></p>
                  </div>
                </div>
-               {!isAnnouncement && (
-                 <div className="flex items-center gap-3">
-                   <div className="w-10 h-10 rounded-full bg-white dark:bg-slate-700 flex items-center justify-center text-gray-400 shadow-sm"><Flag size={20} /></div>
-                   <div>
-                     <p className="text-xs font-bold text-gray-400 uppercase">Prioridad</p>
-                     <p className={`font-semibold ${
-                        task.priority === TaskPriority.HIGH ? 'text-red-600' : 
-                        task.priority === TaskPriority.MEDIUM ? 'text-amber-600' : 'text-blue-600'
-                     }`}>
-                       {task.priority === TaskPriority.HIGH ? 'Alta' : task.priority === TaskPriority.MEDIUM ? 'Media' : 'Baja'}
-                     </p>
-                   </div>
+               <div className="flex items-center gap-3">
+                 <div className="w-10 h-10 rounded-full bg-white dark:bg-slate-700 flex items-center justify-center text-gray-400 shadow-sm"><Flag size={20} /></div>
+                 <div>
+                   <p className="text-xs font-bold text-gray-400 uppercase">Prioridad</p>
+                   <p className={`font-semibold ${
+                      task.priority === TaskPriority.HIGH ? 'text-red-600' : 
+                      task.priority === TaskPriority.MEDIUM ? 'text-amber-600' : 'text-blue-600'
+                   }`}>
+                     {task.priority === TaskPriority.HIGH ? 'Alta' : task.priority === TaskPriority.MEDIUM ? 'Media' : 'Baja'}
+                   </p>
                  </div>
-               )}
+               </div>
             </div>
 
             {/* Images */}
