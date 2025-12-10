@@ -106,13 +106,17 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({ images, startIndex, on
 
   return (
     <div className="fixed inset-0 bg-black z-[99999] flex flex-col animate-fade-in">
-        {/* Header: Contador y Cerrar */}
-        <div className="absolute top-0 left-0 right-0 z-50 flex justify-between items-center p-4 pt-safe pointer-events-none">
-            <div className="bg-black/40 backdrop-blur-md px-3 py-1 rounded-full text-white text-sm font-medium border border-white/10 shadow-lg animate-slide-up">
+        {/* Header: Contador y Cerrar - Optimizado para iOS Notch/Safe Areas */}
+        <div className="absolute top-0 left-0 right-0 z-50 flex justify-between items-start px-6 pt-[max(env(safe-area-inset-top),32px)] pb-24 bg-gradient-to-b from-black/70 to-transparent pointer-events-none">
+            <div className="bg-black/40 backdrop-blur-xl px-4 py-1.5 rounded-full text-white text-sm font-bold border border-white/10 shadow-lg animate-slide-up">
                 {currentIndex + 1} / {images.length}
             </div>
-            <button onClick={onClose} className="bg-black/40 backdrop-blur-md p-2 rounded-full text-white hover:bg-white/20 pointer-events-auto border border-white/10 transition-colors animate-slide-up">
-                <X size={24} />
+            <button 
+                onClick={onClose} 
+                className="bg-black/40 backdrop-blur-xl p-3 rounded-full text-white hover:bg-white/20 pointer-events-auto border border-white/10 transition-all active:scale-95 animate-slide-up shadow-lg"
+                aria-label="Cerrar"
+            >
+                <X size={28} />
             </button>
         </div>
 
