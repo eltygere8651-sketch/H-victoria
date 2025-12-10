@@ -255,94 +255,98 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
 
   return (
     <div className="font-sans h-full flex flex-col relative">
-      <div className="sticky top-0 z-10 bg-white/80 dark:bg-slate-950/80 backdrop-blur-lg pt-6 pb-4 px-4 md:px-6 border-b border-gray-100 dark:border-slate-800">
-        <div className="flex justify-between items-center mb-5">
-          <h2 className="text-4xl font-extrabold text-gray-900 dark:text-white tracking-tighter">Tareas</h2>
-          <button 
-            onClick={handleNewTask}
-            className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 w-12 h-12 rounded-full flex items-center justify-center shadow-lg hover:bg-red-600 dark:hover:bg-slate-200 transition-all active:scale-95"
-          >
-            <Plus size={24} />
-          </button>
-        </div>
-        
-        <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
-           {(['ALL', TaskStatus.PENDING, TaskStatus.IN_PROGRESS, TaskStatus.COMPLETED] as const).map(status => (
-             <button
-               key={status}
-               onClick={() => setStatusFilter(status)}
-               className={`px-4 py-2 rounded-xl text-sm font-bold whitespace-nowrap transition-all ${
-                 statusFilter === status 
-                   ? 'bg-red-600 text-white shadow-md' 
-                   : 'bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-slate-400 hover:bg-gray-200 dark:hover:bg-slate-700'
-               }`}
-             >
-               {status === 'ALL' ? 'Todas' : 
-                status === TaskStatus.PENDING ? 'Pendientes' : 
-                status === TaskStatus.IN_PROGRESS ? 'En Curso' : 'Completadas'}
-             </button>
-           ))}
+      <div className="sticky top-0 z-10 bg-white/80 dark:bg-slate-950/80 backdrop-blur-lg pt-4 pb-2 px-4 border-b border-gray-100 dark:border-slate-800">
+        <div className="max-w-3xl mx-auto w-full">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-4xl font-extrabold text-gray-900 dark:text-white tracking-tighter">Tareas</h2>
+              <button 
+                onClick={handleNewTask}
+                className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 w-12 h-12 rounded-full flex items-center justify-center shadow-lg hover:bg-red-600 dark:hover:bg-slate-200 transition-all active:scale-95"
+              >
+                <Plus size={24} />
+              </button>
+            </div>
+            
+            <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2 -mx-4 px-4 md:mx-0 md:px-0">
+               {(['ALL', TaskStatus.PENDING, TaskStatus.IN_PROGRESS, TaskStatus.COMPLETED] as const).map(status => (
+                 <button
+                   key={status}
+                   onClick={() => setStatusFilter(status)}
+                   className={`px-4 py-2 rounded-xl text-sm font-bold whitespace-nowrap transition-all flex-shrink-0 ${
+                     statusFilter === status 
+                       ? 'bg-red-600 text-white shadow-md' 
+                       : 'bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-slate-400 hover:bg-gray-200 dark:hover:bg-slate-700'
+                   }`}
+                 >
+                   {status === 'ALL' ? 'Todas' : 
+                    status === TaskStatus.PENDING ? 'Pendientes' : 
+                    status === TaskStatus.IN_PROGRESS ? 'En Curso' : 'Completadas'}
+                 </button>
+               ))}
+            </div>
         </div>
       </div>
 
-      <div className="flex-1 p-4 md:p-6 space-y-4 overflow-y-auto">
-        {filteredTasks.length === 0 ? (
-          <div className="py-20 text-center text-gray-400 dark:text-slate-600">
-            <ClipboardCheck size={40} className="mx-auto mb-2 opacity-50" />
-            <p>No hay tareas en esta vista.</p>
-          </div>
-        ) : (
-          filteredTasks.map(task => (
-            <div 
-              key={task.id} 
-              onClick={() => handleTaskClick(task)}
-              className={`bg-white dark:bg-slate-900 rounded-2xl p-4 shadow-card-soft dark:shadow-card-dark border border-gray-100 dark:border-slate-800 hover:shadow-lg dark:hover:border-slate-700 transition-all cursor-pointer group relative overflow-hidden ${task.priority === TaskPriority.HIGH && task.status !== TaskStatus.COMPLETED ? 'border-l-4 border-l-red-500' : ''}`}
-            >
-              <div className="flex justify-between items-start mb-2">
-                <div className="flex flex-col gap-1">
-                   <div className="flex items-center gap-2">
-                     <span className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider">{task.departmentName}</span>
-                     {!task.seenBy?.includes(currentUser.id) && (
-                       <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" title="Nueva actualización"></span>
-                     )}
-                   </div>
-                   <h3 className={`font-bold text-lg text-gray-900 dark:text-white leading-tight ${task.status === TaskStatus.COMPLETED ? 'line-through text-gray-400 dark:text-slate-600' : ''}`}>{task.title}</h3>
-                </div>
-                 {/* BOTÓN COMPARTIR ROJO PARPADEANTE */}
-                 <button onClick={(e) => handleShareTask(task, e)} className="text-red-600 dark:text-red-400 p-2 -mr-2 rounded-full hover:bg-red-50 dark:hover:bg-red-900/20 transition-all animate-pulse" title="Compartir">
-                    <Share2 size={20} />
-                 </button>
+      <div className="flex-1 p-4 md:p-6 overflow-y-auto">
+        <div className="max-w-3xl mx-auto w-full space-y-4">
+            {filteredTasks.length === 0 ? (
+              <div className="py-20 text-center text-gray-400 dark:text-slate-600">
+                <ClipboardCheck size={40} className="mx-auto mb-2 opacity-50" />
+                <p>No hay tareas en esta vista.</p>
               </div>
+            ) : (
+              filteredTasks.map(task => (
+                <div 
+                  key={task.id} 
+                  onClick={() => handleTaskClick(task)}
+                  className={`bg-white dark:bg-slate-900 rounded-2xl p-4 shadow-card-soft dark:shadow-card-dark border border-gray-100 dark:border-slate-800 hover:shadow-lg dark:hover:border-slate-700 transition-all cursor-pointer group relative overflow-hidden ${task.priority === TaskPriority.HIGH && task.status !== TaskStatus.COMPLETED ? 'border-l-4 border-l-red-500' : ''}`}
+                >
+                  <div className="flex justify-between items-start mb-2">
+                    <div className="flex flex-col gap-1 pr-2">
+                       <div className="flex items-center gap-2">
+                         <span className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider">{task.departmentName}</span>
+                         {!task.seenBy?.includes(currentUser.id) && (
+                           <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" title="Nueva actualización"></span>
+                         )}
+                       </div>
+                       <h3 className={`font-bold text-lg text-gray-900 dark:text-white leading-tight break-words ${task.status === TaskStatus.COMPLETED ? 'line-through decoration-gray-400 text-gray-500' : ''}`}>{task.title}</h3>
+                    </div>
+                     {/* BOTÓN COMPARTIR ROJO PARPADEANTE */}
+                     <button onClick={(e) => handleShareTask(task, e)} className="text-red-600 dark:text-red-400 p-2 -mr-2 rounded-full hover:bg-red-50 dark:hover:bg-red-900/20 transition-all animate-pulse flex-shrink-0" title="Compartir">
+                        <Share2 size={20} />
+                     </button>
+                  </div>
 
-              <div className="flex items-center justify-between mt-4">
-                <div className="flex items-center gap-2">
-                  <PriorityBadge priority={task.priority} />
-                  {task.imageUrls && task.imageUrls.length > 0 && (
-                    <span className="text-xs font-bold text-gray-500 bg-gray-100 dark:bg-slate-800 px-2 py-1 rounded-md flex items-center gap-1">
-                       <ImageIcon size={12}/> {task.imageUrls.length}
-                    </span>
-                  )}
-                  {task.comments && task.comments.length > 0 && (
-                     <span className="text-xs font-bold text-gray-500 bg-gray-100 dark:bg-slate-800 px-2 py-1 rounded-md flex items-center gap-1">
-                       <MessagesSquare size={12}/> {task.comments.length}
-                     </span>
-                  )}
-                </div>
-                
-                <div className="text-xs text-gray-400 dark:text-slate-500 flex items-center gap-1">
-                   <UserIcon size={12} /> {task.createdBy.split(' ')[0]}
-                </div>
-              </div>
+                  <div className="flex items-center justify-between mt-4">
+                    <div className="flex items-center gap-2">
+                      <PriorityBadge priority={task.priority} />
+                      {task.imageUrls && task.imageUrls.length > 0 && (
+                        <span className="text-xs font-bold text-gray-500 bg-gray-100 dark:bg-slate-800 px-2 py-1 rounded-md flex items-center gap-1">
+                           <ImageIcon size={12}/> {task.imageUrls.length}
+                        </span>
+                      )}
+                      {task.comments && task.comments.length > 0 && (
+                         <span className="text-xs font-bold text-gray-500 bg-gray-100 dark:bg-slate-800 px-2 py-1 rounded-md flex items-center gap-1">
+                           <MessagesSquare size={12}/> {task.comments.length}
+                         </span>
+                      )}
+                    </div>
+                    
+                    <div className="text-xs text-gray-400 dark:text-slate-500 flex items-center gap-1">
+                       <UserIcon size={12} /> {task.createdBy.split(' ')[0]}
+                    </div>
+                  </div>
 
-              {task.status === TaskStatus.COMPLETED && task.completedAt && (
-                <div className="mt-3 pt-3 border-t border-gray-100 dark:border-slate-800 flex justify-between items-center">
-                    <span className="text-xs text-green-600 dark:text-green-400 font-bold flex items-center gap-1"><Check size={12}/> Completada por {task.completedBy}</span>
-                    <DeletionTimer completedAt={task.completedAt} />
+                  {task.status === TaskStatus.COMPLETED && task.completedAt && (
+                    <div className="mt-3 pt-3 border-t border-gray-100 dark:border-slate-800 flex justify-between items-center">
+                        <span className="text-xs text-green-600 dark:text-green-400 font-bold flex items-center gap-1"><Check size={12}/> Completada por {task.completedBy}</span>
+                        <DeletionTimer completedAt={task.completedAt} />
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          ))
-        )}
+              ))
+            )}
+        </div>
       </div>
 
       {/* Task Details Modal */}
