@@ -5,6 +5,7 @@ import Replenishment from './pages/Replenishment';
 import Admin from './pages/Admin';
 import Tasks from './pages/Tasks';
 import Announcements from './pages/Announcements';
+import { PublicTaskViewer } from './components/PublicTaskViewer';
 import * as storageService from './services/storageService';
 import { Logo } from './components/Logo';
 import { LayoutGrid, ClipboardList, ShieldCheck, LogOut, Moon, Sun, Download, Share, PlusSquare, ShoppingCart, ClipboardCheck, Megaphone } from 'lucide-react';
@@ -15,6 +16,7 @@ import { initializePushNotifications } from './services/pushNotificationService'
 const App: React.FC = () => {
   const [isInitializing, setIsInitializing] = useState(true);
   const [user, setUser] = useState<User | null>(storageService.getSession());
+  const [sharedTaskId, setSharedTaskId] = useState<string | null>(null);
 
   const [view, setView] = useState<'inventory' | 'replenish' | 'admin' | 'tasks' | 'announcements'>(() => {
     const lastView = storageService.getLastView();
@@ -61,6 +63,14 @@ const App: React.FC = () => {
   // Inicialización de la app
   useEffect(() => {
     const initializeApp = async () => {
+      // Check for shared task in URL
+      const searchParams = new URLSearchParams(window.location.search);
+      const shareId = searchParams.get('shareId');
+      
+      if (shareId) {
+        setSharedTaskId(shareId);
+      }
+
       await storageService.ensureAnonymousAuth();
       setIsInitializing(false);
     };
@@ -326,6 +336,11 @@ const App: React.FC = () => {
         <Logo size="lg" className="animate-pulse" />
       </div>
     );
+  }
+
+  // --- PUBLIC SHARE VIEW ---
+  if (sharedTaskId) {
+    return <PublicTaskViewer taskId={sharedTaskId} />;
   }
 
   if (!user) {

@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Task, User, Department, TaskStatus, TaskPriority, UserRole, TaskType, TaskComment } from '../types';
 import * as storageService from '../services/storageService';
-import { ClipboardCheck, Plus, X, Save, Loader2, Edit2, Trash2, ChevronDown, Flag, MapPin, MessagesSquare, Clock, Check, Image as ImageIcon, Camera, ArrowLeft, MoreVertical, User as UserIcon, Megaphone, Send, AlertTriangle } from 'lucide-react';
+import { ClipboardCheck, Plus, X, Save, Loader2, Edit2, Trash2, ChevronDown, Flag, MapPin, MessagesSquare, Clock, Check, Image as ImageIcon, Camera, ArrowLeft, MoreVertical, User as UserIcon, Megaphone, Send, AlertTriangle, Share2 } from 'lucide-react';
 import { compressImage } from '../utils/imageCompressor';
 import { ImageViewer } from '../components/ImageViewer';
 import { DeletionTimer } from '../components/DeletionTimer';
@@ -83,6 +83,38 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
       storageService.markTaskAsSeen(task.id, currentUser.id);
     }
     setSelectedTaskForDetails(task);
+  };
+
+  const handleShareTask = (task: Task, e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    // Use URL API for robust URL construction
+    try {
+      const url = new URL(window.location.href);
+      url.search = ''; // Clear existing query params
+      url.hash = '';   // Clear existing hash
+      url.searchParams.set('shareId', task.id);
+      
+      const shareUrl = url.toString();
+      
+      if (navigator.share) {
+        navigator.share({
+          title: task.title,
+          text: `Consulta esta tarea en Hub: ${task.title}`,
+          url: shareUrl,
+        }).catch((error) => {
+          // Ignore user cancellation errors
+          if (error.name !== 'AbortError') {
+            console.error("Error al compartir:", error);
+          }
+        });
+      } else {
+        navigator.clipboard.writeText(shareUrl);
+        alert('Enlace copiado al portapapeles');
+      }
+    } catch (error) {
+      console.error("Failed to construct share URL", error);
+    }
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -263,7 +295,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
     return (
       <div 
         onClick={() => handleViewDetails(task)}
-        className={`bg-white dark:bg-slate-900 rounded-2xl p-5 shadow-card-soft dark:shadow-card-dark border dark:border-slate-800 transition-all group cursor-pointer active:scale-[0.98] ${isUnread ? 'border-red-500/50 dark:border-red-500/50 shadow-red-100/50 dark:shadow-red-900/20' : 'border-gray-100 hover:border-red-200 dark:hover:border-red-900/50'}`}
+        className={`bg-white dark:bg-slate-900 rounded-2xl p-5 shadow-card-soft dark:shadow-card-dark border dark:border-slate-800 transition-all group cursor-pointer active:scale-[0.98] relative ${isUnread ? 'border-red-500/50 dark:border-red-500/50 shadow-red-100/50 dark:shadow-red-900/20' : 'border-gray-100 hover:border-red-200 dark:hover:border-red-900/50'}`}
       >
         <div className="flex justify-between items-start gap-4">
           <div className="flex-1">
@@ -274,7 +306,10 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
             <h3 className="font-extrabold text-lg text-gray-900 dark:text-white line-clamp-2 leading-tight">{task.title}</h3>
             <p className="text-xs font-medium text-gray-400 dark:text-slate-500 uppercase tracking-wider mt-1">{task.departmentName}</p>
           </div>
-          {isUnread && <span className="w-3 h-3 bg-red-500 rounded-full shrink-0 animate-pulse mt-1" title="No leído"></span>}
+          <div className="flex flex-col items-end gap-2">
+             {isUnread && <span className="w-3 h-3 bg-red-500 rounded-full shrink-0 animate-pulse" title="No leído"></span>}
+             <button onClick={(e) => handleShareTask(task, e)} className="text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 p-1.5 -mr-1.5 rounded-full hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors"><Share2 size={18} /></button>
+          </div>
         </div>
         
         {/* NEW: Image Preview Strip in List View */}
@@ -317,11 +352,14 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
           <div className="flex-1 truncate">
              <h2 className="font-extrabold text-lg text-gray-900 dark:text-white truncate">{task.title}</h2>
           </div>
-          <div className="relative group">
-            <button className="p-2 text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-full"><MoreVertical size={24} /></button>
-            <div className="absolute top-full right-0 mt-2 w-48 bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-gray-100 dark:border-slate-700/50 p-2 hidden group-hover:block z-10 animate-fade-in">
-              <button onClick={() => openEditTask(task)} className="w-full text-left flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700/50 font-semibold dark:text-white"><Edit2 size={16}/> Editar</button>
-              <button onClick={() => setTaskToDelete(task)} className="w-full text-left flex items-center gap-3 px-4 py-2 rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 font-semibold"><Trash2 size={16} /> Eliminar</button>
+          <div className="flex gap-2">
+            <button onClick={(e) => handleShareTask(task, e)} className="p-2 text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-full"><Share2 size={24} /></button>
+            <div className="relative group">
+              <button className="p-2 text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-full"><MoreVertical size={24} /></button>
+              <div className="absolute top-full right-0 mt-2 w-48 bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-gray-100 dark:border-slate-700/50 p-2 hidden group-hover:block z-10 animate-fade-in">
+                <button onClick={() => openEditTask(task)} className="w-full text-left flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700/50 font-semibold dark:text-white"><Edit2 size={16}/> Editar</button>
+                <button onClick={() => setTaskToDelete(task)} className="w-full text-left flex items-center gap-3 px-4 py-2 rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 font-semibold"><Trash2 size={16} /> Eliminar</button>
+              </div>
             </div>
           </div>
         </header>

@@ -1,38 +1,11 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { X, ArrowLeft, ArrowRight, Download, RefreshCw, Share, Image as ImageIcon } from 'lucide-react';
+import { X, ArrowLeft, ArrowRight, Download, RefreshCw } from 'lucide-react';
 
 interface ImageViewerProps {
   images: string[];
   startIndex: number;
   onClose: () => void;
 }
-
-// Helper para convertir Base64 o Blob a File object
-const urlToFile = async (url: string, filename: string): Promise<File | null> => {
-  try {
-    if (url.startsWith('data:')) {
-      const arr = url.split(',');
-      const match = arr[0].match(/:(.*?);/);
-      if (!match) return null;
-      const mime = match[1];
-      const bstr = atob(arr[1]);
-      let n = bstr.length;
-      const u8arr = new Uint8Array(n);
-      while (n--) {
-        u8arr[n] = bstr.charCodeAt(n);
-      }
-      return new File([u8arr], filename, { type: mime });
-    } else {
-      // Para URLs remotas (Firebase Storage), las descargamos como Blob primero
-      const response = await fetch(url);
-      const blob = await response.blob();
-      return new File([blob], filename, { type: blob.type || 'image/jpeg' });
-    }
-  } catch (e) {
-    console.error("Error converting URL to file", e);
-    return null;
-  }
-};
 
 export const ImageViewer: React.FC<ImageViewerProps> = ({ images, startIndex, onClose }) => {
   const [currentIndex, setCurrentIndex] = useState(startIndex);
@@ -41,7 +14,7 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({ images, startIndex, on
   const isPanning = useRef(false);
   const startPos = useRef({ x: 0, y: 0 });
   const lastTouchDistance = useRef(0);
-  const [isSharing, setIsSharing] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   const resetTransform = useCallback(() => {
     setTransform({ scale: 1, posX: 0, posY: 0 });
@@ -136,51 +109,48 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({ images, startIndex, on
     if (e.touches.length < 1) handlePointerUp(e as any);
   };
 
-  const handleSmartDownload = async () => {
-    if (isSharing) return;
-    setIsSharing(true);
+  const handleDownload = async () => {
+    if (isDownloading) return;
+    setIsDownloading(true);
 
     const imageUrl = images[currentIndex];
     const fileName = `hub-imagen-${Date.now()}.jpg`;
 
     try {
-      // Obtener el archivo real (sea Base64 o URL remota)
-      const file = await urlToFile(imageUrl, fileName);
+      // 1. Fetch the image content as a blob. This bypasses CORS issues regarding canvas tainting
+      // and works consistently for both Base64 and Remote URLs.
+      const response = await fetch(imageUrl);
+      const blob = await response.blob();
       
-      // 1. Intentar usar la API de compartir nativa (iOS/Android)
-      if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({
-          files: [file],
-          title: 'Imagen de Hub',
-          text: 'Adjunto compartido desde Hub'
-        });
-        setIsSharing(false);
-        return;
-      }
-    } catch (error) {
-      console.log('Native share not supported or cancelled, falling back to download.', error);
-    }
+      // 2. Create an Object URL for the blob
+      const blobUrl = window.URL.createObjectURL(blob);
 
-    // 2. Fallback: Descarga directa (Desktop / Navegadores sin soporte de share)
-    try {
+      // 3. Create a temporary link and trigger click
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      
+      // 4. Cleanup
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
+
+    } catch (e) {
+      console.error("Download failed", e);
+      // Fallback simple
       const link = document.createElement('a');
       link.href = imageUrl;
       link.download = fileName;
-      // Para URLs remotas (CORS), esto podría abrir en nueva pestaña, pero para Base64 descarga directo
+      link.target = "_blank";
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-    } catch (e) {
-      console.error("Download fallback failed", e);
-      alert("No se pudo descargar la imagen.");
     } finally {
-      setIsSharing(false);
+      setIsDownloading(false);
     }
   };
 
-  // Determinar si el dispositivo soporta compartir archivos nativamente
-  const supportsNativeShare = typeof navigator !== 'undefined' && !!navigator.share && !!navigator.canShare;
-  
   return (
     <div 
       className="fixed inset-0 bg-black/95 z-[99999] flex flex-col items-center justify-center p-0 animate-fade-in touch-none" 
@@ -252,12 +222,12 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({ images, startIndex, on
           </button>
 
           <button 
-            onClick={(e) => { e.stopPropagation(); handleSmartDownload(); }} 
-            disabled={isSharing}
+            onClick={(e) => { e.stopPropagation(); handleDownload(); }} 
+            disabled={isDownloading}
             className="flex items-center gap-2 bg-red-600 text-white px-6 py-3 rounded-full font-bold shadow-lg shadow-red-900/50 hover:bg-red-500 active:scale-95 transition-all border border-red-400/30"
           >
-            {isSharing ? <RefreshCw size={20} className="animate-spin"/> : supportsNativeShare ? <Share size={20}/> : <Download size={20} />}
-            <span>{supportsNativeShare ? 'Guardar / Compartir' : 'Descargar'}</span>
+            {isDownloading ? <RefreshCw size={20} className="animate-spin"/> : <Download size={20} />}
+            <span>{isDownloading ? 'Descargando...' : 'Descargar Imagen'}</span>
           </button>
         </div>
 

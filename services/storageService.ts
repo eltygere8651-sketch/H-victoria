@@ -299,7 +299,10 @@ export const uploadImage = async (file: File, path: string): Promise<string> => 
   await fileRef.put(file, {
     contentType: file.type || 'application/octet-stream',
   });
-  const url = await fileRef.getDownloadURL();
+  const snapshot = await fileRef.put(file, {
+      contentType: file.type || 'application/octet-stream',
+  });
+  const url = await snapshot.ref.getDownloadURL();
   return url;
 };
 
@@ -313,6 +316,20 @@ export const subscribeToTasks = (callback: (data: Task[]) => void) => {
     });
 };
 
+// New: Fetch a single task by ID (for public sharing)
+export const getTaskById = async (taskId: string): Promise<Task | null> => {
+  try {
+    const doc = await db.collection('tasks').doc(taskId).get();
+    if (doc.exists) {
+      return { ...doc.data(), id: doc.id } as Task;
+    }
+    return null;
+  } catch (error) {
+    console.error("Error fetching task by ID:", error);
+    return null;
+  }
+};
+
 export const saveTask = async (task: Partial<Task>, newFiles: File[] = []) => {
   const isNew = !task.id;
   const docRef = isNew ? db.collection('tasks').doc() : db.collection('tasks').doc(task.id!);
@@ -320,7 +337,11 @@ export const saveTask = async (task: Partial<Task>, newFiles: File[] = []) => {
   let newImageUrls: string[] = [];
   if (newFiles.length > 0) {
       // FIX: Use Base64 storage instead of Firebase Storage to avoid retry-limit-exceeded / CORS issues
-      const base64Promises = newFiles.map(file => fileToBase64(file));
+      const base64Promises = newFiles.map(file => {
+          // Sanitizar el nombre del archivo para evitar errores en otros procesos
+          const sanitizedFile = new File([file], file.name.replace(/[^a-zA-Z0-9.]/g, '_'), { type: file.type });
+          return fileToBase64(sanitizedFile);
+      });
       newImageUrls = await Promise.all(base64Promises);
   }
 
@@ -414,14 +435,15 @@ export const deleteAllNotifications = async () => {
 
 // New: Uploads any file to the 'documents' folder in storage
 export const uploadDocumentFile = async (file: File): Promise<string> => {
-  const path = `documents/${Date.now()}-${file.name}`;
+  const sanitizedName = file.name.replace(/[^a-zA-Z0-9.]/g, '_');
+  const path = `documents/${Date.now()}-${sanitizedName}`;
   const storageRef = storage.ref();
   const fileRef = storageRef.child(path);
   // CRITICAL FIX: Add metadata here too.
-  await fileRef.put(file, {
+  const snapshot = await fileRef.put(file, {
     contentType: file.type || 'application/octet-stream',
   });
-  return await fileRef.getDownloadURL();
+  return await snapshot.ref.getDownloadURL();
 };
 
 // New: Subscribes to the documents collection
