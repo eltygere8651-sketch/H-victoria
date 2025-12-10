@@ -85,22 +85,40 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
     setSelectedTaskForDetails(task);
   };
 
+  // FIX: Rewrote file handling to use Promise.allSettled for robust processing.
+  // This prevents the entire batch from failing if one image is invalid and
+  // resolves the underlying cause of the "unknown is not a File" type error.
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
+    // FIX: Explicitly handle FileList and convert to a typed File[] array to prevent type inference issues.
+    const selectedFiles = e.target.files;
+    if (!selectedFiles) return;
+    const files: File[] = Array.from(selectedFiles);
     if (files.length === 0) return;
 
     setIsCompressing(true);
     try {
-      const compressedFiles = await Promise.all(files.map(file => compressImage(file)));
-      setFilesToUpload(prev => [...prev, ...compressedFiles]);
-    // FIX: Simplified the catch block to handle robustly typed errors from `compressImage`.
-    } catch (error) {
-      console.error("Image processing failed:", error);
-      let message = "Hubo un error al procesar las imágenes.";
-      if (error instanceof Error) {
-        message = `Error al procesar la imagen: ${error.message}`;
+      // Use Promise.allSettled to handle multiple files where some might fail to compress
+      const results = await Promise.allSettled(
+        files.map(file => compressImage(file))
+      );
+      
+      const successfulFiles = results
+        .filter((res): res is PromiseFulfilledResult<File> => res.status === 'fulfilled')
+        .map(res => res.value);
+      
+      if (successfulFiles.length > 0) {
+        setFilesToUpload(prev => [...prev, ...successfulFiles]);
       }
-      alert(message);
+
+      const failedCount = files.length - successfulFiles.length;
+      if (failedCount > 0) {
+        console.error(`${failedCount} images failed to compress.`, results.filter(r => r.status === 'rejected'));
+        alert(`No se pudieron procesar ${failedCount} imágen(es). Por favor, asegúrese de que son formatos válidos.`);
+      }
+    } catch (error) {
+      // This outer catch is for unexpected errors in the logic itself
+      console.error("An unexpected error occurred during file processing:", error);
+      alert("Ocurrió un error inesperado al procesar los archivos.");
     } finally {
       setIsCompressing(false);
       if (e.target) e.target.value = "";
@@ -290,15 +308,14 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
           <div className="flex-1 truncate">
              <h2 className="font-extrabold text-lg text-gray-900 dark:text-white truncate">{task.title}</h2>
           </div>
-          {canManageTasks && (
-            <div className="relative group">
-              <button className="p-2 text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-full"><MoreVertical size={24} /></button>
-              <div className="absolute top-full right-0 mt-2 w-48 bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-gray-100 dark:border-slate-700/50 p-2 hidden group-hover:block z-10 animate-fade-in">
-                <button onClick={() => openEditTask(task)} className="w-full text-left flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700/50 font-semibold"><Edit2 size={16}/> Editar</button>
-                <button onClick={() => setTaskToDelete(task)} className="w-full text-left flex items-center gap-3 px-4 py-2 rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 font-semibold"><Trash2 size={16} /> Eliminar</button>
-              </div>
+          {/* Enabled options for ALL users */}
+          <div className="relative group">
+            <button className="p-2 text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-full"><MoreVertical size={24} /></button>
+            <div className="absolute top-full right-0 mt-2 w-48 bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-gray-100 dark:border-slate-700/50 p-2 hidden group-hover:block z-10 animate-fade-in">
+              <button onClick={() => openEditTask(task)} className="w-full text-left flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700/50 font-semibold"><Edit2 size={16}/> Editar</button>
+              <button onClick={() => setTaskToDelete(task)} className="w-full text-left flex items-center gap-3 px-4 py-2 rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 font-semibold"><Trash2 size={16} /> Eliminar</button>
             </div>
-          )}
+          </div>
         </header>
 
         <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
@@ -388,6 +405,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
       <div className="sticky top-0 z-10 bg-white/80 dark:bg-slate-950/80 backdrop-blur-lg pt-6 pb-4 px-4 md:px-6 border-b border-gray-100 dark:border-slate-800">
         <div className="flex justify-between items-center mb-5">
           <h2 className="text-4xl font-extrabold text-gray-900 dark:text-white tracking-tighter">Tareas</h2>
+          {/* Enabled Create buttons for everyone if they have permission, but edit/delete is now global in detail view */}
           {canManageTasks && (
             <div className="flex gap-3">
                <button onClick={() => openNewTask(TaskType.ANNOUNCEMENT)} className="bg-blue-600 text-white w-12 h-12 rounded-full flex items-center justify-center shadow-lg shadow-button-blue hover:bg-blue-700 transition-all active:scale-95" title="Crear Anuncio"><Megaphone size={22} /></button>

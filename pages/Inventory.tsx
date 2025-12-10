@@ -21,6 +21,9 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser }) => {
   const [showManageDepartmentsModal, setShowManageDepartmentsModal] = useState(false);
   const [editingDepartment, setEditingDepartment] = useState<Department | null>(null);
   const [newDepartmentName, setNewDepartmentName] = useState('');
+  
+  // Track deleting state specifically to give UI feedback if delete takes time
+  const [isDeletingDept, setIsDeletingDept] = useState<string | null>(null);
 
   useEffect(() => {
     const unsubscribeProducts = storageService.subscribeToProducts((data) => {
@@ -92,9 +95,38 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser }) => {
     setNewDepartmentName('');
   };
 
-  const handleDeleteDepartment = async (departmentId: string) => {
-    if (window.confirm('¿Eliminar este departamento? Los productos asociados quedarán sin departamento.')) {
-      await storageService.deleteDepartment(departmentId);
+  const handleDeleteDepartment = async (departmentId: string, e: React.MouseEvent) => {
+    e.stopPropagation(); 
+    e.preventDefault();
+
+    if (!departmentId) {
+        console.error("Attempted to delete department with undefined ID");
+        return;
+    }
+
+    // Check for associated products
+    const productsInDept = products.filter(p => p.departmentId === departmentId);
+    let confirmMessage = '¿Eliminar este departamento permanentemente?';
+    
+    if (productsInDept.length > 0) {
+      confirmMessage = `ATENCIÓN: Hay ${productsInDept.length} productos asignados a este departamento. ¿Estás seguro de que quieres eliminarlo? Los productos quedarán huérfanos.`;
+    }
+
+    if (window.confirm(confirmMessage)) {
+      setIsDeletingDept(departmentId);
+      try {
+        await storageService.deleteDepartment(departmentId);
+        // Clear editing state if we deleted the item being edited
+        if (editingDepartment?.id === departmentId) {
+          setEditingDepartment(null);
+          setNewDepartmentName('');
+        }
+      } catch (error: any) {
+        console.error("Error deleting department:", error);
+        alert("No se pudo eliminar el departamento. Verifica tu conexión o permisos.");
+      } finally {
+        setIsDeletingDept(null);
+      }
     }
   };
   
@@ -177,7 +209,6 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser }) => {
                 <X size={24} />
               </button>
             </div>
-            {/* Form content unchanged */}
              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div className="md:col-span-2">
                 <label className="text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wide mb-1 block">Nombre</label>
@@ -268,7 +299,6 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser }) => {
               <h3 className="text-2xl font-black text-gray-900 dark:text-white">Gestionar Departamentos</h3>
               <button onClick={() => setShowManageDepartmentsModal(false)} className="text-gray-400 p-2 -mr-2 rounded-full hover:bg-gray-50 dark:hover:bg-slate-700/50"><X size={24} /></button>
             </div>
-            {/* Form and list content unchanged */}
              <div className="mb-6 space-y-4">
               <h4 className="font-bold text-gray-700 dark:text-slate-300">Añadir / Editar</h4>
               <div className="flex gap-3">
@@ -291,7 +321,14 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser }) => {
                   <span className="font-semibold text-gray-900 dark:text-white">{dep.name}</span>
                   <div className="flex gap-2">
                     <button onClick={() => openEditDepartmentModal(dep)} className="p-2 text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors active:scale-95 shadow-sm"><Edit2 size={18} /></button>
-                    <button onClick={() => handleDeleteDepartment(dep.id)} className="p-2 text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors active:scale-95 shadow-sm"><Trash2 size={18} /></button>
+                    <button 
+                        onClick={(e) => handleDeleteDepartment(dep.id, e)} 
+                        disabled={isDeletingDept === dep.id}
+                        className="p-2 text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors active:scale-95 shadow-sm disabled:opacity-50"
+                        type="button"
+                    >
+                        {isDeletingDept === dep.id ? <Loader2 size={18} className="animate-spin" /> : <Trash2 size={18} />}
+                    </button>
                   </div>
                 </div>
               ))}

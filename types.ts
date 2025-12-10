@@ -142,3 +142,14 @@ export interface AppNotification {
   reviewedAt?: number; // Unix timestamp when it was reviewed
   payload: NotificationPayload;
 }
+
+// --- New Document Management Types ---
+export interface Document {
+  id: string;
+  name: string;
+  url: string; // Firebase Storage URL
+  category: string;
+  fileType: string; // e.g., 'application/pdf'
+  uploadedBy: string; // User's name
+  createdAt: number; // Timestamp
+}

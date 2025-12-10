@@ -1,4 +1,4 @@
-import { Product, User, ReplenishmentRequest, UserRole, Department, CartItem, AppNotification, NotificationType, NotificationPayload, OrderBatch, Task, TaskStatus, TaskPriority, TaskType, TaskComment } from '../types';
+import { Product, User, ReplenishmentRequest, UserRole, Department, CartItem, AppNotification, NotificationType, NotificationPayload, OrderBatch, Task, TaskStatus, TaskPriority, TaskType, TaskComment, Document } from '../types';
 // FIX: Remove modular imports and use compat 'db' instance directly
 import { db, auth, storage } from '../firebaseConfig';
 import firebase from 'firebase/compat/app';
@@ -99,19 +99,33 @@ const createNotification = async (type: NotificationType, payload: NotificationP
 let authInitializationAttempted = false;
 
 export const ensureAnonymousAuth = async () => {
-  if (auth.currentUser || authInitializationAttempted) {
-    return;
-  }
+  if (auth.currentUser) return;
+  
+  if (authInitializationAttempted) return;
   authInitializationAttempted = true;
-  try {
-    await auth.signInAnonymously();
-    console.log("Anonymous sign-in successful.");
-    // Now that we are authenticated, initialize the database.
-    await initFirestoreWithInitialData();
-  } catch (error) {
-    console.error("Critical initialization failed (Auth or Firestore init):", error);
-    alert("Error de conexión con el servidor. Por favor, refresca la página.");
-  }
+
+  return new Promise<void>((resolve) => {
+    const unsubscribe = auth.onAuthStateChanged(async (user) => {
+      if (user) {
+        console.log("User already authenticated:", user.uid);
+        await initFirestoreWithInitialData();
+        unsubscribe();
+        resolve();
+      } else {
+        try {
+          console.log("No user, signing in anonymously...");
+          await auth.signInAnonymously();
+          await initFirestoreWithInitialData();
+          unsubscribe();
+          resolve();
+        } catch (error) {
+           console.error("Anonymous auth failed:", error);
+           unsubscribe();
+           resolve();
+        }
+      }
+    });
+  });
 };
 
 export const login = async (name: string, pin: string): Promise<User | null> => {
@@ -138,7 +152,13 @@ export const getDraftCart = (): CartItem[] => JSON.parse(localStorage.getItem(KE
 
 // --- DEPARTMENTS ---
 // FIX: Use compat query syntax for onSnapshot
-export const subscribeToDepartments = (callback: (data: Department[]) => void) => db.collection('departments').orderBy('name').onSnapshot(snapshot => callback(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Department))));
+export const subscribeToDepartments = (callback: (data: Department[]) => void) => {
+    return db.collection('departments').orderBy('name').onSnapshot(snapshot => {
+        callback(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Department)));
+    }, error => {
+        console.error("Error subscribing to departments:", error);
+    });
+};
 export const saveDepartment = async (department: Partial<Department>) => {
   // FIX: Use compat doc reference and set syntax
   const docRef = department.id ? db.collection('departments').doc(department.id) : db.collection('departments').doc();
@@ -149,7 +169,13 @@ export const deleteDepartment = async (id: string) => await db.collection('depar
 
 // --- PRODUCTS ---
 // FIX: Use compat query syntax for onSnapshot
-export const subscribeToProducts = (callback: (data: Product[]) => void) => db.collection('products').orderBy('name').onSnapshot(snapshot => callback(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Product))));
+export const subscribeToProducts = (callback: (data: Product[]) => void) => {
+    return db.collection('products').orderBy('name').onSnapshot(snapshot => {
+        callback(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Product)));
+    }, error => {
+        console.error("Error subscribing to products:", error);
+    });
+};
 export const saveProduct = async (product: Partial<Product>) => {
   // FIX: Use compat doc reference and set syntax
   const docRef = product.id ? db.collection('products').doc(product.id) : db.collection('products').doc();
@@ -207,6 +233,8 @@ export const subscribeToBatches = (callback: (batches: OrderBatch[]) => void) =>
       return acc;
     }, {} as Record<string, OrderBatch>);
     callback(Object.values(batches));
+  }, error => {
+      console.error("Error subscribing to batches:", error);
   });
 };
 export const deleteBatch = async (batchId: string) => {
@@ -221,7 +249,13 @@ export const deleteBatch = async (batchId: string) => {
 
 // --- USERS ---
 // FIX: Use compat query syntax for onSnapshot
-export const subscribeToUsers = (callback: (users: User[]) => void) => db.collection('users').orderBy('name').onSnapshot(snapshot => callback(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as User))));
+export const subscribeToUsers = (callback: (users: User[]) => void) => {
+    return db.collection('users').orderBy('name').onSnapshot(snapshot => {
+        callback(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as User)));
+    }, error => {
+        console.error("Error subscribing to users:", error);
+    });
+};
 // FIX: Use compat add syntax
 export const addUser = async (user: Omit<User, 'id'>) => await db.collection('users').add(user);
 // FIX: Use compat update syntax
@@ -237,7 +271,11 @@ export const subscribeToNotifications = (callback: (data: AppNotification[]) => 
   // FIX: Use compat query syntax
   let q: firebase.firestore.Query = db.collection('notifications').orderBy('timestamp', 'desc');
   if (unreadOnly) q = q.where('readStatus', '==', false);
-  return q.onSnapshot(snapshot => callback(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as AppNotification))));
+  return q.onSnapshot(snapshot => {
+      callback(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as AppNotification)));
+  }, error => {
+      console.error("Error subscribing to notifications:", error);
+  });
 };
 // FIX: Use compat update syntax
 export const markNotificationAsRead = async (id: string, userId: string, userName: string) => await db.collection('notifications').doc(id).update({ readStatus: true, reviewedBy: userName, reviewedAt: Date.now() });
@@ -256,14 +294,23 @@ export const markAllNotificationsAsRead = async (userId: string, userName: strin
 export const uploadImage = async (file: File, path: string): Promise<string> => {
   const storageRef = storage.ref();
   const fileRef = storageRef.child(path);
-  await fileRef.put(file);
+  // CRITICAL FIX: Add metadata with contentType. This prevents the "upload hanging" issue.
+  await fileRef.put(file, {
+    contentType: file.type || 'application/octet-stream',
+  });
   const url = await fileRef.getDownloadURL();
   return url;
 };
 
 
 // FIX: Use compat query syntax for onSnapshot
-export const subscribeToTasks = (callback: (data: Task[]) => void) => db.collection('tasks').orderBy('createdAt', 'desc').limit(50).onSnapshot(snapshot => callback(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Task))));
+export const subscribeToTasks = (callback: (data: Task[]) => void) => {
+    return db.collection('tasks').orderBy('createdAt', 'desc').limit(50).onSnapshot(snapshot => {
+        callback(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Task)));
+    }, error => {
+        console.error("Error subscribing to tasks:", error);
+    });
+};
 
 export const saveTask = async (task: Partial<Task>, newFiles: File[] = []) => {
   const isNew = !task.id;
@@ -363,4 +410,54 @@ export const deleteAllNotifications = async () => {
   const batch = db.batch();
   snapshot.docs.forEach(d => batch.delete(d.ref));
   await batch.commit();
+};
+
+// --- NEW: DOCUMENT MANAGEMENT ---
+
+// New: Uploads any file to the 'documents' folder in storage
+export const uploadDocumentFile = async (file: File): Promise<string> => {
+  const path = `documents/${Date.now()}-${file.name}`;
+  const storageRef = storage.ref();
+  const fileRef = storageRef.child(path);
+  // CRITICAL FIX: Add metadata here too.
+  await fileRef.put(file, {
+    contentType: file.type || 'application/octet-stream',
+  });
+  return await fileRef.getDownloadURL();
+};
+
+// New: Subscribes to the documents collection
+export const subscribeToDocuments = (callback: (data: Document[]) => void) => {
+  return db.collection('documents')
+    .orderBy('createdAt', 'desc')
+    .onSnapshot(snapshot => {
+      callback(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Document)));
+    }, error => {
+        console.error("Error subscribing to documents:", error);
+    });
+};
+
+// New: Saves a document's metadata to Firestore
+export const saveDocument = async (document: Omit<Document, 'id'>) => {
+  await db.collection('documents').add(document);
+};
+
+// New: Deletes a file from Firebase Storage given its URL
+export const deleteFileFromStorage = async (url: string) => {
+  if (!url) return;
+  try {
+    const fileRef = storage.refFromURL(url);
+    await fileRef.delete();
+  } catch (error: any) {
+    if (error.code !== 'storage/object-not-found') {
+      console.error("Error deleting file from storage:", error);
+      throw error;
+    }
+  }
+};
+
+// New: Deletes a document from Firestore and its corresponding file from Storage
+export const deleteDocument = async (doc: Document) => {
+  await deleteFileFromStorage(doc.url);
+  await db.collection('documents').doc(doc.id).delete();
 };
