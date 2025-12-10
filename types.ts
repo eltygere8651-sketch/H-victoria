@@ -1,6 +1,7 @@
 export enum UserRole {
   ADMIN = 'ADMIN',
-  STAFF = 'STAFF'
+  STAFF = 'STAFF',
+  GUEST = 'GUEST' // New role for public access links
 }
 
 export interface User {

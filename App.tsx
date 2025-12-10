@@ -17,6 +17,7 @@ const App: React.FC = () => {
   const [isInitializing, setIsInitializing] = useState(true);
   const [user, setUser] = useState<User | null>(storageService.getSession());
   const [sharedTaskId, setSharedTaskId] = useState<string | null>(null);
+  const [isPublicMode, setIsPublicMode] = useState(false);
 
   const [view, setView] = useState<'inventory' | 'replenish' | 'admin' | 'tasks' | 'announcements'>(() => {
     const lastView = storageService.getLastView();
@@ -66,12 +67,30 @@ const App: React.FC = () => {
       // Check for shared task in URL
       const searchParams = new URLSearchParams(window.location.search);
       const shareId = searchParams.get('shareId');
+      const publicMode = searchParams.get('public');
       
       if (shareId) {
         setSharedTaskId(shareId);
       }
 
       await storageService.ensureAnonymousAuth();
+      
+      // Handle Public Guest Mode
+      if (publicMode === 'true') {
+        setIsPublicMode(true);
+        // Create a temporary guest user session if not already logged in as a stronger role
+        if (!storageService.getSession()) {
+          const guestUser: User = {
+            id: 'guest-' + Date.now(),
+            name: 'Invitado Evento',
+            role: UserRole.GUEST,
+            pin: '',
+          };
+          setUser(guestUser);
+          setView('announcements'); // Default view for guests
+        }
+      }
+
       setIsInitializing(false);
     };
     initializeApp();
@@ -107,7 +126,7 @@ const App: React.FC = () => {
   // Inicializar notificaciones push
   useEffect(() => {
     const isSandboxed = window.location.origin.includes('usercontent.goog');
-    if (user && !isSandboxed) initializePushNotifications(user);
+    if (user && !isSandboxed && user.role !== UserRole.GUEST) initializePushNotifications(user);
   }, [user]);
 
   // Limpieza de tareas completadas para admin
@@ -192,7 +211,7 @@ const App: React.FC = () => {
   };
   
   useEffect(() => {
-    if (!user) {
+    if (!user || user.role === UserRole.GUEST) {
       setToasts([]);
       displayedToastIds.current.clear();
       return;
@@ -255,6 +274,12 @@ const App: React.FC = () => {
     setUser(null);
     setCart([]);
     setView('replenish');
+    
+    // If in public mode, remove query param
+    if (isPublicMode) {
+      window.history.replaceState({}, '', window.location.pathname);
+      setIsPublicMode(false);
+    }
   };
 
   const startAlarm = () => {
@@ -358,6 +383,9 @@ const App: React.FC = () => {
           <div className="flex items-center gap-3">
             <Logo size="sm" />
             <span className="font-extrabold text-2xl text-gray-900 dark:text-white hidden sm:inline">Hub</span>
+            {user.role === UserRole.GUEST && (
+              <span className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 text-xs px-2 py-1 rounded-full font-bold">Invitado</span>
+            )}
           </div>
           <div className="flex items-center gap-2">
             {!isInstalled && deferredPrompt && (
@@ -377,7 +405,7 @@ const App: React.FC = () => {
         {/* Main Content Area - Added padding bottom to prevent content from being hidden behind floating dock */}
         <main className="flex-1 overflow-y-auto no-scrollbar pb-32">
           {view === 'inventory' && user.role === UserRole.ADMIN && <Inventory currentUser={user} />}
-          {view === 'replenish' && <Replenishment currentUser={user} cart={cart} setCart={setCart} showMobileCart={showMobileCart} setShowMobileCart={setShowMobileCart} />}
+          {view === 'replenish' && user.role !== UserRole.GUEST && <Replenishment currentUser={user} cart={cart} setCart={setCart} showMobileCart={showMobileCart} setShowMobileCart={setShowMobileCart} />}
           {view === 'admin' && user.role === UserRole.ADMIN && <Admin currentUser={user} unreadNotificationsCount={unreadAdminNotifications.length} initialTab={initialAdminTab} />}
           {view === 'tasks' && <Tasks currentUser={user} />}
           {view === 'announcements' && <Announcements currentUser={user} />}
@@ -389,15 +417,17 @@ const App: React.FC = () => {
         <nav 
           className="pointer-events-auto bg-white/90 dark:bg-slate-900/90 backdrop-blur-2xl border border-white/20 dark:border-white/10 shadow-dock dark:shadow-dock-dark rounded-full p-2 flex items-center justify-between gap-2 w-full max-w-md transition-all duration-300 ring-1 ring-black/5 dark:ring-white/5"
         >
-            {/* REPLENISH */}
-            <NavButton icon={ClipboardList} label="Pedido" isActive={view === 'replenish'} onClick={() => setView('replenish')} />
-            
-            {/* TASKS */}
-            <NavButton icon={ClipboardCheck} label="Tareas" isActive={view === 'tasks'} onClick={() => setView('tasks')} hasAlert={hasUnreadTasks}/>
-
-            {/* ANNOUNCEMENTS */}
+            {/* ANNOUNCEMENTS (Available to all) */}
             <NavButton icon={Megaphone} label="Anuncios" isActive={view === 'announcements'} onClick={() => setView('announcements')} />
 
+            {/* TASKS (Available to all) */}
+            <NavButton icon={ClipboardCheck} label="Tareas" isActive={view === 'tasks'} onClick={() => setView('tasks')} hasAlert={hasUnreadTasks}/>
+
+            {/* REPLENISH (Staff/Admin only) */}
+            {user.role !== UserRole.GUEST && (
+              <NavButton icon={ClipboardList} label="Pedido" isActive={view === 'replenish'} onClick={() => setView('replenish')} />
+            )}
+            
             {/* ADMIN/INVENTORY - Only for Admins */}
             {user.role === UserRole.ADMIN && <NavButton icon={LayoutGrid} label="Stock" isActive={view === 'inventory'} onClick={() => setView('inventory')} />}
             {user.role === UserRole.ADMIN && <NavButton icon={ShieldCheck} label="Admin" isActive={view === 'admin'} onClick={() => setView('admin')} hasAlert={unreadAdminNotifications.length > 0} />}
@@ -405,12 +435,14 @@ const App: React.FC = () => {
       </div>
 
       {/* Mobile Cart Button - Repositioned slightly higher to clear dock */}
-      <div className="fixed lg:hidden bottom-28 right-5 z-50">
-        <button onClick={() => setShowMobileCart(true)} className="relative bg-red-600 text-white w-14 h-14 rounded-full flex items-center justify-center shadow-neon hover:bg-red-700 active:scale-95 transition-all">
-          <ShoppingCart size={24} />
-          {cart.length > 0 && <span className="absolute -top-1 -right-1 w-5 h-5 bg-gray-900 dark:bg-white text-white dark:text-black rounded-full flex items-center justify-center text-[10px] font-bold ring-2 ring-white dark:ring-red-600 animate-bounce">{cart.length}</span>}
-        </button>
-      </div>
+      {user.role !== UserRole.GUEST && (
+        <div className="fixed lg:hidden bottom-28 right-5 z-50">
+          <button onClick={() => setShowMobileCart(true)} className="relative bg-red-600 text-white w-14 h-14 rounded-full flex items-center justify-center shadow-neon hover:bg-red-700 active:scale-95 transition-all">
+            <ShoppingCart size={24} />
+            {cart.length > 0 && <span className="absolute -top-1 -right-1 w-5 h-5 bg-gray-900 dark:bg-white text-white dark:text-black rounded-full flex items-center justify-center text-[10px] font-bold ring-2 ring-white dark:ring-red-600 animate-bounce">{cart.length}</span>}
+          </button>
+        </div>
+      )}
       
       {showIOSPrompt && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-end justify-center p-4 backdrop-blur-sm animate-fade-in" onClick={() => setShowIOSPrompt(false)}>

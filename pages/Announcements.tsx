@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Task, TaskType, User } from '../types';
+import { Task, TaskType, User, UserRole } from '../types';
 import * as storageService from '../services/storageService';
-import { Megaphone, Loader2, Clock, User as UserIcon, MapPin, Share2 } from 'lucide-react';
+import { Megaphone, Loader2, Clock, User as UserIcon, MapPin, Share2, Link } from 'lucide-react';
 import { ImageViewer } from '../components/ImageViewer';
 import { ShareModal } from '../components/ShareModal';
 
@@ -45,6 +45,22 @@ const Announcements: React.FC<AnnouncementsProps> = ({ currentUser }) => {
 
     } catch (error) {
       console.error("Failed to construct share URL", error);
+    }
+  };
+
+  // Generate public link for the entire announcements/tasks view
+  const handleSharePublicAccess = () => {
+    try {
+      const url = new URL(window.location.href);
+      url.search = ''; 
+      url.hash = '';
+      url.searchParams.set('public', 'true');
+      const publicUrl = url.toString();
+
+      setShareData({ url: publicUrl, title: 'Acceso Invitado: Tareas y Anuncios' });
+      setShowShareModal(true);
+    } catch (error) {
+      console.error("Error creating public URL", error);
     }
   };
 
@@ -95,7 +111,20 @@ const Announcements: React.FC<AnnouncementsProps> = ({ currentUser }) => {
   return (
     <div className="font-sans">
       <div className="sticky top-0 z-10 bg-white/80 dark:bg-slate-950/80 backdrop-blur-lg pt-6 pb-4 px-4 md:px-6 border-b border-gray-100 dark:border-slate-800">
-        <h2 className="text-4xl font-extrabold text-gray-900 dark:text-white tracking-tighter">Anuncios</h2>
+        <div className="flex justify-between items-center">
+            <h2 className="text-4xl font-extrabold text-gray-900 dark:text-white tracking-tighter">Anuncios</h2>
+            
+             {/* SHARE PUBLIC ACCESS BUTTON (ADMIN ONLY) */}
+             {currentUser.role === UserRole.ADMIN && (
+                <button
+                  onClick={handleSharePublicAccess}
+                  className="bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 w-12 h-12 rounded-full flex items-center justify-center shadow-md hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-all active:scale-95"
+                  title="Compartir enlace público"
+                >
+                  <Link size={20} />
+                </button>
+             )}
+        </div>
       </div>
 
       <div className="p-4 md:p-6 space-y-4">

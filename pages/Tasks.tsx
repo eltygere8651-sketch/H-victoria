@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Task, User, Department, TaskStatus, TaskPriority, UserRole, TaskType, TaskComment } from '../types';
 import * as storageService from '../services/storageService';
-import { ClipboardCheck, Plus, X, Save, Loader2, Edit2, Trash2, ChevronDown, Flag, MapPin, MessagesSquare, Clock, Check, Image as ImageIcon, Camera, ArrowLeft, MoreVertical, User as UserIcon, Megaphone, Send, AlertTriangle, Share2 } from 'lucide-react';
+import { ClipboardCheck, Plus, X, Save, Loader2, Edit2, Trash2, ChevronDown, Flag, MapPin, MessagesSquare, Clock, Check, Image as ImageIcon, Camera, ArrowLeft, MoreVertical, User as UserIcon, Megaphone, Send, AlertTriangle, Share2, Link } from 'lucide-react';
 import { compressImage } from '../utils/imageCompressor';
 import { ImageViewer } from '../components/ImageViewer';
 import { DeletionTimer } from '../components/DeletionTimer';
@@ -36,6 +36,9 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
   // Share Modal State
   const [showShareModal, setShowShareModal] = useState(false);
   const [shareData, setShareData] = useState({ url: '', title: '' });
+
+  const isGuest = currentUser.role === UserRole.GUEST;
+  const isAdmin = currentUser.role === UserRole.ADMIN;
 
   useEffect(() => {
     const unsubscribeTasks = storageService.subscribeToTasks((allTasks) => {
@@ -195,6 +198,9 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
 
   const handleStatusChange = async (task: Task, newStatus: TaskStatus, e?: React.MouseEvent) => {
     e?.stopPropagation();
+    // Guests cannot change status
+    if (isGuest) return;
+
     const updates: Partial<Task> = { status: newStatus };
     if (newStatus === TaskStatus.COMPLETED) {
       updates.completedBy = currentUser.name;
@@ -222,6 +228,22 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
     }
   };
 
+  // Generate public link for the entire tasks view
+  const handleSharePublicAccess = () => {
+    try {
+      const url = new URL(window.location.href);
+      url.search = ''; 
+      url.hash = '';
+      url.searchParams.set('public', 'true');
+      const publicUrl = url.toString();
+
+      setShareData({ url: publicUrl, title: 'Acceso Invitado: Tareas y Anuncios' });
+      setShowShareModal(true);
+    } catch (error) {
+      console.error("Error creating public URL", error);
+    }
+  };
+
   // Comments
   const handleSendComment = async () => {
     if (!newComment.trim() || !selectedTask) return;
@@ -239,8 +261,8 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
   
   const handleTaskClick = async (task: Task) => {
     setSelectedTask(task);
-    // Mark as seen if not already
-    if (!task.seenBy?.includes(currentUser.id)) {
+    // Mark as seen if not already (skip for guests to avoid write errors if unauthorized)
+    if (!isGuest && !task.seenBy?.includes(currentUser.id)) {
         await storageService.markTaskAsSeen(task.id, currentUser.id);
     }
   };
@@ -269,12 +291,28 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
         <div className="max-w-3xl mx-auto w-full">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-4xl font-extrabold text-gray-900 dark:text-white tracking-tighter">Tareas</h2>
-              <button 
-                onClick={handleNewTask}
-                className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 w-12 h-12 rounded-full flex items-center justify-center shadow-lg hover:bg-red-600 dark:hover:bg-slate-200 transition-all active:scale-95"
-              >
-                <Plus size={24} />
-              </button>
+              <div className="flex items-center gap-2">
+                {/* SHARE PUBLIC ACCESS BUTTON (ADMIN ONLY) */}
+                {isAdmin && (
+                  <button
+                    onClick={handleSharePublicAccess}
+                    className="bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 w-12 h-12 rounded-full flex items-center justify-center shadow-md hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-all active:scale-95"
+                    title="Compartir enlace público"
+                  >
+                    <Link size={20} />
+                  </button>
+                )}
+                
+                {/* ADD TASK BUTTON (NOT FOR GUESTS) */}
+                {!isGuest && (
+                  <button 
+                    onClick={handleNewTask}
+                    className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 w-12 h-12 rounded-full flex items-center justify-center shadow-lg hover:bg-red-600 dark:hover:bg-slate-200 transition-all active:scale-95"
+                  >
+                    <Plus size={24} />
+                  </button>
+                )}
+              </div>
             </div>
             
             <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2 -mx-4 px-4 md:mx-0 md:px-0">
@@ -315,7 +353,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
                     <div className="flex flex-col gap-1 pr-2">
                        <div className="flex items-center gap-2">
                          <span className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider">{task.departmentName}</span>
-                         {!task.seenBy?.includes(currentUser.id) && (
+                         {!isGuest && !task.seenBy?.includes(currentUser.id) && (
                            <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" title="Nueva actualización"></span>
                          )}
                        </div>
@@ -374,13 +412,16 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
                        <Share2 size={20} />
                     </button>
 
-                    <div className="relative group">
-                       <button className="p-2 text-gray-500 hover:text-gray-900 dark:text-slate-400 dark:hover:text-white rounded-full hover:bg-gray-100 dark:hover:bg-slate-800"><MoreVertical size={24} /></button>
-                       <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-gray-100 dark:border-slate-700 overflow-hidden hidden group-hover:block hover:block z-50">
-                          <button onClick={() => { handleEditTask(selectedTask); }} className="w-full text-left px-4 py-3 text-sm font-bold text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 flex items-center gap-2"><Edit2 size={16}/> Editar</button>
-                          <button onClick={() => { handleDeleteClick(selectedTask); }} className="w-full text-left px-4 py-3 text-sm font-bold text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2"><Trash2 size={16}/> Eliminar</button>
-                       </div>
-                    </div>
+                    {/* ACTIONS MENU (NOT FOR GUESTS) */}
+                    {!isGuest && (
+                      <div className="relative group">
+                        <button className="p-2 text-gray-500 hover:text-gray-900 dark:text-slate-400 dark:hover:text-white rounded-full hover:bg-gray-100 dark:hover:bg-slate-800"><MoreVertical size={24} /></button>
+                        <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-gray-100 dark:border-slate-700 overflow-hidden hidden group-hover:block hover:block z-50">
+                            <button onClick={() => { handleEditTask(selectedTask); }} className="w-full text-left px-4 py-3 text-sm font-bold text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 flex items-center gap-2"><Edit2 size={16}/> Editar</button>
+                            <button onClick={() => { handleDeleteClick(selectedTask); }} className="w-full text-left px-4 py-3 text-sm font-bold text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2"><Trash2 size={16}/> Eliminar</button>
+                        </div>
+                      </div>
+                    )}
                  </div>
               </div>
 
@@ -415,23 +456,26 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
                     </div>
                  )}
 
-                 {/* Status Actions */}
+                 {/* Status Actions (Disabled for Guests) */}
                  <div className="grid grid-cols-3 gap-3">
                     <button 
                        onClick={() => handleStatusChange(selectedTask, TaskStatus.PENDING)}
-                       className={`py-3 rounded-xl font-bold text-sm transition-all ${selectedTask.status === TaskStatus.PENDING ? 'bg-gray-900 dark:bg-white text-white dark:text-slate-900 shadow-md ring-2 ring-offset-2 ring-gray-900 dark:ring-white' : 'bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-slate-400'}`}
+                       disabled={isGuest}
+                       className={`py-3 rounded-xl font-bold text-sm transition-all ${selectedTask.status === TaskStatus.PENDING ? 'bg-gray-900 dark:bg-white text-white dark:text-slate-900 shadow-md ring-2 ring-offset-2 ring-gray-900 dark:ring-white' : 'bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-slate-400'} ${isGuest ? 'opacity-70 cursor-not-allowed' : ''}`}
                     >
                        Pendiente
                     </button>
                     <button 
                        onClick={() => handleStatusChange(selectedTask, TaskStatus.IN_PROGRESS)}
-                       className={`py-3 rounded-xl font-bold text-sm transition-all ${selectedTask.status === TaskStatus.IN_PROGRESS ? 'bg-blue-600 text-white shadow-md ring-2 ring-offset-2 ring-blue-600' : 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'}`}
+                       disabled={isGuest}
+                       className={`py-3 rounded-xl font-bold text-sm transition-all ${selectedTask.status === TaskStatus.IN_PROGRESS ? 'bg-blue-600 text-white shadow-md ring-2 ring-offset-2 ring-blue-600' : 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'} ${isGuest ? 'opacity-70 cursor-not-allowed' : ''}`}
                     >
                        En Curso
                     </button>
                     <button 
                        onClick={() => handleStatusChange(selectedTask, TaskStatus.COMPLETED)}
-                       className={`py-3 rounded-xl font-bold text-sm transition-all ${selectedTask.status === TaskStatus.COMPLETED ? 'bg-green-600 text-white shadow-md ring-2 ring-offset-2 ring-green-600' : 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400'}`}
+                       disabled={isGuest}
+                       className={`py-3 rounded-xl font-bold text-sm transition-all ${selectedTask.status === TaskStatus.COMPLETED ? 'bg-green-600 text-white shadow-md ring-2 ring-offset-2 ring-green-600' : 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400'} ${isGuest ? 'opacity-70 cursor-not-allowed' : ''}`}
                     >
                        Hecho
                     </button>
@@ -461,26 +505,28 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
                  </div>
               </div>
 
-              {/* Comment Input with safe area padding */}
-              <div className="p-4 pb-[max(env(safe-area-inset-bottom),1rem)] bg-white dark:bg-slate-900 border-t border-gray-100 dark:border-slate-800 flex-shrink-0 z-20">
-                 <div className="flex gap-2 relative">
-                    <input 
-                       type="text" 
-                       value={newComment}
-                       onChange={(e) => setNewComment(e.target.value)}
-                       placeholder="Escribe un comentario..."
-                       onKeyDown={(e) => e.key === 'Enter' && handleSendComment()}
-                       className="flex-1 bg-gray-100 dark:bg-slate-800 border-0 rounded-full px-5 py-3 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-red-500 outline-none"
-                    />
-                    <button 
-                       onClick={handleSendComment}
-                       disabled={!newComment.trim()}
-                       className="bg-red-600 text-white p-3 rounded-full hover:bg-red-700 disabled:bg-gray-300 dark:disabled:bg-slate-700 disabled:text-gray-500 transition-all shadow-md shadow-red-200 dark:shadow-none active:scale-95"
-                    >
-                       <Send size={20} className={newComment.trim() ? 'ml-0.5' : ''}/>
-                    </button>
-                 </div>
-              </div>
+              {/* Comment Input with safe area padding (NOT FOR GUESTS) */}
+              {!isGuest && (
+                <div className="p-4 pb-[max(env(safe-area-inset-bottom),1rem)] bg-white dark:bg-slate-900 border-t border-gray-100 dark:border-slate-800 flex-shrink-0 z-20">
+                   <div className="flex gap-2 relative">
+                      <input 
+                         type="text" 
+                         value={newComment}
+                         onChange={(e) => setNewComment(e.target.value)}
+                         placeholder="Escribe un comentario..."
+                         onKeyDown={(e) => e.key === 'Enter' && handleSendComment()}
+                         className="flex-1 bg-gray-100 dark:bg-slate-800 border-0 rounded-full px-5 py-3 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-red-500 outline-none"
+                      />
+                      <button 
+                         onClick={handleSendComment}
+                         disabled={!newComment.trim()}
+                         className="bg-red-600 text-white p-3 rounded-full hover:bg-red-700 disabled:bg-gray-300 dark:disabled:bg-slate-700 disabled:text-gray-500 transition-all shadow-md shadow-red-200 dark:shadow-none active:scale-95"
+                      >
+                         <Send size={20} className={newComment.trim() ? 'ml-0.5' : ''}/>
+                      </button>
+                   </div>
+                </div>
+              )}
            </div>
         </div>
       )}
