@@ -59,10 +59,9 @@ const App: React.FC = () => {
   const [showMobileCart, setShowMobileCart] = useState(false);
 
   const cleanupPerformed = useRef(false);
-  // Separate refs for different sounds to avoid conflict
   const audioContextRef = useRef<AudioContext | null>(null);
   const alarmIntervalRef = useRef<number | null>(null);
-  const reminderIntervalRef = useRef<number | null>(null); // New ref for 5s reminder
+  const reminderIntervalRef = useRef<number | null>(null);
   const isAlarmPlayingRef = useRef(false);
 
   const [hasUnreadTasks, setHasUnreadTasks] = useState(false);
@@ -70,7 +69,6 @@ const App: React.FC = () => {
   // Inicialización de la app
   useEffect(() => {
     const initializeApp = async () => {
-      // Check for shared task in URL
       const searchParams = new URLSearchParams(window.location.search);
       const shareId = searchParams.get('shareId');
       const publicMode = searchParams.get('public');
@@ -81,10 +79,8 @@ const App: React.FC = () => {
 
       await storageService.ensureAnonymousAuth();
       
-      // Handle Public Guest Mode
       if (publicMode === 'true') {
         setIsPublicMode(true);
-        // Create a temporary guest user session if not already logged in as a stronger role
         if (!storageService.getSession()) {
           const guestUser: User = {
             id: 'guest-' + Date.now(),
@@ -93,7 +89,7 @@ const App: React.FC = () => {
             pin: '',
           };
           setUser(guestUser);
-          setView('tasks'); // Default view for guests
+          setView('tasks');
         }
       }
 
@@ -103,8 +99,6 @@ const App: React.FC = () => {
   }, []);
 
   // --- AUDIO SYSTEM ---
-  
-  // Initialize Audio Context lazily
   const getAudioContext = () => {
     if (!audioContextRef.current) {
       const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
@@ -115,57 +109,33 @@ const App: React.FC = () => {
     return audioContextRef.current;
   };
 
-  // Generic sound player for notifications (Short "Ping")
   const playPing = async () => {
     const ctx = getAudioContext();
     if (!ctx) return;
-
-    // Try to resume if suspended (crucial for browsers with autoplay policy)
     if (ctx.state === 'suspended') {
-      try {
-        await ctx.resume();
-      } catch (e) {
-        console.warn("AudioContext resume failed", e);
-      }
+      try { await ctx.resume(); } catch (e) { console.warn("AudioContext resume failed", e); }
     }
-
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
-
     osc.connect(gain);
     gain.connect(ctx.destination);
-
-    // Friendly "Ping" sound
     osc.type = 'sine';
     osc.frequency.setValueAtTime(500, ctx.currentTime);
     osc.frequency.exponentialRampToValueAtTime(1000, ctx.currentTime + 0.1);
-    
     gain.gain.setValueAtTime(0.1, ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
-
     osc.start(ctx.currentTime);
     osc.stop(ctx.currentTime + 0.3);
   };
 
-  // Urgent Alarm Player (Siren)
   const startAlarm = async () => {
     if (isAlarmPlayingRef.current) return;
-    
     const ctx = getAudioContext();
     if (!ctx) return;
-
     if (ctx.state === 'suspended') {
-      try {
-        await ctx.resume();
-      } catch (e) {
-        // If we can't resume (user hasn't interacted yet), we can't play.
-        // We will retry on interaction.
-        return; 
-      }
+      try { await ctx.resume(); } catch (e) { return; }
     }
-
     isAlarmPlayingRef.current = true;
-
     const playTone = () => {
         if (!isAlarmPlayingRef.current) return;
         const osc = ctx.createOscillator();
@@ -181,9 +151,8 @@ const App: React.FC = () => {
         osc.start(ctx.currentTime);
         osc.stop(ctx.currentTime + 0.2);
     };
-
-    playTone(); // Play immediately
-    alarmIntervalRef.current = window.setInterval(playTone, 2000); // Loop every 2s
+    playTone();
+    alarmIntervalRef.current = window.setInterval(playTone, 2000);
   };
   
   const stopAlarm = () => {
@@ -194,39 +163,29 @@ const App: React.FC = () => {
     isAlarmPlayingRef.current = false;
   };
 
-  // Unlock Audio on first interaction
   useEffect(() => {
     const unlockAudio = async () => {
       const ctx = getAudioContext();
       if (ctx && ctx.state === 'suspended') {
-        try {
-          await ctx.resume();
-        } catch (e) {
-          console.warn("Failed to resume audio context on click");
-        }
+        try { await ctx.resume(); } catch (e) {}
       }
     };
-    
     window.addEventListener('click', unlockAudio, { once: true });
     window.addEventListener('touchstart', unlockAudio, { once: true });
     window.addEventListener('keydown', unlockAudio, { once: true });
-    
     return () => {
       window.removeEventListener('click', unlockAudio);
       window.removeEventListener('touchstart', unlockAudio);
       window.removeEventListener('keydown', unlockAudio);
     };
   }, []);
-
   // --- END AUDIO SYSTEM ---
 
-  // Inicializar notificaciones push
   useEffect(() => {
     const isSandboxed = window.location.origin.includes('usercontent.goog');
     if (user && !isSandboxed && user.role !== UserRole.GUEST) initializePushNotifications(user);
   }, [user]);
 
-  // Limpieza de tareas completadas para admin
   useEffect(() => {
     if (user && user.role === UserRole.ADMIN && !cleanupPerformed.current) {
       storageService.cleanupCompletedTasks();
@@ -235,37 +194,28 @@ const App: React.FC = () => {
     if (!user) cleanupPerformed.current = false;
   }, [user]);
 
-  // Manejo de PWA y tema
   useEffect(() => {
     document.documentElement.classList.toggle('dark', darkMode);
     localStorage.setItem('theme', darkMode ? 'dark' : 'light');
     document.querySelector('meta[name="theme-color"]')?.setAttribute('content', darkMode ? '#111827' : '#ffffff');
   }, [darkMode]);
 
-  // --- NEW: PWA Installation Logic ---
   useEffect(() => {
     const beforeInstallHandler = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e);
     };
-
     const appInstalledHandler = () => {
       setIsInstalled(true);
       setDeferredPrompt(null);
     };
-
     window.addEventListener('beforeinstallprompt', beforeInstallHandler);
     window.addEventListener('appinstalled', appInstalledHandler);
-    
-    // Check if the app is already running in standalone mode
     if (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true) {
       setIsInstalled(true);
     }
-
-    // Detect if the device is iOS
     const isIOSDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
     setIsIOS(isIOSDevice);
-
     return () => {
       window.removeEventListener('beforeinstallprompt', beforeInstallHandler);
       window.removeEventListener('appinstalled', appInstalledHandler);
@@ -275,7 +225,6 @@ const App: React.FC = () => {
   useEffect(() => { if (user) storageService.saveLastView(view); }, [view, user]);
   useEffect(() => { storageService.saveDraftCart(cart); }, [cart]);
 
-  // --- BADGING SYSTEM ---
   useEffect(() => {
     const totalUnread = unreadAdminNotifications.length + (hasUnreadTasks ? 1 : 0);
     if ('setAppBadge' in navigator) {
@@ -287,11 +236,9 @@ const App: React.FC = () => {
     }
   }, [unreadAdminNotifications.length, hasUnreadTasks]);
 
-
   const showNativeNotification = (notification: AppNotification) => {
     if ('Notification' in window && Notification.permission === 'granted' && document.hidden) {
       if (displayedNativeNotificationIds.current.has(notification.id)) return;
-      
       const nativeNotification = new Notification(notification.title, {
         body: notification.message,
         icon: '/favicon.svg',
@@ -320,26 +267,19 @@ const App: React.FC = () => {
     displayedToastIds.current.delete(id);
   };
 
-  // --- REPETITIVE SOUND REMINDER LOGIC ---
   useEffect(() => {
-    // If there are toasts (unread visual notifications)
     if (toasts.length > 0) {
-      // And we don't have an interval running yet
       if (!reminderIntervalRef.current) {
-        // Start the repetitive loop every 5 seconds
         reminderIntervalRef.current = window.setInterval(() => {
           playPing();
         }, 5000);
       }
     } else {
-      // No toasts? Stop the sound loop.
       if (reminderIntervalRef.current) {
         clearInterval(reminderIntervalRef.current);
         reminderIntervalRef.current = null;
       }
     }
-
-    // Cleanup on unmount
     return () => {
       if (reminderIntervalRef.current) {
         clearInterval(reminderIntervalRef.current);
@@ -354,22 +294,17 @@ const App: React.FC = () => {
       displayedToastIds.current.clear();
       return;
     }
-
     const unsubNotifications = storageService.subscribeToNotifications((notifications) => {
       const unread = notifications.filter(n => !n.readStatus);
       const newToasts = unread.filter(n => !displayedToastIds.current.has(n.id));
-      
       if (newToasts.length > 0) {
-        // Play sound for ANY new notification immediately
         playPing();
-        
         setToasts(prev => [...prev, ...newToasts]);
         newToasts.forEach(n => {
           displayedToastIds.current.add(n.id);
           showNativeNotification(n);
         });
       }
-      
       if (user.role === UserRole.ADMIN) {
         setUnreadAdminNotifications(unread);
       }
@@ -378,14 +313,11 @@ const App: React.FC = () => {
     const unsubTasks = storageService.subscribeToTasks((tasks) => {
       const hasUnread = tasks.some(task => !task.seenBy?.includes(user.id));
       setHasUnreadTasks(hasUnread);
-      
       const newHighPriorityTasks = tasks.filter(t => 
         t.priority === 'HIGH' &&
         t.status !== 'COMPLETED' &&
         !t.seenBy?.includes(user.id)
       );
-
-      // Alarm logic for high priority
       if (newHighPriorityTasks.length > 0) {
         startAlarm();
       } else {
@@ -418,15 +350,12 @@ const App: React.FC = () => {
     setCart([]);
     setView('replenish');
     stopAlarm();
-    
-    // If in public mode, remove query param
     if (isPublicMode) {
       window.history.replaceState({}, '', window.location.pathname);
       setIsPublicMode(false);
     }
   };
 
-  // Logic to share public link
   const handleSharePublicAccess = () => {
     try {
       const url = new URL(window.location.href);
@@ -434,7 +363,6 @@ const App: React.FC = () => {
       url.hash = '';
       url.searchParams.set('public', 'true');
       const publicUrl = url.toString();
-
       setShareData({ url: publicUrl, title: 'Acceso Invitado: Tareas' });
       setShowShareModal(true);
     } catch (error) {
@@ -442,8 +370,7 @@ const App: React.FC = () => {
     }
   };
 
-
-  // --- MODERN NAVIGATION BUTTON (FLOATING PILL DESIGN) ---
+  // NavButton optimizado para Android/iOS con flex ratios agresivos
   const NavButton = ({ icon: Icon, label, isActive, onClick, hasAlert = false, specialColor = false }: any) => (
     <button 
       onClick={onClick} 
@@ -474,7 +401,6 @@ const App: React.FC = () => {
         )}
       </div>
       
-      {/* Label only visible when active */}
       <div className={`
         overflow-hidden transition-all duration-300 ease-out flex flex-col justify-center
         ${isActive ? 'w-auto opacity-100 translate-x-0' : 'w-0 opacity-0 translate-x-4'}
@@ -494,7 +420,6 @@ const App: React.FC = () => {
     );
   }
 
-  // --- PUBLIC SHARE VIEW ---
   if (sharedTaskId) {
     return <PublicTaskViewer taskId={sharedTaskId} />;
   }
@@ -504,7 +429,6 @@ const App: React.FC = () => {
   }
 
   return (
-    // FIX: Removed h-full and overflow-hidden to allow native browser scrolling
     <div className={`min-h-screen w-full flex flex-col font-sans transition-colors duration-300 antialiased ${darkMode ? 'dark' : ''} bg-premium`}
       style={{
         paddingTop: 'env(safe-area-inset-top)',
@@ -525,7 +449,6 @@ const App: React.FC = () => {
             {!isInstalled && deferredPrompt && (
               <button onClick={async () => deferredPrompt.prompt()} className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 px-3 py-2 rounded-lg font-bold text-sm hidden md:flex items-center gap-2 shadow-sm hover:bg-red-100 dark:hover:bg-red-900/30 active:scale-95"><Download size={16} /> Instalar</button>
             )}
-            {/* FIX: Cast navigator to `any` to access the non-standard `standalone` property for iOS PWA detection without a TypeScript error. */}
             {!isInstalled && isIOS && !(window.navigator as any).standalone && (
                 <button onClick={() => setShowIOSPrompt(true)} className="bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 px-3 py-2 rounded-lg font-bold text-sm hidden md:flex items-center gap-2 shadow-sm hover:bg-blue-100 dark:hover:bg-blue-900/30 active:scale-95"><PlusSquare size={16} /> Instalar</button>
             )}
@@ -535,8 +458,6 @@ const App: React.FC = () => {
         </div>
       </header>
 
-      {/* Main Content Area - Uses natural document flow now */}
-      {/* FIX: Removed flex-1 flex overflow-hidden wrappers */}
       <main className="flex-1 w-full pb-32">
         {view === 'inventory' && user.role === UserRole.ADMIN && <Inventory currentUser={user} />}
         {view === 'replenish' && user.role !== UserRole.GUEST && <Replenishment currentUser={user} cart={cart} setCart={setCart} showMobileCart={showMobileCart} setShowMobileCart={setShowMobileCart} />}
@@ -544,31 +465,25 @@ const App: React.FC = () => {
         {view === 'tasks' && <Tasks currentUser={user} />}
       </main>
 
-      {/* FLOATING DOCK NAVIGATION */}
       <div className="fixed bottom-6 inset-x-0 z-20 flex justify-center px-4 pointer-events-none pb-safe">
         <nav 
           className="pointer-events-auto bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl border border-white/40 dark:border-white/10 shadow-dock dark:shadow-dock-dark rounded-full p-2 flex items-center justify-between gap-2 w-full max-w-md transition-all duration-300 ring-1 ring-black/5 dark:ring-white/5"
         >
-            {/* TASKS (Available to all) */}
             <NavButton icon={ClipboardCheck} label="Tareas" isActive={view === 'tasks'} onClick={() => setView('tasks')} hasAlert={hasUnreadTasks}/>
 
-            {/* REPLENISH (Staff/Admin only) */}
             {user.role !== UserRole.GUEST && (
               <NavButton icon={ClipboardList} label="Pedido" isActive={view === 'replenish'} onClick={() => setView('replenish')} />
             )}
             
-            {/* ADMIN/INVENTORY - Only for Admins */}
             {user.role === UserRole.ADMIN && <NavButton icon={LayoutGrid} label="Stock" isActive={view === 'inventory'} onClick={() => setView('inventory')} />}
             {user.role === UserRole.ADMIN && <NavButton icon={ShieldCheck} label="Admin" isActive={view === 'admin'} onClick={() => setView('admin')} hasAlert={unreadAdminNotifications.length > 0} />}
 
-            {/* SHARE PUBLIC ACCESS - Replaced Announcements, Only for Admins */}
             {user.role === UserRole.ADMIN && (
               <NavButton icon={Share2} label="Compartir" isActive={false} onClick={handleSharePublicAccess} specialColor={true} />
             )}
         </nav>
       </div>
 
-      {/* Mobile Cart Button - Repositioned slightly higher to clear dock */}
       {user.role !== UserRole.GUEST && (
         <div className="fixed lg:hidden bottom-28 right-5 z-50">
           <button onClick={() => setShowMobileCart(true)} className="relative bg-red-600 text-white w-14 h-14 rounded-full flex items-center justify-center shadow-neon hover:bg-red-700 active:scale-95 transition-all">
@@ -588,7 +503,6 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* GLOBAL SHARE MODAL */}
       <ShareModal 
         isOpen={showShareModal} 
         onClose={() => setShowShareModal(false)} 

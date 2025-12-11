@@ -383,7 +383,7 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
       )}
 
       {batchToDelete && (
-         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
+         <div className="fixed inset-0 bg-black/60 z-[120] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
           <div className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-sm p-6 text-center shadow-pop-in animate-pop-in">
             <h3 className="font-bold text-lg text-gray-900 dark:text-white">¿Eliminar Pedido?</h3>
             <p className="text-gray-500 dark:text-slate-400 text-sm my-4">Se eliminará el pedido <span className="font-bold text-gray-800 dark:text-slate-200">#{batchToDelete}</span>. Esta acción no se puede deshacer.</p>
@@ -428,33 +428,55 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
       )}
 
       {selectedOrder && (
-        <div 
-          className="fixed inset-0 z-40 bg-gray-900/95 backdrop-blur-md flex flex-col items-center p-0 md:p-6 overflow-y-auto animate-fade-in" 
-          onClick={() => setSelectedOrder(null)}
-        >
-          <div 
-            // Adjusted padding for safe areas to prevent header clash on iOS
-            className="w-full max-w-3xl flex items-center justify-between px-4 pt-safe pb-4 md:p-0 md:mb-6 sticky top-0 md:static bg-gray-900/95 md:bg-transparent backdrop-blur-xl md:backdrop-blur-none z-20" 
-            onClick={e => e.stopPropagation()}
-          >
-            <h2 className="text-white font-bold text-lg hidden md:block">Vista Previa</h2>
-            <div className="flex gap-3 ml-auto">
-              <button onClick={handleDownloadPDF} disabled={isGeneratingPdf} className="bg-red-600 text-white px-5 py-3 rounded-xl font-bold shadow-lg shadow-button-red flex items-center gap-2 hover:bg-red-700 transition-colors disabled:bg-red-400 active:scale-95">
-                {isGeneratingPdf ? <Loader2 className="animate-spin" /> : <Download />} {isGeneratingPdf ? 'Generando...' : 'PDF'}
-              </button>
-              <button onClick={() => setSelectedOrder(null)} className="p-3 bg-white text-gray-900 rounded-xl font-bold shadow-md hover:bg-gray-100 active:scale-95"><X /></button>
-            </div>
-          </div>
+        <div className="fixed inset-0 z-[100] bg-slate-950 flex flex-col h-[100dvh] w-screen">
           
-          <div 
-            id="pdf-preview-content" 
-            className="bg-white text-black p-4 md:p-12 md:rounded-2xl shadow-2xl max-w-3xl w-full h-auto animate-slide-up mt-4 md:mt-0" 
-            onClick={e => e.stopPropagation()}
-          >
-            {/* Same simplified component for preview */}
-            <OrderPdfDocument order={selectedOrder} />
+          <div className="flex-none bg-slate-900 border-b border-slate-800 z-50 pt-[max(env(safe-area-inset-top),16px)] pb-3 px-4 shadow-xl">
+             <div className="flex justify-between items-center max-w-4xl mx-auto w-full">
+                <h2 className="text-white font-bold text-lg hidden md:block">Vista Previa</h2>
+                <div className="md:hidden"></div> 
+
+                <div className="flex gap-2 ml-auto">
+                    {currentUser.role === UserRole.ADMIN && (
+                      <button 
+                        onClick={() => handleDeleteBatchClick(selectedOrder.batchId)}
+                        className="p-2.5 bg-red-900/30 text-red-400 border border-red-900/50 rounded-lg font-bold flex items-center justify-center active:scale-95"
+                        title="Eliminar"
+                      >
+                        <Trash2 size={20} />
+                      </button>
+                    )}
+                    
+                    <button 
+                      onClick={handleDownloadPDF} 
+                      disabled={isGeneratingPdf}
+                      className="bg-red-600 text-white px-4 py-2.5 rounded-lg font-bold shadow-lg shadow-red-900/40 flex items-center gap-2 active:scale-95 disabled:opacity-50"
+                    >
+                      {isGeneratingPdf ? <Loader2 size={20} className="animate-spin" /> : <Download size={20} />}
+                      <span className="hidden sm:inline">{isGeneratingPdf ? 'Generando...' : 'PDF'}</span> 
+                    </button>
+
+                    <button 
+                      onClick={() => setSelectedOrder(null)} 
+                      className="p-2.5 bg-white text-black rounded-lg font-bold shadow-md hover:bg-gray-200 active:scale-95"
+                    >
+                      <X size={24} />
+                    </button>
+                </div>
+             </div>
           </div>
-          <div className="h-24 w-full no-print"></div>
+
+          <div className="flex-1 overflow-y-auto bg-gray-900 p-4 pb-safe overscroll-contain">
+            <div className="min-h-full flex items-center justify-center py-4">
+                <div 
+                  id="print-area" 
+                  className="bg-white text-black w-full max-w-3xl rounded-xl shadow-2xl overflow-hidden"
+                  onClick={(e) => e.stopPropagation()} 
+                >
+                  <OrderPdfDocument order={selectedOrder} />
+                </div>
+            </div>
+            <div className="h-12"></div>
+          </div>
         </div>
       )}
     </div>
