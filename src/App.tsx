@@ -448,10 +448,10 @@ const App: React.FC = () => {
     <button 
       onClick={onClick} 
       className={`
-        relative flex items-center justify-center gap-2 px-3 py-3.5 rounded-full transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] overflow-hidden
+        relative flex items-center justify-center gap-1.5 px-2.5 py-3 rounded-full transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] overflow-hidden
         outline-none select-none touch-manipulation active:scale-95 group
         ${isActive 
-          ? 'flex-[2] bg-red-600 text-white shadow-neon dark:shadow-red-900/50' 
+          ? 'flex-[3] bg-red-600 text-white shadow-neon dark:shadow-red-900/50' 
           : specialColor 
              ? 'flex-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-400'
              : 'flex-1 bg-gray-50/80 dark:bg-white/5 hover:bg-gray-100 dark:hover:bg-white/10 text-gray-500 dark:text-slate-400'
@@ -459,11 +459,11 @@ const App: React.FC = () => {
       `}
       style={{ WebkitTapHighlightColor: 'transparent' }}
     >
-      <div className="relative z-10">
+      <div className="relative z-10 flex-shrink-0">
         <Icon 
-          size={20} 
+          size={22} 
           strokeWidth={2.5} 
-          className={`transition-transform duration-300 ${isActive ? 'scale-110' : 'scale-100 group-hover:scale-110'}`}
+          className={`transition-transform duration-300 ${isActive ? 'scale-100' : 'scale-100 group-hover:scale-110'}`}
         />
         {hasAlert && !isActive && (
            <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5 z-20">
@@ -476,9 +476,9 @@ const App: React.FC = () => {
       {/* Label only visible when active */}
       <div className={`
         overflow-hidden transition-all duration-300 ease-out flex flex-col justify-center
-        ${isActive ? 'w-auto opacity-100 max-w-[100px] ml-1' : 'w-0 opacity-0 max-w-0 ml-0'}
+        ${isActive ? 'w-auto opacity-100 translate-x-0' : 'w-0 opacity-0 translate-x-4'}
       `}>
-        <span className="text-[11px] font-bold leading-none whitespace-nowrap tracking-wide">
+        <span className="text-[10px] md:text-[11px] font-bold leading-none whitespace-nowrap tracking-wide pl-0.5">
           {label}
         </span>
       </div>

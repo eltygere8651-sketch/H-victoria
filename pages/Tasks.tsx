@@ -42,6 +42,10 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
   // Derived state for the task currently being commented on
   const activeTaskForComments = allTasks.find(t => t.id === activeCommentTaskId);
 
+  // Permission Check
+  const canManageTasks = currentUser.role === UserRole.ADMIN || 
+                         (currentUser.role === UserRole.STAFF && currentUser.permissions?.includes('CAN_MANAGE_TASKS'));
+
   useEffect(() => {
     const unsubscribeTasks = storageService.subscribeToTasks((tasks) => {
       setAllTasks(tasks);
@@ -192,17 +196,20 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
               Tareas <span className="text-red-600">Activas</span>
             </h2>
           </div>
-          <button 
-            onClick={() => {
-              setEditingTask({});
-              setSelectedImages([]);
-              setPreviews([]);
-              setShowTaskModal(true);
-            }}
-            className="bg-gray-900 dark:bg-white text-white dark:text-gray-900 w-14 h-14 rounded-2xl flex items-center justify-center shadow-xl shadow-gray-400/20 hover:scale-105 transition-transform active:scale-95 border-2 border-transparent hover:border-gray-200 dark:hover:border-slate-700"
-          >
-            <Plus size={32} strokeWidth={3} />
-          </button>
+          {/* Only Admins or Staff with 'CAN_MANAGE_TASKS' permission can create new tasks */}
+          {canManageTasks && (
+            <button 
+              onClick={() => {
+                setEditingTask({});
+                setSelectedImages([]);
+                setPreviews([]);
+                setShowTaskModal(true);
+              }}
+              className="bg-gray-900 dark:bg-white text-white dark:text-gray-900 w-14 h-14 rounded-2xl flex items-center justify-center shadow-xl shadow-gray-400/20 hover:scale-105 transition-transform active:scale-95 border-2 border-transparent hover:border-gray-200 dark:hover:border-slate-700"
+            >
+              <Plus size={32} strokeWidth={3} />
+            </button>
+          )}
         </div>
 
         {/* Filters */}
