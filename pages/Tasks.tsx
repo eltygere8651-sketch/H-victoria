@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Task, User, Department, TaskStatus, TaskPriority, UserRole, TaskType, TaskComment } from '../types';
 import * as storageService from '../services/storageService';
-import { ClipboardCheck, Plus, X, Save, Loader2, Edit2, Trash2, ChevronDown, MessagesSquare, Check, Camera, AlertTriangle, Share2, Send } from 'lucide-react';
+import { ClipboardCheck, Plus, X, Save, Loader2, Edit2, Trash2, ChevronDown, MessagesSquare, Check, Camera, AlertTriangle, Share2, Send, Image } from 'lucide-react';
 import { compressImage } from '../utils/imageCompressor';
 import { ImageViewer } from '../components/ImageViewer';
 import { DeletionTimer } from '../components/DeletionTimer';
@@ -26,6 +26,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
   
   const [isCompressing, setIsCompressing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
   const [viewingImages, setViewingImages] = useState<{ images: string[], startIndex: number } | null>(null);
@@ -125,6 +126,8 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
         alert("Error al procesar las imágenes.");
       } finally {
         setIsCompressing(false);
+        // Reset input value to allow selecting the same file again if needed
+        if (e.target) e.target.value = '';
       }
     }
   };
@@ -464,8 +467,6 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
              {/* Modal Body */}
              <div className="flex-1 overflow-y-auto p-6 space-y-6">
                 
-                {/* Note: Announcement toggle removed by request to focus on Tasks */}
-
                 <div>
                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Título de la Tarea</label>
                    <input 
@@ -524,13 +525,35 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
                 <div>
                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Imágenes</label>
                    <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar">
+                      {/* BUTTON 1: CAMERA (Forced Environment Capture) */}
+                      <button 
+                        onClick={() => cameraInputRef.current?.click()}
+                        className="w-24 h-24 rounded-2xl border-2 border-dashed border-gray-300 dark:border-slate-600 flex flex-col items-center justify-center text-gray-400 hover:text-red-500 hover:border-red-500 hover:bg-red-50 dark:hover:bg-slate-800 transition-all flex-shrink-0 group"
+                      >
+                        <Camera size={28} className="group-hover:scale-110 transition-transform"/>
+                        <span className="text-[10px] font-black mt-1 uppercase tracking-wide">FOTO</span>
+                      </button>
+
+                      {/* BUTTON 2: GALLERY (File Picker) */}
                       <button 
                         onClick={() => fileInputRef.current?.click()}
-                        className="w-24 h-24 rounded-2xl border-2 border-dashed border-gray-300 dark:border-slate-600 flex flex-col items-center justify-center text-gray-400 hover:text-red-500 hover:border-red-500 hover:bg-red-50 dark:hover:bg-slate-800 transition-all flex-shrink-0"
+                        className="w-24 h-24 rounded-2xl border-2 border-dashed border-gray-300 dark:border-slate-600 flex flex-col items-center justify-center text-gray-400 hover:text-blue-500 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-slate-800 transition-all flex-shrink-0 group"
                       >
-                        <Camera size={28} />
-                        <span className="text-[10px] font-black mt-1 uppercase tracking-wide">Añadir</span>
+                        <Image size={28} className="group-hover:scale-110 transition-transform"/>
+                        <span className="text-[10px] font-black mt-1 uppercase tracking-wide">GALERÍA</span>
                       </button>
+
+                      {/* Hidden Input for CAMERA */}
+                      <input 
+                        type="file" 
+                        ref={cameraInputRef} 
+                        onChange={handleImageSelect} 
+                        className="hidden" 
+                        accept="image/*" 
+                        capture="environment"
+                      />
+
+                      {/* Hidden Input for GALLERY */}
                       <input 
                         type="file" 
                         ref={fileInputRef} 

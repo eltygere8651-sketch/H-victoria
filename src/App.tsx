@@ -535,7 +535,8 @@ const App: React.FC = () => {
 
       <div className="flex-1 flex overflow-hidden relative">
         {/* Main Content Area - Added padding bottom to prevent content from being hidden behind floating dock */}
-        <main className="flex-1 overflow-y-auto no-scrollbar pb-32">
+        {/* FIX: Removed 'no-scrollbar' class to allow scrolling visibility */}
+        <main className="flex-1 overflow-y-auto pb-32">
           {view === 'inventory' && user.role === UserRole.ADMIN && <Inventory currentUser={user} />}
           {view === 'replenish' && user.role !== UserRole.GUEST && <Replenishment currentUser={user} cart={cart} setCart={setCart} showMobileCart={showMobileCart} setShowMobileCart={setShowMobileCart} />}
           {view === 'admin' && user.role === UserRole.ADMIN && <Admin currentUser={user} unreadNotificationsCount={unreadAdminNotifications.length} initialTab={initialAdminTab} />}

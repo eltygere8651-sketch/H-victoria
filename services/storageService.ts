@@ -94,6 +94,18 @@ const createNotification = async (type: NotificationType, payload: NotificationP
 // --- AUTH & SESSION ---
 let authInitializationAttempted = false;
 
+// Retry helper for robust network requests
+const retry = async <T>(fn: () => Promise<T>, retries = 5, delayMs = 1000): Promise<T> => {
+  try {
+    return await fn();
+  } catch (error) {
+    if (retries <= 0) throw error;
+    console.warn(`Retrying operation... attempts left: ${retries}`);
+    await new Promise(resolve => setTimeout(resolve, delayMs));
+    return retry(fn, retries - 1, delayMs * 1.5);
+  }
+};
+
 export const ensureAnonymousAuth = async () => {
   if (auth.currentUser) return;
   
@@ -110,12 +122,15 @@ export const ensureAnonymousAuth = async () => {
       } else {
         try {
           console.log("No user, signing in anonymously...");
-          await auth.signInAnonymously();
+          // Attempt sign-in with retry logic to handle network flakes
+          await retry(() => auth.signInAnonymously());
           await initFirestoreWithInitialData();
           unsubscribe();
           resolve();
         } catch (error) {
-           console.error("Anonymous auth failed:", error);
+           console.error("Anonymous auth failed after retries:", error);
+           // Even if it fails, we resolve to let the app try to render (perhaps in offline mode)
+           // or show a specific error state handled by the components
            unsubscribe();
            resolve();
         }
