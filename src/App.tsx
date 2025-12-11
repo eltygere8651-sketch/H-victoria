@@ -454,25 +454,25 @@ const App: React.FC = () => {
                 <button onClick={() => setShowIOSPrompt(true)} className="bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 px-3 py-2 rounded-lg font-bold text-sm hidden md:flex items-center gap-2 shadow-sm hover:bg-blue-100 dark:hover:bg-blue-900/30 active:scale-95"><PlusSquare size={16} /> Instalar</button>
             )}
 
-             {/* Help Button - INCREASED VISIBILITY */}
+            {/* Share Button for Admins - Located in Header */}
+            {user.role === UserRole.ADMIN && (
+              <button 
+                onClick={handleSharePublicAccess} 
+                className="p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-full text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 active:scale-95 transition-colors shadow-sm ring-1 ring-indigo-100 dark:ring-indigo-900/30"
+                title="Compartir Acceso"
+              >
+                <Share2 size={20} strokeWidth={2.5} />
+              </button>
+            )}
+
+             {/* Help Button - With Question Mark Icon */}
              <button 
                 onClick={() => setShowGuideModal(true)} 
                 className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-full text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30 active:scale-95 transition-colors shadow-sm ring-1 ring-blue-100 dark:ring-blue-900/30"
                 title="Guía de Usuario"
               >
-                <HelpCircle size={20} />
+                <HelpCircle size={20} strokeWidth={2.5} />
               </button>
-
-            {/* Share Button for Admins */}
-            {user.role === UserRole.ADMIN && (
-              <button 
-                onClick={handleSharePublicAccess} 
-                className="p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-full text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 active:scale-95 transition-colors shadow-sm"
-                title="Compartir Acceso"
-              >
-                <Share2 size={20} />
-              </button>
-            )}
 
             <button onClick={() => setDarkMode(!darkMode)} className="p-3 bg-gray-100/80 dark:bg-slate-800/80 rounded-full text-gray-500 dark:text-slate-400 hover:bg-gray-200 dark:hover:bg-slate-700 active:scale-95 transition-colors">{darkMode ? <Sun size={20}/> : <Moon size={20}/>}</button>
             <button onClick={handleLogout} className="p-3 bg-gray-100/80 dark:bg-slate-800/80 rounded-full text-gray-500 dark:text-slate-400 hover:bg-gray-200 dark:hover:bg-slate-700 active:scale-95 transition-colors"><LogOut size={20}/></button>

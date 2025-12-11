@@ -43,14 +43,14 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
           {/* Subtle Texture/Pattern Overlay */}
           <div className="absolute inset-0 opacity-20 bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:16px_16px]"></div>
           
-          {/* Help Button inside the header */}
+          {/* Help Button inside the header - High Z-Index */}
           <button 
             onClick={() => setShowGuide(true)}
-            className="absolute top-4 right-4 text-white/60 hover:text-white bg-white/10 hover:bg-white/20 p-2 rounded-full backdrop-blur-md transition-all active:scale-95 z-20"
+            className="absolute top-4 right-4 text-white hover:text-red-100 bg-white/20 hover:bg-white/30 p-2.5 rounded-full backdrop-blur-md transition-all active:scale-95 z-50 shadow-sm border border-white/20"
             title="¿Qué es Hub?"
             type="button"
           >
-            <HelpCircle size={22} />
+            <HelpCircle size={24} strokeWidth={2.5} />
           </button>
           
           <div className="relative z-10 flex flex-col items-center">
