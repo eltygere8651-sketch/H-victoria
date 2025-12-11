@@ -1,6 +1,6 @@
 import React, { useId } from 'react';
 
-export const Logo: React.FC<{ size?: 'sm' | 'md' | 'lg' | 'xl', className?: string, solid?: boolean }> = ({ size = 'md', className = '', solid = false }) => {
+export const Logo: React.FC<{ size?: 'sm' | 'md' | 'lg' | 'xl', className?: string, solid?: boolean, simple?: boolean }> = ({ size = 'md', className = '', solid = false, simple = false }) => {
   const sizeMap = {
     sm: 32,
     md: 48,
@@ -14,6 +14,25 @@ export const Logo: React.FC<{ size?: 'sm' | 'md' | 'lg' | 'xl', className?: stri
   const bevelId = `bevel-${uniqueId}`;
   const shadowId = `shadow-${uniqueId}`;
   const innerShadowId = `inner-${uniqueId}`;
+
+  // For PDF generation (simple mode), we avoid complex filters and gradients that html2canvas/iOS struggles with.
+  if (simple) {
+    return (
+      <svg 
+        xmlns="http://www.w3.org/2000/svg" 
+        viewBox="0 0 100 100" 
+        width={pxSize}
+        height={pxSize}
+        className={`${className} overflow-visible`} 
+        style={{ width: pxSize, height: pxSize, display: 'block' }}
+      >
+        {/* Solid Red Background */}
+        <rect x="5" y="5" width="90" height="90" rx="24" ry="24" fill="#dc2626" />
+        {/* White V */}
+        <path d="M30 35 L50 75 L70 35 H58 L50 51 L42 35 Z" fill="white" />
+      </svg>
+    );
+  }
 
   return (
     <svg 

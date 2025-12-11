@@ -19,12 +19,14 @@ export const generatePdfFromReactComponent = async (component: React.ReactElemen
     const container = document.createElement('div');
     container.style.position = 'absolute';
     container.style.left = '-9999px'; // Position it off-screen
+    container.style.top = '0';
+    // Explicitly set width to match A4 width in pixels (approx) to prevent responsive squashing
+    container.style.width = '800px'; 
     document.body.appendChild(container);
 
     const root = ReactDOM.createRoot(container);
     
     // Use flushSync to ensure the component is fully rendered before proceeding.
-    // This is crucial for React 19 and concurrent rendering.
     flushSync(() => {
       root.render(React.createElement(React.StrictMode, null, component));
     });
@@ -42,10 +44,12 @@ export const generatePdfFromReactComponent = async (component: React.ReactElemen
       html2canvas: { 
         scale: 2, 
         useCORS: true,
-        logging: false
+        logging: false,
+        windowWidth: 1200, // CRITICAL FIX: Force desktop width for mobile rendering
+        letterRendering: true,
       },
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-      pagebreak: { mode: ['avoid-all'] }
+      pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
     };
 
     (window as any).html2pdf().set(options).from(elementToPrint).save()

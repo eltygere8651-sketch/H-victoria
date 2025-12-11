@@ -205,6 +205,7 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
           </div>
         )}
 
+        {/* ... (Users and Reports tabs remain unchanged) ... */}
         {activeTab === 'users' && (
           <div>
             <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-md border border-gray-100 dark:border-slate-800 mb-6">
@@ -427,8 +428,15 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
       )}
 
       {selectedOrder && (
-        <div className="fixed inset-0 z-40 bg-gray-900/90 backdrop-blur-sm flex flex-col items-center p-0 md:p-6 overflow-y-auto animate-fade-in" onClick={() => setSelectedOrder(null)}>
-          <div className="w-full max-w-3xl flex items-center justify-between px-4 pt-safe pb-4 md:p-0 md:mb-6 sticky top-0 md:static bg-gray-900/80 md:bg-transparent backdrop-blur-md md:backdrop-blur-none z-20" onClick={e => e.stopPropagation()}>
+        <div 
+          className="fixed inset-0 z-40 bg-gray-900/95 backdrop-blur-md flex flex-col items-center p-0 md:p-6 overflow-y-auto animate-fade-in" 
+          onClick={() => setSelectedOrder(null)}
+        >
+          <div 
+            // Adjusted padding for safe areas to prevent header clash on iOS
+            className="w-full max-w-3xl flex items-center justify-between px-4 pt-safe pb-4 md:p-0 md:mb-6 sticky top-0 md:static bg-gray-900/95 md:bg-transparent backdrop-blur-xl md:backdrop-blur-none z-20" 
+            onClick={e => e.stopPropagation()}
+          >
             <h2 className="text-white font-bold text-lg hidden md:block">Vista Previa</h2>
             <div className="flex gap-3 ml-auto">
               <button onClick={handleDownloadPDF} disabled={isGeneratingPdf} className="bg-red-600 text-white px-5 py-3 rounded-xl font-bold shadow-lg shadow-button-red flex items-center gap-2 hover:bg-red-700 transition-colors disabled:bg-red-400 active:scale-95">
@@ -437,7 +445,13 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
               <button onClick={() => setSelectedOrder(null)} className="p-3 bg-white text-gray-900 rounded-xl font-bold shadow-md hover:bg-gray-100 active:scale-95"><X /></button>
             </div>
           </div>
-          <div id="pdf-preview-content" className="bg-white text-black p-6 md:p-12 rounded-t-2xl md:rounded-2xl shadow-2xl max-w-3xl w-full h-auto animate-slide-up" onClick={e => e.stopPropagation()}>
+          
+          <div 
+            id="pdf-preview-content" 
+            className="bg-white text-black p-4 md:p-12 md:rounded-2xl shadow-2xl max-w-3xl w-full h-auto animate-slide-up mt-4 md:mt-0" 
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Same simplified component for preview */}
             <OrderPdfDocument order={selectedOrder} />
           </div>
           <div className="h-24 w-full no-print"></div>
