@@ -472,7 +472,7 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
                   className="bg-white text-black w-full max-w-3xl rounded-xl shadow-2xl overflow-hidden"
                   onClick={(e) => e.stopPropagation()} 
                 >
-                  <OrderPdfDocument order={selectedOrder} />
+                  <OrderPdfDocument order={selectedOrder} preview={true} />
                 </div>
             </div>
             <div className="h-12"></div>

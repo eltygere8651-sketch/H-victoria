@@ -370,16 +370,16 @@ const App: React.FC = () => {
     }
   };
 
-  // NavButton optimizado para Android/iOS con ratios de expansión máximos
+  // NavButton optimizado para Android/iOS con ratios de expansión máximos y texto centrado
   const NavButton = ({ icon: Icon, label, isActive, onClick, hasAlert = false, specialColor = false }: any) => (
     <button 
       onClick={onClick} 
       className={`
-        relative flex items-center justify-center gap-1 rounded-full transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] overflow-hidden
+        relative flex items-center justify-center rounded-full transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] overflow-hidden
         outline-none select-none touch-manipulation active:scale-95 group
-        ${isActive ? 'px-4 py-3' : 'px-1 py-3'}
+        ${isActive ? 'px-3.5 py-3 gap-1.5' : 'px-1 py-3'} 
         ${isActive 
-          ? 'flex-[6] bg-red-600 text-white shadow-neon dark:shadow-red-900/50' 
+          ? 'flex-[8] bg-red-600 text-white shadow-neon dark:shadow-red-900/50' 
           : specialColor 
              ? 'flex-[1] bg-indigo-50 hover:bg-indigo-100 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-400'
              : 'flex-[1] bg-gray-50/80 dark:bg-white/5 hover:bg-gray-100 dark:hover:bg-white/10 text-gray-500 dark:text-slate-400'
@@ -387,7 +387,7 @@ const App: React.FC = () => {
       `}
       style={{ WebkitTapHighlightColor: 'transparent' }}
     >
-      <div className="relative z-10 flex-shrink-0">
+      <div className="relative z-10 flex-shrink-0 flex items-center justify-center">
         <Icon 
           size={20} 
           strokeWidth={2.5} 
@@ -402,10 +402,10 @@ const App: React.FC = () => {
       </div>
       
       <div className={`
-        overflow-hidden transition-all duration-300 ease-out flex flex-col justify-center
+        overflow-hidden transition-all duration-300 ease-out flex items-center justify-center
         ${isActive ? 'w-auto opacity-100 translate-x-0' : 'w-0 opacity-0 translate-x-4'}
       `}>
-        <span className="text-xs font-bold leading-none whitespace-nowrap tracking-wide pl-1">
+        <span className="text-[11px] font-bold leading-tight whitespace-nowrap tracking-wide pt-0.5">
           {label}
         </span>
       </div>

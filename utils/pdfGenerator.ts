@@ -45,7 +45,8 @@ export const generatePdfFromReactComponent = async (component: React.ReactElemen
         scale: 2, 
         useCORS: true,
         logging: false,
-        windowWidth: 1200, // CRITICAL FIX: Force desktop width for mobile rendering
+        windowWidth: 794, // Force exact A4 pixel width at 96DPI
+        scrollY: 0, // CRITICAL FIX: Prevent scroll offset from cutting off the top of the PDF
         letterRendering: true,
       },
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
