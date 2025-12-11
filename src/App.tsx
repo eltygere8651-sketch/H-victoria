@@ -370,8 +370,7 @@ const App: React.FC = () => {
     }
   };
 
-  // NavButton optimizado para Android/iOS con ratios de expansión máximos y texto centrado
-  const NavButton = ({ icon: Icon, label, isActive, onClick, hasAlert = false, specialColor = false }: any) => (
+  const NavButton = ({ icon: Icon, label, isActive, onClick, hasAlert = false }: any) => (
     <button 
       onClick={onClick} 
       className={`
@@ -380,9 +379,7 @@ const App: React.FC = () => {
         ${isActive ? 'px-3.5 py-3 gap-1.5' : 'px-1 py-3'} 
         ${isActive 
           ? 'flex-[8] bg-red-600 text-white shadow-neon dark:shadow-red-900/50' 
-          : specialColor 
-             ? 'flex-[1] bg-indigo-50 hover:bg-indigo-100 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-400'
-             : 'flex-[1] bg-gray-50/80 dark:bg-white/5 hover:bg-gray-100 dark:hover:bg-white/10 text-gray-500 dark:text-slate-400'
+          : 'flex-[1] bg-gray-50/80 dark:bg-white/5 hover:bg-gray-100 dark:hover:bg-white/10 text-gray-500 dark:text-slate-400'
         }
       `}
       style={{ WebkitTapHighlightColor: 'transparent' }}
@@ -452,6 +449,18 @@ const App: React.FC = () => {
             {!isInstalled && isIOS && !(window.navigator as any).standalone && (
                 <button onClick={() => setShowIOSPrompt(true)} className="bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 px-3 py-2 rounded-lg font-bold text-sm hidden md:flex items-center gap-2 shadow-sm hover:bg-blue-100 dark:hover:bg-blue-900/30 active:scale-95"><PlusSquare size={16} /> Instalar</button>
             )}
+
+            {/* Share Button for Admins - Moved to Header */}
+            {user.role === UserRole.ADMIN && (
+              <button 
+                onClick={handleSharePublicAccess} 
+                className="p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-full text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 active:scale-95 transition-colors shadow-sm"
+                title="Compartir Acceso"
+              >
+                <Share2 size={20} />
+              </button>
+            )}
+
             <button onClick={() => setDarkMode(!darkMode)} className="p-3 bg-gray-100/80 dark:bg-slate-800/80 rounded-full text-gray-500 dark:text-slate-400 hover:bg-gray-200 dark:hover:bg-slate-700 active:scale-95 transition-colors">{darkMode ? <Sun size={20}/> : <Moon size={20}/>}</button>
             <button onClick={handleLogout} className="p-3 bg-gray-100/80 dark:bg-slate-800/80 rounded-full text-gray-500 dark:text-slate-400 hover:bg-gray-200 dark:hover:bg-slate-700 active:scale-95 transition-colors"><LogOut size={20}/></button>
           </div>
@@ -479,10 +488,6 @@ const App: React.FC = () => {
             
             {user.role === UserRole.ADMIN && <NavButton icon={LayoutGrid} label="Stock" isActive={view === 'inventory'} onClick={() => setView('inventory')} />}
             {user.role === UserRole.ADMIN && <NavButton icon={ShieldCheck} label="Admin" isActive={view === 'admin'} onClick={() => setView('admin')} hasAlert={unreadAdminNotifications.length > 0} />}
-
-            {user.role === UserRole.ADMIN && (
-              <NavButton icon={Share2} label="Compartir" isActive={false} onClick={handleSharePublicAccess} specialColor={true} />
-            )}
         </nav>
       </div>
 
