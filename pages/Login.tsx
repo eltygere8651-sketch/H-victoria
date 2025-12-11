@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { Logo } from '../components/Logo';
-// Fix: Changed storageService import to import all exported functions as a namespace, as 'storageService' is not a named export.
 import * as storageService from '../services/storageService';
 import { User } from '../types';
-import { Loader2, ArrowRight } from 'lucide-react';
+import { Loader2, ArrowRight, HelpCircle } from 'lucide-react';
+import { GuideModal } from '../components/GuideModal';
 
 interface LoginProps {
   onLogin: (user: User) => void;
@@ -14,13 +14,14 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showGuide, setShowGuide] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
     
-    // Artificial delay for better UX (prevents flickering on fast devices)
+    // Artificial delay for better UX
     setTimeout(async () => {
         const user = await storageService.login(username, pin);
         setLoading(false);
@@ -34,13 +35,23 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-slate-950 flex flex-col items-center justify-center p-4 transition-colors duration-300 font-sans">
-      <div className="w-full max-w-sm bg-white dark:bg-slate-800 rounded-[2rem] shadow-2xl overflow-hidden border border-white/50 dark:border-slate-700/50 transition-all duration-300 animate-pop-in">
+    <div className="min-h-screen bg-gray-100 dark:bg-slate-950 flex flex-col items-center justify-center p-4 transition-colors duration-300 font-sans relative">
+      <div className="w-full max-w-sm bg-white dark:bg-slate-800 rounded-[2rem] shadow-2xl overflow-hidden border border-white/50 dark:border-slate-700/50 transition-all duration-300 animate-pop-in relative">
         
         {/* Header Section */}
         <div className="bg-gradient-to-br from-red-700 to-red-900 py-10 px-6 flex flex-col items-center justify-center text-white relative overflow-hidden">
           {/* Subtle Texture/Pattern Overlay */}
           <div className="absolute inset-0 opacity-20 bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:16px_16px]"></div>
+          
+          {/* Help Button inside the header - High Z-Index */}
+          <button 
+            onClick={() => setShowGuide(true)}
+            className="absolute top-4 right-4 text-white hover:text-red-100 bg-white/20 hover:bg-white/30 p-2.5 rounded-full backdrop-blur-md transition-all active:scale-95 z-50 shadow-sm border border-white/20"
+            title="¿Qué es Hub?"
+            type="button"
+          >
+            <HelpCircle size={24} strokeWidth={2.5} />
+          </button>
           
           <div className="relative z-10 flex flex-col items-center">
               <div className="p-3 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 shadow-xl mb-4">
@@ -110,6 +121,8 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
           </div>
         </div>
       </div>
+
+      <GuideModal isOpen={showGuide} onClose={() => setShowGuide(false)} />
     </div>
   );
 };
