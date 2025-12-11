@@ -43,7 +43,7 @@ export const PublicTaskViewer: React.FC<PublicTaskViewerProps> = ({ taskId }) =>
 
   if (loading) {
     return (
-      <div className="h-full w-full bg-gray-50 dark:bg-slate-950 flex flex-col items-center justify-center p-4">
+      <div className="min-h-screen w-full bg-gray-50 dark:bg-slate-950 flex flex-col items-center justify-center p-4">
         <Logo size="lg" className="animate-pulse mb-6" />
         <Loader2 size={32} className="animate-spin text-red-600" />
         <p className="mt-4 text-gray-500 font-medium">Cargando tarea compartida...</p>
@@ -53,7 +53,7 @@ export const PublicTaskViewer: React.FC<PublicTaskViewerProps> = ({ taskId }) =>
 
   if (error || !task) {
     return (
-      <div className="h-full w-full bg-gray-50 dark:bg-slate-950 flex flex-col items-center justify-center p-4 text-center">
+      <div className="min-h-screen w-full bg-gray-50 dark:bg-slate-950 flex flex-col items-center justify-center p-4 text-center">
         <div className="w-20 h-20 bg-gray-200 dark:bg-slate-800 rounded-full flex items-center justify-center mb-6">
           <AlertTriangle size={40} className="text-gray-400" />
         </div>
@@ -67,9 +67,9 @@ export const PublicTaskViewer: React.FC<PublicTaskViewerProps> = ({ taskId }) =>
   }
 
   return (
-    // FIX: Added h-full and overflow-y-auto to allow scrolling within the app's fixed body
-    <div className="h-full w-full overflow-y-auto bg-gray-50 dark:bg-slate-950 font-sans transition-colors duration-300 scroll-smooth">
-      <div className="min-h-full flex flex-col">
+    // FIX: Changed from h-full/overflow-y-auto to min-h-screen to rely on native document scrolling
+    <div className="min-h-screen w-full bg-gray-50 dark:bg-slate-950 font-sans transition-colors duration-300">
+      <div className="flex flex-col">
         {/* Header */}
         <header className="bg-white dark:bg-slate-900 border-b border-gray-100 dark:border-slate-800 sticky top-0 z-20 px-4 py-3 shadow-sm">
           <div className="max-w-3xl mx-auto flex justify-between items-center">
@@ -87,7 +87,7 @@ export const PublicTaskViewer: React.FC<PublicTaskViewerProps> = ({ taskId }) =>
         </header>
 
         {/* Content */}
-        <main className="flex-1 max-w-3xl mx-auto w-full p-4 md:p-8">
+        <main className="flex-1 max-w-3xl mx-auto w-full p-4 md:p-8 pb-safe">
           <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-card-soft dark:shadow-card-dark border border-gray-100 dark:border-slate-800 overflow-hidden animate-slide-up">
             
             {/* Banner / Type Indicator */}
