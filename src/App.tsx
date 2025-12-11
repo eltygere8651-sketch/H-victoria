@@ -370,16 +370,16 @@ const App: React.FC = () => {
     }
   };
 
-  // NavButton optimizado para Android/iOS con flex ratios agresivos
+  // NavButton optimizado para Android/iOS con ratios de expansión máximos
   const NavButton = ({ icon: Icon, label, isActive, onClick, hasAlert = false, specialColor = false }: any) => (
     <button 
       onClick={onClick} 
       className={`
-        relative flex items-center justify-center gap-2 rounded-full transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] overflow-hidden
+        relative flex items-center justify-center gap-1 rounded-full transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] overflow-hidden
         outline-none select-none touch-manipulation active:scale-95 group
-        ${isActive ? 'px-5 py-3' : 'px-2 py-3'}
+        ${isActive ? 'px-4 py-3' : 'px-1 py-3'}
         ${isActive 
-          ? 'flex-[4] bg-red-600 text-white shadow-neon dark:shadow-red-900/50' 
+          ? 'flex-[6] bg-red-600 text-white shadow-neon dark:shadow-red-900/50' 
           : specialColor 
              ? 'flex-[1] bg-indigo-50 hover:bg-indigo-100 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-400'
              : 'flex-[1] bg-gray-50/80 dark:bg-white/5 hover:bg-gray-100 dark:hover:bg-white/10 text-gray-500 dark:text-slate-400'
@@ -389,7 +389,7 @@ const App: React.FC = () => {
     >
       <div className="relative z-10 flex-shrink-0">
         <Icon 
-          size={22} 
+          size={20} 
           strokeWidth={2.5} 
           className={`transition-transform duration-300 ${isActive ? 'scale-100' : 'scale-100 group-hover:scale-110'}`}
         />
@@ -405,7 +405,7 @@ const App: React.FC = () => {
         overflow-hidden transition-all duration-300 ease-out flex flex-col justify-center
         ${isActive ? 'w-auto opacity-100 translate-x-0' : 'w-0 opacity-0 translate-x-4'}
       `}>
-        <span className="text-[10px] md:text-[11px] font-bold leading-none whitespace-nowrap tracking-wide pl-0.5">
+        <span className="text-xs font-bold leading-none whitespace-nowrap tracking-wide pl-1">
           {label}
         </span>
       </div>
@@ -458,16 +458,18 @@ const App: React.FC = () => {
         </div>
       </header>
 
-      <main className="flex-1 w-full pb-32">
+      {/* Main Content Area - Native Scroll */}
+      <main className="flex-1 w-full">
         {view === 'inventory' && user.role === UserRole.ADMIN && <Inventory currentUser={user} />}
         {view === 'replenish' && user.role !== UserRole.GUEST && <Replenishment currentUser={user} cart={cart} setCart={setCart} showMobileCart={showMobileCart} setShowMobileCart={setShowMobileCart} />}
         {view === 'admin' && user.role === UserRole.ADMIN && <Admin currentUser={user} unreadNotificationsCount={unreadAdminNotifications.length} initialTab={initialAdminTab} />}
         {view === 'tasks' && <Tasks currentUser={user} />}
       </main>
 
+      {/* FLOATING DOCK NAVIGATION */}
       <div className="fixed bottom-6 inset-x-0 z-20 flex justify-center px-4 pointer-events-none pb-safe">
         <nav 
-          className="pointer-events-auto bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl border border-white/40 dark:border-white/10 shadow-dock dark:shadow-dock-dark rounded-full p-2 flex items-center justify-between gap-2 w-full max-w-md transition-all duration-300 ring-1 ring-black/5 dark:ring-white/5"
+          className="pointer-events-auto bg-white/90 dark:bg-slate-900/90 backdrop-blur-2xl border border-white/40 dark:border-white/10 shadow-dock dark:shadow-dock-dark rounded-full p-1.5 flex items-center justify-between gap-1 w-full max-w-md transition-all duration-300 ring-1 ring-black/5 dark:ring-white/5"
         >
             <NavButton icon={ClipboardCheck} label="Tareas" isActive={view === 'tasks'} onClick={() => setView('tasks')} hasAlert={hasUnreadTasks}/>
 

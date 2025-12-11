@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Product, User, CartItem, Department, OrderBatch } from '../types';
-// Fix: Changed storageService import to import all exported functions as a namespace, as 'storageService' is not a named export.
 import * as storageService from '../services/storageService';
 import { Search, ShoppingCart, Plus, Minus, Trash2, CheckCircle2, X, ArrowRight, Package, ChevronUp, AlertTriangle, Siren, Loader2, ChevronDown, ListTree, Filter } from 'lucide-react';
 
@@ -411,7 +410,7 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCar
            </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4 md:p-6 bg-gray-50 dark:bg-slate-950 transition-colors duration-300">
+        <div className="flex-1 overflow-y-auto p-4 md:p-6 bg-gray-50 dark:bg-slate-950 transition-colors duration-300 pb-32">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {filteredProducts.map(product => {
                const inCart = cart.find(c => c.product.id === product.id);
