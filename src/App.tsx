@@ -7,11 +7,12 @@ import Tasks from './pages/Tasks';
 import { PublicTaskViewer } from './components/PublicTaskViewer';
 import * as storageService from './services/storageService';
 import { Logo } from './components/Logo';
-import { LayoutGrid, ClipboardList, ShieldCheck, LogOut, Moon, Sun, Download, Share, PlusSquare, ShoppingCart, ClipboardCheck, Share2 } from 'lucide-react';
+import { LayoutGrid, ClipboardList, ShieldCheck, LogOut, Moon, Sun, Download, Share, PlusSquare, ShoppingCart, ClipboardCheck, Share2, HelpCircle } from 'lucide-react';
 import { User, UserRole, AppNotification, CartItem } from './types';
 import { NotificationToast } from './components/NotificationToast';
 import { initializePushNotifications } from './services/pushNotificationService';
 import { ShareModal } from './components/ShareModal';
+import { GuideModal } from './components/GuideModal';
 
 const App: React.FC = () => {
   const [isInitializing, setIsInitializing] = useState(true);
@@ -22,6 +23,9 @@ const App: React.FC = () => {
   // Share Modal State (Global)
   const [showShareModal, setShowShareModal] = useState(false);
   const [shareData, setShareData] = useState({ url: '', title: '' });
+
+  // Guide Modal State
+  const [showGuideModal, setShowGuideModal] = useState(false);
 
   const [view, setView] = useState<'inventory' | 'replenish' | 'admin' | 'tasks'>(() => {
     const lastView = storageService.getLastView();
@@ -450,7 +454,16 @@ const App: React.FC = () => {
                 <button onClick={() => setShowIOSPrompt(true)} className="bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 px-3 py-2 rounded-lg font-bold text-sm hidden md:flex items-center gap-2 shadow-sm hover:bg-blue-100 dark:hover:bg-blue-900/30 active:scale-95"><PlusSquare size={16} /> Instalar</button>
             )}
 
-            {/* Share Button for Admins - Moved to Header */}
+             {/* Help Button - INCREASED VISIBILITY */}
+             <button 
+                onClick={() => setShowGuideModal(true)} 
+                className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-full text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30 active:scale-95 transition-colors shadow-sm ring-1 ring-blue-100 dark:ring-blue-900/30"
+                title="Guía de Usuario"
+              >
+                <HelpCircle size={20} />
+              </button>
+
+            {/* Share Button for Admins */}
             {user.role === UserRole.ADMIN && (
               <button 
                 onClick={handleSharePublicAccess} 
@@ -509,6 +522,12 @@ const App: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* NEW: Guide Modal */}
+      <GuideModal 
+        isOpen={showGuideModal} 
+        onClose={() => setShowGuideModal(false)} 
+      />
 
       <ShareModal 
         isOpen={showShareModal} 
