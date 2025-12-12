@@ -319,8 +319,7 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser }) => {
           </div>
         </div>
       )}
-
-      {/* MODAL GESTIONAR DEPARTAMENTOS (BOTTOM SHEET OPTIMIZADO) */}
+            {/* MODAL GESTIONAR DEPARTAMENTOS (BOTTOM SHEET OPTIMIZADO) */}
       {showManageDepartmentsModal && (
          <div className="fixed inset-0 bg-black/80 dark:bg-slate-950/90 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 backdrop-blur-sm animate-fade-in">
           <div className="bg-white dark:bg-slate-900 w-full sm:max-w-lg h-[85vh] sm:h-auto sm:max-h-[85vh] rounded-t-[2.5rem] sm:rounded-[2.5rem] shadow-2xl flex flex-col animate-slide-up border-t sm:border-2 border-gray-100 dark:border-slate-700 overflow-hidden">
@@ -339,27 +338,27 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser }) => {
             {/* Scrollable Content */}
              <div className="flex-1 overflow-y-auto p-6 space-y-8 bg-white dark:bg-slate-900">
               
-              {/* Add/Edit Section */}
+              {/* Add/Edit Section - OPTIMIZED FOR MOBILE */}
               <div className="space-y-3">
                 <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest ml-1">
                   {editingDepartment ? 'Editar Departamento' : 'Crear Nuevo'}
                 </h4>
-                <div className="flex flex-col gap-3">
+                {/* Changed to flex-row to save vertical space */}
+                <div className="flex gap-3 items-stretch">
                   <input 
-                    className="w-full p-4 text-lg font-bold border-2 border-gray-200 dark:border-slate-700 rounded-2xl bg-gray-50 dark:bg-slate-800/50 focus:bg-white dark:focus:bg-slate-900 focus:border-red-500 outline-none dark:text-white transition-all shadow-sm placeholder-gray-400" 
+                    className="flex-1 min-w-0 p-4 text-lg font-bold border-2 border-gray-200 dark:border-slate-700 rounded-2xl bg-gray-50 dark:bg-slate-800/50 focus:bg-white dark:focus:bg-slate-900 focus:border-red-500 outline-none dark:text-white transition-all shadow-sm placeholder-gray-400" 
                     value={newDepartmentName} 
                     onChange={e => setNewDepartmentName(e.target.value)}
-                    placeholder="Ej. Recepción"
+                    placeholder={editingDepartment ? "Editar nombre..." : "Ej. Recepción"}
                     onKeyDown={e => e.key === 'Enter' && handleSaveDepartment()}
-                    autoFocus
                   />
                   <button 
                     onClick={handleSaveDepartment} 
                     disabled={!newDepartmentName.trim()}
-                    className="w-full py-4 bg-red-600 disabled:bg-gray-300 dark:disabled:bg-slate-700 text-white font-black rounded-2xl shadow-lg shadow-red-200 dark:shadow-none hover:bg-red-700 active:scale-[0.98] transition-all flex items-center justify-center gap-2 uppercase tracking-wide text-sm"
+                    className="shrink-0 w-16 bg-red-600 disabled:bg-gray-300 dark:disabled:bg-slate-700 text-white font-black rounded-2xl shadow-lg shadow-red-200 dark:shadow-none hover:bg-red-700 active:scale-[0.98] transition-all flex items-center justify-center"
+                    title={editingDepartment ? 'Guardar Cambios' : 'Añadir'}
                   >
-                    <Save size={20} strokeWidth={2.5} />
-                    <span>{editingDepartment ? 'Guardar Cambios' : 'Añadir Departamento'}</span>
+                    <Save size={24} strokeWidth={2.5} />
                   </button>
                 </div>
               </div>
