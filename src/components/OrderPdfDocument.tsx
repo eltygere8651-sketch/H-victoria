@@ -12,10 +12,14 @@ export const OrderPdfDocument: React.FC<OrderPdfDocumentProps> = ({ order, previ
     <div 
       className="bg-white text-black font-sans"
       style={{ 
-        width: preview ? '100%' : '210mm', 
-        padding: '20mm',
+        // 794px is approximately 210mm at 96 DPI. Matches the generator container exactly.
+        width: preview ? '100%' : '794px', 
+        padding: '15mm', 
         boxSizing: 'border-box',
-        backgroundColor: 'white'
+        backgroundColor: 'white',
+        // Ensure content flows naturally
+        height: 'auto',
+        minHeight: 'auto' 
       }}
     >
       {/* Header */}
@@ -38,7 +42,7 @@ export const OrderPdfDocument: React.FC<OrderPdfDocumentProps> = ({ order, previ
       </div>
 
       {/* Info Grid */}
-      <div className="flex gap-8 mb-8 p-4 bg-gray-50 rounded-xl border border-gray-200">
+      <div className="flex gap-8 mb-6 p-4 bg-gray-50 rounded-xl border border-gray-200">
         <div className="flex-1">
           <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest block mb-1">Departamento Destino</span>
           <span className="text-lg font-extrabold text-black block leading-tight">{order.departmentName}</span>
@@ -56,7 +60,7 @@ export const OrderPdfDocument: React.FC<OrderPdfDocumentProps> = ({ order, previ
             <tr className="border-b-2 border-black">
               <th className="text-left py-2 text-[10px] font-black uppercase tracking-wider text-black pl-2">Producto / Item</th>
               <th className="text-center py-2 text-[10px] font-black uppercase tracking-wider w-24 text-black">Cant.</th>
-              <th className="text-right py-2 text-[10px] font-black uppercase tracking-wider w-24 text-black pr-2">Verificación</th>
+              <th className="text-right py-2 text-[10px] font-black uppercase tracking-wider w-24 text-black pr-2">Check</th>
             </tr>
           </thead>
           <tbody>
@@ -79,7 +83,7 @@ export const OrderPdfDocument: React.FC<OrderPdfDocumentProps> = ({ order, previ
       </div>
 
       {/* Footer & Signatures */}
-      <div className="mt-12 break-inside-avoid">
+      <div className="mt-8 break-inside-avoid">
         <div className="flex gap-8 mb-6">
             <div className="flex-1 border-t-2 border-gray-200 pt-2">
                 <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-8">Firma Emisor (Almacén)</p>
