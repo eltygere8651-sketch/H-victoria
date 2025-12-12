@@ -16,13 +16,14 @@ export const generatePdfFromReactComponent = async (component: React.ReactElemen
     }
 
     // Create a temporary, off-screen container for rendering
+    // We use a fixed width of 794px which corresponds to A4 width at 96 DPI
     const container = document.createElement('div');
     container.style.position = 'absolute';
-    container.style.left = '-9999px'; // Position it off-screen
+    container.style.left = '-9999px';
     container.style.top = '0';
-    // Explicitly set width to match A4 width in pixels (approx 794px at 96 DPI) 
-    // This matches the width set in OrderPdfDocument style for consistency
     container.style.width = '794px'; 
+    container.style.margin = '0';
+    container.style.padding = '0';
     document.body.appendChild(container);
 
     const root = ReactDOM.createRoot(container);
@@ -38,19 +39,24 @@ export const generatePdfFromReactComponent = async (component: React.ReactElemen
       return reject(new Error('Failed to render the PDF component.'));
     }
     
+    // Configuration for html2pdf
     const options = {
-      margin: 5, // 5mm margin on all sides to maximize space
+      margin: [5, 5, 5, 5], // 5mm margins (Top, Left, Bottom, Right)
       filename,
       image: { type: 'jpeg', quality: 0.98 },
       html2canvas: { 
-        scale: 2, // Higher scale for better text quality
+        scale: 2, // Higher scale for crisp text
         useCORS: true,
         logging: false,
-        windowWidth: 794, // Force exact A4 pixel width at 96DPI
-        scrollY: 0, // Prevent scroll offset issues
+        windowWidth: 794, // Force exact A4 pixel width
         letterRendering: true,
+        scrollY: 0,
       },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      jsPDF: { 
+        unit: 'mm', 
+        format: 'a4', 
+        orientation: 'portrait' 
+      },
       pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
     };
 
@@ -59,16 +65,21 @@ export const generatePdfFromReactComponent = async (component: React.ReactElemen
         resolve();
       })
       .catch((err: any) => {
+        console.error("PDF Generation Error:", err);
         reject(err);
       })
       .finally(() => {
         // Clean up: unmount the component and remove the container
-        flushSync(() => {
-          root.unmount();
-        });
-        if (document.body.contains(container)) {
-          document.body.removeChild(container);
-        }
+        setTimeout(() => {
+            try {
+                root.unmount();
+                if (document.body.contains(container)) {
+                    document.body.removeChild(container);
+                }
+            } catch (e) {
+                console.warn("Cleanup warning:", e);
+            }
+        }, 100);
       });
   });
 };
