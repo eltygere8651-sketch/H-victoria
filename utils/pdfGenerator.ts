@@ -15,19 +15,13 @@ export const generatePdfFromReactComponent = async (component: React.ReactElemen
       return reject(new Error('html2pdf.js library is not loaded.'));
     }
 
-    // Create a temporary container for rendering.
-    // Using 'fixed' within the viewport (but hidden via z-index) prevents browser culling 
-    // which happens with elements positioned far off-screen (left: -9999px).
+    // Create a temporary, off-screen container for rendering
     const container = document.createElement('div');
-    container.style.position = 'fixed';
+    container.style.position = 'absolute';
+    container.style.left = '-9999px'; // Position it off-screen
     container.style.top = '0';
-    container.style.left = '0';
-    container.style.zIndex = '-9999';
-    // Explicitly set width to 794px (Standard A4 width at 96 DPI)
-    container.style.width = '794px'; 
-    container.style.height = 'auto'; // Allow height to grow
-    container.style.overflow = 'visible'; // Ensure no clipping
-    container.style.backgroundColor = '#ffffff'; // Ensure white background
+    // Explicitly set width to match A4 width in pixels (approx) to prevent responsive squashing
+    container.style.width = '800px'; 
     document.body.appendChild(container);
 
     const root = ReactDOM.createRoot(container);
@@ -43,9 +37,6 @@ export const generatePdfFromReactComponent = async (component: React.ReactElemen
       return reject(new Error('Failed to render the PDF component.'));
     }
     
-    // Calculate the total height of the rendered content
-    const totalHeight = elementToPrint.offsetHeight;
-
     const options = {
       margin: 0,
       filename,
@@ -54,11 +45,8 @@ export const generatePdfFromReactComponent = async (component: React.ReactElemen
         scale: 2, 
         useCORS: true,
         logging: false,
-        width: 794, // Match container width exactly
-        height: totalHeight, // Explicitly set height to avoid cutoff
-        windowWidth: 794,
-        windowHeight: totalHeight, // Ensure the "window" sees the full height
-        scrollY: 0, 
+        windowWidth: 794, // Force exact A4 pixel width at 96DPI
+        scrollY: 0, // CRITICAL FIX: Prevent scroll offset from cutting off the top of the PDF
         letterRendering: true,
       },
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
@@ -70,21 +58,16 @@ export const generatePdfFromReactComponent = async (component: React.ReactElemen
         resolve();
       })
       .catch((err: any) => {
-        console.error("PDF generation error:", err);
         reject(err);
       })
       .finally(() => {
         // Clean up: unmount the component and remove the container
-        setTimeout(() => {
-            try {
-                root.unmount();
-                if (document.body.contains(container)) {
-                    document.body.removeChild(container);
-                }
-            } catch (e) {
-                console.error("Error cleaning up PDF container:", e);
-            }
-        }, 100);
+        flushSync(() => {
+          root.unmount();
+        });
+        if (document.body.contains(container)) {
+          document.body.removeChild(container);
+        }
       });
   });
 };

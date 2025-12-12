@@ -15,17 +15,14 @@ export const generatePdfFromReactComponent = async (component: React.ReactElemen
       return reject(new Error('html2pdf.js library is not loaded.'));
     }
 
-    // Create a temporary container for rendering.
-    // Use '210mm' (A4 width) to match physical dimensions exactly.
+    // Create a temporary, off-screen container for rendering
     const container = document.createElement('div');
-    container.style.position = 'fixed';
+    container.style.position = 'absolute';
+    container.style.left = '-9999px'; // Position it off-screen
     container.style.top = '0';
-    container.style.left = '0';
-    container.style.zIndex = '-9999';
-    container.style.width = '210mm'; // Physical A4 width
-    container.style.height = 'auto'; 
-    container.style.overflow = 'visible'; 
-    container.style.backgroundColor = '#ffffff';
+    // Explicitly set width to match A4 width in pixels (approx 794px at 96 DPI) 
+    // This matches the width set in OrderPdfDocument style for consistency
+    container.style.width = '794px'; 
     document.body.appendChild(container);
 
     const root = ReactDOM.createRoot(container);
@@ -41,26 +38,16 @@ export const generatePdfFromReactComponent = async (component: React.ReactElemen
       return reject(new Error('Failed to render the PDF component.'));
     }
     
-    // Calculate dimensions based on scroll values to capture overflowing content if any
-    // This prevents cutting off the right side or bottom
-    const totalWidth = elementToPrint.scrollWidth;
-    const totalHeight = elementToPrint.scrollHeight;
-
     const options = {
-      margin: 0,
+      margin: 5, // 5mm margin on all sides to maximize space
       filename,
       image: { type: 'jpeg', quality: 0.98 },
       html2canvas: { 
-        scale: 2, 
+        scale: 2, // Higher scale for better text quality
         useCORS: true,
         logging: false,
-        // Capture the full scroll dimensions
-        width: totalWidth, 
-        height: totalHeight,
-        windowWidth: totalWidth,
-        windowHeight: totalHeight,
-        scrollY: 0, 
-        scrollX: 0,
+        windowWidth: 794, // Force exact A4 pixel width at 96DPI
+        scrollY: 0, // Prevent scroll offset issues
         letterRendering: true,
       },
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
@@ -72,21 +59,16 @@ export const generatePdfFromReactComponent = async (component: React.ReactElemen
         resolve();
       })
       .catch((err: any) => {
-        console.error("PDF generation error:", err);
         reject(err);
       })
       .finally(() => {
         // Clean up: unmount the component and remove the container
-        setTimeout(() => {
-            try {
-                root.unmount();
-                if (document.body.contains(container)) {
-                    document.body.removeChild(container);
-                }
-            } catch (e) {
-                console.error("Error cleaning up PDF container:", e);
-            }
-        }, 100);
+        flushSync(() => {
+          root.unmount();
+        });
+        if (document.body.contains(container)) {
+          document.body.removeChild(container);
+        }
       });
   });
 };

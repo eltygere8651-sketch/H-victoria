@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Package, ShoppingCart, ClipboardCheck, ShieldCheck, Zap, Globe, PlayCircle, LayoutGrid, Smartphone, Lock, WifiOff } from 'lucide-react';
+import { X, Package, ShoppingCart, ClipboardCheck, ShieldCheck, Zap, Globe, PlayCircle, LayoutGrid, LogOut } from 'lucide-react';
 import { Logo } from './Logo';
 
 interface GuideModalProps {
@@ -91,7 +91,7 @@ export const GuideModal: React.FC<GuideModalProps> = ({ isOpen, onClose }) => {
                     : 'bg-white/20 text-white hover:bg-white/30'
                 }`}
               >
-                <PlayCircle size={16} /> Presentación
+                <PlayCircle size={16} /> Video Tutorial
               </button>
             </div>
           </div>
@@ -148,40 +148,39 @@ export const GuideModal: React.FC<GuideModalProps> = ({ isOpen, onClose }) => {
               <div className="aspect-video w-full rounded-2xl overflow-hidden shadow-2xl bg-black border-4 border-white dark:border-slate-800 relative group">
                 {/* 
                   PLACEHOLDER VIDEO: 
-                  Aquí iría tu video de presentación.
+                  Reemplaza el 'src' del iframe con el enlace 'embed' de tu video de YouTube o Vimeo.
+                  Ejemplo YouTube: https://www.youtube.com/embed/TU_VIDEO_ID
                 */}
                 <iframe 
                   className="w-full h-full" 
                   src="https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=0&controls=1&rel=0" 
-                  title="Hub Showcase" 
+                  title="Hub Video Guide" 
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
                   allowFullScreen
                 ></iframe>
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-gray-100 dark:border-slate-700/50 flex flex-col items-center text-center shadow-sm">
-                   <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 flex items-center justify-center mb-3">
-                      <Smartphone size={20} />
+              <div className="space-y-4">
+                <div className="flex items-start gap-4">
+                   <div className="w-8 h-8 rounded-full bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 flex items-center justify-center font-bold text-sm shrink-0">1</div>
+                   <div>
+                     <h4 className="font-bold text-gray-900 dark:text-white text-sm">Inicio de Sesión</h4>
+                     <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">Usa tu PIN personal para acceder según tu rol (Admin o Personal).</p>
                    </div>
-                   <h4 className="font-bold text-gray-900 dark:text-white text-sm">100% Móvil</h4>
-                   <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">Diseñado para usarse con una sola mano en movimiento.</p>
                 </div>
-
-                <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-gray-100 dark:border-slate-700/50 flex flex-col items-center text-center shadow-sm">
-                   <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center mb-3">
-                      <WifiOff size={20} />
+                <div className="flex items-start gap-4">
+                   <div className="w-8 h-8 rounded-full bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 flex items-center justify-center font-bold text-sm shrink-0">2</div>
+                   <div>
+                     <h4 className="font-bold text-gray-900 dark:text-white text-sm">Realizar Pedidos</h4>
+                     <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">Selecciona departamento, añade productos al carrito y finaliza para notificar.</p>
                    </div>
-                   <h4 className="font-bold text-gray-900 dark:text-white text-sm">Modo Offline</h4>
-                   <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">Sigue trabajando sin conexión. Los datos se sincronizan al volver.</p>
                 </div>
-
-                <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-gray-100 dark:border-slate-700/50 flex flex-col items-center text-center shadow-sm">
-                   <div className="w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 flex items-center justify-center mb-3">
-                      <Lock size={20} />
+                <div className="flex items-start gap-4">
+                   <div className="w-8 h-8 rounded-full bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 flex items-center justify-center font-bold text-sm shrink-0">3</div>
+                   <div>
+                     <h4 className="font-bold text-gray-900 dark:text-white text-sm">Gestión de Tareas</h4>
+                     <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">Sigue las prioridades (Rojo = Urgente). Sube fotos y completa tareas.</p>
                    </div>
-                   <h4 className="font-bold text-gray-900 dark:text-white text-sm">Seguridad</h4>
-                   <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">Acceso restringido por roles y PIN personal cifrado.</p>
                 </div>
               </div>
             </div>

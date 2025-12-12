@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Logo } from '../components/Logo';
 import * as storageService from '../services/storageService';
 import { User } from '../types';
-import { Loader2, ArrowRight, HelpCircle, Play, Sparkles } from 'lucide-react';
+import { Loader2, ArrowRight, HelpCircle } from 'lucide-react';
 import { GuideModal } from '../components/GuideModal';
 
 interface LoginProps {
@@ -15,10 +15,6 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
-  
-  // Demo Mode States
-  const [isDemoLoading, setIsDemoLoading] = useState(false);
-  const [demoStep, setDemoStep] = useState(0);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,61 +34,9 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     }, 800);
   };
 
-  const handleDemoMode = async () => {
-    setIsDemoLoading(true);
-    const steps = [
-      "Conectando a servidor seguro...",
-      "Limpiando entorno de pruebas...",
-      "Generando inventario inteligente...",
-      "Simulando historial de pedidos...",
-      "Cargando tareas con evidencia visual...",
-      "Finalizando configuración..."
-    ];
-
-    // Play visual sequence
-    for (let i = 0; i < steps.length; i++) {
-      setDemoStep(i);
-      await new Promise(r => setTimeout(r, 800)); // Delay for effect
-    }
-
-    // Actual data injection
-    const demoUser = await storageService.injectShowcaseData();
-    
-    setIsDemoLoading(false);
-    if (demoUser) {
-      onLogin(demoUser);
-    }
-  };
-
   return (
-    <div className="h-[100dvh] w-full bg-gray-100 dark:bg-slate-950 flex flex-col items-center justify-center p-4 transition-colors duration-300 font-sans relative overflow-y-auto">
-      
-      {/* DEMO LOADING OVERLAY */}
-      {isDemoLoading && (
-        <div className="fixed inset-0 z-[100] bg-slate-900 flex flex-col items-center justify-center text-white">
-          <div className="w-24 h-24 mb-8 relative">
-             <div className="absolute inset-0 border-4 border-slate-700 rounded-full"></div>
-             <div className="absolute inset-0 border-4 border-t-red-500 rounded-full animate-spin"></div>
-             <div className="absolute inset-0 flex items-center justify-center">
-               <Logo size="sm" solid />
-             </div>
-          </div>
-          <h2 className="text-2xl font-black tracking-tight mb-2">Preparando Demo</h2>
-          <div className="h-8 flex items-center justify-center">
-             <p className="text-slate-400 font-mono text-sm animate-pulse">
-               {["Conectando...", "Generando Datos...", "Configurando...", "Sincronizando...", "Listo..."][Math.min(demoStep, 4)]}
-             </p>
-          </div>
-          <div className="mt-8 w-64 h-1 bg-slate-800 rounded-full overflow-hidden">
-            <div 
-              className="h-full bg-gradient-to-r from-red-600 to-orange-500 transition-all duration-500 ease-out"
-              style={{ width: `${((demoStep + 1) / 6) * 100}%` }}
-            ></div>
-          </div>
-        </div>
-      )}
-
-      <div className="w-full max-w-sm bg-white dark:bg-slate-800 rounded-[2rem] shadow-2xl overflow-hidden border border-white/50 dark:border-slate-700/50 transition-all duration-300 animate-pop-in relative my-auto">
+    <div className="min-h-screen bg-gray-100 dark:bg-slate-950 flex flex-col items-center justify-center p-4 transition-colors duration-300 font-sans relative">
+      <div className="w-full max-w-sm bg-white dark:bg-slate-800 rounded-[2rem] shadow-2xl overflow-hidden border border-white/50 dark:border-slate-700/50 transition-all duration-300 animate-pop-in relative">
         
         {/* Header Section */}
         <div className="bg-gradient-to-br from-red-700 to-red-900 py-10 px-6 flex flex-col items-center justify-center text-white relative overflow-hidden">
@@ -158,10 +102,10 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
             <button
               type="submit"
               disabled={loading}
-              className="w-full mt-4 bg-slate-900 dark:bg-white hover:bg-black dark:hover:bg-gray-200 text-white dark:text-slate-900 font-bold py-4 rounded-xl transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] flex items-center justify-center gap-2 group disabled:opacity-70 disabled:cursor-not-allowed"
+              className="w-full mt-4 bg-red-600 hover:bg-red-700 text-white font-bold py-4 rounded-xl transition-all shadow-lg shadow-red-600/30 hover:shadow-red-600/50 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] flex items-center justify-center gap-2 group disabled:opacity-70 disabled:cursor-not-allowed"
             >
               {loading ? (
-                <Loader2 className="animate-spin" />
+                <Loader2 className="animate-spin text-white" />
               ) : (
                 <>
                   Iniciar Sesión <ArrowRight size={20} className="opacity-70 group-hover:translate-x-1 transition-transform" />
@@ -169,26 +113,6 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
               )}
             </button>
           </form>
-
-          <div className="relative my-8">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-200 dark:border-slate-700"></div>
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-white dark:bg-slate-800 px-2 text-gray-400 dark:text-slate-500 font-bold tracking-widest">O prueba la experiencia</span>
-            </div>
-          </div>
-
-          {/* DEMO BUTTON */}
-          <button
-            onClick={handleDemoMode}
-            className="w-full bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white font-bold py-4 rounded-xl transition-all shadow-lg shadow-orange-500/30 hover:shadow-orange-500/50 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] flex items-center justify-center gap-2 group relative overflow-hidden"
-          >
-            <div className="absolute inset-0 bg-white/20 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 skew-x-12"></div>
-            <Sparkles size={20} className="text-yellow-200 animate-pulse" />
-            <span>Modo Demo Showcase</span>
-            <Play size={16} fill="currentColor" className="opacity-80" />
-          </button>
 
           <div className="mt-8 pt-6 border-t border-gray-100 dark:border-slate-700/50 text-center">
              <p className="text-[10px] font-bold text-gray-400 dark:text-slate-600 uppercase tracking-widest">
