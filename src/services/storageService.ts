@@ -17,118 +17,174 @@ const KEYS = {
   TASKS: 'hotel_victoria_tasks',
 };
 
-// INITIAL DATA - DEMO CONTENT FOR SHOWCASE
+// INITIAL DATA - Minimal fallback
 const INITIAL_USERS: User[] = [
-  { id: '1', name: 'Administrador', role: UserRole.ADMIN, pin: '1234', permissions: ['CAN_MANAGE_TASKS'] },
-  { id: '2', name: 'Jefe de Sala', role: UserRole.STAFF, pin: '1234', permissions: ['CAN_MANAGE_TASKS'] },
-  { id: '3', name: 'Chef Ejecutivo', role: UserRole.STAFF, pin: '1234' }
+  { id: '1', name: 'Administrador', role: UserRole.ADMIN, pin: '1234', permissions: ['CAN_MANAGE_TASKS'] }
 ];
 
-const INITIAL_DEPARTMENTS: Department[] = [
-  { id: 'd-cocina', name: 'Cocina Principal' },
-  { id: 'd-barra', name: 'Barra & Coctelería' },
-  { id: 'd-pisos', name: 'Pisos y Limpieza' },
-  { id: 'd-eventos', name: 'Salón de Eventos' }
-];
-
-const INITIAL_PRODUCTS: Product[] = [
-  // Bebidas
-  { id: 'p1', name: 'Coca Cola Zero', category: 'Bebidas', quantity: 120, unit: 'latas', minThreshold: 24, departmentId: 'd-barra', departmentName: 'Barra & Coctelería' },
-  { id: 'p2', name: 'Agua Mineral 50cl', category: 'Bebidas', quantity: 48, unit: 'botellas', minThreshold: 24, departmentId: 'd-barra', departmentName: 'Barra & Coctelería' },
-  { id: 'p3', name: 'Cerveza Barril', category: 'Alcohol', quantity: 3, unit: 'barriles', minThreshold: 1, departmentId: 'd-barra', departmentName: 'Barra & Coctelería' },
-  { id: 'p4', name: 'Ginebra Premium', category: 'Alcohol', quantity: 5, unit: 'botellas', minThreshold: 2, departmentId: 'd-barra', departmentName: 'Barra & Coctelería' },
+// --- SHOWCASE DATA GENERATOR ---
+export const injectShowcaseData = async (): Promise<User | null> => {
+  console.log("🚀 INICIANDO INYECCIÓN DE DATOS SHOWCASE...");
   
-  // Cocina - Frescos
-  { id: 'p5', name: 'Solomillo de Ternera', category: 'Carnes', quantity: 15, unit: 'kg', minThreshold: 5, departmentId: 'd-cocina', departmentName: 'Cocina Principal' },
-  { id: 'p6', name: 'Salmón Noruego', category: 'Pescados', quantity: 8, unit: 'piezas', minThreshold: 2, departmentId: 'd-cocina', departmentName: 'Cocina Principal' },
-  { id: 'p7', name: 'Huevos Camperos', category: 'Frescos', quantity: 180, unit: 'uds', minThreshold: 30, departmentId: 'd-cocina', departmentName: 'Cocina Principal' },
-  { id: 'p8', name: 'Leche Entera', category: 'Lácteos', quantity: 60, unit: 'litros', minThreshold: 12, departmentId: 'd-cocina', departmentName: 'Cocina Principal' },
-  { id: 'p9', name: 'Nata para Montar', category: 'Lácteos', quantity: 10, unit: 'litros', minThreshold: 4, departmentId: 'd-cocina', departmentName: 'Cocina Principal' },
-  
-  // Cocina - Despensa
-  { id: 'p10', name: 'Aceite Oliva V.E.', category: 'Aceites', quantity: 25, unit: 'litros', minThreshold: 10, departmentId: 'd-cocina', departmentName: 'Cocina Principal' },
-  { id: 'p11', name: 'Arroz Bomba', category: 'Secos', quantity: 40, unit: 'kg', minThreshold: 10, departmentId: 'd-cocina', departmentName: 'Cocina Principal' },
-  { id: 'p12', name: 'Chocolate 70%', category: 'Repostería', quantity: 5, unit: 'kg', minThreshold: 2, departmentId: 'd-cocina', departmentName: 'Cocina Principal' },
-  
-  // Limpieza
-  { id: 'p13', name: 'Detergente Industrial', category: 'Químicos', quantity: 2, unit: 'garrafas', minThreshold: 1, departmentId: 'd-pisos', departmentName: 'Pisos y Limpieza' },
-  { id: 'p14', name: 'Papel Higiénico Ind.', category: 'Consumibles', quantity: 4, unit: 'packs', minThreshold: 2, departmentId: 'd-pisos', departmentName: 'Pisos y Limpieza' },
-];
+  // 1. Define Demo User
+  const demoAdmin: User = { 
+    id: 'demo-admin-showcase', 
+    name: 'Admin Demo', 
+    role: UserRole.ADMIN, 
+    pin: '0000', 
+    permissions: ['CAN_MANAGE_TASKS'] 
+  };
 
-// DEMO: A Complex Task for the Showcase
-const INITIAL_TASKS: Task[] = [
-  {
-    id: 'demo-task-1',
-    title: 'PROTOCOLO CIERRE MENSUAL: Limpieza Profunda y Mantenimiento',
-    description: `**ZONA CALIENTE:**
-* [ ] Desmontar y desengrasar filtros de campana extractora.
-* [ ] Limpieza profunda de plancha (piedra pómez) y cambio de aceite freidoras.
-* [ ] Revisar juntas de hornos convotherm.
+  // 2. Define Showcase Departments
+  const departments: Department[] = [
+    { id: 'd-cocina', name: 'Cocina Principal' },
+    { id: 'd-barra', name: 'Barra & Terraza' },
+    { id: 'd-pisos', name: 'Housekeeping' },
+    { id: 'd-eventos', name: 'Eventos & Bodas' }
+  ];
 
-**CÁMARAS FRIGORÍFICAS:**
-* [ ] Rotación de stock (FIFO).
-* [ ] Desinfección de estanterías y suelos.
-* [ ] **Verificar temperaturas** y registrar en hoja de control APPCC.
+  // 3. Define Showcase Products (Visual variety + Low Stock alerts)
+  const products: Product[] = [
+    // BARRA (High Volume)
+    { id: 'p-coca', name: 'Coca-Cola Zero', category: 'Bebidas', quantity: 145, unit: 'latas', minThreshold: 24, departmentId: 'd-barra', departmentName: 'Barra & Terraza' },
+    { id: 'p-cerveza', name: 'Estrella Galicia Barril', category: 'Alcohol', quantity: 2, unit: 'barriles', minThreshold: 3, departmentId: 'd-barra', departmentName: 'Barra & Terraza' }, // LOW STOCK ALERT
+    { id: 'p-gin', name: 'Hendricks Gin', category: 'Alcohol Premium', quantity: 4, unit: 'botellas', minThreshold: 2, departmentId: 'd-barra', departmentName: 'Barra & Terraza' },
+    { id: 'p-hielo', name: 'Hielo Picado', category: 'Congelados', quantity: 20, unit: 'sacos', minThreshold: 10, departmentId: 'd-barra', departmentName: 'Barra & Terraza' },
+    
+    // COCINA (Fresh & Dry)
+    { id: 'p-solomillo', name: 'Solomillo Ternera Gallega', category: 'Carnes', quantity: 12, unit: 'kg', minThreshold: 5, departmentId: 'd-cocina', departmentName: 'Cocina Principal' },
+    { id: 'p-aceite', name: 'Aceite Oliva Virgen Extra', category: 'Despensa', quantity: 5, unit: 'litros', minThreshold: 15, departmentId: 'd-cocina', departmentName: 'Cocina Principal' }, // LOW STOCK ALERT
+    { id: 'p-arroz', name: 'Arroz Bomba', category: 'Secos', quantity: 45, unit: 'kg', minThreshold: 10, departmentId: 'd-cocina', departmentName: 'Cocina Principal' },
+    { id: 'p-salmon', name: 'Salmón Noruego Fresco', category: 'Pescados', quantity: 8, unit: 'piezas', minThreshold: 2, departmentId: 'd-cocina', departmentName: 'Cocina Principal' },
+    
+    // HOUSEKEEPING
+    { id: 'p-sabanas', name: 'Juego Sábanas King', category: 'Lencería', quantity: 200, unit: 'juegos', minThreshold: 50, departmentId: 'd-pisos', departmentName: 'Housekeeping' },
+    { id: 'p-amenities', name: 'Kit Amenities Premium', category: 'Baño', quantity: 40, unit: 'cajas', minThreshold: 20, departmentId: 'd-pisos', departmentName: 'Housekeeping' }
+  ];
 
-**NOTAS:**
-El técnico de mantenimiento vendrá mañana a las 09:00 AM para revisar el lavavajillas. Dejar zona despejada.`,
-    status: TaskStatus.IN_PROGRESS,
-    priority: TaskPriority.HIGH,
-    departmentId: 'd-cocina',
-    departmentName: 'Cocina Principal',
-    createdBy: 'Chef Ejecutivo',
-    createdById: '3',
-    createdAt: Date.now() - 86400000, // 1 day ago
-    type: TaskType.TASK,
-    seenBy: [],
-    // Using high quality Unsplash images for the demo
-    imageUrls: [
-      'https://images.unsplash.com/photo-1556910103-1c02745a30bf?auto=format&fit=crop&w=500&q=80', // Kitchen
-      'https://images.unsplash.com/photo-1584620862017-105053d95210?auto=format&fit=crop&w=500&q=80', // Cleaning
-      'https://images.unsplash.com/photo-1581092921461-eab62e97a780?auto=format&fit=crop&w=500&q=80'  // Maintenance
-    ],
-    comments: [
-      { id: 'c1', userId: '2', userName: 'Jefe de Sala', message: 'Los filtros de la campana se limpiaron la semana pasada, revisad el registro.', timestamp: Date.now() - 3600000 },
-      { id: 'c2', userId: '3', userName: 'Chef Ejecutivo', message: 'Entendido. Haremos énfasis en las freidoras entonces.', timestamp: Date.now() - 1800000 }
-    ]
-  },
-  {
-    id: 'demo-task-2',
-    title: 'Inventario de Cristalería Evento Boda',
-    description: 'Contar copas de vino tinto y flautas de cava para el evento del sábado. Reponer si faltan.',
-    status: TaskStatus.PENDING,
-    priority: TaskPriority.MEDIUM,
-    departmentId: 'd-eventos',
-    departmentName: 'Salón de Eventos',
-    createdBy: 'Jefe de Sala',
-    createdById: '2',
-    createdAt: Date.now() - 172800000,
-    type: TaskType.TASK,
-    seenBy: []
+  // 4. Define Showcase Tasks (Visuals + Urgent)
+  const tasks: Task[] = [
+    {
+      id: 'task-urgent-1',
+      title: '⚠️ REPARACIÓN URGENTE: Fuga Cámara Frigorífica 2',
+      description: '**PRIORIDAD MÁXIMA**\nSe ha detectado agua en el suelo de la cámara de carnes. \n\n*   Revisar compresor.\n*   Verificar temperatura actual (Riesgo pérdida de género).\n*   Llamar a servicio técnico si no se resuelve en 30min.',
+      status: TaskStatus.IN_PROGRESS,
+      priority: TaskPriority.HIGH,
+      departmentId: 'd-cocina',
+      departmentName: 'Cocina Principal',
+      createdBy: 'Jefe de Cocina',
+      createdById: 'staff-1',
+      createdAt: Date.now() - 3600000,
+      type: TaskType.TASK,
+      imageUrls: [
+        'https://images.unsplash.com/photo-1584620862017-105053d95210?auto=format&fit=crop&w=800&q=80', // Industrial kitchen detail
+        'https://images.unsplash.com/photo-1581092921461-eab62e97a780?auto=format&fit=crop&w=800&q=80' // Maintenance check
+      ],
+      comments: [
+        { id: 'c1', userId: 'demo-admin-showcase', userName: 'Admin Demo', message: 'El técnico llega a las 11:00. Mantened la puerta cerrada.', timestamp: Date.now() - 1800000 }
+      ],
+      seenBy: []
+    },
+    {
+      id: 'task-event-1',
+      title: 'Montaje Salón: Boda García-López',
+      description: 'Montaje para 150 pax. \n*   Mesas imperiales.\n*   Centros florales tipo A.\n*   Barra libre en terraza exterior.',
+      status: TaskStatus.PENDING,
+      priority: TaskPriority.MEDIUM,
+      departmentId: 'd-eventos',
+      departmentName: 'Eventos & Bodas',
+      createdBy: 'Coordinador Eventos',
+      createdById: 'staff-2',
+      createdAt: Date.now() - 86400000,
+      type: TaskType.TASK,
+      imageUrls: [
+        'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?auto=format&fit=crop&w=800&q=80' // Wedding setup
+      ],
+      seenBy: []
+    },
+    {
+      id: 'task-check-1',
+      title: 'Revisión Habitaciones VIP (Planta 5)',
+      description: 'Checklist completo antes de llegada grupo VIP a las 14:00.',
+      status: TaskStatus.COMPLETED,
+      priority: TaskPriority.LOW,
+      departmentId: 'd-pisos',
+      departmentName: 'Housekeeping',
+      createdBy: 'Gobernanta',
+      createdById: 'staff-3',
+      createdAt: Date.now() - 172800000,
+      completedAt: Date.now() - 3600000,
+      completedBy: 'Maria Staff',
+      type: TaskType.TASK,
+      seenBy: []
+    }
+  ];
+
+  // 5. Define History (For Admin Charts)
+  const batchId = 'ORD-' + Math.floor(Math.random() * 10000);
+  const requests: ReplenishmentRequest[] = [
+    { id: 'r1', batchId: batchId, productId: 'p-coca', productName: 'Coca-Cola Zero', departmentId: 'd-barra', departmentName: 'Barra & Terraza', requestedBy: 'Jefe de Barra', quantity: 48, status: 'COMPLETED', date: new Date().toLocaleString(), timestamp: Date.now(), unit: 'latas' },
+    { id: 'r2', batchId: batchId, productId: 'p-gin', productName: 'Hendricks Gin', departmentId: 'd-barra', departmentName: 'Barra & Terraza', requestedBy: 'Jefe de Barra', quantity: 2, status: 'COMPLETED', date: new Date().toLocaleString(), timestamp: Date.now(), unit: 'botellas' }
+  ];
+
+  // 6. Define Notifications
+  const notifications: Omit<AppNotification, 'id'>[] = [
+    { type: NotificationType.LOW_STOCK, title: 'Alerta de Stock', message: 'Cerveza Barril por debajo del mínimo (2 unds).', icon: 'AlertTriangle', timestamp: Date.now(), readStatus: false, payload: { productName: 'Estrella Galicia Barril' } },
+    { type: NotificationType.NEW_TASK, title: 'Nueva Tarea Urgente', message: 'Fuga Cámara Frigorífica asignada a Cocina.', icon: 'ClipboardCheck', timestamp: Date.now() - 60000, readStatus: false, payload: { taskTitle: 'Fuga Cámara' } },
+    { type: NotificationType.NEW_ORDER, title: 'Nuevo Pedido Recibido', message: 'Barra ha solicitado reposición urgente.', icon: 'Package', timestamp: Date.now() - 120000, readStatus: false, payload: { departmentName: 'Barra' } }
+  ];
+
+  try {
+    const batch = db.batch();
+
+    // Helper to clear collection
+    const clearCollection = async (coll: string) => {
+      const q = await db.collection(coll).limit(50).get();
+      q.forEach(doc => batch.delete(doc.ref));
+    };
+
+    // Note: In a real app we might not want to delete everything, but for a "Showcase Button" 
+    // it ensures a clean state for the video.
+    // However, due to batch limits (500 ops), we'll overwrite or add.
+    // For this specific request, let's just ADD the data to ensure it appears.
+    
+    // Users
+    batch.set(db.collection('users').doc(demoAdmin.id), demoAdmin);
+
+    // Departments
+    departments.forEach(d => batch.set(db.collection('departments').doc(d.id), d));
+
+    // Products
+    products.forEach(p => batch.set(db.collection('products').doc(p.id), p));
+
+    // Tasks
+    tasks.forEach(t => batch.set(db.collection('tasks').doc(t.id), t));
+
+    // Requests
+    requests.forEach(r => batch.set(db.collection('requests').doc(r.id), r));
+
+    // Notifications
+    notifications.forEach(n => batch.set(db.collection('notifications').doc(), n));
+
+    await batch.commit();
+    
+    // Save session locally to bypass login immediately
+    saveSession(demoAdmin);
+    
+    return demoAdmin;
+
+  } catch (error) {
+    console.error("Error injecting showcase data:", error);
+    // Fallback: Return user anyway so they can enter, even if DB failed (offline mode)
+    saveSession(demoAdmin);
+    return demoAdmin;
   }
-];
+};
 
-// DEMO: A Big Order for the Showcase
-const DEMO_BATCH_ID = 'PED-2023-884';
-const DEMO_DATE = new Date().toLocaleDateString();
-
-const INITIAL_REQUESTS: ReplenishmentRequest[] = [
-  { id: 'req-1', batchId: DEMO_BATCH_ID, productId: 'p5', productName: 'Solomillo de Ternera', departmentId: 'd-cocina', departmentName: 'Cocina Principal', requestedBy: 'Chef Ejecutivo', quantity: 15, status: 'COMPLETED', date: DEMO_DATE, timestamp: Date.now(), unit: 'kg' },
-  { id: 'req-2', batchId: DEMO_BATCH_ID, productId: 'p10', productName: 'Aceite Oliva V.E.', departmentId: 'd-cocina', departmentName: 'Cocina Principal', requestedBy: 'Chef Ejecutivo', quantity: 5, status: 'COMPLETED', date: DEMO_DATE, timestamp: Date.now(), unit: 'litros' },
-  { id: 'req-3', batchId: DEMO_BATCH_ID, productId: 'p11', productName: 'Arroz Bomba', departmentId: 'd-cocina', departmentName: 'Cocina Principal', requestedBy: 'Chef Ejecutivo', quantity: 20, status: 'COMPLETED', date: DEMO_DATE, timestamp: Date.now(), unit: 'kg' },
-  { id: 'req-4', batchId: DEMO_BATCH_ID, productId: 'p7', productName: 'Huevos Camperos', departmentId: 'd-cocina', departmentName: 'Cocina Principal', requestedBy: 'Chef Ejecutivo', quantity: 90, status: 'COMPLETED', date: DEMO_DATE, timestamp: Date.now(), unit: 'uds' },
-  { id: 'req-5', batchId: DEMO_BATCH_ID, productId: 'p12', productName: 'Chocolate 70%', departmentId: 'd-cocina', departmentName: 'Cocina Principal', requestedBy: 'Chef Ejecutivo', quantity: 3, status: 'COMPLETED', date: DEMO_DATE, timestamp: Date.now(), unit: 'kg' },
-  { id: 'req-6', batchId: DEMO_BATCH_ID, productId: 'p8', productName: 'Leche Entera', departmentId: 'd-cocina', departmentName: 'Cocina Principal', requestedBy: 'Chef Ejecutivo', quantity: 24, status: 'COMPLETED', date: DEMO_DATE, timestamp: Date.now(), unit: 'litros' },
-  { id: 'req-7', batchId: DEMO_BATCH_ID, productId: 'p9', productName: 'Nata para Montar', departmentId: 'd-cocina', departmentName: 'Cocina Principal', requestedBy: 'Chef Ejecutivo', quantity: 5, status: 'COMPLETED', date: DEMO_DATE, timestamp: Date.now(), unit: 'litros' },
-];
-
+// --- INITIAL DATA (Standard) ---
 async function initFirestoreWithInitialData() {
   const collectionsToInit = [
     { name: 'users', data: INITIAL_USERS, key: KEYS.USERS },
-    { name: 'departments', data: INITIAL_DEPARTMENTS, key: KEYS.DEPARTMENTS },
-    { name: 'products', data: INITIAL_PRODUCTS, key: KEYS.PRODUCTS },
-    { name: 'tasks', data: INITIAL_TASKS, key: KEYS.TASKS },
-    { name: 'requests', data: INITIAL_REQUESTS, key: KEYS.REQUESTS },
   ];
 
   for (const { name, data, key } of collectionsToInit) {
@@ -136,7 +192,7 @@ async function initFirestoreWithInitialData() {
     const q = db.collection(name).limit(1);
     const snapshot = await q.get();
     if (snapshot.empty) {
-      console.log(`Initializing ${name} collection with demo data...`);
+      console.log(`Initializing ${name} collection...`);
       // FIX: Use compat batch syntax
       const batch = db.batch();
       data.forEach(item => {
