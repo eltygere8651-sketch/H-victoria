@@ -201,7 +201,7 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser }) => {
       {/* MODAL EDITAR / NUEVO PRODUCTO (BOTTOM SHEET EN MÓVIL) */}
       {showEditProductModal && (
         <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/80 dark:bg-slate-950/90 backdrop-blur-sm p-0 sm:p-4 animate-fade-in">
-          <div className="bg-white dark:bg-slate-900 w-full sm:max-w-xl h-[90dvh] sm:h-auto sm:max-h-[90dvh] rounded-t-[2.5rem] sm:rounded-[2.5rem] shadow-2xl flex flex-col animate-slide-up border-t sm:border-2 border-gray-100 dark:border-slate-700 overflow-hidden">
+          <div className="bg-white dark:bg-slate-900 w-full sm:max-w-xl h-auto max-h-[90dvh] rounded-t-[2.5rem] sm:rounded-[2.5rem] shadow-2xl flex flex-col animate-slide-up border-t sm:border-2 border-gray-100 dark:border-slate-700 overflow-hidden">
             
             {/* Header */}
             <div className="px-6 py-5 border-b border-gray-100 dark:border-slate-800 flex justify-between items-center bg-white dark:bg-slate-900 shrink-0 sticky top-0 z-10">
@@ -324,7 +324,7 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser }) => {
       {showManageDepartmentsModal && (
          <div className="fixed inset-0 bg-black/80 dark:bg-slate-950/90 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4 backdrop-blur-sm animate-fade-in">
           {/* USAR 85dvh PARA MÓVIL ASEGURA QUE EL TECLADO NO ROMPA EL LAYOUT */}
-          <div className="bg-white dark:bg-slate-900 w-full sm:max-w-lg h-[85dvh] sm:h-auto sm:max-h-[85dvh] rounded-t-[2.5rem] sm:rounded-[2.5rem] shadow-2xl flex flex-col animate-slide-up border-t sm:border-2 border-gray-100 dark:border-slate-700 overflow-hidden">
+          <div className="bg-white dark:bg-slate-900 w-full sm:max-w-lg h-auto max-h-[85dvh] rounded-t-[2.5rem] sm:rounded-[2.5rem] shadow-2xl flex flex-col animate-slide-up border-t sm:border-2 border-gray-100 dark:border-slate-700 overflow-hidden">
             
             {/* Header */}
             <div className="flex justify-between items-center p-6 border-b border-gray-100 dark:border-slate-800 shrink-0 sticky top-0 bg-white dark:bg-slate-900 z-20">
@@ -345,24 +345,24 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser }) => {
                 <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest ml-1">
                   {editingDepartment ? 'Editar Departamento' : 'Crear Nuevo'}
                 </h4>
-                {/* Flex container con items-center para alinear verticalmente */}
-                <div className="flex gap-2 items-center">
-                  {/* min-w-0 PERMITE QUE EL INPUT SE ENCOJA y no empuje al botón fuera */}
+                {/* Flex container cambiado a columna en móvil para visibilidad del botón */}
+                <div className="flex flex-col sm:flex-row gap-3">
                   <input 
-                    className="flex-1 min-w-0 h-14 px-5 text-lg font-bold border-2 border-gray-200 dark:border-slate-700 rounded-2xl bg-gray-50 dark:bg-slate-800/50 focus:bg-white dark:focus:bg-slate-900 focus:border-red-500 outline-none dark:text-white transition-all shadow-sm placeholder-gray-400" 
+                    className="w-full sm:flex-1 min-w-0 h-14 px-5 text-lg font-bold border-2 border-gray-200 dark:border-slate-700 rounded-2xl bg-gray-50 dark:bg-slate-800/50 focus:bg-white dark:focus:bg-slate-900 focus:border-red-500 outline-none dark:text-white transition-all shadow-sm placeholder-gray-400" 
                     value={newDepartmentName} 
                     onChange={e => setNewDepartmentName(e.target.value)}
                     placeholder={editingDepartment ? "Editar nombre..." : "Ej. Recepción"}
                     onKeyDown={e => e.key === 'Enter' && handleSaveDepartment()}
                   />
-                  {/* shrink-0 EVITA QUE EL BOTÓN SE APLASTE */}
                   <button 
                     onClick={handleSaveDepartment} 
                     disabled={!newDepartmentName.trim()}
-                    className="shrink-0 w-14 h-14 bg-red-600 disabled:bg-gray-300 dark:disabled:bg-slate-700 text-white font-black rounded-2xl shadow-lg shadow-red-200 dark:shadow-none hover:bg-red-700 active:scale-[0.98] transition-all flex items-center justify-center"
+                    className="w-full sm:w-auto h-14 bg-red-600 disabled:bg-gray-300 dark:disabled:bg-slate-700 text-white font-black rounded-2xl shadow-lg shadow-red-200 dark:shadow-none hover:bg-red-700 active:scale-[0.98] transition-all flex items-center justify-center gap-2 px-6 shrink-0"
                     title={editingDepartment ? 'Guardar Cambios' : 'Añadir'}
                   >
                     <Save size={24} strokeWidth={2.5} />
+                    <span className="sm:hidden font-black">GUARDAR</span>
+                    <span className="hidden sm:inline">{editingDepartment ? 'Actualizar' : 'Añadir'}</span>
                   </button>
                 </div>
               </div>

@@ -22,6 +22,11 @@ body {
     -webkit-user-select: none;
 }
 
+/* Optimización crítica para respuesta táctil instantánea */
+button, a, input[type="submit"], input[type="button"] {
+    touch-action: manipulation;
+}
+
 #root {
     height: 100%;
     isolation: isolate;

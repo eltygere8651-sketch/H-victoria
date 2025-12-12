@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Task, User, Department, TaskStatus, TaskPriority, UserRole, TaskType, TaskComment } from '../types';
 import * as storageService from '../services/storageService';
-import { ClipboardCheck, Plus, X, Save, Loader2, Edit2, Trash2, ChevronDown, MessagesSquare, Check, Camera, AlertTriangle, Share2, Send, Image, Info, Flame, Bold } from 'lucide-react';
+import { ClipboardCheck, Plus, X, Save, Loader2, Edit2, Trash2, ChevronDown, MessagesSquare, Check, Camera, AlertTriangle, Share2, Send, Image, Info, Flame, Megaphone } from 'lucide-react';
 import { compressImage } from '../utils/imageCompressor';
 import { ImageViewer } from '../components/ImageViewer';
 import { DeletionTimer } from '../components/DeletionTimer';
@@ -78,8 +78,8 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
         departmentName: department?.name || 'General',
         priority: editingTask.priority || TaskPriority.MEDIUM,
         status: editingTask.status || TaskStatus.PENDING,
-        // Default to TASK type
-        type: TaskType.TASK, 
+        // Default to TASK type if not set
+        type: editingTask.type || TaskType.TASK, 
         createdBy: editingTask.createdBy || currentUser.name,
         createdById: editingTask.createdById || currentUser.id,
         createdAt: editingTask.createdAt || Date.now(),
@@ -108,15 +108,12 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
   const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       setIsCompressing(true);
-      // Fix: Explicitly cast to File[] or verify typing. 
-      // Array.from on FileList sometimes infers unknown[] in certain TS configs.
       const filesArray = Array.from(e.target.files);
       const compressedFiles: File[] = [];
       const newPreviews: string[] = [];
 
       try {
         for (const file of filesArray) {
-          // Explicitly cast file to File to satisfy TS
           const compressed = await compressImage(file as File);
           compressedFiles.push(compressed);
           newPreviews.push(URL.createObjectURL(compressed));
@@ -128,7 +125,6 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
         alert("Error al procesar las imágenes.");
       } finally {
         setIsCompressing(false);
-        // Reset input value to allow selecting the same file again if needed
         if (e.target) e.target.value = '';
       }
     }
@@ -174,7 +170,6 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
     const end = textarea.selectionEnd;
     const text = editingTask?.description || '';
     
-    // If text is selected, wrap it. If not, insert markers and position cursor.
     if (start === end) {
       const newText = text.slice(0, start) + '**' + text.slice(end);
       setEditingTask({ ...editingTask, description: newText });
@@ -211,19 +206,13 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
     }
   };
 
-  // Improved Parser: Uses *asterisks* which are safer for normal language (vs !exclamation!).
-  // Splits by *...* allowing mixed content.
   const renderDescriptionWithHighlights = (text: string, isCompleted: boolean) => {
     if (!text) return null;
-    
-    // Split by segments enclosed in asterisks e.g. "Clean the *kitchen* now" -> ["Clean the ", "*kitchen*", " now"]
-    // The regex captures the delimiter so we can process it.
     const parts = text.split(/(\*[^*]+\*)/g);
 
     return parts.map((part, index) => {
-      // Check if matches *text*
       if (part.startsWith('*') && part.endsWith('*') && part.length > 2) {
-        const content = part.slice(1, -1); // Remove *
+        const content = part.slice(1, -1);
         return (
           <span 
             key={index} 
@@ -238,9 +227,11 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
   };
 
   const filteredTasks = allTasks.filter(task => {
+    // Only show TASKS in this view, not announcements
+    const isTaskType = task.type === TaskType.TASK || !task.type;
     const statusMatch = statusFilter === 'ALL' || task.status === statusFilter;
     const deptMatch = departmentFilter === 'ALL' || task.departmentId === departmentFilter;
-    return statusMatch && deptMatch;
+    return isTaskType && statusMatch && deptMatch;
   });
 
   if (loading) return <div className="flex h-full items-center justify-center"><Loader2 size={40} className="animate-spin text-red-600" /></div>;
@@ -255,11 +246,10 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
               Tareas <span className="text-red-600">Activas</span>
             </h2>
           </div>
-          {/* Only Admins or Staff with 'CAN_MANAGE_TASKS' permission can create new tasks */}
           {canManageTasks && (
             <button 
               onClick={() => {
-                setEditingTask({});
+                setEditingTask({ type: TaskType.TASK }); // Default to task
                 setSelectedImages([]);
                 setPreviews([]);
                 setShowTaskModal(true);
@@ -359,7 +349,6 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
 
                      {/* Main Content */}
                      <div className="mb-6">
-                        {/* Title - Red if Urgent and Not Completed */}
                         <h3 className={`text-3xl md:text-4xl font-black uppercase tracking-tighter leading-[0.9] mb-4 break-words 
                           ${isCompleted 
                             ? 'text-gray-900 dark:text-white line-through decoration-4 decoration-gray-300 dark:decoration-slate-700 opacity-60' 
@@ -386,7 +375,6 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
                                    : 'text-gray-700 dark:text-slate-300'
                                }`}
                              >
-                               {/* Use the new renderer function here */}
                                {renderDescriptionWithHighlights(task.description, isCompleted)}
                              </p>
                            </div>
@@ -419,7 +407,6 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
                         </div>
 
                         <div className="flex items-center gap-3">
-                            {/* Comments Button */}
                             <button 
                               onClick={() => setActiveCommentTaskId(task.id)}
                               className={`flex items-center gap-2 px-4 py-3 rounded-xl font-bold text-sm transition-all border-2 ${
@@ -432,7 +419,6 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
                                <span>{task.comments?.length || 0}</span>
                             </button>
 
-                            {/* Action Buttons */}
                             {task.status !== TaskStatus.COMPLETED && (
                               <div className="flex gap-2">
                                  {task.status === TaskStatus.PENDING && (
@@ -457,8 +443,6 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
                             )}
                         </div>
                      </div>
-                     
-                     {/* Comments Section Removed from here and moved to a global modal */}
                   </div>
                 </div>
               );
@@ -467,15 +451,13 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
         </div>
       </div>
 
-      {/* NEW COMMENTS MODAL (Bottom Sheet Style for Mobile) */}
+      {/* NEW COMMENTS MODAL */}
       {activeTaskForComments && (
         <div className="fixed inset-0 z-[100] flex items-end md:items-center justify-center bg-black/80 backdrop-blur-sm animate-fade-in">
-           {/* Dismiss Overlay */}
            <div className="absolute inset-0" onClick={() => setActiveCommentTaskId(null)}></div>
            
            <div className="relative bg-white dark:bg-slate-900 w-full h-[85dvh] md:h-auto md:max-h-[80vh] md:max-w-lg rounded-t-[2.5rem] md:rounded-[2.5rem] shadow-2xl flex flex-col animate-slide-up border-t border-x border-gray-200 dark:border-slate-800 overflow-hidden">
               
-              {/* Header */}
               <div className="px-6 py-5 border-b border-gray-100 dark:border-slate-800 flex justify-between items-center bg-white dark:bg-slate-900 shrink-0">
                  <div>
                     <h3 className="text-2xl font-black text-gray-900 dark:text-white uppercase tracking-tight">Comentarios</h3>
@@ -486,7 +468,6 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
                  </button>
               </div>
               
-              {/* Comments List */}
               <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-gray-50 dark:bg-slate-950/50">
                  {activeTaskForComments.comments?.map(comment => (
                    <div key={comment.id} className={`p-4 rounded-2xl shadow-sm ${comment.userId === currentUser.id ? 'bg-blue-600 text-white ml-auto rounded-tr-sm' : 'bg-white dark:bg-slate-800 mr-auto rounded-tl-sm border border-gray-100 dark:border-slate-700'}`}>
@@ -507,7 +488,6 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
                  )}
               </div>
               
-              {/* Input Area (Fixed at bottom) */}
               <div className="p-4 bg-white dark:bg-slate-900 border-t border-gray-100 dark:border-slate-800 pb-safe md:pb-4">
                  <div className="flex gap-2 items-center bg-gray-100 dark:bg-slate-800 p-1.5 rounded-[1.25rem]">
                     <input 
@@ -539,7 +519,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
              {/* Modal Header */}
              <div className="px-6 py-5 border-b border-gray-100 dark:border-slate-800 flex justify-between items-center bg-white dark:bg-slate-900 sticky top-0 z-10">
                 <h3 className="text-2xl font-black text-gray-900 dark:text-white uppercase tracking-tight">
-                  {editingTask?.id ? 'Editar Tarea' : 'Nueva Tarea'}
+                  {editingTask?.id ? 'Editar' : 'Crear Nueva'}
                 </h3>
                 <button onClick={() => setShowTaskModal(false)} className="bg-gray-100 dark:bg-slate-800 p-2 rounded-full text-gray-500 hover:bg-gray-200 dark:hover:bg-slate-700 hover:text-red-600 transition-colors">
                   <X size={24} strokeWidth={2.5} />
@@ -549,13 +529,44 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
              {/* Modal Body */}
              <div className="flex-1 overflow-y-auto p-6 space-y-6">
                 
+                {/* Task Type Selector (ADMIN ONLY) */}
+                {currentUser.role === UserRole.ADMIN && (
+                  <div>
+                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Tipo de Publicación</label>
+                    <div className="grid grid-cols-2 gap-3 p-1.5 bg-gray-100 dark:bg-slate-800 rounded-2xl">
+                      <button
+                        onClick={() => setEditingTask({ ...editingTask, type: TaskType.TASK })}
+                        className={`flex items-center justify-center gap-2 py-3 rounded-xl font-bold transition-all ${
+                          editingTask?.type !== TaskType.ANNOUNCEMENT
+                            ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm'
+                            : 'text-gray-500 dark:text-slate-400 hover:bg-gray-200 dark:hover:bg-slate-700/50'
+                        }`}
+                      >
+                        <ClipboardCheck size={18} />
+                        Tarea
+                      </button>
+                      <button
+                        onClick={() => setEditingTask({ ...editingTask, type: TaskType.ANNOUNCEMENT })}
+                        className={`flex items-center justify-center gap-2 py-3 rounded-xl font-bold transition-all ${
+                          editingTask?.type === TaskType.ANNOUNCEMENT
+                            ? 'bg-white dark:bg-slate-700 text-purple-600 dark:text-purple-400 shadow-sm'
+                            : 'text-gray-500 dark:text-slate-400 hover:bg-gray-200 dark:hover:bg-slate-700/50'
+                        }`}
+                      >
+                        <Megaphone size={18} />
+                        Anuncio
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 <div>
-                   <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Título de la Tarea</label>
+                   <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Título</label>
                    <input 
                      value={editingTask?.title || ''}
                      onChange={e => setEditingTask({ ...editingTask, title: e.target.value })}
                      className="w-full px-5 py-4 text-xl font-black bg-gray-50 dark:bg-slate-800/50 border-2 border-gray-200 dark:border-slate-700 rounded-2xl focus:border-red-500 focus:bg-white dark:focus:bg-slate-900 outline-none transition-all dark:text-white placeholder-gray-400"
-                     placeholder="¿QUÉ HAY QUE HACER?"
+                     placeholder={editingTask?.type === TaskType.ANNOUNCEMENT ? "Título del Anuncio" : "¿QUÉ HAY QUE HACER?"}
                      autoFocus
                    />
                 </div>
@@ -597,16 +608,14 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
                 <div>
                    <div className="flex justify-between items-center mb-2">
                       <label className="block text-xs font-black text-gray-400 uppercase tracking-widest ml-1">Descripción (Opcional)</label>
-                      
-                      {/* Editor Toolbar */}
                       <button 
                         onClick={insertUrgentMarker}
                         className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-900/20 dark:hover:bg-red-900/40 dark:text-red-400 rounded-lg text-[10px] font-black uppercase tracking-wider transition-colors active:scale-95"
                         type="button"
-                        title="Resaltar texto seleccionado como urgente"
+                        title="Resaltar texto seleccionado"
                       >
                         <Flame size={12} fill="currentColor" />
-                        Resaltar Urgencia
+                        Resaltar
                       </button>
                    </div>
                    
@@ -617,10 +626,6 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
                      className="w-full px-5 py-4 font-bold text-base bg-gray-50 dark:bg-slate-800/50 border-2 border-gray-200 dark:border-slate-700 rounded-2xl focus:border-red-500 focus:bg-white dark:focus:bg-slate-900 outline-none transition-all min-h-[140px] dark:text-white placeholder-gray-400 resize-none"
                      placeholder="Instrucciones detalladas..."
                    />
-                   <p className="text-[10px] font-bold text-gray-400 dark:text-slate-500 mt-2 flex items-center gap-1.5 ml-1">
-                     <Info size={12} />
-                     <span>Tip: Usa <span className="text-red-500 font-mono bg-red-50 dark:bg-red-900/20 px-1 rounded">*asteriscos*</span> para marcar texto urgente.</span>
-                   </p>
                 </div>
 
                 <div>
@@ -700,7 +705,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
                   className="flex-[2] py-4 bg-red-600 hover:bg-red-700 text-white font-black uppercase tracking-wider rounded-2xl shadow-xl shadow-button-red active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:scale-100"
                 >
                   {isSaving || isCompressing ? <Loader2 className="animate-spin" strokeWidth={3} /> : <Save size={22} strokeWidth={3} />}
-                  {isSaving ? 'Guardando...' : isCompressing ? 'Procesando...' : 'PUBLICAR TAREA'}
+                  {isSaving ? 'Guardando...' : isCompressing ? 'Procesando...' : 'PUBLICAR'}
                 </button>
              </div>
           </div>
