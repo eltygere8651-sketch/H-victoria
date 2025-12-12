@@ -1,5 +1,5 @@
-import React from 'react';
-import { X, Package, ShoppingCart, ClipboardCheck, ShieldCheck, Zap, Globe } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, Package, ShoppingCart, ClipboardCheck, ShieldCheck, Zap, Globe, PlayCircle, LayoutGrid, Smartphone, Lock, WifiOff } from 'lucide-react';
 import { Logo } from './Logo';
 
 interface GuideModalProps {
@@ -8,6 +8,8 @@ interface GuideModalProps {
 }
 
 export const GuideModal: React.FC<GuideModalProps> = ({ isOpen, onClose }) => {
+  const [activeTab, setActiveTab] = useState<'overview' | 'video'>('overview');
+
   if (!isOpen) return null;
 
   const features = [
@@ -44,75 +46,146 @@ export const GuideModal: React.FC<GuideModalProps> = ({ isOpen, onClose }) => {
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="relative bg-gradient-to-br from-red-600 to-red-800 p-8 text-white overflow-hidden shrink-0">
+        <div className="relative bg-gradient-to-br from-red-600 to-red-800 p-6 md:p-8 text-white overflow-hidden shrink-0">
           <div className="absolute top-0 right-0 p-4 opacity-10 transform translate-x-10 -translate-y-10">
             <Logo size="xl" solid />
           </div>
           
           <button 
             onClick={onClose}
-            className="absolute top-4 right-4 bg-black/20 hover:bg-black/40 text-white p-2 rounded-full transition-colors backdrop-blur-md"
+            className="absolute top-4 right-4 bg-black/20 hover:bg-black/40 text-white p-2 rounded-full transition-colors backdrop-blur-md z-20"
           >
             <X size={20} />
           </button>
 
-          <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center gap-4">
-            <div className="bg-white/10 p-3 rounded-2xl backdrop-blur-sm border border-white/20 shadow-lg">
-               <Logo size="md" />
+          <div className="relative z-10">
+            <div className="flex flex-col md:flex-row items-start md:items-center gap-4 mb-6">
+              <div className="bg-white/10 p-3 rounded-2xl backdrop-blur-sm border border-white/20 shadow-lg">
+                 <Logo size="md" />
+              </div>
+              <div>
+                <h2 className="text-3xl font-black tracking-tight mb-1">Bienvenido a Hub</h2>
+                <p className="text-red-100 font-medium text-sm md:text-base opacity-90 max-w-md">
+                  Plataforma de Inteligencia Operativa Integral
+                </p>
+              </div>
             </div>
-            <div>
-              <h2 className="text-3xl font-black tracking-tight mb-1">Bienvenido a Hub</h2>
-              <p className="text-red-100 font-medium text-sm md:text-base opacity-90 max-w-md">
-                Plataforma de Inteligencia Operativa Integral
-              </p>
+
+            {/* Tabs Navigation */}
+            <div className="flex gap-2">
+              <button 
+                onClick={() => setActiveTab('overview')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all ${
+                  activeTab === 'overview' 
+                    ? 'bg-white text-red-600 shadow-md' 
+                    : 'bg-white/20 text-white hover:bg-white/30'
+                }`}
+              >
+                <LayoutGrid size={16} /> Resumen
+              </button>
+              <button 
+                onClick={() => setActiveTab('video')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all ${
+                  activeTab === 'video' 
+                    ? 'bg-white text-red-600 shadow-md' 
+                    : 'bg-white/20 text-white hover:bg-white/30'
+                }`}
+              >
+                <PlayCircle size={16} /> Presentación
+              </button>
             </div>
           </div>
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-8 bg-gray-50 dark:bg-slate-950/50">
+        <div className="flex-1 overflow-y-auto p-6 md:p-8 bg-gray-50 dark:bg-slate-950/50">
           
-          <div className="prose dark:prose-invert max-w-none">
-            <p className="text-gray-600 dark:text-slate-300 leading-relaxed text-lg">
-              <strong className="text-gray-900 dark:text-white">Hub</strong> centraliza la logística y comunicación de tu negocio en una sola aplicación. Diseñada para optimizar flujos de trabajo, reducir errores y conectar a tu equipo en tiempo real.
-            </p>
-          </div>
+          {activeTab === 'overview' ? (
+            <div className="space-y-8 animate-fade-in">
+              <div className="prose dark:prose-invert max-w-none">
+                <p className="text-gray-600 dark:text-slate-300 leading-relaxed text-lg">
+                  <strong className="text-gray-900 dark:text-white">Hub</strong> centraliza la logística y comunicación de tu negocio en una sola aplicación. Diseñada para optimizar flujos de trabajo, reducir errores y conectar a tu equipo en tiempo real.
+                </p>
+              </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {features.map((feature, idx) => (
-              <div key={idx} className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-gray-100 dark:border-slate-700/50 shadow-sm flex gap-4 items-start hover:shadow-md transition-shadow">
-                <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${feature.color}`}>
-                  <feature.icon size={24} />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {features.map((feature, idx) => (
+                  <div key={idx} className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-gray-100 dark:border-slate-700/50 shadow-sm flex gap-4 items-start hover:shadow-md transition-shadow">
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${feature.color}`}>
+                      <feature.icon size={24} />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-gray-900 dark:text-white mb-1">{feature.title}</h4>
+                      <p className="text-xs text-gray-500 dark:text-slate-400 leading-relaxed">{feature.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="bg-gray-100 dark:bg-slate-800/80 rounded-2xl p-5 flex flex-col sm:flex-row gap-4 items-center justify-between border border-gray-200 dark:border-slate-700">
+                <div className="flex items-center gap-3">
+                   <div className="bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 p-2 rounded-lg">
+                     <Zap size={20} fill="currentColor" className="text-blue-600 dark:text-blue-400" />
+                   </div>
+                   <div>
+                     <h5 className="font-bold text-gray-900 dark:text-white text-sm">Tecnología PWA</h5>
+                     <p className="text-xs text-gray-500 dark:text-slate-400">Instalable, rápida y funciona offline.</p>
+                   </div>
                 </div>
-                <div>
-                  <h4 className="font-bold text-gray-900 dark:text-white mb-1">{feature.title}</h4>
-                  <p className="text-xs text-gray-500 dark:text-slate-400 leading-relaxed">{feature.desc}</p>
+                <div className="flex items-center gap-3">
+                   <div className="bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 p-2 rounded-lg">
+                     <Globe size={20} />
+                   </div>
+                   <div>
+                     <h5 className="font-bold text-gray-900 dark:text-white text-sm">Acceso Público</h5>
+                     <p className="text-xs text-gray-500 dark:text-slate-400">Comparte tareas externamente.</p>
+                   </div>
                 </div>
               </div>
-            ))}
-          </div>
+            </div>
+          ) : (
+            <div className="flex flex-col h-full animate-fade-in space-y-6">
+              <div className="aspect-video w-full rounded-2xl overflow-hidden shadow-2xl bg-black border-4 border-white dark:border-slate-800 relative group">
+                {/* 
+                  PLACEHOLDER VIDEO: 
+                  Aquí iría tu video de presentación.
+                */}
+                <iframe 
+                  className="w-full h-full" 
+                  src="https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=0&controls=1&rel=0" 
+                  title="Hub Showcase" 
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                  allowFullScreen
+                ></iframe>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-gray-100 dark:border-slate-700/50 flex flex-col items-center text-center shadow-sm">
+                   <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 flex items-center justify-center mb-3">
+                      <Smartphone size={20} />
+                   </div>
+                   <h4 className="font-bold text-gray-900 dark:text-white text-sm">100% Móvil</h4>
+                   <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">Diseñado para usarse con una sola mano en movimiento.</p>
+                </div>
 
-          <div className="bg-gray-100 dark:bg-slate-800/80 rounded-2xl p-5 flex flex-col sm:flex-row gap-4 items-center justify-between border border-gray-200 dark:border-slate-700">
-            <div className="flex items-center gap-3">
-               <div className="bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 p-2 rounded-lg">
-                 <Zap size={20} fill="currentColor" className="text-blue-600 dark:text-blue-400" />
-               </div>
-               <div>
-                 <h5 className="font-bold text-gray-900 dark:text-white text-sm">Tecnología PWA</h5>
-                 <p className="text-xs text-gray-500 dark:text-slate-400">Instalable, rápida y funciona offline.</p>
-               </div>
+                <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-gray-100 dark:border-slate-700/50 flex flex-col items-center text-center shadow-sm">
+                   <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center mb-3">
+                      <WifiOff size={20} />
+                   </div>
+                   <h4 className="font-bold text-gray-900 dark:text-white text-sm">Modo Offline</h4>
+                   <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">Sigue trabajando sin conexión. Los datos se sincronizan al volver.</p>
+                </div>
+
+                <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-gray-100 dark:border-slate-700/50 flex flex-col items-center text-center shadow-sm">
+                   <div className="w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 flex items-center justify-center mb-3">
+                      <Lock size={20} />
+                   </div>
+                   <h4 className="font-bold text-gray-900 dark:text-white text-sm">Seguridad</h4>
+                   <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">Acceso restringido por roles y PIN personal cifrado.</p>
+                </div>
+              </div>
             </div>
-            {/* Added Public Access indicator */}
-            <div className="flex items-center gap-3">
-               <div className="bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 p-2 rounded-lg">
-                 <Globe size={20} />
-               </div>
-               <div>
-                 <h5 className="font-bold text-gray-900 dark:text-white text-sm">Acceso Público</h5>
-                 <p className="text-xs text-gray-500 dark:text-slate-400">Comparte tareas externamente.</p>
-               </div>
-            </div>
-          </div>
+          )}
 
         </div>
         
