@@ -65,7 +65,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-slate-950 flex flex-col items-center justify-center p-4 transition-colors duration-300 font-sans relative">
+    <div className="h-[100dvh] w-full bg-gray-100 dark:bg-slate-950 flex flex-col items-center justify-center p-4 transition-colors duration-300 font-sans relative overflow-y-auto">
       
       {/* DEMO LOADING OVERLAY */}
       {isDemoLoading && (
@@ -92,7 +92,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
         </div>
       )}
 
-      <div className="w-full max-w-sm bg-white dark:bg-slate-800 rounded-[2rem] shadow-2xl overflow-hidden border border-white/50 dark:border-slate-700/50 transition-all duration-300 animate-pop-in relative">
+      <div className="w-full max-w-sm bg-white dark:bg-slate-800 rounded-[2rem] shadow-2xl overflow-hidden border border-white/50 dark:border-slate-700/50 transition-all duration-300 animate-pop-in relative my-auto">
         
         {/* Header Section */}
         <div className="bg-gradient-to-br from-red-700 to-red-900 py-10 px-6 flex flex-col items-center justify-center text-white relative overflow-hidden">

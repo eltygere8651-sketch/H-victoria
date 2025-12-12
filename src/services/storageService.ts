@@ -341,38 +341,94 @@ export const saveProduct = async (product: Partial<Product>) => {
 export const deleteProduct = async (id: string) => await db.collection('products').doc(id).delete();
 
 // --- ORDERS / REPLENISHMENT ---
-export const submitOrderBatch = async (cart: CartItem[], departmentId: string, departmentName: string, user: User) => {
-  // FIX: Use compat batch syntax
-  const batch = db.batch();
-  const lowStockItems: string[] = [];
-  const batchId = Date.now().toString().slice(-6);
+// FIX: Refactored to use Transactions for atomic read-check-update
+const internalSubmitOrderBatch = async (cart: CartItem[], departmentId: string, departmentName: string, user: User) => {
+  try {
+    return await db.runTransaction(async (transaction) => {
+      const lowStockItems: string[] = [];
+      const batchId = Date.now().toString().slice(-6);
+      
+      // 1. Read all product documents involved in the order
+      // Using Promise.all to fetch them in parallel inside the transaction context
+      const productReads = await Promise.all(
+        cart.map(item => transaction.get(db.collection('products').doc(item.product.id)))
+      );
 
-  for (const item of cart) {
-    // FIX: Use compat doc reference syntax
-    const productRef = db.collection('products').doc(item.product.id);
-    const newQuantity = item.product.quantity - item.quantity;
-    batch.update(productRef, { quantity: newQuantity });
+      // 2. Perform checks and updates
+      productReads.forEach((doc, idx) => {
+        if (!doc.exists) {
+          throw new Error(`Producto no encontrado en base de datos: ${cart[idx].product.name}`);
+        }
+        
+        const currentQty = doc.data()?.quantity || 0;
+        const requestedQty = cart[idx].quantity;
+        const minThreshold = doc.data()?.minThreshold || 0;
 
-    const request: Omit<ReplenishmentRequest, 'id'> = {
-      batchId, productId: item.product.id, productName: item.product.name,
-      departmentId, departmentName, requestedBy: user.name,
-      quantity: item.quantity, status: 'COMPLETED',
-      date: new Date().toLocaleString(), timestamp: Date.now(), unit: item.product.unit
-    };
-    // FIX: Use compat doc reference syntax
-    const requestRef = db.collection('requests').doc();
-    batch.set(requestRef, request);
-    
-    if (newQuantity <= item.product.minThreshold) {
-      lowStockItems.push(item.product.name);
-      await createNotification(NotificationType.LOW_STOCK, { productName: item.product.name });
-    }
+        // Check availability
+        if (currentQty < requestedQty) {
+          throw new Error(`Stock insuficiente para ${cart[idx].product.name}. Disponible: ${currentQty}, Solicitado: ${requestedQty}`);
+        }
+
+        // Calculate new stock
+        // FIX: Atomic Decrement using current value from transaction read
+        const newQty = currentQty - requestedQty;
+        
+        // Update stock
+        transaction.update(doc.ref, { quantity: newQty });
+
+        // Check for low stock alert
+        if (newQty <= minThreshold) {
+          lowStockItems.push(cart[idx].product.name);
+        }
+      });
+
+      // 3. Create request records (Writes)
+      cart.forEach(item => {
+        const requestRef = db.collection('requests').doc();
+        const request: Omit<ReplenishmentRequest, 'id'> = {
+          batchId, 
+          productId: item.product.id, 
+          productName: item.product.name,
+          departmentId, 
+          departmentName, 
+          requestedBy: user.name,
+          quantity: item.quantity, 
+          status: 'COMPLETED',
+          date: new Date().toLocaleString(), 
+          timestamp: Date.now(), 
+          unit: item.product.unit
+        };
+        transaction.set(requestRef, request);
+      });
+
+      return { success: true, lowStockItems, batchId, departmentName };
+    });
+  } catch (error) {
+    console.error("Order Transaction Failed:", error);
+    // Explicitly returning the error object so the UI can display the message
+    return { success: false, error: (error as Error).message || 'Error desconocido' };
   }
-
-  await batch.commit();
-  await createNotification(NotificationType.NEW_ORDER, { departmentName, orderBatchId: batchId });
-  return { success: true, lowStockItems };
 };
+
+// Wrapper to handle side effects (notifications) after successful transaction
+export const submitOrderBatch = async (cart: CartItem[], departmentId: string, departmentName: string, user: User) => {
+    const result = await internalSubmitOrderBatch(cart, departmentId, departmentName, user);
+    
+    if (result.success && result.batchId) {
+        // Send notifications asynchronously
+        if (result.lowStockItems && result.lowStockItems.length > 0) {
+            for (const productName of result.lowStockItems) {
+                createNotification(NotificationType.LOW_STOCK, { productName });
+            }
+        }
+        createNotification(NotificationType.NEW_ORDER, { 
+            departmentName: result.departmentName, 
+            orderBatchId: result.batchId 
+        });
+    }
+    return result;
+};
+
 
 export const subscribeToBatches = (callback: (batches: OrderBatch[]) => void) => {
   // FIX: Use compat query syntax for onSnapshot

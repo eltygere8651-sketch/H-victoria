@@ -49,6 +49,44 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCar
     };
   }, []);
 
+  // NEW: Sincronización en tiempo real del carrito con el inventario
+  // Esto previene pedir más de lo que existe si el stock cambia mientras el usuario navega
+  useEffect(() => {
+    if (products.length === 0) return;
+
+    setCart(prevCart => {
+      let hasChanges = false;
+      const newCart = prevCart.map(item => {
+        const freshProduct = products.find(p => p.id === item.product.id);
+        
+        // Si el producto fue eliminado de la DB
+        if (!freshProduct) {
+          hasChanges = true;
+          return null; 
+        }
+
+        // Si el stock bajó por debajo de la cantidad en carrito
+        if (freshProduct.quantity < item.quantity) {
+          hasChanges = true;
+          // Si hay 0, se elimina (null). Si hay menos, se ajusta al máximo disponible.
+          return freshProduct.quantity > 0 
+            ? { ...item, quantity: freshProduct.quantity, product: freshProduct } 
+            : null;
+        }
+
+        // Actualizar datos del producto (por si cambió nombre o stock visual)
+        if (item.product.quantity !== freshProduct.quantity) {
+           hasChanges = true;
+           return { ...item, product: freshProduct };
+        }
+
+        return item;
+      }).filter(Boolean) as CartItem[];
+
+      return hasChanges ? newCart : prevCart;
+    });
+  }, [products, setCart]);
+
   useEffect(() => {
     if (!isLoadingDepartments && departments.length > 0) {
       const currentSelectedExists = departments.some(d => d.id === selectedDepartmentForOrder);
@@ -169,31 +207,38 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCar
     if (cart.length === 0 || !selectedDepartmentForOrder || !selectedDepartmentNameForOrder) return;
     setIsProcessing(true);
     
-    const result = await storageService.submitOrderBatch(
-      cart, 
-      selectedDepartmentForOrder, 
-      selectedDepartmentNameForOrder, 
-      currentUser
-    );
-    
-    setIsProcessing(false);
-    if (result.success) {
-      setShowConfirmModal(false);
-      setShowMobileCart(false);
+    try {
+      const result = await storageService.submitOrderBatch(
+        cart, 
+        selectedDepartmentForOrder, 
+        selectedDepartmentNameForOrder, 
+        currentUser
+      );
       
-      if (result.lowStockItems && result.lowStockItems.length > 0) {
-        setLowStockList(result.lowStockItems);
-        setShowLowStockModal(true);
-        playAlarm();
+      setIsProcessing(false);
+      
+      if (result.success) {
+        setShowConfirmModal(false);
+        setShowMobileCart(false);
+        
+        if (result.lowStockItems && result.lowStockItems.length > 0) {
+          setLowStockList(result.lowStockItems);
+          setShowLowStockModal(true);
+          playAlarm();
+        } else {
+          setShowSuccessModal(true);
+          setTimeout(() => {
+            resetOrderState();
+          }, 2000);
+        }
       } else {
-        setShowSuccessModal(true);
-        setTimeout(() => {
-          resetOrderState();
-        }, 2000);
+        // Mostrar el error real de la transacción si existe
+        alert(`Error al procesar el pedido: ${result.error || 'Inténtalo de nuevo.'}`);
+        setShowConfirmModal(false);
       }
-    } else {
-      alert("Error al procesar el pedido.");
-      setShowConfirmModal(false);
+    } catch (e) {
+      setIsProcessing(false);
+      alert("Error de conexión. Verifica tu internet.");
     }
   };
 

@@ -430,7 +430,7 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className={`min-h-screen w-full flex flex-col font-sans transition-colors duration-300 antialiased ${darkMode ? 'dark' : ''} bg-premium`}
+    <div className={`h-[100dvh] w-full flex flex-col font-sans transition-colors duration-300 antialiased ${darkMode ? 'dark' : ''} bg-premium overflow-hidden`}
       style={{
         paddingTop: 'env(safe-area-inset-top)',
         paddingLeft: 'env(safe-area-inset-left)',
@@ -481,11 +481,22 @@ const App: React.FC = () => {
       </header>
 
       {/* Main Content Area - Native Scroll */}
-      <main className="flex-1 w-full">
-        {view === 'inventory' && user.role === UserRole.ADMIN && <Inventory currentUser={user} />}
-        {view === 'replenish' && user.role !== UserRole.GUEST && <Replenishment currentUser={user} cart={cart} setCart={setCart} showMobileCart={showMobileCart} setShowMobileCart={setShowMobileCart} />}
-        {view === 'admin' && user.role === UserRole.ADMIN && <Admin currentUser={user} unreadNotificationsCount={unreadAdminNotifications.length} initialTab={initialAdminTab} />}
-        {view === 'tasks' && <Tasks currentUser={user} />}
+      <main className="flex-1 w-full relative overflow-hidden">
+        {view === 'replenish' && user.role !== UserRole.GUEST ? (
+           // Replenishment manages its own internal scroll because it has a complex layout (sidebar + content)
+           <Replenishment currentUser={user} cart={cart} setCart={setCart} showMobileCart={showMobileCart} setShowMobileCart={setShowMobileCart} />
+        ) : (
+           // Other views need a wrapper to scroll within the flex container
+           // Added: overscroll-y-contain and webkit styling for better mobile feel
+           <div 
+             className="h-full w-full overflow-y-auto overflow-x-hidden scroll-smooth overscroll-y-contain"
+             style={{ WebkitOverflowScrolling: 'touch' }}
+           >
+              {view === 'inventory' && user.role === UserRole.ADMIN && <Inventory currentUser={user} />}
+              {view === 'admin' && user.role === UserRole.ADMIN && <Admin currentUser={user} unreadNotificationsCount={unreadAdminNotifications.length} initialTab={initialAdminTab} />}
+              {view === 'tasks' && <Tasks currentUser={user} />}
+           </div>
+        )}
       </main>
 
       {/* FLOATING DOCK NAVIGATION */}

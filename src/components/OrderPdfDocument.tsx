@@ -12,9 +12,10 @@ export const OrderPdfDocument: React.FC<OrderPdfDocumentProps> = ({ order, previ
     <div 
       className="bg-white text-black font-sans"
       style={{ 
-        // 794px is approximately 210mm at 96 DPI. Matches the generator container exactly.
-        width: preview ? '100%' : '794px', 
-        padding: '15mm', 
+        // Use physical units (mm) to match PDF format exactly.
+        // If previewing on screen, use 100% to fit container.
+        width: preview ? '100%' : '210mm', 
+        padding: '10mm', // Reduced padding slightly to prevent side clipping
         boxSizing: 'border-box',
         backgroundColor: 'white',
         // Ensure content flows naturally

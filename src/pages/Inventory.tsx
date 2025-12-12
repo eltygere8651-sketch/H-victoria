@@ -149,7 +149,7 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser }) => {
   }
 
   return (
-    <div className="font-sans pb-24 bg-gray-50 dark:bg-slate-950 min-h-screen">
+    <div className="font-sans pb-24 bg-gray-50 dark:bg-slate-950 min-h-full">
       <div className="sticky top-0 z-10 bg-white/90 dark:bg-slate-950/90 backdrop-blur-xl pt-6 pb-4 px-4 md:px-6 border-b border-gray-200 dark:border-slate-800">
         <div className="flex justify-between items-center mb-5">
           <h2 className="text-2xl md:text-4xl font-black text-gray-900 dark:text-white tracking-tighter uppercase italic drop-shadow-sm truncate pr-2">Inventario</h2>

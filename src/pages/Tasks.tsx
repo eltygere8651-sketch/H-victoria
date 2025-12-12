@@ -237,7 +237,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
   if (loading) return <div className="flex h-full items-center justify-center"><Loader2 size={40} className="animate-spin text-red-600" /></div>;
 
   return (
-    <div className="font-sans pb-24 bg-gray-50 dark:bg-slate-950 min-h-screen">
+    <div className="font-sans pb-24 bg-gray-50 dark:bg-slate-950 min-h-full">
       {/* Header */}
       <div className="sticky top-0 z-10 bg-white/90 dark:bg-slate-950/90 backdrop-blur-xl border-b border-gray-200 dark:border-slate-800 px-4 py-4 md:px-6 shadow-sm">
         <div className="flex justify-between items-center mb-4">
