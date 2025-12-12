@@ -198,10 +198,10 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser }) => {
         </div>
       </div>
 
-      {/* MODAL EDITAR / NUEVO PRODUCTO (BOTTOM SHEET ON MOBILE) */}
+      {/* MODAL EDITAR / NUEVO PRODUCTO (BOTTOM SHEET EN MÓVIL) */}
       {showEditProductModal && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/80 dark:bg-slate-950/90 backdrop-blur-sm p-0 sm:p-4 animate-fade-in">
-          <div className="bg-white dark:bg-slate-900 w-full sm:max-w-xl h-[90vh] sm:h-auto sm:max-h-[90vh] rounded-t-[2.5rem] sm:rounded-[2.5rem] shadow-2xl flex flex-col animate-slide-up border-t sm:border-2 border-gray-100 dark:border-slate-700 overflow-hidden">
+        <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/80 dark:bg-slate-950/90 backdrop-blur-sm p-0 sm:p-4 animate-fade-in">
+          <div className="bg-white dark:bg-slate-900 w-full sm:max-w-xl h-[90dvh] sm:h-auto sm:max-h-[90dvh] rounded-t-[2.5rem] sm:rounded-[2.5rem] shadow-2xl flex flex-col animate-slide-up border-t sm:border-2 border-gray-100 dark:border-slate-700 overflow-hidden">
             
             {/* Header */}
             <div className="px-6 py-5 border-b border-gray-100 dark:border-slate-800 flex justify-between items-center bg-white dark:bg-slate-900 shrink-0 sticky top-0 z-10">
@@ -319,13 +319,15 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser }) => {
           </div>
         </div>
       )}
-            {/* MODAL GESTIONAR DEPARTAMENTOS (BOTTOM SHEET OPTIMIZADO) */}
+      
+      {/* MODAL GESTIONAR DEPARTAMENTOS (BOTTOM SHEET OPTIMIZADO) */}
       {showManageDepartmentsModal && (
-         <div className="fixed inset-0 bg-black/80 dark:bg-slate-950/90 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white dark:bg-slate-900 w-full sm:max-w-lg h-[85vh] sm:h-auto sm:max-h-[85vh] rounded-t-[2.5rem] sm:rounded-[2.5rem] shadow-2xl flex flex-col animate-slide-up border-t sm:border-2 border-gray-100 dark:border-slate-700 overflow-hidden">
+         <div className="fixed inset-0 bg-black/80 dark:bg-slate-950/90 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4 backdrop-blur-sm animate-fade-in">
+          {/* USAR 85dvh PARA MÓVIL ASEGURA QUE EL TECLADO NO ROMPA EL LAYOUT */}
+          <div className="bg-white dark:bg-slate-900 w-full sm:max-w-lg h-[85dvh] sm:h-auto sm:max-h-[85dvh] rounded-t-[2.5rem] sm:rounded-[2.5rem] shadow-2xl flex flex-col animate-slide-up border-t sm:border-2 border-gray-100 dark:border-slate-700 overflow-hidden">
             
             {/* Header */}
-            <div className="flex justify-between items-center p-6 border-b border-gray-100 dark:border-slate-800 shrink-0 sticky top-0 bg-white dark:bg-slate-900 z-10">
+            <div className="flex justify-between items-center p-6 border-b border-gray-100 dark:border-slate-800 shrink-0 sticky top-0 bg-white dark:bg-slate-900 z-20">
               <h3 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">Departamentos</h3>
               <button 
                 onClick={() => setShowManageDepartmentsModal(false)} 
@@ -336,26 +338,28 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser }) => {
             </div>
 
             {/* Scrollable Content */}
-             <div className="flex-1 overflow-y-auto p-6 space-y-8 bg-white dark:bg-slate-900">
+             <div className="flex-1 overflow-y-auto p-6 bg-white dark:bg-slate-900">
               
-              {/* Add/Edit Section - OPTIMIZED FOR MOBILE */}
-              <div className="space-y-3">
+              {/* Add/Edit Section - SOLUCIONADO EL CORTE EN MÓVIL */}
+              <div className="space-y-3 mb-8">
                 <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest ml-1">
                   {editingDepartment ? 'Editar Departamento' : 'Crear Nuevo'}
                 </h4>
-                {/* Changed to flex-row to save vertical space */}
-                <div className="flex gap-3 items-stretch">
+                {/* Flex container con items-center para alinear verticalmente */}
+                <div className="flex gap-2 items-center">
+                  {/* min-w-0 PERMITE QUE EL INPUT SE ENCOJA y no empuje al botón fuera */}
                   <input 
-                    className="flex-1 min-w-0 p-4 text-lg font-bold border-2 border-gray-200 dark:border-slate-700 rounded-2xl bg-gray-50 dark:bg-slate-800/50 focus:bg-white dark:focus:bg-slate-900 focus:border-red-500 outline-none dark:text-white transition-all shadow-sm placeholder-gray-400" 
+                    className="flex-1 min-w-0 h-14 px-5 text-lg font-bold border-2 border-gray-200 dark:border-slate-700 rounded-2xl bg-gray-50 dark:bg-slate-800/50 focus:bg-white dark:focus:bg-slate-900 focus:border-red-500 outline-none dark:text-white transition-all shadow-sm placeholder-gray-400" 
                     value={newDepartmentName} 
                     onChange={e => setNewDepartmentName(e.target.value)}
                     placeholder={editingDepartment ? "Editar nombre..." : "Ej. Recepción"}
                     onKeyDown={e => e.key === 'Enter' && handleSaveDepartment()}
                   />
+                  {/* shrink-0 EVITA QUE EL BOTÓN SE APLASTE */}
                   <button 
                     onClick={handleSaveDepartment} 
                     disabled={!newDepartmentName.trim()}
-                    className="shrink-0 w-16 bg-red-600 disabled:bg-gray-300 dark:disabled:bg-slate-700 text-white font-black rounded-2xl shadow-lg shadow-red-200 dark:shadow-none hover:bg-red-700 active:scale-[0.98] transition-all flex items-center justify-center"
+                    className="shrink-0 w-14 h-14 bg-red-600 disabled:bg-gray-300 dark:disabled:bg-slate-700 text-white font-black rounded-2xl shadow-lg shadow-red-200 dark:shadow-none hover:bg-red-700 active:scale-[0.98] transition-all flex items-center justify-center"
                     title={editingDepartment ? 'Guardar Cambios' : 'Añadir'}
                   >
                     <Save size={24} strokeWidth={2.5} />
@@ -364,15 +368,15 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser }) => {
               </div>
 
               {/* List Section */}
-              <div className="space-y-3">
+              <div className="space-y-3 pb-20">
                 <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest ml-1">
                   Existentes ({departments.length})
                 </h4>
                 <div className="space-y-2">
                   {departments.map(dep => (
                     <div key={dep.id} className="group flex items-center justify-between bg-white dark:bg-slate-800 p-4 rounded-2xl border border-gray-100 dark:border-slate-700 shadow-sm hover:border-red-200 dark:hover:border-red-900/50 transition-colors">
-                      <span className="font-bold text-gray-900 dark:text-white text-base">{dep.name}</span>
-                      <div className="flex gap-2">
+                      <span className="font-bold text-gray-900 dark:text-white text-base truncate pr-2">{dep.name}</span>
+                      <div className="flex gap-2 shrink-0">
                         <button 
                           onClick={() => openEditDepartmentModal(dep)} 
                           className="p-2.5 text-blue-600 bg-blue-50 dark:bg-blue-900/20 rounded-xl hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors active:scale-95"
@@ -401,7 +405,7 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser }) => {
             </div>
 
             {/* Footer */}
-             <div className="p-4 border-t border-gray-100 dark:border-slate-800 bg-gray-50 dark:bg-slate-900 pb-safe sticky bottom-0 z-10">
+             <div className="p-4 border-t border-gray-100 dark:border-slate-800 bg-gray-50 dark:bg-slate-900 pb-safe sticky bottom-0 z-20">
               <button 
                 onClick={() => { setShowManageDepartmentsModal(false); setEditingDepartment(null); setNewDepartmentName(''); }} 
                 className="w-full py-4 text-gray-600 dark:text-slate-400 font-bold bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-2xl hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors active:scale-[0.98]"
