@@ -13,6 +13,15 @@
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
     <title>Hub</title>
     
+    <!-- Utilities -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" integrity="sha512-GsLlZN/3F2ErC5ifS5QtgpiJtWd43JWSuIgh7mbzZ8zBps+dvLusV+eNQATqgA/HdeKFVgA5v3S/cIrLF7QnIg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS (CDN for immediate rendering fallback) -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
@@ -25,20 +34,21 @@
             colors: {
               slate: {
                 850: '#1e293b',
-                900: '#0f172a',
-                950: '#020617', 
+                950: '#0a0f1e',
               }
             },
             boxShadow: {
-              'soft': '0 4px_20px -2px rgba(0, 0, 0, 0.05)',
-              'glow': '0 0 15px rgba(220, 38, 38, 0.3)', 
-              'neon': '0 0 20px -5px rgba(220, 38, 38, 0.6), 0 4px 6px -2px rgba(220, 38, 38, 0.1)',
-              'dock': '0 20px 40px -5px rgba(0, 0, 0, 0.15), 0 10px 20px -5px rgba(0, 0, 0, 0.04)',
-              'dock-dark': '0 20px 40px -5px rgba(0, 0, 0, 0.4), 0 10px 20px -5px rgba(0, 0, 0, 0.2)',
+              'soft': '0 4px 20px -2px rgba(0, 0, 0, 0.05)',
+              'glow': '0 0 15px rgba(220, 38, 38, 0.3)',
               'card-soft': '0 10px 30px -5px rgba(0, 0, 0, 0.08), 0 4px 15px -2px rgba(0, 0, 0, 0.02)',
               'card-dark': '0 10px 30px -5px rgba(0, 0, 0, 0.3), 0 4px 15px -2px rgba(0, 0, 0, 0.1)',
               'button-red': '0 8px 20px -6px rgba(220, 38, 38, 0.5)',
+              'button-green': '0 8px 20px -6px rgba(34, 197, 94, 0.5)',
+              'button-blue': '0 8px 20px -6px rgba(59, 130, 246, 0.5)',
               'pop-in': '0 15px 40px -8px rgba(0,0,0,0.25)',
+              'neon': '0 0 20px rgba(220, 38, 38, 0.6), 0 0 60px rgba(220, 38, 38, 0.4)',
+              'dock': '0 10px 30px -10px rgba(0, 0, 0, 0.15)',
+              'dock-dark': '0 10px 30px -10px rgba(0, 0, 0, 0.5)',
             },
             keyframes: {
               'pop-in': {
@@ -53,45 +63,40 @@
                 '0%': { opacity: '0' },
                 '100%': { opacity: '1' },
               },
-              'expand-pill': {
-                '0%': { width: '48px' },
-                '100%': { width: 'auto' }
+              'shake': {
+                '0%, 100%': { transform: 'translateX(0)' },
+                '10%, 30%, 50%, 70%, 90%': { transform: 'translateX(-4px)' },
+                '20%, 40%, 60%, 80%': { transform: 'translateX(4px)' },
               }
             },
             animation: {
-              'pop-in': 'pop-in 0.3s ease-out forwards',
-              'slide-up': 'slide-up 0.3s ease-out forwards',
+              'pop-in': 'pop-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+              'slide-up': 'slide-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards',
               'fade-in': 'fade-in 0.2s ease-out forwards',
+              'shake': 'shake 0.5s cubic-bezier(.36,.07,.19,.97) both',
             },
-          },
-        },
-        plugins: [],
+          }
+        }
       }
     </script>
-    
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    
-  <script type="importmap">
+<script type="importmap">
 {
   "imports": {
-    "vite": "https://aistudiocdn.com/vite@^7.2.7",
-    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.2",
-    "react/": "https://aistudiocdn.com/react@^19.2.1/",
-    "react": "https://aistudiocdn.com/react@^19.2.1",
-    "react-dom": "https://aistudiocdn.com/react-dom@^19.2.1",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.1/",
-    "firebase/": "https://aistudiocdn.com/firebase@^12.6.0/",
-    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.556.0",
-    "recharts": "https://aistudiocdn.com/recharts@^3.5.1"
+    "firebase/": "https://esm.sh/firebase@^12.6.0/",
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "react": "https://esm.sh/react@^19.2.3",
+    "react-dom": "https://esm.sh/react-dom@^19.2.3",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "lucide-react": "https://esm.sh/lucide-react@^0.561.0",
+    "recharts": "https://esm.sh/recharts@^3.5.1",
+    "vite": "https://esm.sh/vite@^7.2.7",
+    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2"
   }
 }
 </script>
 </head>
-  <!-- Added ontouchstart for faster iOS active state response -->
-  <body class="bg-gray-50 dark:bg-[#1c1f2e] text-slate-900 dark:text-slate-100 antialiased selection:bg-red-100 dark:selection:bg-red-500/30" ontouchstart="">
+  <body class="bg-gray-50 dark:bg-[#0a0f1e] text-slate-900 dark:text-slate-100 antialiased selection:bg-red-100 dark:selection:bg-red-500/30" ontouchstart="">
     <div id="root" class="h-full"></div>
-    <script type="module" src="/index.tsx"></script>
+    <script type="module" src="/src/index.tsx"></script>
   </body>
 </html>

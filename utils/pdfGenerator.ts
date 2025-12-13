@@ -11,8 +11,9 @@ import { flushSync } from 'react-dom';
  */
 export const generatePdfFromReactComponent = async (component: React.ReactElement, filename: string): Promise<void> => {
   return new Promise((resolve, reject) => {
+    // Check for the global variable injected by index.html
     if (typeof (window as any).html2pdf === 'undefined') {
-      return reject(new Error('html2pdf.js library is not loaded.'));
+      return reject(new Error('html2pdf.js library is not loaded. Please refresh the page.'));
     }
 
     // Create a temporary, off-screen container for rendering
@@ -20,7 +21,8 @@ export const generatePdfFromReactComponent = async (component: React.ReactElemen
     container.style.position = 'absolute';
     container.style.left = '-9999px'; // Position it off-screen
     container.style.top = '0';
-    // Explicitly set width to match A4 width in pixels (approx) to prevent responsive squashing
+    // Explicitly set width to match A4 width in pixels (approx 794px at 96 DPI) 
+    // to prevent responsive squashing when on mobile screens.
     container.style.width = '800px'; 
     document.body.appendChild(container);
 
@@ -45,7 +47,9 @@ export const generatePdfFromReactComponent = async (component: React.ReactElemen
         scale: 2, 
         useCORS: true,
         logging: false,
-        windowWidth: 794, // Force exact A4 pixel width at 96DPI
+        // FORCE the window width to be desktop-like to ensure the PDF renders 
+        // as if it were on a desktop, regardless of the actual device screen size.
+        windowWidth: 1024, 
         scrollY: 0, // CRITICAL FIX: Prevent scroll offset from cutting off the top of the PDF
         letterRendering: true,
       },
@@ -62,12 +66,14 @@ export const generatePdfFromReactComponent = async (component: React.ReactElemen
       })
       .finally(() => {
         // Clean up: unmount the component and remove the container
-        flushSync(() => {
-          root.unmount();
-        });
-        if (document.body.contains(container)) {
-          document.body.removeChild(container);
-        }
+        setTimeout(() => {
+            try {
+                root.unmount();
+                if (document.body.contains(container)) {
+                    document.body.removeChild(container);
+                }
+            } catch(e) { console.warn("Cleanup warning", e); }
+        }, 100);
       });
   });
 };

@@ -7,12 +7,52 @@ import Tasks from './pages/Tasks';
 import { PublicTaskViewer } from './components/PublicTaskViewer';
 import * as storageService from './services/storageService';
 import { Logo } from './components/Logo';
-import { LayoutGrid, ClipboardList, ShieldCheck, LogOut, Moon, Sun, Download, Share2, PlusSquare, ShoppingCart, ClipboardCheck, HelpCircle } from 'lucide-react';
+import { LayoutGrid, ClipboardList, ShieldCheck, LogOut, Moon, Sun, Download, Share, PlusSquare, ShoppingCart, ClipboardCheck, Share2, HelpCircle } from 'lucide-react';
 import { User, UserRole, AppNotification, CartItem } from './types';
 import { NotificationToast } from './components/NotificationToast';
 import { initializePushNotifications } from './services/pushNotificationService';
 import { ShareModal } from './components/ShareModal';
 import { GuideModal } from './components/GuideModal';
+
+// --- OPTIMIZATION: NavButton extracted to prevent re-renders ---
+const NavButton = ({ icon: Icon, label, isActive, onClick, hasAlert = false }: any) => (
+  <button 
+    onClick={onClick} 
+    className={`
+      relative flex items-center justify-center rounded-full transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] overflow-hidden
+      outline-none select-none touch-manipulation active:scale-95 group
+      ${isActive ? 'px-3.5 py-3 gap-1.5' : 'px-1 py-3'} 
+      ${isActive 
+        ? 'flex-[8] bg-red-600 text-white shadow-neon dark:shadow-red-900/50' 
+        : 'flex-[1] bg-gray-50/80 dark:bg-white/5 hover:bg-gray-100 dark:hover:bg-white/10 text-gray-500 dark:text-slate-400'
+      }
+    `}
+    style={{ WebkitTapHighlightColor: 'transparent' }}
+  >
+    <div className="relative z-10 flex-shrink-0 flex items-center justify-center">
+      <Icon 
+        size={20} 
+        strokeWidth={2.5} 
+        className={`transition-transform duration-300 ${isActive ? 'scale-100' : 'scale-100 group-hover:scale-110'}`}
+      />
+      {hasAlert && !isActive && (
+         <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5 z-20">
+           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+           <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-600 ring-2 ring-white dark:ring-slate-900"></span>
+         </span>
+      )}
+    </div>
+    
+    <div className={`
+      overflow-hidden transition-all duration-300 ease-out flex items-center justify-center
+      ${isActive ? 'w-auto opacity-100 translate-x-0' : 'w-0 opacity-0 translate-x-4'}
+    `}>
+      <span className="text-[11px] font-bold leading-tight whitespace-nowrap tracking-wide pt-0.5">
+        {label}
+      </span>
+    </div>
+  </button>
+);
 
 const App: React.FC = () => {
   const [isInitializing, setIsInitializing] = useState(true);
@@ -20,11 +60,9 @@ const App: React.FC = () => {
   const [sharedTaskId, setSharedTaskId] = useState<string | null>(null);
   const [isPublicMode, setIsPublicMode] = useState(false);
 
-  // Share Modal State (Global)
+  // Modals
   const [showShareModal, setShowShareModal] = useState(false);
   const [shareData, setShareData] = useState({ url: '', title: '' });
-
-  // Guide Modal State
   const [showGuideModal, setShowGuideModal] = useState(false);
 
   const [view, setView] = useState<'inventory' | 'replenish' | 'admin' | 'tasks'>(() => {
@@ -70,7 +108,6 @@ const App: React.FC = () => {
 
   const [hasUnreadTasks, setHasUnreadTasks] = useState(false);
 
-  // Inicialización de la app
   useEffect(() => {
     const initializeApp = async () => {
       const searchParams = new URLSearchParams(window.location.search);
@@ -174,7 +211,6 @@ const App: React.FC = () => {
         try { await ctx.resume(); } catch (e) {}
       }
     };
-    // Passive listeners for better scroll performance where applicable
     window.addEventListener('click', unlockAudio, { once: true });
     window.addEventListener('touchstart', unlockAudio, { once: true, passive: true });
     window.addEventListener('keydown', unlockAudio, { once: true });
@@ -184,7 +220,6 @@ const App: React.FC = () => {
       window.removeEventListener('keydown', unlockAudio);
     };
   }, []);
-  // --- END AUDIO SYSTEM ---
 
   useEffect(() => {
     const isSandboxed = window.location.origin.includes('usercontent.goog');
@@ -375,45 +410,6 @@ const App: React.FC = () => {
     }
   };
 
-  const NavButton = ({ icon: Icon, label, isActive, onClick, hasAlert = false }: any) => (
-    <button 
-      onClick={onClick} 
-      className={`
-        relative flex items-center justify-center rounded-full transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] overflow-hidden
-        outline-none select-none touch-manipulation active:scale-95 group
-        ${isActive ? 'px-3.5 py-3 gap-1.5' : 'px-1 py-3'} 
-        ${isActive 
-          ? 'flex-[8] bg-red-600 text-white shadow-neon dark:shadow-red-900/50' 
-          : 'flex-[1] bg-gray-50/80 dark:bg-white/5 hover:bg-gray-100 dark:hover:bg-white/10 text-gray-500 dark:text-slate-400'
-        }
-      `}
-      style={{ WebkitTapHighlightColor: 'transparent' }}
-    >
-      <div className="relative z-10 flex-shrink-0 flex items-center justify-center">
-        <Icon 
-          size={20} 
-          strokeWidth={2.5} 
-          className={`transition-transform duration-300 ${isActive ? 'scale-100' : 'scale-100 group-hover:scale-110'}`}
-        />
-        {hasAlert && !isActive && (
-           <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5 z-20">
-             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-             <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-600 ring-2 ring-white dark:ring-slate-900"></span>
-           </span>
-        )}
-      </div>
-      
-      <div className={`
-        overflow-hidden transition-all duration-300 ease-out flex items-center justify-center
-        ${isActive ? 'w-auto opacity-100 translate-x-0' : 'w-0 opacity-0 translate-x-4'}
-      `}>
-        <span className="text-[11px] font-bold leading-tight whitespace-nowrap tracking-wide pt-0.5">
-          {label}
-        </span>
-      </div>
-    </button>
-  );
-
   if (isInitializing) {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-premium">
@@ -449,19 +445,26 @@ const App: React.FC = () => {
           </div>
           <div className="flex items-center gap-2">
             
-            {/* CART BUTTON - MOVED TO HEADER */}
+            {/* PC/Tablet Header Cart Button (Hidden on Mobile) */}
             {user.role !== UserRole.GUEST && (
               <button
                 onClick={() => {
                   setView('replenish');
                   setShowMobileCart(true);
                 }}
-                className="relative p-3 bg-gray-100/80 dark:bg-slate-800/80 rounded-full text-gray-500 dark:text-slate-400 hover:bg-gray-200 dark:hover:bg-slate-700 active:scale-95 transition-colors flex items-center justify-center lg:hidden mr-1"
+                className={`
+                  hidden lg:flex
+                  relative p-3 rounded-full transition-all active:scale-95 items-center justify-center mr-2 shadow-sm
+                  ${cart.length > 0 
+                    ? 'bg-red-600 text-white shadow-red-200 dark:shadow-none' 
+                    : 'bg-gray-100/80 dark:bg-slate-800/80 text-gray-500 dark:text-slate-400 hover:bg-gray-200 dark:hover:bg-slate-700'
+                  }
+                `}
                 aria-label="Ver carrito"
               >
                 <ShoppingCart size={20} strokeWidth={2.5} />
                 {cart.length > 0 && (
-                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center ring-2 ring-white dark:ring-slate-900 animate-fade-in">
+                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-white dark:bg-slate-900 text-red-600 dark:text-red-400 text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-red-600 animate-pop-in">
                     {cart.length}
                   </span>
                 )}
@@ -525,8 +528,8 @@ const App: React.FC = () => {
         </nav>
       </div>
 
-      {/* FLOATING CART BUTTON - ONLY VISIBLE IN REPLENISH VIEW TO AVOID BLOCKING ACTIONS IN INVENTORY */}
-      {user.role !== UserRole.GUEST && view === 'replenish' && (
+      {/* FLOATING CART BUTTON (MOBILE ONLY) - PRESERVED FOR STRUCTURE */}
+      {user.role !== UserRole.GUEST && (
         <div className="fixed lg:hidden bottom-28 right-5 z-50">
           <button onClick={() => setShowMobileCart(true)} className="relative bg-red-600 text-white w-14 h-14 rounded-full flex items-center justify-center shadow-neon hover:bg-red-700 active:scale-95 transition-all">
             <ShoppingCart size={24} />

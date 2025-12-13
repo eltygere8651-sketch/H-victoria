@@ -113,7 +113,7 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCar
     osc.start(t);
     osc.stop(t + 0.5);
 
-    // FIX: Close the context after playing to prevent memory leaks on mobile
+    // CRITICAL FIX: Close the AudioContext to prevent memory leaks and "max contexts reached" error
     setTimeout(() => {
         if (ctx.state !== 'closed') {
             ctx.close().catch(e => console.error("Error closing AudioContext", e));
@@ -469,7 +469,7 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCar
           border-t lg:border-l lg:border-t-0 border-gray-100 dark:border-slate-800 
           shadow-[0_-10px_40px_rgba(0,0,0,0.1)] lg:shadow-xl 
           flex flex-col 
-          h-[85dvh] lg:h-full 
+          h-[85vh] lg:h-full 
           transition-transform duration-300 ease-out
           rounded-t-3xl lg:rounded-none
           ${showMobileCart ? 'translate-y-0' : 'translate-y-full lg:translate-y-0'}
