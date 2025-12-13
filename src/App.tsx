@@ -13,7 +13,7 @@ import { initializePushNotifications } from './services/pushNotificationService'
 import { ShareModal } from './components/ShareModal';
 import { GuideModal } from './components/GuideModal';
 import { MainLayout } from './components/MainLayout';
-import { ShoppingCart, Share2 } from 'lucide-react';
+import { Share2 } from 'lucide-react';
 
 const App: React.FC = () => {
   const [isInitializing, setIsInitializing] = useState(true);
@@ -416,16 +416,6 @@ const App: React.FC = () => {
         {view === 'admin' && user.role === UserRole.ADMIN && <Admin currentUser={user} unreadNotificationsCount={unreadAdminNotifications.length} initialTab={initialAdminTab} />}
         {view === 'tasks' && <Tasks currentUser={user} />}
       </MainLayout>
-
-      {/* Floating Cart Button (Mobile Only) */}
-      {user.role !== UserRole.GUEST && cart.length > 0 && (
-        <div className="fixed lg:hidden bottom-28 right-5 z-50 animate-pop-in">
-          <button onClick={() => setShowMobileCart(true)} className="relative bg-red-600 text-white w-14 h-14 rounded-full flex items-center justify-center shadow-neon hover:bg-red-700 active:scale-95 transition-all">
-            <ShoppingCart size={24} />
-            <span className="absolute -top-1 -right-1 w-5 h-5 bg-gray-900 dark:bg-white text-white dark:text-black rounded-full flex items-center justify-center text-[10px] font-bold ring-2 ring-white dark:ring-red-600 animate-bounce">{cart.length}</span>
-          </button>
-        </div>
-      )}
 
       {/* iOS Install Prompt Modal */}
       {showIOSPrompt && (
