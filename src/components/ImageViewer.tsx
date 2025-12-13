@@ -10,29 +10,46 @@ interface ImageViewerProps {
 export const ImageViewer: React.FC<ImageViewerProps> = ({ images, startIndex, onClose }) => {
   const [currentIndex, setCurrentIndex] = useState(startIndex);
   
-  // Visual State (driven by gestures)
+  // Visual State
   const [transform, setTransform] = useState({ scale: 1, x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
 
   // Gesture Engine Refs
   const containerRef = useRef<HTMLDivElement>(null);
-  // Track active pointers: id -> {x, y}
+  
+  // Mutable state for the gesture loop to avoid React render lag
   const pointers = useRef(new Map<number, { x: number, y: number }>());
-  // Track the state at the start of the CURRENT gesture phase
-  const startGesture = useRef<{
-    scale: number;
-    x: number;
-    y: number;
-    distance: number;
-    center: { x: number, y: number };
-  } | null>(null);
+  const startState = useRef({
+    scale: 1,
+    x: 0,
+    y: 0,
+    center: { x: 0, y: 0 },
+    distance: 0,
+  });
+
+  // 1. Prevent Default Touch Behavior (Scroll/Zoom of the page itself) on iOS
+  useEffect(() => {
+    const preventDefault = (e: TouchEvent) => {
+      e.preventDefault();
+    };
+    
+    // Lock the body scroll
+    document.body.style.overflow = 'hidden';
+    
+    // Add a non-passive listener to ensuring preventing default works
+    document.addEventListener('touchmove', preventDefault, { passive: false });
+    
+    return () => {
+      document.body.style.overflow = '';
+      document.removeEventListener('touchmove', preventDefault);
+    };
+  }, []);
 
   // Reset when image changes
   useEffect(() => {
     setTransform({ scale: 1, x: 0, y: 0 });
     pointers.current.clear();
-    startGesture.current = null;
   }, [currentIndex]);
 
   const nextImage = useCallback(() => {
@@ -53,7 +70,7 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({ images, startIndex, on
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [nextImage, prevImage, onClose]);
 
-  // Helpers
+  // --- MATH HELPERS ---
   const getDistance = (p1: {x:number, y:number}, p2: {x:number, y:number}) => {
     return Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
   };
@@ -64,75 +81,79 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({ images, startIndex, on
     return { x: x / points.length, y: y / points.length };
   };
 
-  // Called whenever the number of fingers changes (0->1, 1->2, 2->1, etc.)
-  const updateGestureStart = (currentScale: number, currentX: number, currentY: number) => {
+  // --- GESTURE LOGIC ---
+
+  // Capture the "start" state of a gesture segment
+  // Called when a finger goes down or comes up (changing the number of contacts)
+  const captureStartState = (currentT: { scale: number, x: number, y: number }) => {
     const points = Array.from(pointers.current.values()) as { x: number; y: number }[];
-    if (points.length === 0) {
-      startGesture.current = null;
-      return;
-    }
+    if (points.length === 0) return;
 
     const center = getCenter(points);
     const distance = points.length === 2 ? getDistance(points[0], points[1]) : 0;
 
-    startGesture.current = {
-      scale: currentScale,
-      x: currentX,
-      y: currentY,
-      distance,
-      center
+    startState.current = {
+      scale: currentT.scale,
+      x: currentT.x,
+      y: currentT.y,
+      center,
+      distance
     };
   };
 
   const onPointerDown = (e: React.PointerEvent) => {
+    // Explicitly prevent default to stop mouse emulation or scrolling
     e.preventDefault();
     e.stopPropagation();
+    
+    // Capture pointer
     containerRef.current?.setPointerCapture(e.pointerId);
     pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    setIsDragging(true);
     
-    // Commit current state as start for smooth transition
-    updateGestureStart(transform.scale, transform.x, transform.y);
+    setIsDragging(true);
+    captureStartState(transform);
   };
 
   const onPointerMove = (e: React.PointerEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    
     if (!pointers.current.has(e.pointerId)) return;
 
+    // Update pointer position
     pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
     const points = Array.from(pointers.current.values()) as { x: number; y: number }[];
-    if (points.length === 0 || !startGesture.current) return;
+    if (points.length === 0) return;
 
     const currentCenter = getCenter(points);
-    const start = startGesture.current;
+    const start = startState.current;
 
-    // 1. Calculate PAN (movement of center)
+    // 1. Calculate Pan (Delta)
     const deltaX = currentCenter.x - start.center.x;
     const deltaY = currentCenter.y - start.center.y;
 
     let newX = start.x + deltaX;
     let newY = start.y + deltaY;
-
-    // 2. Calculate ZOOM (change in distance)
     let newScale = start.scale;
+
+    // 2. Calculate Zoom (Ratio)
     if (points.length === 2) {
-      const currentDistance = getDistance(points[0], points[1]);
+      const currentDist = getDistance(points[0], points[1]);
       if (start.distance > 0) {
-        const ratio = currentDistance / start.distance;
+        const ratio = currentDist / start.distance;
         newScale = start.scale * ratio;
       }
     }
 
-    // Constraints & UX
-    // If not zoomed (approx 1x), lock Y axis to feel like a carousel swipe
+    // 3. Constraints
+    // If zoom is near 1x, restrict vertical movement to feel like a carousel
     if (newScale <= 1.05 && points.length === 1) {
-       newY = 0; 
+      newY = 0; // Lock Y
     }
 
     setTransform({
-      scale: Math.max(0.5, newScale), // Allow slight over-pinch
+      scale: Math.max(0.5, newScale), // Allow slightly less than 1 to feel "rubber band"
       x: newX,
       y: newY
     });
@@ -141,49 +162,61 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({ images, startIndex, on
   const onPointerUp = (e: React.PointerEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    
     containerRef.current?.releasePointerCapture(e.pointerId);
     pointers.current.delete(e.pointerId);
     
     const points = Array.from(pointers.current.values());
+    
     if (points.length === 0) {
-        setIsDragging(false);
-        handleGestureEnd();
+      setIsDragging(false);
+      handleGestureEnd();
     } else {
-        // Fingers changed, re-anchor to prevent jumping
-        updateGestureStart(transform.scale, transform.x, transform.y);
+      // If we still have fingers (e.g. 2 -> 1), re-anchor the start state 
+      // so the image doesn't jump to the new single-finger center.
+      captureStartState(transform);
     }
   };
 
   const handleGestureEnd = () => {
     let { scale, x, y } = transform;
 
-    // 1. Zoom Bounce Back / Limits
+    // 1. Snap Zoom Limits
     if (scale < 1) {
-        scale = 1;
-        x = 0;
-        y = 0;
+      scale = 1;
+      x = 0;
+      y = 0;
     } else if (scale > 5) {
-        scale = 5;
+      scale = 5;
     }
 
-    // 2. Swipe Logic (Only at 1x scale)
+    // 2. Swipe Logic (Only if not zoomed in)
     if (scale === 1) {
-       const width = window.innerWidth;
-       const threshold = width * 0.25; // 25% screen width swipe needed
-       if (x > threshold) {
-           prevImage(); // Go left (prev)
-           x = 0;
-       } else if (x < -threshold) {
-           nextImage(); // Go right (next)
-           x = 0;
-       } else {
-           // Snap back to center
-           x = 0;
-           y = 0;
-       }
+      const width = window.innerWidth;
+      const threshold = width * 0.25; // 25% of screen width
+      
+      if (x > threshold) {
+        prevImage();
+        x = 0; 
+      } else if (x < -threshold) {
+        nextImage();
+        x = 0;
+      } else {
+        // Snap back to center
+        x = 0;
+        y = 0;
+      }
     }
 
     setTransform({ scale, x, y });
+  };
+
+  const handleDoubleTap = (e: React.MouseEvent) => {
+    if (transform.scale > 1) {
+      setTransform({ scale: 1, x: 0, y: 0 });
+    } else {
+      setTransform({ scale: 2.5, x: 0, y: 0 });
+    }
   };
 
   const handleDownload = async () => {
@@ -219,9 +252,9 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({ images, startIndex, on
   return (
     <div 
         className="fixed inset-0 z-[99999] bg-black flex flex-col overflow-hidden animate-fade-in select-none"
-        style={{ touchAction: 'none' }} // Critical for iOS
+        style={{ touchAction: 'none' }} // Critical for touch devices
     >
-        {/* TOP BAR - SAFE AREA AWARE */}
+        {/* TOP BAR */}
         <div className="absolute top-0 left-0 right-0 z-50 flex justify-between items-center px-4 pb-4 pt-[max(env(safe-area-inset-top),20px)] bg-gradient-to-b from-black/80 to-transparent pointer-events-none">
             <div className="bg-white/10 backdrop-blur-md px-4 py-1.5 rounded-full text-white text-sm font-bold border border-white/10 pointer-events-auto">
                 {currentIndex + 1} / {images.length}
@@ -243,7 +276,7 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({ images, startIndex, on
             </div>
         </div>
 
-        {/* GESTURE AREA */}
+        {/* IMAGE / GESTURE AREA */}
         <div 
             ref={containerRef}
             className="flex-1 w-full h-full flex items-center justify-center overflow-hidden"
@@ -252,6 +285,7 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({ images, startIndex, on
             onPointerUp={onPointerUp}
             onPointerCancel={onPointerUp}
             onPointerLeave={onPointerUp}
+            onDoubleClick={handleDoubleTap}
         >
             <img 
                 src={images[currentIndex]} 
@@ -263,7 +297,8 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({ images, startIndex, on
                     cursor: isDragging ? 'grabbing' : 'grab',
                     touchAction: 'none',
                     userSelect: 'none',
-                    WebkitUserSelect: 'none'
+                    WebkitUserSelect: 'none',
+                    pointerEvents: 'none' // Let events bubble to container
                 }}
                 draggable={false} 
             />
@@ -289,7 +324,7 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({ images, startIndex, on
             )}
         </div>
 
-        {/* BOTTOM CONTROLS - SAFE AREA AWARE */}
+        {/* BOTTOM CONTROLS */}
         <div className="absolute bottom-0 left-0 right-0 p-6 pb-[max(env(safe-area-inset-bottom),24px)] flex justify-center pointer-events-none bg-gradient-to-t from-black/80 to-transparent">
             <div className="flex items-center gap-4 bg-black/70 backdrop-blur-xl px-6 py-3 rounded-full border border-white/10 shadow-2xl pointer-events-auto">
                 <button onClick={() => setTransform(t => ({ ...t, scale: Math.max(1, t.scale - 0.5), x: t.scale <= 1.5 ? 0 : t.x, y: t.scale <= 1.5 ? 0 : t.y }))} className="p-2 text-white hover:text-red-400 transition-colors active:scale-90 disabled:opacity-30" disabled={transform.scale <= 1}>

@@ -393,11 +393,18 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
                         )}
                      </div>
 
-                     {/* Images */}
+                     {/* Images - UPDATED for iOS SCROLL */}
                      {task.imageUrls && task.imageUrls.length > 0 && (
-                       <div className="flex gap-3 mb-6 overflow-x-auto pb-2 no-scrollbar">
+                       <div 
+                          className="flex gap-3 mb-6 overflow-x-auto pb-2 no-scrollbar touch-pan-x snap-x snap-mandatory"
+                          style={{ WebkitOverflowScrolling: 'touch' }}
+                       >
                           {task.imageUrls.map((url, i) => (
-                            <button key={i} onClick={() => setViewingImages({ images: task.imageUrls!, startIndex: i })} className="relative w-28 h-28 rounded-2xl border-2 border-gray-100 dark:border-slate-700 overflow-hidden flex-shrink-0 hover:border-red-500 transition-colors shadow-md">
+                            <button 
+                              key={i} 
+                              onClick={() => setViewingImages({ images: task.imageUrls!, startIndex: i })} 
+                              className="relative w-28 h-28 rounded-2xl border-2 border-gray-100 dark:border-slate-700 overflow-hidden flex-shrink-0 hover:border-red-500 transition-colors shadow-md snap-start"
+                            >
                                <img src={url} className="w-full h-full object-cover" loading="lazy" />
                             </button>
                           ))}
