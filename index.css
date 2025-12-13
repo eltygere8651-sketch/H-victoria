@@ -4,13 +4,16 @@
 
 html, body, #root {
     height: 100%;
-    scroll-behavior: smooth;
+    /* Prevent bounce effect on the whole page to make it feel like an app */
+    overscroll-behavior-y: none;
+    -webkit-text-size-adjust: 100%;
 }
 
 body {
   font-family: 'Poppins', sans-serif;
   -webkit-tap-highlight-color: transparent;
-  /* PWA Safe Area Insets are handled in App.tsx but helpers are needed for sub-components */
+  /* Faster click response by disabling double-tap zoom on interactive elements */
+  touch-action: manipulation;
 }
 
 /* Hide scrollbar */
@@ -57,4 +60,11 @@ body {
 
 .dark .bg-premium::before {
   opacity: 0.06; /* Slightly stronger in dark mode to prevent banding */
+}
+
+/* Prevent iOS Zoom on focus for inputs by forcing 16px font size on small screens */
+@media screen and (max-width: 768px) {
+  input, select, textarea {
+    font-size: 16px !important;
+  }
 }
