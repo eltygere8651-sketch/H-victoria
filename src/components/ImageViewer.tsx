@@ -7,55 +7,42 @@ interface ImageViewerProps {
   onClose: () => void;
 }
 
-interface Point {
-  x: number;
-  y: number;
-}
-
 export const ImageViewer: React.FC<ImageViewerProps> = ({ images, startIndex, onClose }) => {
   const [currentIndex, setCurrentIndex] = useState(startIndex);
   
-  // Transform State
-  const [scale, setScale] = useState(1);
-  const [translate, setTranslate] = useState<Point>({ x: 0, y: 0 });
-  
-  // Interaction State
+  // Visual State (driven by gestures)
+  const [transform, setTransform] = useState({ scale: 1, x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
 
-  // Refs for Gesture Logic
+  // Gesture Engine Refs
   const containerRef = useRef<HTMLDivElement>(null);
-  
-  // Gesture State Refs (Mutable to avoid re-renders during 60fps gestures)
-  const pointersRef = useRef<Map<number, Point>>(new Map());
-  const startDistRef = useRef<number>(0);
-  const startScaleRef = useRef<number>(1);
-  const lastCenterRef = useRef<Point>({ x: 0, y: 0 });
-  const startTranslateRef = useRef<Point>({ x: 0, y: 0 });
+  // Track active pointers: id -> {x, y}
+  const pointers = useRef(new Map<number, { x: number, y: number }>());
+  // Track the state at the start of the CURRENT gesture phase
+  const startGesture = useRef<{
+    scale: number;
+    x: number;
+    y: number;
+    distance: number;
+    center: { x: number, y: number };
+  } | null>(null);
 
-  // Reset transform when image changes
+  // Reset when image changes
   useEffect(() => {
-    resetTransform();
+    setTransform({ scale: 1, x: 0, y: 0 });
+    pointers.current.clear();
+    startGesture.current = null;
   }, [currentIndex]);
 
-  const resetTransform = () => {
-    setScale(1);
-    setTranslate({ x: 0, y: 0 });
-  };
-
   const nextImage = useCallback(() => {
-    if (currentIndex < images.length - 1) {
-      setCurrentIndex(prev => prev + 1);
-    }
+    if (currentIndex < images.length - 1) setCurrentIndex(prev => prev + 1);
   }, [currentIndex, images.length]);
 
   const prevImage = useCallback(() => {
-    if (currentIndex > 0) {
-      setCurrentIndex(prev => prev - 1);
-    }
+    if (currentIndex > 0) setCurrentIndex(prev => prev - 1);
   }, [currentIndex]);
 
-  // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'ArrowRight') nextImage();
@@ -66,163 +53,137 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({ images, startIndex, on
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [nextImage, prevImage, onClose]);
 
-  // --- MATH HELPERS ---
-  const getDistance = (p1: Point, p2: Point) => {
+  // Helpers
+  const getDistance = (p1: {x:number, y:number}, p2: {x:number, y:number}) => {
     return Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
   };
 
-  const getCenter = (pointers: Point[]): Point => {
-    const total = pointers.reduce((acc, p) => ({ x: acc.x + p.x, y: acc.y + p.y }), { x: 0, y: 0 });
-    return {
-      x: total.x / pointers.length,
-      y: total.y / pointers.length,
+  const getCenter = (points: {x:number, y:number}[]) => {
+    let x = 0, y = 0;
+    points.forEach(p => { x += p.x; y += p.y; });
+    return { x: x / points.length, y: y / points.length };
+  };
+
+  // Called whenever the number of fingers changes (0->1, 1->2, 2->1, etc.)
+  const updateGestureStart = (currentScale: number, currentX: number, currentY: number) => {
+    const points = Array.from(pointers.current.values()) as { x: number; y: number }[];
+    if (points.length === 0) {
+      startGesture.current = null;
+      return;
+    }
+
+    const center = getCenter(points);
+    const distance = points.length === 2 ? getDistance(points[0], points[1]) : 0;
+
+    startGesture.current = {
+      scale: currentScale,
+      x: currentX,
+      y: currentY,
+      distance,
+      center
     };
   };
 
-  // --- POINTER EVENTS (TOUCH & MOUSE) ---
-
-  const handlePointerDown = (e: React.PointerEvent) => {
+  const onPointerDown = (e: React.PointerEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    
     containerRef.current?.setPointerCapture(e.pointerId);
-    pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
-
-    // Recalculate start parameters whenever a finger touches down
-    const pointers: Point[] = Array.from(pointersRef.current.values());
-    
+    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
     setIsDragging(true);
-    startTranslateRef.current = { ...translate };
     
-    if (pointers.length === 2) {
-      // Initialize pinch
-      startDistRef.current = getDistance(pointers[0], pointers[1]);
-      startScaleRef.current = scale;
-    }
-    
-    // Always track center for panning
-    lastCenterRef.current = getCenter(pointers);
+    // Commit current state as start for smooth transition
+    updateGestureStart(transform.scale, transform.x, transform.y);
   };
 
-  const handlePointerMove = (e: React.PointerEvent) => {
-    if (!pointersRef.current.has(e.pointerId)) return;
+  const onPointerMove = (e: React.PointerEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    if (!pointers.current.has(e.pointerId)) return;
 
-    // Update this pointer's position
-    pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    
-    const pointers: Point[] = Array.from(pointersRef.current.values());
-    const currentCenter = getCenter(pointers);
-    
-    // Calculate delta movement from the last tracked center
-    const deltaX = currentCenter.x - lastCenterRef.current.x;
-    const deltaY = currentCenter.y - lastCenterRef.current.y;
-    
-    // Update reference center for next frame
-    lastCenterRef.current = currentCenter;
+    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
-    if (pointers.length === 2) {
-      // --- PINCH ZOOM + PAN ---
-      const currentDist = getDistance(pointers[0], pointers[1]);
-      if (startDistRef.current > 0) {
-        const ratio = currentDist / startDistRef.current;
-        // Dampen the zoom slightly for smoother feel
-        const newScale = Math.min(Math.max(startScaleRef.current * ratio, 0.5), 8); 
-        setScale(newScale);
-        
-        // Allow panning while zooming
-        setTranslate(prev => ({
-          x: prev.x + deltaX,
-          y: prev.y + deltaY
-        }));
-      }
-    } else if (pointers.length === 1 && isDragging) {
-      // --- SIMPLE PAN / SWIPE ---
-      if (scale > 1) {
-        // Free panning when zoomed in
-        setTranslate(prev => ({
-          x: prev.x + deltaX,
-          y: prev.y + deltaY
-        }));
-      } else {
-        // Resistance panning (swipe feel) when zoomed out
-        // Only allow horizontal movement, suppress vertical
-        setTranslate(prev => ({
-          x: prev.x + deltaX, 
-          y: 0 
-        }));
+    const points = Array.from(pointers.current.values()) as { x: number; y: number }[];
+    if (points.length === 0 || !startGesture.current) return;
+
+    const currentCenter = getCenter(points);
+    const start = startGesture.current;
+
+    // 1. Calculate PAN (movement of center)
+    const deltaX = currentCenter.x - start.center.x;
+    const deltaY = currentCenter.y - start.center.y;
+
+    let newX = start.x + deltaX;
+    let newY = start.y + deltaY;
+
+    // 2. Calculate ZOOM (change in distance)
+    let newScale = start.scale;
+    if (points.length === 2) {
+      const currentDistance = getDistance(points[0], points[1]);
+      if (start.distance > 0) {
+        const ratio = currentDistance / start.distance;
+        newScale = start.scale * ratio;
       }
     }
-  };
 
-  const handlePointerUp = (e: React.PointerEvent) => {
-    pointersRef.current.delete(e.pointerId);
-    containerRef.current?.releasePointerCapture(e.pointerId);
-    
-    const pointers: Point[] = Array.from(pointersRef.current.values());
-
-    // If pointers change (e.g. lift one finger), reset the "anchor" for the remaining fingers
-    // to prevent the image from jumping to the new center.
-    if (pointers.length > 0) {
-      lastCenterRef.current = getCenter(pointers);
-      // If going from 2 fingers to 1, reset pinch reference
-      if (pointers.length < 2) {
-        startDistRef.current = 0;
-      } else if (pointers.length === 2) {
-        // If going from 3 to 2 (rare but possible), re-init pinch
-        startDistRef.current = getDistance(pointers[0], pointers[1]);
-        startScaleRef.current = scale;
-      }
-    } else {
-      // No fingers left
-      setIsDragging(false);
-      handleInteractionEnd();
+    // Constraints & UX
+    // If not zoomed (approx 1x), lock Y axis to feel like a carousel swipe
+    if (newScale <= 1.05 && points.length === 1) {
+       newY = 0; 
     }
-  };
 
-  const handleInteractionEnd = () => {
-    // 1. Check for Scale Reset (Min/Max limits)
-    if (scale < 1) {
-      setScale(1);
-      setTranslate({ x: 0, y: 0 });
-      return;
-    }
-    
-    // 2. Check for Swipe (Next/Prev) ONLY if scale is near 1
-    // We use a small epsilon because math precision might leave it at 1.000001
-    if (scale < 1.1) {
-      const threshold = 60; // swipe threshold
-      if (translate.x > threshold) {
-        prevImage();
-      } else if (translate.x < -threshold) {
-        nextImage();
-      }
-      // Always snap back to center after swipe check if we didn't change image
-      // (Changing image resets transform via useEffect)
-      if (scale !== 1 || translate.x !== 0) {
-         setTranslate({ x: 0, y: 0 });
-         setScale(1);
-      }
-    }
-  };
-
-  const handleDoubleTap = (e: React.MouseEvent) => {
-    if (scale > 1) {
-      resetTransform();
-    } else {
-      // Zoom to 2.5x
-      setScale(2.5);
-    }
-  };
-
-  const manualZoomIn = () => setScale(s => Math.min(s + 0.5, 5));
-  const manualZoomOut = () => {
-    setScale(s => {
-        const newS = Math.max(s - 0.5, 1);
-        if (newS === 1) setTranslate({ x: 0, y: 0 });
-        return newS;
+    setTransform({
+      scale: Math.max(0.5, newScale), // Allow slight over-pinch
+      x: newX,
+      y: newY
     });
+  };
+
+  const onPointerUp = (e: React.PointerEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    containerRef.current?.releasePointerCapture(e.pointerId);
+    pointers.current.delete(e.pointerId);
+    
+    const points = Array.from(pointers.current.values());
+    if (points.length === 0) {
+        setIsDragging(false);
+        handleGestureEnd();
+    } else {
+        // Fingers changed, re-anchor to prevent jumping
+        updateGestureStart(transform.scale, transform.x, transform.y);
+    }
+  };
+
+  const handleGestureEnd = () => {
+    let { scale, x, y } = transform;
+
+    // 1. Zoom Bounce Back / Limits
+    if (scale < 1) {
+        scale = 1;
+        x = 0;
+        y = 0;
+    } else if (scale > 5) {
+        scale = 5;
+    }
+
+    // 2. Swipe Logic (Only at 1x scale)
+    if (scale === 1) {
+       const width = window.innerWidth;
+       const threshold = width * 0.25; // 25% screen width swipe needed
+       if (x > threshold) {
+           prevImage(); // Go left (prev)
+           x = 0;
+       } else if (x < -threshold) {
+           nextImage(); // Go right (next)
+           x = 0;
+       } else {
+           // Snap back to center
+           x = 0;
+           y = 0;
+       }
+    }
+
+    setTransform({ scale, x, y });
   };
 
   const handleDownload = async () => {
@@ -257,65 +218,63 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({ images, startIndex, on
 
   return (
     <div 
-        className="fixed inset-0 z-[99999] bg-black/95 flex flex-col overflow-hidden animate-fade-in touch-none select-none h-[100dvh]"
+        className="fixed inset-0 z-[99999] bg-black flex flex-col overflow-hidden animate-fade-in select-none"
         style={{ touchAction: 'none' }} // Critical for iOS
     >
-        {/* TOP BAR - Increased padding for Safe Area */}
-        <div className="absolute top-0 left-0 right-0 z-50 flex justify-between items-start p-4 pt-[max(env(safe-area-inset-top),24px)] bg-gradient-to-b from-black/80 via-black/40 to-transparent pointer-events-none pb-12">
-            <div className="bg-white/10 backdrop-blur-md px-4 py-1.5 rounded-full text-white text-sm font-bold border border-white/10 pointer-events-auto mt-2">
+        {/* TOP BAR - SAFE AREA AWARE */}
+        <div className="absolute top-0 left-0 right-0 z-50 flex justify-between items-center px-4 pb-4 pt-[max(env(safe-area-inset-top),20px)] bg-gradient-to-b from-black/80 to-transparent pointer-events-none">
+            <div className="bg-white/10 backdrop-blur-md px-4 py-1.5 rounded-full text-white text-sm font-bold border border-white/10 pointer-events-auto">
                 {currentIndex + 1} / {images.length}
             </div>
-            
             <div className="flex gap-4 pointer-events-auto">
                 <button 
                     onClick={handleDownload} 
-                    className="w-12 h-12 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-full text-white backdrop-blur-md transition-all active:scale-90 shadow-lg border border-white/5"
+                    className="w-10 h-10 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-full text-white backdrop-blur-md transition-all active:scale-90"
                     disabled={isDownloading}
-                    aria-label="Descargar"
                 >
-                    <Download size={22} className={isDownloading ? 'animate-bounce' : ''}/>
+                    <Download size={20} className={isDownloading ? 'animate-bounce' : ''}/>
                 </button>
                 <button 
                     onClick={onClose} 
-                    className="w-12 h-12 flex items-center justify-center bg-white/10 hover:bg-red-500/20 rounded-full text-white hover:text-red-400 backdrop-blur-md transition-all active:scale-90 shadow-lg border border-white/5"
-                    aria-label="Cerrar"
+                    className="w-10 h-10 flex items-center justify-center bg-white/10 hover:bg-red-500/20 rounded-full text-white hover:text-red-400 backdrop-blur-md transition-all active:scale-90"
                 >
-                    <X size={26} />
+                    <X size={24} />
                 </button>
             </div>
         </div>
 
-        {/* IMAGE AREA */}
+        {/* GESTURE AREA */}
         <div 
             ref={containerRef}
             className="flex-1 w-full h-full flex items-center justify-center overflow-hidden"
-            onPointerDown={handlePointerDown}
-            onPointerMove={handlePointerMove}
-            onPointerUp={handlePointerUp}
-            onPointerLeave={handlePointerUp}
-            onPointerCancel={handlePointerUp}
-            onDoubleClick={handleDoubleTap}
+            onPointerDown={onPointerDown}
+            onPointerMove={onPointerMove}
+            onPointerUp={onPointerUp}
+            onPointerCancel={onPointerUp}
+            onPointerLeave={onPointerUp}
         >
             <img 
                 src={images[currentIndex]} 
                 alt="Visor"
-                className="max-w-full max-h-full object-contain will-change-transform drop-shadow-2xl"
+                className="max-w-full max-h-full object-contain will-change-transform shadow-2xl"
                 style={{ 
-                    transform: `translate3d(${translate.x}px, ${translate.y}px, 0) scale(${scale})`,
+                    transform: `translate3d(${transform.x}px, ${transform.y}px, 0) scale(${transform.scale})`,
                     transition: isDragging ? 'none' : 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)',
                     cursor: isDragging ? 'grabbing' : 'grab',
-                    touchAction: 'none'
+                    touchAction: 'none',
+                    userSelect: 'none',
+                    WebkitUserSelect: 'none'
                 }}
                 draggable={false} 
             />
         </div>
 
-        {/* NAVIGATION ARROWS (Desktop only - hidden on touch devices usually via media query logic in CSS or here) */}
-        <div className="hidden md:block">
+        {/* NAVIGATION ARROWS (Desktop only) */}
+        <div className="hidden md:block pointer-events-none">
             {currentIndex > 0 && (
                 <button 
                     onClick={(e) => { e.stopPropagation(); prevImage(); }} 
-                    className="absolute left-6 top-1/2 -translate-y-1/2 p-4 rounded-full bg-black/40 hover:bg-white/10 text-white backdrop-blur-md border border-white/5 transition-all z-50 active:scale-95"
+                    className="absolute left-6 top-1/2 -translate-y-1/2 p-4 rounded-full bg-black/40 hover:bg-white/10 text-white backdrop-blur-md border border-white/5 transition-all z-50 active:scale-95 pointer-events-auto"
                 >
                     <ArrowLeft size={32} />
                 </button>
@@ -323,32 +282,34 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({ images, startIndex, on
             {currentIndex < images.length - 1 && (
                 <button 
                     onClick={(e) => { e.stopPropagation(); nextImage(); }} 
-                    className="absolute right-6 top-1/2 -translate-y-1/2 p-4 rounded-full bg-black/40 hover:bg-white/10 text-white backdrop-blur-md border border-white/5 transition-all z-50 active:scale-95"
+                    className="absolute right-6 top-1/2 -translate-y-1/2 p-4 rounded-full bg-black/40 hover:bg-white/10 text-white backdrop-blur-md border border-white/5 transition-all z-50 active:scale-95 pointer-events-auto"
                 >
                     <ArrowRight size={32} />
                 </button>
             )}
         </div>
 
-        {/* BOTTOM CONTROLS - Adjusted for safe area */}
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-4 bg-black/70 backdrop-blur-xl px-6 py-3 rounded-full border border-white/10 shadow-2xl z-50 pb-safe mb-[env(safe-area-inset-bottom)] pointer-events-auto">
-            <button onClick={manualZoomOut} className="p-2 text-white hover:text-red-400 transition-colors active:scale-90 disabled:opacity-30" disabled={scale <= 1}>
-                <ZoomOut size={24} />
-            </button>
-            
-            <span className="text-white font-mono text-sm min-w-[3rem] text-center font-bold select-none tabular-nums">
-                {Math.round(scale * 100)}%
-            </span>
+        {/* BOTTOM CONTROLS - SAFE AREA AWARE */}
+        <div className="absolute bottom-0 left-0 right-0 p-6 pb-[max(env(safe-area-inset-bottom),24px)] flex justify-center pointer-events-none bg-gradient-to-t from-black/80 to-transparent">
+            <div className="flex items-center gap-4 bg-black/70 backdrop-blur-xl px-6 py-3 rounded-full border border-white/10 shadow-2xl pointer-events-auto">
+                <button onClick={() => setTransform(t => ({ ...t, scale: Math.max(1, t.scale - 0.5), x: t.scale <= 1.5 ? 0 : t.x, y: t.scale <= 1.5 ? 0 : t.y }))} className="p-2 text-white hover:text-red-400 transition-colors active:scale-90 disabled:opacity-30" disabled={transform.scale <= 1}>
+                    <ZoomOut size={24} />
+                </button>
+                
+                <span className="text-white font-mono text-sm min-w-[3rem] text-center font-bold select-none tabular-nums">
+                    {Math.round(transform.scale * 100)}%
+                </span>
 
-            <button onClick={manualZoomIn} className="p-2 text-white hover:text-red-400 transition-colors active:scale-90 disabled:opacity-30" disabled={scale >= 8}>
-                <ZoomIn size={24} />
-            </button>
+                <button onClick={() => setTransform(t => ({ ...t, scale: Math.min(5, t.scale + 0.5) }))} className="p-2 text-white hover:text-red-400 transition-colors active:scale-90 disabled:opacity-30" disabled={transform.scale >= 5}>
+                    <ZoomIn size={24} />
+                </button>
 
-            <div className="w-px h-6 bg-white/20 mx-2"></div>
+                <div className="w-px h-6 bg-white/20 mx-2"></div>
 
-            <button onClick={resetTransform} className="p-2 text-white hover:text-blue-400 transition-colors active:scale-90" title="Restablecer">
-                {scale === 1 ? <Maximize size={20} /> : <RotateCcw size={20} />}
-            </button>
+                <button onClick={() => setTransform({ scale: 1, x: 0, y: 0 })} className="p-2 text-white hover:text-blue-400 transition-colors active:scale-90" title="Restablecer">
+                    {transform.scale === 1 ? <Maximize size={20} /> : <RotateCcw size={20} />}
+                </button>
+            </div>
         </div>
     </div>
   );
