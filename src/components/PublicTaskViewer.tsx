@@ -34,10 +34,9 @@ export const PublicTaskViewer: React.FC<PublicTaskViewerProps> = ({ taskId }) =>
   }, [taskId]);
 
   const handleGoToApp = () => {
-    // Robustly clean URL parameters using the URL API
     const url = new URL(window.location.href);
-    url.search = ''; // Remove all query params (like ?shareId=...)
-    url.hash = '';   // Remove any hash
+    url.search = '';
+    url.hash = '';
     window.location.href = url.toString();
   };
 
@@ -69,7 +68,6 @@ export const PublicTaskViewer: React.FC<PublicTaskViewerProps> = ({ taskId }) =>
   return (
     <div className="min-h-screen w-full bg-gray-50 dark:bg-slate-950 font-sans transition-colors duration-300">
       <div className="flex flex-col">
-        {/* Header */}
         <header className="bg-white dark:bg-slate-900 border-b border-gray-100 dark:border-slate-800 sticky top-0 z-20 px-4 py-3 shadow-sm">
           <div className="max-w-3xl mx-auto flex justify-between items-center">
             <div className="flex items-center gap-2">
@@ -85,11 +83,9 @@ export const PublicTaskViewer: React.FC<PublicTaskViewerProps> = ({ taskId }) =>
           </div>
         </header>
 
-        {/* Content */}
         <main className="flex-1 max-w-3xl mx-auto w-full p-4 md:p-8 pb-safe">
           <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-card-soft dark:shadow-card-dark border border-gray-100 dark:border-slate-800 overflow-hidden animate-slide-up">
             
-            {/* Banner / Type Indicator */}
             <div className="p-6 border-b border-gray-100 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-800/50">
               <div className="flex justify-between items-start">
                 <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-black uppercase tracking-wider bg-gray-200 text-gray-700 dark:bg-slate-700 dark:text-slate-300">
@@ -114,14 +110,12 @@ export const PublicTaskViewer: React.FC<PublicTaskViewerProps> = ({ taskId }) =>
             </div>
 
             <div className="p-6 md:p-8 space-y-8">
-              {/* Description */}
               <div className="prose dark:prose-invert max-w-none">
                 <p className="text-lg text-gray-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed">
                   {task.description || 'Sin descripción adicional.'}
                 </p>
               </div>
 
-              {/* Meta Info Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-gray-50 dark:bg-slate-800/50 p-5 rounded-2xl border border-gray-100 dark:border-slate-700/50">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-white dark:bg-slate-700 flex items-center justify-center text-gray-400 shadow-sm"><MapPin size={20} /></div>
@@ -158,7 +152,6 @@ export const PublicTaskViewer: React.FC<PublicTaskViewerProps> = ({ taskId }) =>
                 </div>
               </div>
 
-              {/* Images */}
               {task.imageUrls && task.imageUrls.length > 0 && (
                 <div>
                   <h3 className="font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">

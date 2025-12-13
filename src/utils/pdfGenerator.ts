@@ -33,47 +33,50 @@ export const generatePdfFromReactComponent = async (component: React.ReactElemen
       root.render(React.createElement(React.StrictMode, null, component));
     });
 
-    const elementToPrint = container.firstChild as HTMLElement;
-    if (!elementToPrint) {
-      document.body.removeChild(container);
-      return reject(new Error('Failed to render the PDF component.'));
-    }
-    
-    const options = {
-      margin: 0,
-      filename,
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { 
-        scale: 2, 
-        useCORS: true,
-        logging: false,
-        // FORCE the window width to be desktop-like to ensure the PDF renders 
-        // as if it were on a desktop, regardless of the actual device screen size.
-        windowWidth: 1024, 
-        scrollY: 0, // CRITICAL FIX: Prevent scroll offset from cutting off the top of the PDF
-        letterRendering: true,
-      },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-      pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
-    };
+    // Short delay to ensure styles/images (like logo) are fully applied/loaded in the DOM
+    setTimeout(() => {
+        const elementToPrint = container.firstChild as HTMLElement;
+        if (!elementToPrint) {
+          document.body.removeChild(container);
+          return reject(new Error('Failed to render the PDF component.'));
+        }
+        
+        const options = {
+          margin: 0,
+          filename,
+          image: { type: 'jpeg', quality: 0.98 },
+          html2canvas: { 
+            scale: 2, 
+            useCORS: true,
+            logging: false,
+            // FORCE the window width to be desktop-like to ensure the PDF renders 
+            // as if it were on a desktop, regardless of the actual device screen size.
+            windowWidth: 1024, 
+            scrollY: 0, // CRITICAL FIX: Prevent scroll offset from cutting off the top of the PDF
+            letterRendering: true,
+          },
+          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+          pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+        };
 
-    (window as any).html2pdf().set(options).from(elementToPrint).save()
-      .then(() => {
-        resolve();
-      })
-      .catch((err: any) => {
-        reject(err);
-      })
-      .finally(() => {
-        // Clean up: unmount the component and remove the container
-        setTimeout(() => {
-            try {
-                root.unmount();
-                if (document.body.contains(container)) {
-                    document.body.removeChild(container);
-                }
-            } catch(e) { console.warn("Cleanup warning", e); }
-        }, 100);
-      });
+        (window as any).html2pdf().set(options).from(elementToPrint).save()
+          .then(() => {
+            resolve();
+          })
+          .catch((err: any) => {
+            reject(err);
+          })
+          .finally(() => {
+            // Clean up: unmount the component and remove the container
+            setTimeout(() => {
+                try {
+                    root.unmount();
+                    if (document.body.contains(container)) {
+                        document.body.removeChild(container);
+                    }
+                } catch(e) { console.warn("Cleanup warning", e); }
+            }, 100);
+          });
+    }, 500); // 500ms delay for asset loading
   });
 };
