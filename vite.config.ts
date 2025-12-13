@@ -5,10 +5,6 @@ export default defineConfig({
   plugins: [react()],
   build: {
     outDir: 'dist',
-    sourcemap: false,
-    target: 'es2020'
-  },
-  esbuild: {
-    target: 'es2020'
+    sourcemap: false
   }
 });
