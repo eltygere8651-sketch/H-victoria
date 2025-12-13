@@ -1,6 +1,6 @@
 /* 
-  Tailwind CSS is loaded via CDN in index.html for immediate styling.
-  This file contains custom global overrides and utilities.
+  Estilos globales personalizados.
+  Tailwind se carga via CDN en index.html para asegurar la consistencia del diseño.
 */
 
 :root {

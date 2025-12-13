@@ -91,6 +91,7 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCar
   };
 
   const playAlarm = () => {
+    // FIX: Rename local var to AudioCtor to avoid shadowing global AudioContext type
     const AudioCtor = window.AudioContext || (window as any).webkitAudioContext;
     if (!AudioCtor) return;
 
