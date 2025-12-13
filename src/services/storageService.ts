@@ -271,8 +271,9 @@ export const markAllNotificationsAsRead = async (userId: string, userName: strin
 export const uploadImage = async (file: File, path: string): Promise<string> => {
   const storageRef = storage.ref();
   const fileRef = storageRef.child(path);
+  // CRITICAL FIX: Add metadata with contentType. This prevents the "upload hanging" issue.
   const snapshot = await fileRef.put(file, {
-      contentType: file.type || 'application/octet-stream',
+    contentType: file.type || 'application/octet-stream',
   });
   const url = await snapshot.ref.getDownloadURL();
   return url;

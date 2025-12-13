@@ -19,11 +19,10 @@ export const db = firebase.firestore();
 export const auth = firebase.auth();
 export const storage = firebase.storage();
 
-// FIX: Enable experimentalForceLongPolling to handle "Could not reach Cloud Firestore backend"
-// which often occurs in restrictive networks or due to WebSocket issues.
+// Fix: Enable experimentalForceLongPolling to handle network issues.
+// Removed invalid 'merge' property which caused build errors.
 db.settings({
   experimentalForceLongPolling: true,
-  merge: true, 
 });
 
 // Habilitar la persistencia offline de Firestore

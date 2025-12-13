@@ -142,9 +142,10 @@ const App: React.FC = () => {
   // --- AUDIO SYSTEM ---
   const getAudioContext = () => {
     if (!audioContextRef.current) {
-      const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-      if (AudioContext) {
-        audioContextRef.current = new AudioContext();
+      // Use AudioCtor to avoid shadowing the global type
+      const AudioCtor = window.AudioContext || (window as any).webkitAudioContext;
+      if (AudioCtor) {
+        audioContextRef.current = new AudioCtor();
       }
     }
     return audioContextRef.current;
