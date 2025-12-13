@@ -91,10 +91,10 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCar
   };
 
   const playAlarm = () => {
-    const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-    if (!AudioContext) return;
+    const AudioCtor = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioCtor) return;
 
-    const ctx = new AudioContext();
+    const ctx = new AudioCtor();
     const t = ctx.currentTime;
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
