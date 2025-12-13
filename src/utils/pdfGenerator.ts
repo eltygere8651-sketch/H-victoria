@@ -21,9 +21,12 @@ export const generatePdfFromReactComponent = async (component: React.ReactElemen
     container.style.position = 'absolute';
     container.style.left = '-9999px'; // Position it off-screen
     container.style.top = '0';
-    // Explicitly set width to match A4 width in pixels (approx 794px at 96 DPI) 
-    // to prevent responsive squashing when on mobile screens.
-    container.style.width = '800px'; 
+    
+    // EXPLICIT A4 WIDTH (at 96 DPI, A4 is approx 794px x 1123px)
+    // Setting this ensures the component renders exactly how it fits on the PDF page,
+    // regardless of the mobile device's actual screen width.
+    container.style.width = '794px'; 
+    
     document.body.appendChild(container);
 
     const root = ReactDOM.createRoot(container);
@@ -46,13 +49,13 @@ export const generatePdfFromReactComponent = async (component: React.ReactElemen
           filename,
           image: { type: 'jpeg', quality: 0.98 },
           html2canvas: { 
-            scale: 2, 
+            scale: 2, // Higher scale for crisp text
             useCORS: true,
             logging: false,
-            // FORCE the window width to be desktop-like to ensure the PDF renders 
-            // as if it were on a desktop, regardless of the actual device screen size.
-            windowWidth: 1024, 
-            scrollY: 0, // CRITICAL FIX: Prevent scroll offset from cutting off the top of the PDF
+            // CRITICAL: Set windowWidth to match the container width.
+            // This prevents html2canvas from using the mobile viewport width, which causes squashed layouts.
+            windowWidth: 794, 
+            scrollY: 0, 
             letterRendering: true,
           },
           jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
