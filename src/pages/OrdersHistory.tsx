@@ -26,7 +26,7 @@ const OrdersHistory: React.FC<OrdersHistoryProps> = ({ currentUser }) => {
     setIsGeneratingPdf(true);
     try {
       const filename = `Pedido_${selectedOrder.batchId}_${selectedOrder.departmentName}.pdf`;
-      // Pass preview=false to ensure PDF dimensions are enforced (A4 794px width)
+      // Pass preview=false to ensure PDF dimensions are enforced (A4 fixed width)
       await generatePdfFromReactComponent(<OrderPdfDocument order={selectedOrder} preview={false} />, filename);
     } catch (error) {
       console.error("PDF Generation Failed:", error);
@@ -120,6 +120,7 @@ const OrdersHistory: React.FC<OrdersHistoryProps> = ({ currentUser }) => {
           <div className="flex-none bg-slate-900 border-b border-slate-800 z-50 pt-[max(env(safe-area-inset-top),16px)] pb-3 px-4 shadow-xl">
              <div className="flex justify-between items-center max-w-4xl mx-auto w-full">
                 <h2 className="text-white font-bold text-lg hidden md:block">Vista Previa</h2>
+                {/* Space for mobile back/close visual balance if needed */}
                 <div className="md:hidden"></div> 
 
                 <div className="flex gap-2 ml-auto">
@@ -152,18 +153,21 @@ const OrdersHistory: React.FC<OrdersHistoryProps> = ({ currentUser }) => {
              </div>
           </div>
 
+          {/* Área de vista previa optimizada: sin scale, scroll nativo, fondo oscuro para contraste */}
           <div className="flex-1 overflow-y-auto bg-gray-900 p-4 pb-safe overscroll-contain">
-            <div className="min-h-full flex items-center justify-center py-4">
+            <div className="min-h-full flex flex-col items-center py-4">
+                {/* Contenedor del documento responsive */}
                 <div 
                   id="print-area" 
-                  // Using 'origin-top' scale to fit the large A4 preview on mobile screens nicely
-                  className="bg-white text-black w-full max-w-3xl rounded-xl shadow-2xl overflow-hidden origin-top transform md:scale-100 scale-[0.9]"
+                  className="bg-white text-black w-full max-w-3xl rounded-xl shadow-2xl overflow-hidden"
                   onClick={(e) => e.stopPropagation()} 
                 >
+                  {/* Aquí renderizamos el componente en modo PREVIEW=true, que se adapta al ancho */}
                   <OrderPdfDocument order={selectedOrder} preview={true} />
                 </div>
+                
+                <p className="text-gray-500 text-xs mt-6 mb-12">Vista previa digital adaptada a pantalla.</p>
             </div>
-            <div className="h-12"></div>
           </div>
         </div>
       )}

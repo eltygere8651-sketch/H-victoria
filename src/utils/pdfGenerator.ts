@@ -15,18 +15,15 @@ export const generatePdfFromReactComponent = async (component: React.ReactElemen
     }
 
     // 2. Constants for A4 at 96 DPI
-    // Width is critical to force "desktop mode" rendering on mobile
     const A4_WIDTH_PX = 794; 
     
-    // 3. Create a container that is technically "visible" to the DOM but outside the viewport.
-    // We use fixed positioning off-screen to prevent scrollbars or interference.
+    // 3. Create a container off-screen
     const container = document.createElement('div');
     container.style.position = 'fixed';
     container.style.left = '-10000px'; 
     container.style.top = '0';
     container.style.zIndex = '-9999';
     container.style.width = `${A4_WIDTH_PX}px`;
-    // Force white background to ensure no transparency issues on dark mode devices
     container.style.backgroundColor = '#ffffff'; 
     
     document.body.appendChild(container);
@@ -35,7 +32,6 @@ export const generatePdfFromReactComponent = async (component: React.ReactElemen
     const root = ReactDOM.createRoot(container);
     
     try {
-      // Use flushSync to force synchronous rendering before we try to capture
       flushSync(() => {
         root.render(React.createElement(React.StrictMode, null, component));
       });
@@ -45,7 +41,6 @@ export const generatePdfFromReactComponent = async (component: React.ReactElemen
     }
 
     // 5. Wait for rendering and images/fonts to stabilize
-    // A small timeout allows the browser to layout the new DOM nodes correctly
     setTimeout(() => {
         const elementToPrint = container.firstChild as HTMLElement;
         
@@ -55,36 +50,32 @@ export const generatePdfFromReactComponent = async (component: React.ReactElemen
           return reject(new Error('Error al renderizar el contenido del PDF.'));
         }
         
-        // Ensure standard filename extension
         const finalName = filename.endsWith('.pdf') ? filename : `${filename}.pdf`;
 
         const options = {
-          margin: 0, // CRITICAL: We handle all spacing via CSS padding inside the component to prevent page 2 overflow
+          margin: 0,
           filename: finalName,
           image: { type: 'jpeg', quality: 0.98 },
-          enableLinks: false, // Disabling links improves stability on some mobile parsers
+          enableLinks: false, 
           html2canvas: { 
-            scale: 2, // 2x scale for sharpness (Retina ready)
+            scale: 2, // 2x is good balance for quality/performance on iOS
             useCORS: true, 
             logging: false,
-            // CRITICAL: Force the canvas window size to simulate a desktop environment.
-            // This prevents the "mobile view" layout from triggering during capture on phones.
+            // CRITICAL: Force window size to simulate desktop capture
             windowWidth: A4_WIDTH_PX, 
             scrollY: 0,
             scrollX: 0,
             letterRendering: true,
           },
           jsPDF: { 
-            unit: 'px', // Use pixels to match our CSS exactly
-            format: [794, 1123], // Exact A4 dimensions at 96DPI
+            unit: 'px', 
+            format: [794, 1123], // A4 Standard
             orientation: 'portrait',
             compress: true,
-            hotfixes: ['px_scaling'] // Fix for some jsPDF scaling issues
+            hotfixes: ['px_scaling'] 
           },
           pagebreak: { 
-            mode: ['avoid-all', 'css', 'legacy'],
-            // Prevent breaks inside specific elements
-            avoid: 'tr, .break-inside-avoid'
+            mode: ['avoid-all', 'css', 'legacy']
           }
         };
 
@@ -99,7 +90,6 @@ export const generatePdfFromReactComponent = async (component: React.ReactElemen
             reject(err);
           })
           .finally(() => {
-            // Cleanup: remove the temporary container
             setTimeout(() => {
                 try {
                     root.unmount();
@@ -109,6 +99,6 @@ export const generatePdfFromReactComponent = async (component: React.ReactElemen
                 } catch(e) { console.warn("Cleanup warning", e); }
             }, 100);
           });
-    }, 500); // 500ms delay to ensure DOM is ready
+    }, 500); 
   });
 };
