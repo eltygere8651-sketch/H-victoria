@@ -21,5 +21,23 @@
     }
   },
   "include": ["src"],
-  "exclude": ["node_modules", "dist", "public"]
+  "exclude": [
+    "node_modules", 
+    "dist", 
+    "public",
+    "functions",
+    "build",
+    // Excluir explícitamente los archivos duplicados en la raíz para evitar conflictos
+    "pages",
+    "components",
+    "services",
+    "utils",
+    "types.ts",
+    "App.tsx",
+    "index.tsx",
+    "firebaseConfig.ts",
+    "firebaseCredentials.ts",
+    "sw.js",
+    "cleanup.js"
+  ]
 }
