@@ -26,7 +26,7 @@ export const OrderPdfDocument: React.FC<OrderPdfDocumentProps> = ({ order, previ
   const containerStyles: React.CSSProperties = preview ? {
     ...baseStyles,
     width: '100%',
-    minHeight: '100%', // Dejar que crezca según contenido en móvil
+    minHeight: 'auto', // Changed from 100% to auto to prevent collapse on mobile if parent height is undefined
     padding: '20px',   // Padding más pequeño para móvil
     display: 'flex',
     flexDirection: 'column',

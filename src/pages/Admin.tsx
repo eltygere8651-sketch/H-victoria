@@ -202,7 +202,6 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
           </div>
         )}
 
-        {/* ... (Other tabs kept same structure but ensured logic handles missing imports if any) ... */}
         {activeTab === 'users' && (
           <div>
             <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-md border border-gray-100 dark:border-slate-800 mb-6">
@@ -431,6 +430,7 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
           <div className="flex-none bg-slate-900 border-b border-slate-800 z-50 pt-[max(env(safe-area-inset-top),16px)] pb-3 px-4 shadow-xl">
              <div className="flex justify-between items-center max-w-4xl mx-auto w-full">
                 <h2 className="text-white font-bold text-lg hidden md:block">Vista Previa</h2>
+                {/* Space for mobile back/close visual balance if needed */}
                 <div className="md:hidden"></div> 
 
                 <div className="flex gap-2 ml-auto">
@@ -463,17 +463,18 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
              </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto overflow-x-auto bg-gray-900 p-4 pb-safe overscroll-contain">
-            <div className="min-h-full flex items-center justify-center py-4 min-w-max md:min-w-0">
+          <div className="flex-1 overflow-y-auto bg-gray-900 p-4 pb-safe overscroll-contain">
+            <div className="min-h-full flex flex-col items-center py-4">
                 <div 
                   id="print-area" 
-                  className="bg-white text-black rounded-xl shadow-2xl overflow-hidden origin-top transform md:scale-100 scale-[0.9] md:origin-center"
+                  className="bg-white text-black w-full max-w-3xl rounded-xl shadow-2xl overflow-hidden"
                   onClick={(e) => e.stopPropagation()} 
                 >
                   <OrderPdfDocument order={selectedOrder} preview={true} />
                 </div>
+                
+                <p className="text-gray-500 text-xs mt-6 mb-12">Vista previa digital adaptada a pantalla.</p>
             </div>
-            <div className="h-12"></div>
           </div>
         </div>
       )}
