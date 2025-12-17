@@ -119,7 +119,6 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
     await storageService.markAllNotificationsAsRead(currentUser.id, currentUser.name);
   };
   
-  // New handler for clearing all orders
   const handleClearAllOrders = async () => {
     setIsClearing(true);
     await storageService.deleteAllBatches();
@@ -127,7 +126,6 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
     setShowClearOrdersConfirm(false);
   };
   
-  // New handler for clearing all notifications
   const handleClearAllNotifications = async () => {
     setIsClearing(true);
     await storageService.deleteAllNotifications();
@@ -204,6 +202,7 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
           </div>
         )}
 
+        {/* ... (Other tabs kept same structure but ensured logic handles missing imports if any) ... */}
         {activeTab === 'users' && (
           <div>
             <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-md border border-gray-100 dark:border-slate-800 mb-6">
@@ -345,6 +344,7 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
         )}
       </div>
 
+      {/* Editing User Modal */}
       {editingUser && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
           <div className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-md p-6 shadow-pop-in animate-pop-in">
@@ -470,7 +470,7 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
                   className="bg-white text-black rounded-xl shadow-2xl overflow-hidden origin-top transform md:scale-100 scale-[0.9] md:origin-center"
                   onClick={(e) => e.stopPropagation()} 
                 >
-                  <OrderPdfDocument order={selectedOrder} preview={false} />
+                  <OrderPdfDocument order={selectedOrder} preview={true} />
                 </div>
             </div>
             <div className="h-12"></div>

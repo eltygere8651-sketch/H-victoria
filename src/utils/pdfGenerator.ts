@@ -3,74 +3,106 @@ import ReactDOM from 'react-dom/client';
 import { flushSync } from 'react-dom';
 
 /**
- * Generates a PDF from a React component by rendering it off-screen.
- * This method is robust against screen size variations and ensures a consistent output.
- * @param {React.ReactElement} component The React component to render to PDF.
- * @param {string} filename The desired filename for the downloaded PDF.
- * @returns {Promise<void>} A promise that resolves when the PDF is saved.
+ * Generates a PDF from a React component.
+ * Optimized for cross-platform consistency (iOS/Android/Desktop).
+ * Uses a Pixel-Perfect strategy (A4 = 794px x 1123px @ 96DPI) to guarantee exact layout.
  */
 export const generatePdfFromReactComponent = async (component: React.ReactElement, filename: string): Promise<void> => {
   return new Promise((resolve, reject) => {
-    // Check for the global variable injected by index.html
+    // 1. Verify library availability
     if (typeof (window as any).html2pdf === 'undefined') {
-      return reject(new Error('html2pdf.js library is not loaded. Please refresh the page.'));
+      return reject(new Error('La librería html2pdf no está cargada. Refresca la página.'));
     }
 
-    // Create a temporary, off-screen container for rendering
+    // 2. Constants for A4 at 96 DPI
+    const A4_WIDTH_PX = 794; 
+    // We don't enforce height on the container to allow content to grow, 
+    // but the PDF page size will be A4.
+
+    // 3. Create a container that is technically "visible" to the DOM but outside the viewport.
+    // html2canvas fails if display:none or visibility:hidden is used.
+    // We use fixed positioning off-screen.
     const container = document.createElement('div');
-    container.style.position = 'absolute';
-    container.style.left = '-9999px'; // Position it off-screen
+    container.style.position = 'fixed';
+    container.style.left = '-10000px'; 
     container.style.top = '0';
-    
-    // EXPLICIT A4 WIDTH (at 96 DPI, A4 is approx 794px x 1123px)
-    // Setting this ensures the component renders exactly how it fits on the PDF page,
-    // regardless of the mobile device's actual screen width.
-    container.style.width = '794px'; 
+    container.style.zIndex = '-9999';
+    container.style.width = `${A4_WIDTH_PX}px`;
+    // Force white background to ensure no transparency issues
+    container.style.backgroundColor = '#ffffff'; 
     
     document.body.appendChild(container);
 
+    // 4. Render the React component
     const root = ReactDOM.createRoot(container);
     
-    // Use flushSync to ensure the component is fully rendered before proceeding.
-    flushSync(() => {
-      root.render(React.createElement(React.StrictMode, null, component));
-    });
+    try {
+      flushSync(() => {
+        root.render(React.createElement(React.StrictMode, null, component));
+      });
+    } catch (e) {
+      document.body.removeChild(container);
+      return reject(e);
+    }
 
-    // Short delay to ensure styles/images (like logo) are fully applied/loaded in the DOM
+    // 5. Wait for rendering and images/fonts to stabilize
+    // Increased timeout for iOS compatibility
     setTimeout(() => {
         const elementToPrint = container.firstChild as HTMLElement;
+        
         if (!elementToPrint) {
+          root.unmount();
           document.body.removeChild(container);
-          return reject(new Error('Failed to render the PDF component.'));
+          return reject(new Error('Error al renderizar el contenido del PDF.'));
         }
         
+        // Ensure standard filename extension
+        const finalName = filename.endsWith('.pdf') ? filename : `${filename}.pdf`;
+
         const options = {
-          margin: 0,
-          filename,
+          margin: 0, // CRITICAL: We handle all spacing via CSS padding inside the component
+          filename: finalName,
           image: { type: 'jpeg', quality: 0.98 },
+          enableLinks: false, // Disabling links improves stability on some mobile parsers
           html2canvas: { 
-            scale: 2, // Higher scale for crisp text
-            useCORS: true,
+            scale: 2, // 2x scale for Retina-like sharpness
+            useCORS: true, 
             logging: false,
-            // CRITICAL: Set windowWidth to match the container width.
-            // This prevents html2canvas from using the mobile viewport width, which causes squashed layouts.
-            windowWidth: 794, 
-            scrollY: 0, 
+            // CRITICAL: Force the canvas window size to simulate a desktop environment.
+            // This prevents the "mobile view" layout from triggering during capture.
+            windowWidth: A4_WIDTH_PX, 
+            scrollY: 0,
+            scrollX: 0,
             letterRendering: true,
           },
-          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-          pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+          jsPDF: { 
+            unit: 'px', // Use pixels to match our CSS exactly
+            format: [794, 1123], // Exact A4 dimensions at 96DPI
+            orientation: 'portrait',
+            compress: true,
+            hotfixes: ['px_scaling'] // Fix for some jsPDF scaling issues
+          },
+          pagebreak: { 
+            mode: ['avoid-all', 'css', 'legacy'],
+            // Specific classes to control breaks if needed
+            before: '.page-break-before',
+            after: '.page-break-after',
+            avoid: 'tr, .break-inside-avoid'
+          }
         };
 
-        (window as any).html2pdf().set(options).from(elementToPrint).save()
+        const worker = (window as any).html2pdf();
+
+        worker.set(options).from(elementToPrint).save()
           .then(() => {
             resolve();
           })
           .catch((err: any) => {
+            console.error("PDF Generation Error:", err);
             reject(err);
           })
           .finally(() => {
-            // Clean up: unmount the component and remove the container
+            // Cleanup
             setTimeout(() => {
                 try {
                     root.unmount();
@@ -78,8 +110,8 @@ export const generatePdfFromReactComponent = async (component: React.ReactElemen
                         document.body.removeChild(container);
                     }
                 } catch(e) { console.warn("Cleanup warning", e); }
-            }, 100);
+            }, 500);
           });
-    }, 500); // 500ms delay for asset loading
+    }, 800);
   });
 };

@@ -26,7 +26,8 @@ const OrdersHistory: React.FC<OrdersHistoryProps> = ({ currentUser }) => {
     setIsGeneratingPdf(true);
     try {
       const filename = `Pedido_${selectedOrder.batchId}_${selectedOrder.departmentName}.pdf`;
-      await generatePdfFromReactComponent(<OrderPdfDocument order={selectedOrder} />, filename);
+      // Pass preview=false to ensure PDF dimensions are enforced
+      await generatePdfFromReactComponent(<OrderPdfDocument order={selectedOrder} preview={false} />, filename);
     } catch (error) {
       console.error("PDF Generation Failed:", error);
       alert('Hubo un error al generar el PDF. Por favor, inténtalo de nuevo.');
