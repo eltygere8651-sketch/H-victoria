@@ -9,11 +9,13 @@ interface OrderPdfDocumentProps {
 
 export const OrderPdfDocument: React.FC<OrderPdfDocumentProps> = ({ order, preview = false }) => {
   // A4 dimensions in pixels at 96 DPI: 794px width x 1123px height.
+  // We use strict pixel values to match the jsPDF configuration.
   const A4_WIDTH = '794px';
-  const A4_HEIGHT = '1123px';
+  const A4_HEIGHT = '1123px'; // Minimum height, can grow if needed but page breaks are handled by html2pdf
   const PADDING = '40px';
 
   // Styles applied strictly for PDF generation vs Screen Preview
+  // In preview mode, we let it be responsive. In PDF mode, we lock it to A4 size.
   const containerStyles: React.CSSProperties = preview ? {
     width: '100%',
     minHeight: '100%',
@@ -24,12 +26,13 @@ export const OrderPdfDocument: React.FC<OrderPdfDocumentProps> = ({ order, previ
     width: A4_WIDTH,
     minHeight: A4_HEIGHT,
     padding: PADDING,
-    margin: '0', // Zero margin to prevent "2nd blank page" issue
+    margin: '0', // Zero margin to prevent "2nd blank page" issue (margin is handled by padding)
     backgroundColor: 'white',
     color: 'black',
     boxSizing: 'border-box',
     position: 'relative',
-    overflow: 'hidden' // Clip content to avoid overflow errors
+    overflow: 'hidden', // Clip any rogue content
+    fontFamily: 'Arial, sans-serif' // Fallback font for safety
   };
 
   return (
@@ -104,7 +107,7 @@ export const OrderPdfDocument: React.FC<OrderPdfDocumentProps> = ({ order, previ
           </table>
         </div>
 
-        {/* PUSH FOOTER TO BOTTOM */}
+        {/* SPACER TO PUSH FOOTER TO BOTTOM (Flexbox trick) */}
         <div className="flex-1"></div>
 
         {/* FOOTER & SIGNATURES */}

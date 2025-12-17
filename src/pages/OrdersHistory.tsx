@@ -26,7 +26,7 @@ const OrdersHistory: React.FC<OrdersHistoryProps> = ({ currentUser }) => {
     setIsGeneratingPdf(true);
     try {
       const filename = `Pedido_${selectedOrder.batchId}_${selectedOrder.departmentName}.pdf`;
-      // Pass preview=false to ensure PDF dimensions are enforced
+      // Pass preview=false to ensure PDF dimensions are enforced (A4 794px width)
       await generatePdfFromReactComponent(<OrderPdfDocument order={selectedOrder} preview={false} />, filename);
     } catch (error) {
       console.error("PDF Generation Failed:", error);
@@ -156,7 +156,8 @@ const OrdersHistory: React.FC<OrdersHistoryProps> = ({ currentUser }) => {
             <div className="min-h-full flex items-center justify-center py-4">
                 <div 
                   id="print-area" 
-                  className="bg-white text-black w-full max-w-3xl rounded-xl shadow-2xl overflow-hidden"
+                  // Using 'origin-top' scale to fit the large A4 preview on mobile screens nicely
+                  className="bg-white text-black w-full max-w-3xl rounded-xl shadow-2xl overflow-hidden origin-top transform md:scale-100 scale-[0.9]"
                   onClick={(e) => e.stopPropagation()} 
                 >
                   <OrderPdfDocument order={selectedOrder} preview={true} />

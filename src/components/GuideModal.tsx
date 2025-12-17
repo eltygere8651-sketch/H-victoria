@@ -146,41 +146,17 @@ export const GuideModal: React.FC<GuideModalProps> = ({ isOpen, onClose }) => {
               </div>
             </div>
           ) : (
-            <div className="flex flex-col h-full animate-fade-in space-y-6">
-              {/* Container for Vertical Video - Centered and width constrained to look good */}
+            <div className="flex flex-col h-full animate-fade-in items-center justify-center py-4">
+              {/* Container for Vertical Video - Centered and width constrained */}
               <div className="w-full max-w-[320px] mx-auto rounded-3xl overflow-hidden shadow-2xl bg-black border-4 border-white dark:border-slate-800 relative group">
                 <div style={{padding:'177.78% 0 0 0', position:'relative'}}>
                   <iframe 
-                    src="https://player.vimeo.com/video/1147276431?badge=0&amp;autopause=0&amp;player_id=0&amp;app_id=58479&amp;autoplay=1&amp;loop=1" 
+                    src="https://player.vimeo.com/video/1147276431?badge=0&amp;autopause=0&amp;player_id=0&amp;app_id=58479&amp;autoplay=1&amp;loop=1&amp;muted=1" 
                     frameBorder="0" 
                     allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media; web-share" 
                     style={{position:'absolute',top:0,left:0,width:'100%',height:'100%'}} 
                     title="Hub Video Guide"
                   ></iframe>
-                </div>
-              </div>
-              
-              <div className="space-y-4">
-                <div className="flex items-start gap-4">
-                   <div className="w-8 h-8 rounded-full bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 flex items-center justify-center font-bold text-sm shrink-0">1</div>
-                   <div>
-                     <h4 className="font-bold text-gray-900 dark:text-white text-sm">Inicio de Sesión</h4>
-                     <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">Usa tu PIN personal para acceder según tu rol (Admin o Personal).</p>
-                   </div>
-                </div>
-                <div className="flex items-start gap-4">
-                   <div className="w-8 h-8 rounded-full bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 flex items-center justify-center font-bold text-sm shrink-0">2</div>
-                   <div>
-                     <h4 className="font-bold text-gray-900 dark:text-white text-sm">Realizar Pedidos</h4>
-                     <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">Selecciona departamento, añade productos al carrito y finaliza para notificar.</p>
-                   </div>
-                </div>
-                <div className="flex items-start gap-4">
-                   <div className="w-8 h-8 rounded-full bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 flex items-center justify-center font-bold text-sm shrink-0">3</div>
-                   <div>
-                     <h4 className="font-bold text-gray-900 dark:text-white text-sm">Gestión de Tareas</h4>
-                     <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">Sigue las prioridades (Rojo = Urgente). Sube fotos y completa tareas.</p>
-                   </div>
                 </div>
               </div>
             </div>
