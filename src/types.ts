@@ -20,6 +20,12 @@ export interface Department {
   name: string;
 }
 
+// New: Interface for dynamic system settings (Video, Audio, etc.)
+export interface SystemSettings {
+  videoGuideUrl?: string;
+  welcomeAudioUrl?: string;
+}
+
 export interface Product {
   id: string;
   name: string;

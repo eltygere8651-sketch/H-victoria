@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
-import { X, Package, ShoppingCart, ClipboardCheck, ShieldCheck, Zap, Globe, PlayCircle, LayoutGrid, LogOut } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { X, Package, ShoppingCart, ClipboardCheck, ShieldCheck, Zap, Globe, PlayCircle, LayoutGrid, Volume2, VolumeX } from 'lucide-react';
 import { Logo } from './Logo';
+import * as storageService from '../services/storageService';
+import { SystemSettings } from '../types';
 
 interface GuideModalProps {
   isOpen: boolean;
@@ -9,6 +11,65 @@ interface GuideModalProps {
 
 export const GuideModal: React.FC<GuideModalProps> = ({ isOpen, onClose }) => {
   const [activeTab, setActiveTab] = useState<'overview' | 'video'>('overview');
+  const [isMuted, setIsMuted] = useState(false);
+  const [settings, setSettings] = useState<SystemSettings>({});
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Load settings on mount
+  useEffect(() => {
+    const unsubscribe = storageService.subscribeToSettings(setSettings);
+    return () => unsubscribe();
+  }, []);
+
+  // Logic to handle auto-play on first visit
+  useEffect(() => {
+    if (isOpen) {
+      const hasPlayed = localStorage.getItem('hub_intro_audio_played');
+
+      if (!hasPlayed) {
+        // Use configured URL or fallback to local file
+        const audioSrc = settings.welcomeAudioUrl || '/intro.mp3';
+        const audio = new Audio(audioSrc);
+        audio.volume = 1.0;
+        audioRef.current = audio;
+
+        const playPromise = audio.play();
+        
+        if (playPromise !== undefined) {
+          playPromise
+            .then(() => {
+              // Audio started successfully
+              localStorage.setItem('hub_intro_audio_played', 'true');
+            })
+            .catch(error => {
+              console.warn("Auto-play prevented by browser:", error);
+            });
+        }
+      }
+    } else {
+      // Stop audio immediately if modal is closed
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+        audioRef.current = null;
+      }
+    }
+
+    // Cleanup on unmount (or when settings change to prevent double playing logic, though isOpen handles it)
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+    };
+  }, [isOpen, settings.welcomeAudioUrl]); // Add settings.welcomeAudioUrl dependency
+
+  const toggleMute = () => {
+    if (audioRef.current) {
+      audioRef.current.muted = !audioRef.current.muted;
+      setIsMuted(!isMuted);
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -39,6 +100,10 @@ export const GuideModal: React.FC<GuideModalProps> = ({ isOpen, onClose }) => {
     }
   ];
 
+  // Default video if none is configured
+  const defaultVideo = "https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=0&controls=1&rel=0";
+  const currentVideo = settings.videoGuideUrl || defaultVideo;
+
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in" onClick={onClose}>
       <div 
@@ -51,12 +116,25 @@ export const GuideModal: React.FC<GuideModalProps> = ({ isOpen, onClose }) => {
             <Logo size="xl" solid />
           </div>
           
-          <button 
-            onClick={onClose}
-            className="absolute top-4 right-4 bg-black/20 hover:bg-black/40 text-white p-2 rounded-full transition-colors backdrop-blur-md z-20"
-          >
-            <X size={20} />
-          </button>
+          <div className="absolute top-4 right-4 flex gap-2 z-20">
+             {/* Mute Button (Only appears if audio is active) */}
+             {audioRef.current && !audioRef.current.paused && (
+               <button 
+                 onClick={toggleMute}
+                 className="bg-black/20 hover:bg-black/40 text-white p-2 rounded-full transition-colors backdrop-blur-md"
+                 title={isMuted ? "Activar sonido" : "Silenciar"}
+               >
+                 {isMuted ? <VolumeX size={20} /> : <Volume2 size={20} className="animate-pulse" />}
+               </button>
+             )}
+             
+             <button 
+               onClick={onClose}
+               className="bg-black/20 hover:bg-black/40 text-white p-2 rounded-full transition-colors backdrop-blur-md"
+             >
+               <X size={20} />
+             </button>
+          </div>
 
           <div className="relative z-10">
             <div className="flex flex-col md:flex-row items-start md:items-center gap-4 mb-6">
@@ -146,14 +224,9 @@ export const GuideModal: React.FC<GuideModalProps> = ({ isOpen, onClose }) => {
           ) : (
             <div className="flex flex-col h-full animate-fade-in space-y-6">
               <div className="aspect-video w-full rounded-2xl overflow-hidden shadow-2xl bg-black border-4 border-white dark:border-slate-800 relative group">
-                {/* 
-                  PLACEHOLDER VIDEO: 
-                  Reemplaza el 'src' del iframe con el enlace 'embed' de tu video de YouTube o Vimeo.
-                  Ejemplo YouTube: https://www.youtube.com/embed/TU_VIDEO_ID
-                */}
                 <iframe 
                   className="w-full h-full" 
-                  src="https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=0&controls=1&rel=0" 
+                  src={currentVideo}
                   title="Hub Video Guide" 
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
                   allowFullScreen
