@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { UserRole, User, Product, AppNotification, OrderBatch, SystemSettings } from '../types';
+import { UserRole, User, Product, AppNotification, OrderBatch } from '../types';
 import * as storageService from '../services/storageService';
-import { Download, Users, Package, Trash2, Edit2, Key, X, Save, Eye, Loader2, BarChart as BarChartIcon, BellRing, CheckCircle2, Settings, Link } from 'lucide-react';
+import { Download, Users, Package, Trash2, Edit2, X, Save, Eye, Loader2, BarChart as BarChartIcon, BellRing, CheckCircle2 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { Logo } from '../components/Logo';
 import { NotificationIcon } from '../components/NotificationIcon';
 import { generatePdfFromReactComponent } from '../utils/pdfGenerator';
 import { OrderPdfDocument } from '../components/OrderPdfDocument';
@@ -11,17 +10,16 @@ import { OrderPdfDocument } from '../components/OrderPdfDocument';
 interface AdminProps {
   currentUser: User;
   unreadNotificationsCount: number;
-  initialTab?: 'requests' | 'users' | 'reports' | 'settings'; // New prop
+  initialTab?: 'requests' | 'users' | 'reports';
 }
 
 const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, initialTab = 'requests' }) => {
-  const [activeTab, setActiveTab] = useState<'requests' | 'users' | 'reports' | 'settings'>(initialTab); // Use initialTab prop
+  const [activeTab, setActiveTab] = useState<'requests' | 'users' | 'reports'>(initialTab);
   
   const [orders, setOrders] = useState<OrderBatch[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
-  const [systemSettings, setSystemSettings] = useState<SystemSettings>({});
   const [isLoading, setIsLoading] = useState(true);
   
   const [newUser, setNewUser] = useState({ name: '', role: UserRole.STAFF, pin: '', permissions: [] as ('CAN_MANAGE_TASKS')[] });
@@ -36,7 +34,6 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
   const [showClearOrdersConfirm, setShowClearOrdersConfirm] = useState(false);
   const [showClearNotificationsConfirm, setShowClearNotificationsConfirm] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
-  const [isSavingSettings, setIsSavingSettings] = useState(false);
 
   useEffect(() => {
     setActiveTab(initialTab);
@@ -50,14 +47,12 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
       setIsLoading(false);
     });
     const unsubNotifications = storageService.subscribeToNotifications(setNotifications, false);
-    const unsubSettings = storageService.subscribeToSettings(setSystemSettings);
     
     return () => {
         unsubOrders();
         unsubUsers();
         unsubProducts();
         unsubNotifications();
-        unsubSettings();
     };
   }, []);
 
@@ -140,22 +135,6 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
     setShowClearNotificationsConfirm(false);
   };
 
-  // Handler for saving settings
-  const handleSaveSettings = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSavingSettings(true);
-    try {
-        await storageService.saveSettings(systemSettings);
-        alert("Configuración actualizada correctamente.");
-    } catch (error) {
-        console.error("Error saving settings", error);
-        alert("Error al guardar la configuración.");
-    } finally {
-        setIsSavingSettings(false);
-    }
-  };
-
-
   const lowStockData = products
     .filter(p => p.quantity <= p.minThreshold * 2)
     .map(p => ({ name: p.name, stock: p.quantity, min: p.minThreshold }))
@@ -183,7 +162,6 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
             )}
           </button>
           <button onClick={() => setActiveTab('users')} className={`flex-1 min-w-[120px] py-4 text-sm font-extrabold border-b-2 transition-colors duration-200 ${activeTab === 'users' ? 'border-red-600 text-red-600 dark:text-red-400 dark:border-red-400 bg-red-50 dark:bg-red-900/10 shadow-inner' : 'border-transparent text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800/50'}`}>Usuarios</button>
-          <button onClick={() => setActiveTab('settings')} className={`flex-1 min-w-[120px] py-4 text-sm font-extrabold border-b-2 transition-colors duration-200 ${activeTab === 'settings' ? 'border-red-600 text-red-600 dark:text-red-400 dark:border-red-400 bg-red-50 dark:bg-red-900/10 shadow-inner' : 'border-transparent text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800/50'}`}>Config</button>
         </div>
       </div>
 
@@ -226,7 +204,6 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
           </div>
         )}
 
-        {/* ... (Users and Reports tabs remain unchanged) ... */}
         {activeTab === 'users' && (
           <div>
             <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-md border border-gray-100 dark:border-slate-800 mb-6">
@@ -364,62 +341,6 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
                   )}
                 </div>
               </div>
-            </div>
-        )}
-
-        {activeTab === 'settings' && (
-            <div className="max-w-2xl mx-auto space-y-6">
-                <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-md border border-gray-100 dark:border-slate-800">
-                    <div className="flex items-center gap-2 mb-6">
-                        <Settings className="text-red-600 dark:text-red-400" size={24} />
-                        <h3 className="font-bold text-xl text-gray-900 dark:text-white">Configuración del Sistema</h3>
-                    </div>
-                    
-                    <form onSubmit={handleSaveSettings} className="space-y-6">
-                        <div>
-                            <label className="block text-sm font-bold text-gray-700 dark:text-slate-300 mb-2 flex items-center gap-2">
-                                <Link size={16} /> URL del Video Tutorial (YouTube Embed)
-                            </label>
-                            <input 
-                                type="text"
-                                className="w-full p-4 border-2 border-gray-200 dark:border-slate-700/50 rounded-xl bg-gray-50 dark:bg-slate-800/60 dark:text-white outline-none focus:border-red-500 focus:ring-4 focus:ring-red-100 dark:focus:ring-red-500/30 transition-all shadow-sm"
-                                placeholder="https://www.youtube.com/embed/..."
-                                value={systemSettings.videoGuideUrl || ''}
-                                onChange={(e) => setSystemSettings({...systemSettings, videoGuideUrl: e.target.value})}
-                            />
-                            <p className="text-xs text-gray-500 dark:text-slate-400 mt-2">
-                                Asegúrate de usar la URL "embed" de YouTube para que funcione dentro de la app.
-                            </p>
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-bold text-gray-700 dark:text-slate-300 mb-2 flex items-center gap-2">
-                                <Link size={16} /> URL del Audio de Bienvenida
-                            </label>
-                            <input 
-                                type="text"
-                                className="w-full p-4 border-2 border-gray-200 dark:border-slate-700/50 rounded-xl bg-gray-50 dark:bg-slate-800/60 dark:text-white outline-none focus:border-red-500 focus:ring-4 focus:ring-red-100 dark:focus:ring-red-500/30 transition-all shadow-sm"
-                                placeholder="https://firebasestorage.googleapis.com/..."
-                                value={systemSettings.welcomeAudioUrl || ''}
-                                onChange={(e) => setSystemSettings({...systemSettings, welcomeAudioUrl: e.target.value})}
-                            />
-                            <p className="text-xs text-gray-500 dark:text-slate-400 mt-2">
-                                Si está vacío, se usará el archivo local (<code>/intro.mp3</code>). Puedes pegar un enlace de Firebase Storage aquí.
-                            </p>
-                        </div>
-
-                        <div className="pt-4 border-t border-gray-100 dark:border-slate-800">
-                            <button 
-                                type="submit" 
-                                disabled={isSavingSettings}
-                                className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-button-red flex items-center justify-center gap-2 active:scale-[0.98] transition-all disabled:opacity-70"
-                            >
-                                {isSavingSettings ? <Loader2 className="animate-spin" /> : <Save size={20} />}
-                                Guardar Cambios
-                            </button>
-                        </div>
-                    </form>
-                </div>
             </div>
         )}
       </div>

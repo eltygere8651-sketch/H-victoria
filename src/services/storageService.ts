@@ -1,4 +1,4 @@
-import { Product, User, ReplenishmentRequest, UserRole, Department, CartItem, AppNotification, NotificationType, NotificationPayload, OrderBatch, Task, TaskStatus, TaskPriority, TaskType, TaskComment, Document, SystemSettings } from '../types';
+import { Product, User, ReplenishmentRequest, UserRole, Department, CartItem, AppNotification, NotificationType, NotificationPayload, OrderBatch, Task, TaskStatus, TaskPriority, TaskType, TaskComment, Document } from '../types';
 import { db, auth, storage } from '../firebaseConfig';
 import firebase from 'firebase/compat/app';
 import { fileToBase64 } from '../utils/imageCompressor';
@@ -271,7 +271,6 @@ export const markAllNotificationsAsRead = async (userId: string, userName: strin
 export const uploadImage = async (file: File, path: string): Promise<string> => {
   const storageRef = storage.ref();
   const fileRef = storageRef.child(path);
-  // CRITICAL FIX: Add metadata with contentType. This prevents the "upload hanging" issue.
   const snapshot = await fileRef.put(file, {
     contentType: file.type || 'application/octet-stream',
   });
@@ -433,22 +432,4 @@ export const deleteFileFromStorage = async (url: string) => {
 export const deleteDocument = async (doc: Document) => {
   await deleteFileFromStorage(doc.url);
   await db.collection('documents').doc(doc.id).delete();
-};
-
-// --- NEW: SYSTEM SETTINGS MANAGEMENT (Cloud Config) ---
-export const subscribeToSettings = (callback: (settings: SystemSettings) => void) => {
-    return db.collection('settings').doc('general').onSnapshot(doc => {
-        if (doc.exists) {
-            callback(doc.data() as SystemSettings);
-        } else {
-            callback({});
-        }
-    }, error => {
-        console.error("Error subscribing to settings:", error);
-        callback({});
-    });
-};
-
-export const saveSettings = async (settings: SystemSettings) => {
-    await db.collection('settings').doc('general').set(settings, { merge: true });
 };
