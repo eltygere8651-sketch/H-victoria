@@ -47,18 +47,21 @@ export const GuideModal: React.FC<GuideModalProps> = ({ isOpen, onClose }) => {
         className="bg-white dark:bg-slate-900 w-full max-w-2xl h-[100dvh] sm:h-auto sm:max-h-[90dvh] sm:rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col animate-pop-in border-t border-white/10"
         onClick={e => e.stopPropagation()}
       >
-        {/* Header */}
-        <div className="relative bg-gradient-to-br from-slate-900 via-red-950 to-red-800 p-8 pt-12 text-white overflow-hidden shrink-0 border-b border-white/5">
-          <div className="absolute -top-4 -right-4 opacity-10 rotate-12 scale-150">
+        {/* Header - Fixed to support Safe Area in iOS */}
+        <div className="relative bg-gradient-to-br from-slate-900 via-red-950 to-red-800 p-8 pt-[calc(env(safe-area-inset-top)+2rem)] sm:pt-12 text-white overflow-hidden shrink-0 border-b border-white/5">
+          {/* Decorative Logo Background */}
+          <div className="absolute -top-4 -right-4 opacity-10 rotate-12 scale-150 pointer-events-none">
             <Logo size="xl" solid />
           </div>
           
+          {/* Close Button - Optimized for iOS Notch Integration */}
           <button 
             onClick={onClose}
-            className="absolute top-4 right-4 bg-white/10 hover:bg-white/20 text-white p-3 rounded-full transition-all backdrop-blur-md border border-white/10 z-20 active:scale-90"
+            className="absolute right-4 bg-white/10 hover:bg-white/20 text-white p-3 rounded-full transition-all backdrop-blur-md border border-white/10 z-20 active:scale-90 shadow-lg"
+            style={{ top: 'calc(env(safe-area-inset-top) + 0.75rem)' }}
             aria-label="Cerrar guía"
           >
-            <X size={24} />
+            <X size={24} strokeWidth={2.5} />
           </button>
 
           <div className="relative z-10 flex flex-col items-center sm:items-start text-center sm:text-left">
@@ -66,15 +69,15 @@ export const GuideModal: React.FC<GuideModalProps> = ({ isOpen, onClose }) => {
                <Logo size="md" />
             </div>
             <h2 className="text-3xl sm:text-4xl font-black tracking-tighter mb-2 leading-none text-white uppercase italic">
-              Hub <span className="text-red-500">Ecosystem</span>
+              Plataforma <span className="text-red-500">Hub</span>
             </h2>
             <p className="text-red-100/70 font-medium text-sm sm:text-base max-w-sm">
-              La plataforma definitiva para la inteligencia operativa y el control total de su organización.
+              La inteligencia operativa definitiva para el control total de su organización.
             </p>
           </div>
         </div>
 
-        {/* Content */}
+        {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto p-6 sm:p-8 bg-slate-50 dark:bg-[#0a0f1e] space-y-8">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {solutions.map((item, idx) => (
@@ -93,7 +96,7 @@ export const GuideModal: React.FC<GuideModalProps> = ({ isOpen, onClose }) => {
             ))}
           </div>
 
-          {/* Download Tech */}
+          {/* Installation Section */}
           <div className="bg-slate-900 rounded-[2rem] p-6 text-white overflow-hidden shadow-xl border border-white/5 relative">
              <div className="flex flex-col md:flex-row items-center gap-6 relative z-10">
                 <div className="flex-1 text-center md:text-left">
@@ -124,13 +127,13 @@ export const GuideModal: React.FC<GuideModalProps> = ({ isOpen, onClose }) => {
           </div>
         </div>
         
-        {/* Footer */}
+        {/* Footer Action */}
         <div className="p-6 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 flex justify-center pb-safe">
             <button 
               onClick={onClose}
               className="w-full sm:w-auto bg-red-600 hover:bg-red-700 text-white font-black py-4 px-10 rounded-2xl shadow-lg shadow-red-600/30 transition-all active:scale-95 flex items-center justify-center gap-3 text-sm uppercase tracking-widest"
             >
-              Comenzar ahora <ArrowRight size={18} />
+              Entendido <ArrowRight size={18} />
             </button>
         </div>
       </div>

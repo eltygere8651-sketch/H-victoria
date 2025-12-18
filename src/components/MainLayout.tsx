@@ -1,6 +1,6 @@
 import React from 'react';
 import { Logo } from './Logo';
-import { Download, Share2, Sun, Moon, LogOut, ClipboardCheck, ClipboardList, LayoutGrid, ShieldCheck, ShoppingCart } from 'lucide-react';
+import { Download, Share2, Sun, Moon, LogOut, ClipboardCheck, ClipboardList, LayoutGrid, ShieldCheck, ShoppingCart, HelpCircle } from 'lucide-react';
 import { User, UserRole, CartItem } from '../types';
 
 interface MainLayoutProps {
@@ -97,12 +97,23 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
                 <Logo size="sm" solid />
             </div>
             <div className="flex flex-col">
-                <span className="font-black text-xl text-slate-900 dark:text-white leading-none uppercase tracking-tighter">Hub<span className="text-red-600">OS</span></span>
+                <span className="font-black text-xl text-slate-900 dark:text-white leading-none uppercase tracking-tighter">Hub</span>
                 <span className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-0.5">Enterprise Intelligence</span>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Guide Button - Llamativo e Intuitivo */}
+            <button
+              onClick={() => setShowGuideModal(true)}
+              className="relative p-2.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-2xl hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-all active:scale-90 border border-blue-100 dark:border-blue-800/50"
+              title="Guía de Usuario"
+            >
+              <HelpCircle size={20} strokeWidth={2.5} />
+              <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-ping"></span>
+            </button>
+
+            {/* Header Shopping Cart */}
             {user.role !== UserRole.GUEST && (
               <button
                 onClick={() => { setView('replenish'); setShowMobileCart(true); }}
@@ -120,7 +131,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
             {!isInstalled && (deferredPrompt || isIOS) && (
               <button 
                 onClick={() => isIOS ? setShowIOSPrompt(true) : deferredPrompt.prompt()} 
-                className="bg-blue-600 hover:bg-blue-700 text-white p-2.5 rounded-2xl shadow-lg shadow-blue-600/20 flex items-center justify-center transition-all active:scale-90"
+                className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 p-2.5 rounded-2xl shadow-lg flex items-center justify-center transition-all active:scale-90"
                 title="Instalar App"
               >
                 <Download size={20} strokeWidth={2.5} />

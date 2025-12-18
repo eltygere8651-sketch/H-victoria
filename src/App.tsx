@@ -118,7 +118,7 @@ const App: React.FC = () => {
   const handleSharePublicAccess = () => {
     const url = new URL(window.location.origin);
     url.searchParams.set('public', 'true');
-    setShareData({ url: url.toString(), title: 'Acceso Público HubOS' });
+    setShareData({ url: url.toString(), title: 'Acceso Público Hub' });
     setShowShareModal(true);
   };
 
