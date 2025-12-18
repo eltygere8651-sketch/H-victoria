@@ -9,7 +9,6 @@ interface OrderPdfDocumentProps {
 
 export const OrderPdfDocument: React.FC<OrderPdfDocumentProps> = ({ order, preview = false }) => {
   // Dimensiones A4 en píxeles a 96 DPI: 794px ancho x 1123px alto.
-  // Usamos 1120px de alto (3px menos) para evitar desbordamiento por redondeo que crea una segunda hoja.
   const A4_WIDTH = '794px';
   const A4_HEIGHT = '1120px'; 
   const PADDING = '40px';
@@ -26,21 +25,21 @@ export const OrderPdfDocument: React.FC<OrderPdfDocumentProps> = ({ order, previ
   const containerStyles: React.CSSProperties = preview ? {
     ...baseStyles,
     width: '100%',
-    minHeight: 'auto', // Changed from 100% to auto to prevent collapse on mobile if parent height is undefined
-    padding: '20px',   // Padding más pequeño para móvil
+    minHeight: 'auto',
+    padding: '20px',
     display: 'flex',
     flexDirection: 'column',
   } : {
     ...baseStyles,
     width: A4_WIDTH,
-    height: A4_HEIGHT, // Altura fija estricta para PDF
+    height: A4_HEIGHT,
     padding: PADDING,
     margin: '0',
     position: 'relative',
-    overflow: 'hidden', // Cortar cualquier desbordamiento
+    overflow: 'hidden',
     display: 'flex',
     flexDirection: 'column',
-    justifyContent: 'space-between' // Asegura que el footer se vaya al final visualmente
+    justifyContent: 'space-between'
   };
 
   return (
@@ -112,7 +111,7 @@ export const OrderPdfDocument: React.FC<OrderPdfDocumentProps> = ({ order, previ
         </div>
       </div>
 
-      {/* Footer & Signatures - Always at bottom in PDF mode */}
+      {/* Footer & Signatures */}
       <div className="break-inside-avoid page-break-inside-avoid mt-auto pt-8">
           <div className={`flex gap-10 mb-6 ${preview ? 'flex-col sm:flex-row gap-8' : ''}`}>
               <div className="flex-1 pt-4 border-t-2 border-dashed border-gray-300">
@@ -128,7 +127,7 @@ export const OrderPdfDocument: React.FC<OrderPdfDocumentProps> = ({ order, previ
               <p>Este documento sirve como comprobante oficial de movimiento de stock interno.</p>
             </div>
             <div className="text-right">
-               <p className="text-[8px] font-black text-gray-300 uppercase tracking-[0.2em]">HUB OS v1.0</p>
+               <p className="text-[8px] font-black text-gray-300 uppercase tracking-[0.2em]">Hub Ecosystem v1.0</p>
             </div>
           </div>
       </div>

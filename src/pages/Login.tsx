@@ -59,7 +59,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
               <div className="p-3.5 bg-white/10 backdrop-blur-2xl rounded-[1.25rem] border border-white/20 shadow-2xl mb-5 group hover:scale-110 transition-transform duration-500">
                 <Logo size="md" />
               </div>
-              <h1 className="text-4xl font-black tracking-tighter text-center mb-1 uppercase italic">Hub</h1>
+              <h1 className="text-5xl font-black tracking-tighter text-center mb-1 uppercase italic">Hub</h1>
               <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-[10px] font-black uppercase tracking-[0.2em] text-red-400">
                 <ShieldCheck size={12} /> Enterprise Secure
               </div>

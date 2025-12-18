@@ -69,10 +69,10 @@ export const GuideModal: React.FC<GuideModalProps> = ({ isOpen, onClose }) => {
                <Logo size="md" />
             </div>
             <h2 className="text-3xl sm:text-4xl font-black tracking-tighter mb-2 leading-none text-white uppercase italic">
-              Plataforma <span className="text-red-500">Hub</span>
+              Hub <span className="text-red-500">Ecosystem</span>
             </h2>
             <p className="text-red-100/70 font-medium text-sm sm:text-base max-w-sm">
-              La inteligencia operativa definitiva para el control total de su organización.
+              La plataforma definitiva para la inteligencia operativa y el control total de su organización.
             </p>
           </div>
         </div>
