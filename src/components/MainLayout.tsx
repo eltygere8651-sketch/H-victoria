@@ -81,6 +81,8 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
   hasUnreadTasks,
   unreadAdminNotificationsCount
 }) => {
+  const hasCartItems = cart.length > 0;
+
   return (
     <div className={`min-h-[100dvh] w-full flex flex-col font-sans transition-colors duration-500 antialiased ${darkMode ? 'dark' : ''} bg-premium overflow-x-hidden`}
       style={{
@@ -90,15 +92,15 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
       }}
     >
       {/* MODERN GLASS HEADER */}
-      <header className="flex-shrink-0 bg-white/70 dark:bg-slate-900/70 backdrop-blur-2xl shadow-sm z-30 p-4 border-b border-slate-100 dark:border-slate-800 transition-all sticky top-0">
-        <div className="flex justify-between items-center max-w-7xl mx-auto w-full">
-          {/* Logo HUB - Llamativo e interactivo para abrir la guía */}
-          <div className="flex items-center gap-3 group cursor-pointer relative" onClick={() => setShowGuideModal(true)}>
+      <header className="flex-shrink-0 bg-white/70 dark:bg-slate-900/70 backdrop-blur-2xl shadow-sm z-30 p-4 border-b border-white/50 dark:border-white/5 transition-all sticky top-0">
+        <div className="flex justify-between items-center max-w-7xl mx-auto w-full gap-4">
+          
+          {/* Logo HUB - Interactivo */}
+          <div className="flex items-center gap-3 group cursor-pointer relative shrink-0" onClick={() => setShowGuideModal(true)}>
             <div className="relative">
-              <div className="p-1.5 bg-red-600 rounded-xl shadow-lg shadow-red-600/20 group-hover:scale-110 transition-transform">
+              <div className="p-1.5 bg-red-600 rounded-xl shadow-lg shadow-red-600/20 group-hover:scale-110 group-active:scale-95 transition-transform duration-300">
                   <Logo size="sm" solid />
               </div>
-              {/* Efecto ping para llamar la atención sobre el logo interactivo */}
               <span className="absolute -top-1 -right-1 flex h-3 w-3">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-3 w-3 bg-blue-500 border-2 border-white dark:border-slate-900"></span>
@@ -106,30 +108,36 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
             </div>
             <div className="flex flex-col">
                 <span className="font-black text-xl text-slate-900 dark:text-white leading-none uppercase tracking-tighter">Hub</span>
-                <span className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-0.5">Enterprise Intelligence</span>
+                <span className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mt-0.5">Ecosystem</span>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            {/* Header Shopping Cart */}
+          <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar py-1">
+            {/* EXCLUSIVE PREMIUM CART BUTTON */}
             {user.role !== UserRole.GUEST && (
               <button
                 onClick={() => { setView('replenish'); setShowMobileCart(true); }}
-                className={`relative p-2.5 rounded-2xl transition-all active:scale-90 flex items-center justify-center border-2 ${cart.length > 0 ? 'bg-red-600 border-red-600 text-white shadow-lg shadow-red-600/20' : 'bg-slate-50 dark:bg-slate-800 border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'}`}
+                className={`
+                  relative h-11 w-11 sm:h-12 sm:w-12 rounded-2xl flex items-center justify-center transition-all duration-500 active:scale-90
+                  ${hasCartItems 
+                    ? 'bg-gradient-to-br from-red-500 to-red-700 text-white shadow-premium-cart animate-cart-pulse' 
+                    : 'bg-slate-100 dark:bg-white/5 text-slate-400 dark:text-slate-500 border border-slate-200 dark:border-white/10'}
+                `}
               >
-                <ShoppingCart size={20} strokeWidth={2.5} />
-                {cart.length > 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-white dark:bg-slate-900 text-red-600 text-[10px] font-black rounded-full flex items-center justify-center border-2 border-red-600 animate-pop-in">
+                <ShoppingCart size={hasCartItems ? 22 : 20} strokeWidth={hasCartItems ? 3 : 2} className={hasCartItems ? 'animate-bounce' : ''} />
+                {hasCartItems && (
+                  <span className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 bg-white dark:bg-slate-900 text-red-600 text-[10px] font-black rounded-full flex items-center justify-center px-1 border-2 border-red-600 animate-pop-in shadow-md">
                     {cart.length}
                   </span>
                 )}
               </button>
             )}
 
+            {/* SECONDARY ACTION BUTTONS - GLASS STYLE */}
             {!isInstalled && (deferredPrompt || isIOS) && (
               <button 
                 onClick={() => isIOS ? setShowIOSPrompt(true) : deferredPrompt.prompt()} 
-                className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 p-2.5 rounded-2xl shadow-lg flex items-center justify-center transition-all active:scale-90"
+                className="h-11 w-11 sm:h-12 sm:w-12 glass-header-button rounded-2xl flex items-center justify-center text-slate-600 dark:text-slate-300"
                 title="Instalar App"
               >
                 <Download size={20} strokeWidth={2.5} />
@@ -137,11 +145,28 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
             )}
 
             {user.role === UserRole.ADMIN && (
-              <button onClick={handleSharePublicAccess} className="p-2.5 bg-slate-50 dark:bg-slate-800 rounded-2xl text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all active:scale-90 shadow-sm"><Share2 size={20} strokeWidth={2.5} /></button>
+              <button 
+                onClick={handleSharePublicAccess} 
+                className="h-11 w-11 sm:h-12 sm:w-12 glass-header-button rounded-2xl flex items-center justify-center text-indigo-600 dark:text-indigo-400"
+                title="Compartir"
+              >
+                <Share2 size={20} strokeWidth={2.5} />
+              </button>
             )}
 
-            <button onClick={() => setDarkMode(!darkMode)} className="p-2.5 bg-slate-50 dark:bg-slate-800 rounded-2xl text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all active:scale-90">{darkMode ? <Sun size={20} strokeWidth={2.5}/> : <Moon size={20} strokeWidth={2.5}/>}</button>
-            <button onClick={handleLogout} className="p-2.5 bg-slate-50 dark:bg-slate-800 rounded-2xl text-slate-400 hover:text-red-600 transition-all active:scale-90"><LogOut size={20} strokeWidth={2.5}/></button>
+            <button 
+              onClick={() => setDarkMode(!darkMode)} 
+              className="h-11 w-11 sm:h-12 sm:w-12 glass-header-button rounded-2xl flex items-center justify-center text-amber-500 dark:text-yellow-400"
+            >
+              {darkMode ? <Sun size={20} strokeWidth={2.5}/> : <Moon size={20} strokeWidth={2.5}/>}
+            </button>
+
+            <button 
+              onClick={handleLogout} 
+              className="h-11 w-11 sm:h-12 sm:w-12 glass-header-button rounded-2xl flex items-center justify-center text-red-500 dark:text-red-400"
+            >
+              <LogOut size={20} strokeWidth={2.5}/>
+            </button>
           </div>
         </div>
       </header>
