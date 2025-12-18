@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Package, ShoppingCart, ClipboardCheck, ShieldCheck, Zap, Smartphone, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { X, Package, ShoppingCart, ClipboardCheck, ShieldCheck, Smartphone, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { Logo } from './Logo';
 
 interface GuideModalProps {
@@ -13,29 +13,29 @@ export const GuideModal: React.FC<GuideModalProps> = ({ isOpen, onClose }) => {
   const solutions = [
     {
       icon: Package,
-      title: "Inventario Pro",
-      desc: "Control de stock inteligente con alertas preventivas de nivel crítico.",
+      title: "Inventario Inteligente",
+      desc: "Monitoreo de stock en tiempo real con algoritmos de alerta predictiva.",
       tag: "Precisión",
       colorClass: "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20",
     },
     {
       icon: ShoppingCart,
-      title: "Logística",
-      desc: "Pedidos internos digitales con generación automática de albaranes.",
+      title: "Logística Digital",
+      desc: "Gestión de pedidos internos con generación automática de albaranes PDF.",
       tag: "Agilidad",
       colorClass: "text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20",
     },
     {
       icon: ClipboardCheck,
-      title: "Tareas Hub",
-      desc: "Gestión operativa con evidencia fotográfica y trazabilidad total.",
+      title: "Gestión Operativa",
+      desc: "Asignación de tareas con evidencia fotográfica y trazabilidad completa.",
       tag: "Control",
       colorClass: "text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20",
     },
     {
       icon: ShieldCheck,
-      title: "Seguridad",
-      desc: "Acceso restringido por PIN y auditoría completa de movimientos.",
+      title: "Seguridad de Datos",
+      desc: "Control de acceso por PIN, roles jerárquicos y auditoría de eventos.",
       tag: "Confianza",
       colorClass: "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20",
     }
@@ -47,10 +47,9 @@ export const GuideModal: React.FC<GuideModalProps> = ({ isOpen, onClose }) => {
         className="bg-white dark:bg-slate-900 w-full max-w-2xl h-[100dvh] sm:h-auto sm:max-h-[90dvh] sm:rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col animate-pop-in border-t border-white/10"
         onClick={e => e.stopPropagation()}
       >
-        {/* Header - Optimized for Logo Visibility */}
+        {/* Header */}
         <div className="relative bg-gradient-to-br from-slate-900 via-red-950 to-red-800 p-8 pt-12 text-white overflow-hidden shrink-0 border-b border-white/5">
-          {/* Subtle decoration that stays visible */}
-          <div className="absolute -top-4 -right-4 opacity-10 rotate-12">
+          <div className="absolute -top-4 -right-4 opacity-10 rotate-12 scale-150">
             <Logo size="xl" solid />
           </div>
           
@@ -66,23 +65,21 @@ export const GuideModal: React.FC<GuideModalProps> = ({ isOpen, onClose }) => {
             <div className="bg-white/10 p-3 rounded-2xl backdrop-blur-md border border-white/20 shadow-2xl mb-6 inline-block">
                <Logo size="md" />
             </div>
-            <h2 className="text-3xl sm:text-4xl font-black tracking-tighter mb-2 leading-none">
-              Ecosistema <span className="text-red-500">Hub</span>
+            <h2 className="text-3xl sm:text-4xl font-black tracking-tighter mb-2 leading-none text-white uppercase italic">
+              Hub <span className="text-red-500">Ecosystem</span>
             </h2>
             <p className="text-red-100/70 font-medium text-sm sm:text-base max-w-sm">
-              La plataforma definitiva para la inteligencia operativa y control total de su negocio.
+              La plataforma definitiva para la inteligencia operativa y el control total de su organización.
             </p>
           </div>
         </div>
 
-        {/* Dynamic Content - Scrollable */}
+        {/* Content */}
         <div className="flex-1 overflow-y-auto p-6 sm:p-8 bg-slate-50 dark:bg-[#0a0f1e] space-y-8">
-          
-          {/* Solutions Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {solutions.map((item, idx) => (
-              <div key={idx} className="bg-white dark:bg-slate-800/50 p-5 rounded-3xl border border-slate-200 dark:border-slate-700/50 shadow-sm flex gap-4 items-start">
-                <div className={`p-3 rounded-2xl shrink-0 ${item.colorClass}`}>
+              <div key={idx} className="bg-white dark:bg-slate-800/50 p-5 rounded-3xl border border-slate-200 dark:border-slate-700/50 shadow-sm flex gap-4 items-start group hover:border-red-500/30 transition-all">
+                <div className={`p-3 rounded-2xl shrink-0 ${item.colorClass} group-hover:scale-110 transition-transform`}>
                   <item.icon size={22} />
                 </div>
                 <div>
@@ -96,22 +93,22 @@ export const GuideModal: React.FC<GuideModalProps> = ({ isOpen, onClose }) => {
             ))}
           </div>
 
-          {/* Installation Pro Section */}
-          <div className="bg-slate-900 rounded-[2rem] p-6 text-white overflow-hidden shadow-xl border border-white/5">
-             <div className="flex flex-col md:flex-row items-center gap-6">
+          {/* Download Tech */}
+          <div className="bg-slate-900 rounded-[2rem] p-6 text-white overflow-hidden shadow-xl border border-white/5 relative">
+             <div className="flex flex-col md:flex-row items-center gap-6 relative z-10">
                 <div className="flex-1 text-center md:text-left">
                    <h5 className="text-xl font-black mb-2 flex items-center justify-center md:justify-start gap-2 text-red-400 uppercase tracking-tight">
                      <Smartphone size={20} /> App Descargable
                    </h5>
                    <p className="text-xs text-slate-300 font-medium mb-4 leading-relaxed">
-                     Para una experiencia óptima, instale Hub en su pantalla de inicio como una aplicación nativa.
+                     Hub utiliza tecnología <strong>PWA</strong>. Instálela para obtener acceso instantáneo y rendimiento nativo.
                    </p>
                    <div className="space-y-2 inline-block text-left">
                       <div className="flex items-center gap-2 text-[11px] font-bold text-slate-400 bg-white/5 p-2 rounded-lg border border-white/5">
-                        <CheckCircle2 size={14} className="text-red-500" /> iOS: Compartir > "Añadir a inicio"
+                        <CheckCircle2 size={14} className="text-red-500" /> iOS: Compartir &gt; "Añadir a inicio"
                       </div>
                       <div className="flex items-center gap-2 text-[11px] font-bold text-slate-400 bg-white/5 p-2 rounded-lg border border-white/5">
-                        <CheckCircle2 size={14} className="text-red-500" /> Android: Menú > "Instalar"
+                        <CheckCircle2 size={14} className="text-red-500" /> Android: Menú &gt; "Instalar"
                       </div>
                    </div>
                 </div>
@@ -127,7 +124,7 @@ export const GuideModal: React.FC<GuideModalProps> = ({ isOpen, onClose }) => {
           </div>
         </div>
         
-        {/* Footer Action */}
+        {/* Footer */}
         <div className="p-6 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 flex justify-center pb-safe">
             <button 
               onClick={onClose}

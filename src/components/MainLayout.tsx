@@ -1,6 +1,6 @@
 import React from 'react';
 import { Logo } from './Logo';
-import { Download, Share, PlusSquare, ShoppingCart, Share2, HelpCircle, Sun, Moon, LogOut, ClipboardCheck, ClipboardList, LayoutGrid, ShieldCheck } from 'lucide-react';
+import { Download, Share2, Sun, Moon, LogOut, ClipboardCheck, ClipboardList, LayoutGrid, ShieldCheck, ShoppingCart } from 'lucide-react';
 import { User, UserRole, CartItem } from '../types';
 
 interface MainLayoutProps {
@@ -23,17 +23,16 @@ interface MainLayoutProps {
   unreadAdminNotificationsCount: number;
 }
 
-// --- Internal Component: NavButton ---
 const NavButton = ({ icon: Icon, label, isActive, onClick, hasAlert = false }: any) => (
   <button 
     onClick={onClick} 
     className={`
-      relative flex items-center justify-center rounded-full transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] overflow-hidden
-      outline-none select-none touch-manipulation active:scale-95 group
-      ${isActive ? 'px-3.5 py-3 gap-1.5' : 'px-1 py-3'} 
+      relative flex items-center justify-center rounded-2xl transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] overflow-hidden
+      outline-none select-none touch-manipulation active:scale-90 group
+      ${isActive ? 'px-4 py-3.5 gap-2' : 'px-1 py-3.5'} 
       ${isActive 
-        ? 'flex-[8] bg-red-600 text-white shadow-neon dark:shadow-red-900/50' 
-        : 'flex-[1] bg-gray-50/80 dark:bg-white/5 hover:bg-gray-100 dark:hover:bg-white/10 text-gray-500 dark:text-slate-400'
+        ? 'flex-[6] bg-red-600 text-white shadow-xl shadow-red-600/30' 
+        : 'flex-[1] bg-transparent hover:bg-slate-100 dark:hover:bg-slate-800/50 text-slate-400 dark:text-slate-500'
       }
     `}
     style={{ WebkitTapHighlightColor: 'transparent' }}
@@ -41,22 +40,22 @@ const NavButton = ({ icon: Icon, label, isActive, onClick, hasAlert = false }: a
     <div className="relative z-10 flex-shrink-0 flex items-center justify-center">
       <Icon 
         size={20} 
-        strokeWidth={2.5} 
-        className={`transition-transform duration-300 ${isActive ? 'scale-100' : 'scale-100 group-hover:scale-110'}`}
+        strokeWidth={isActive ? 3 : 2} 
+        className={`transition-all duration-500 ${isActive ? 'scale-110' : 'scale-100 group-hover:scale-110'}`}
       />
       {hasAlert && !isActive && (
-         <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5 z-20">
+         <span className="absolute -top-1 -right-1 flex h-3 w-3 z-20">
            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-           <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-600 ring-2 ring-white dark:ring-slate-900"></span>
+           <span className="relative inline-flex rounded-full h-3 w-3 bg-red-600 ring-2 ring-white dark:ring-slate-900"></span>
          </span>
       )}
     </div>
     
     <div className={`
-      overflow-hidden transition-all duration-300 ease-out flex items-center justify-center
-      ${isActive ? 'w-auto opacity-100 translate-x-0' : 'w-0 opacity-0 translate-x-4'}
+      overflow-hidden transition-all duration-500 ease-out flex items-center justify-center
+      ${isActive ? 'max-w-[100px] opacity-100' : 'max-w-0 opacity-0'}
     `}>
-      <span className="text-[11px] font-bold leading-tight whitespace-nowrap tracking-wide pt-0.5">
+      <span className="text-[10px] font-black leading-tight whitespace-nowrap uppercase tracking-widest pt-0.5">
         {label}
       </span>
     </div>
@@ -83,95 +82,71 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
   unreadAdminNotificationsCount
 }) => {
   return (
-    <div className={`min-h-[100dvh] w-full flex flex-col font-sans transition-colors duration-300 antialiased ${darkMode ? 'dark' : ''} bg-premium overflow-x-hidden`}
+    <div className={`min-h-[100dvh] w-full flex flex-col font-sans transition-colors duration-500 antialiased ${darkMode ? 'dark' : ''} bg-premium overflow-x-hidden`}
       style={{
         paddingTop: 'env(safe-area-inset-top)',
         paddingLeft: 'env(safe-area-inset-left)',
         paddingRight: 'env(safe-area-inset-right)',
       }}
     >
-      {/* HEADER */}
-      <header className="flex-shrink-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md shadow-sm z-30 p-4 border-b border-gray-100 dark:border-slate-800 transition-colors duration-300 sticky top-0">
+      {/* MODERN GLASS HEADER */}
+      <header className="flex-shrink-0 bg-white/70 dark:bg-slate-900/70 backdrop-blur-2xl shadow-sm z-30 p-4 border-b border-slate-100 dark:border-slate-800 transition-all sticky top-0">
         <div className="flex justify-between items-center max-w-7xl mx-auto w-full">
-          <div className="flex items-center gap-3">
-            <Logo size="sm" />
-            <span className="font-extrabold text-2xl text-gray-900 dark:text-white hidden sm:inline">Hub</span>
-            {user.role === UserRole.GUEST && (
-              <span className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 text-xs px-2 py-1 rounded-full font-bold">Invitado</span>
-            )}
+          <div className="flex items-center gap-3 group cursor-pointer" onClick={() => setShowGuideModal(true)}>
+            <div className="p-1.5 bg-red-600 rounded-xl shadow-lg shadow-red-600/20 group-hover:scale-110 transition-transform">
+                <Logo size="sm" solid />
+            </div>
+            <div className="flex flex-col">
+                <span className="font-black text-xl text-slate-900 dark:text-white leading-none uppercase tracking-tighter">Hub<span className="text-red-600">OS</span></span>
+                <span className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-0.5">Enterprise Intelligence</span>
+            </div>
           </div>
+
           <div className="flex items-center gap-2">
-            
-            {/* Header Cart Button */}
             {user.role !== UserRole.GUEST && (
               <button
-                onClick={() => {
-                  setView('replenish');
-                  setShowMobileCart(true);
-                }}
-                className={`
-                  relative p-3 rounded-full transition-all active:scale-95 flex items-center justify-center mr-2 shadow-sm
-                  ${cart.length > 0 
-                    ? 'bg-red-600 text-white shadow-red-200 dark:shadow-none' 
-                    : 'bg-gray-100/80 dark:bg-slate-800/80 text-gray-500 dark:text-slate-400 hover:bg-gray-200 dark:hover:bg-slate-700'
-                  }
-                `}
-                aria-label="Ver carrito"
+                onClick={() => { setView('replenish'); setShowMobileCart(true); }}
+                className={`relative p-2.5 rounded-2xl transition-all active:scale-90 flex items-center justify-center border-2 ${cart.length > 0 ? 'bg-red-600 border-red-600 text-white shadow-lg shadow-red-600/20' : 'bg-slate-50 dark:bg-slate-800 border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'}`}
               >
                 <ShoppingCart size={20} strokeWidth={2.5} />
                 {cart.length > 0 && (
-                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-white dark:bg-slate-900 text-red-600 dark:text-red-400 text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-red-600 animate-pop-in">
+                  <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-white dark:bg-slate-900 text-red-600 text-[10px] font-black rounded-full flex items-center justify-center border-2 border-red-600 animate-pop-in">
                     {cart.length}
                   </span>
                 )}
               </button>
             )}
 
-            {!isInstalled && deferredPrompt && (
-              <button onClick={async () => deferredPrompt.prompt()} className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 px-3 py-2 rounded-lg font-bold text-sm hidden md:flex items-center gap-2 shadow-sm hover:bg-red-100 dark:hover:bg-red-900/30 active:scale-95"><Download size={16} strokeWidth={2.5} /> Instalar</button>
-            )}
-            {!isInstalled && isIOS && !(window.navigator as any).standalone && (
-                <button onClick={() => setShowIOSPrompt(true)} className="bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 px-3 py-2 rounded-lg font-bold text-sm hidden md:flex items-center gap-2 shadow-sm hover:bg-blue-100 dark:hover:bg-blue-900/30 active:scale-95"><PlusSquare size={16} strokeWidth={2.5} /> Instalar</button>
+            {!isInstalled && (deferredPrompt || isIOS) && (
+              <button 
+                onClick={() => isIOS ? setShowIOSPrompt(true) : deferredPrompt.prompt()} 
+                className="bg-blue-600 hover:bg-blue-700 text-white p-2.5 rounded-2xl shadow-lg shadow-blue-600/20 flex items-center justify-center transition-all active:scale-90"
+                title="Instalar App"
+              >
+                <Download size={20} strokeWidth={2.5} />
+              </button>
             )}
 
             {user.role === UserRole.ADMIN && (
-              <button 
-                onClick={handleSharePublicAccess} 
-                className="p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-full text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 active:scale-95 transition-colors shadow-sm ring-1 ring-indigo-100 dark:ring-indigo-900/30"
-                title="Compartir Acceso"
-              >
-                <Share2 size={20} strokeWidth={2.5} />
-              </button>
+              <button onClick={handleSharePublicAccess} className="p-2.5 bg-slate-50 dark:bg-slate-800 rounded-2xl text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all active:scale-90 shadow-sm"><Share2 size={20} strokeWidth={2.5} /></button>
             )}
 
-             <button 
-                onClick={() => setShowGuideModal(true)} 
-                className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-full text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30 active:scale-95 transition-colors shadow-sm ring-1 ring-blue-100 dark:ring-blue-900/30"
-                title="Guía de Usuario"
-              >
-                <HelpCircle size={20} strokeWidth={2.5} />
-              </button>
-
-            <button onClick={() => setDarkMode(!darkMode)} className="p-3 bg-gray-100/80 dark:bg-slate-800/80 rounded-full text-gray-500 dark:text-slate-400 hover:bg-gray-200 dark:hover:bg-slate-700 active:scale-95 transition-colors">{darkMode ? <Sun size={20} strokeWidth={2.5}/> : <Moon size={20} strokeWidth={2.5}/>}</button>
-            <button onClick={handleLogout} className="p-3 bg-gray-100/80 dark:bg-slate-800/80 rounded-full text-gray-500 dark:text-slate-400 hover:bg-gray-200 dark:hover:bg-slate-700 active:scale-95 transition-colors"><LogOut size={20} strokeWidth={2.5}/></button>
+            <button onClick={() => setDarkMode(!darkMode)} className="p-2.5 bg-slate-50 dark:bg-slate-800 rounded-2xl text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all active:scale-90">{darkMode ? <Sun size={20} strokeWidth={2.5}/> : <Moon size={20} strokeWidth={2.5}/>}</button>
+            <button onClick={handleLogout} className="p-2.5 bg-slate-50 dark:bg-slate-800 rounded-2xl text-slate-400 hover:text-red-600 transition-all active:scale-90"><LogOut size={20} strokeWidth={2.5}/></button>
           </div>
         </div>
       </header>
 
-      {/* MAIN CONTENT */}
-      <main className="flex-1 w-full">
+      <main className="flex-1 w-full pb-32">
         {children}
       </main>
 
-      {/* FLOATING DOCK NAVIGATION */}
-      <div className="fixed bottom-6 inset-x-0 z-20 flex justify-center px-4 pointer-events-none pb-safe">
-        <nav 
-          className="pointer-events-auto bg-white/90 dark:bg-slate-900/90 backdrop-blur-2xl border border-white/40 dark:border-white/10 shadow-dock dark:shadow-dock-dark rounded-full p-1.5 flex items-center justify-between gap-1 w-full max-w-md transition-all duration-300 ring-1 ring-black/5 dark:ring-white/5"
-        >
+      <div className="fixed bottom-6 inset-x-0 z-[45] flex justify-center px-6 pointer-events-none pb-safe">
+        <nav className="pointer-events-auto bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl border border-white dark:border-slate-800 shadow-[0_20px_50px_rgba(0,0,0,0.2)] rounded-[2.5rem] p-1.5 flex items-center justify-between gap-1 w-full max-w-md ring-1 ring-black/5">
             <NavButton icon={ClipboardCheck} label="Tareas" isActive={view === 'tasks'} onClick={() => setView('tasks')} hasAlert={hasUnreadTasks}/>
 
             {user.role !== UserRole.GUEST && (
-              <NavButton icon={ClipboardList} label="Pedido" isActive={view === 'replenish'} onClick={() => setView('replenish')} />
+              <NavButton icon={ClipboardList} label="Pedidos" isActive={view === 'replenish'} onClick={() => setView('replenish')} />
             )}
             
             {user.role === UserRole.ADMIN && <NavButton icon={LayoutGrid} label="Stock" isActive={view === 'inventory'} onClick={() => setView('inventory')} />}

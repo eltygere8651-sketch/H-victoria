@@ -1,56 +1,84 @@
-/* 
-  Estilos globales personalizados.
-  Tailwind se carga via CDN en index.html para asegurar la consistencia del diseño.
-*/
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 :root {
-  --color-premium-light: #ffffff;
-  --color-premium-dark: #0f172a;
+  --hub-red: #dc2626;
+  --hub-red-dark: #991b1b;
+  --hub-slate-bg: #060812;
 }
 
 html, body, #root {
-    height: 100%;
-    overscroll-behavior-y: none; /* Prevents "pull to refresh" effect on mobile */
-    -webkit-text-size-adjust: 100%;
+  height: 100%;
+  overscroll-behavior: none; /* Elimina el rebote elástico del navegador */
+  -webkit-text-size-adjust: 100%;
+  -webkit-font-smoothing: antialiased;
 }
 
 body {
   font-family: 'Poppins', sans-serif;
+  background-color: #f8fafc;
+  color: #0f172a;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
+  overflow-x: hidden;
 }
 
-/* Hide scrollbar but allow scrolling */
-.no-scrollbar::-webkit-scrollbar { display: none; }
-.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+.dark body {
+  background-color: var(--hub-slate-bg);
+  color: #f8fafc;
+}
 
-/* Safe Area Utilities for modern mobile devices */
+/* Scrollbar Minimalista */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+.dark ::-webkit-scrollbar-thumb { background: #1e293b; }
+
+/* Utilidades PWA */
 .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
 .pt-safe { padding-top: env(safe-area-inset-top); }
 
-/* 
-  PREMIUM BACKGROUND TEXTURE
-  Used in App.tsx via 'bg-premium' class
-*/
+/* Fondo Premium con Textura de Grano */
 .bg-premium {
-  background: radial-gradient(circle at 50% 0%, #ffffff 0%, #f3f4f6 100%);
+  background: radial-gradient(circle at 50% 0%, #ffffff 0%, #f1f5f9 100%);
   position: relative;
   z-index: 0;
 }
+
 .dark .bg-premium {
-  background: radial-gradient(circle at 50% 0%, #1e293b 0%, #0a0f1e 100%);
+  background: radial-gradient(circle at 50% 0%, #111827 0%, #060812 100%);
 }
+
 .bg-premium::before {
   content: "";
   position: fixed;
   top: 0; left: 0; width: 100%; height: 100%;
   pointer-events: none; z-index: -1; opacity: 0.03;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='1'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='1'/%3E%3C/svg%3E");
 }
 
-/* Prevent zoom on inputs in iOS */
+/* Evitar zoom automático en iOS */
 @media screen and (max-width: 768px) {
   input, select, textarea { font-size: 16px !important; }
 }
 
-.html2pdf__page-break { page-break-after: always; }
+/* Animaciones */
+@keyframes popIn {
+  0% { transform: scale(0.95) translateY(10px); opacity: 0; }
+  100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+.animate-pop-in { animation: popIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
+.animate-slide-up { animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
