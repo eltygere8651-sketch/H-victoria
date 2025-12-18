@@ -84,15 +84,15 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
   const hasCartItems = cart.length > 0;
 
   return (
-    <div className={`min-h-[100dvh] w-full flex flex-col font-sans transition-colors duration-500 antialiased ${darkMode ? 'dark' : ''} bg-premium overflow-x-hidden`}
-      style={{
-        paddingTop: 'env(safe-area-inset-top)',
-        paddingLeft: 'env(safe-area-inset-left)',
-        paddingRight: 'env(safe-area-inset-right)',
-      }}
+    <div className={`min-h-[100dvh] w-full flex flex-col font-sans transition-colors duration-500 antialiased ${darkMode ? 'dark' : ''} bg-premium overflow-x-hidden relative`}
     >
-      {/* HEADER DE ALTA VISIBILIDAD */}
-      <header className="flex-shrink-0 bg-white/90 dark:bg-slate-900/90 backdrop-blur-3xl shadow-md z-30 p-4 border-b border-slate-200 dark:border-white/5 transition-all sticky top-0">
+      {/* HEADER FIJO (COMO EL DOCK INFERIOR) */}
+      <header 
+        className="fixed top-0 left-0 right-0 bg-white/90 dark:bg-slate-900/95 backdrop-blur-3xl shadow-md z-40 p-4 border-b border-slate-200 dark:border-white/5 transition-all"
+        style={{
+          paddingTop: 'calc(env(safe-area-inset-top) + 1rem)',
+        }}
+      >
         <div className="flex justify-between items-center max-w-7xl mx-auto w-full gap-4">
           
           {/* Logo HUB - Look Modernista */}
@@ -113,7 +113,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3 overflow-x-auto no-scrollbar py-1">
-            {/* BOTÓN CARRITO "LIVING RUBY" - NOTIFICACIÓN VISUAL OPTIMIZADA */}
+            {/* BOTÓN CARRITO "LIVING RUBY" - SIEMPRE ACCESIBLE */}
             {user.role !== UserRole.GUEST && (
               <div className={`cart-neon-container h-12 w-12 sm:h-14 sm:w-14 ${hasCartItems ? 'cart-neon-active' : 'cart-neon-empty'}`}>
                 <button
@@ -134,7 +134,6 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
                     />
                   </div>
 
-                  {/* Notificación LED en lugar de números */}
                   {hasCartItems && (
                     <div className="cart-status-led"></div>
                   )}
@@ -170,10 +169,17 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
         </div>
       </header>
 
-      <main className="flex-1 w-full pb-32">
+      {/* CONTENIDO PRINCIPAL CON PADDING PARA COMPENSAR EL HEADER FIJO */}
+      <main 
+        className="flex-1 w-full pb-32"
+        style={{
+          paddingTop: 'calc(env(safe-area-inset-top) + 5.5rem)', /* 88px aprox + safe area */
+        }}
+      >
         {children}
       </main>
 
+      {/* DOCK INFERIOR FIJO */}
       <div className="fixed bottom-6 inset-x-0 z-[45] flex justify-center px-6 pointer-events-none pb-safe">
         <nav className="pointer-events-auto bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl border border-slate-200 dark:border-slate-800 shadow-[0_20px_50px_rgba(0,0,0,0.25)] rounded-[2.5rem] p-1.5 flex items-center justify-between gap-1 w-full max-w-md ring-1 ring-black/5">
             <NavButton icon={ClipboardCheck} label="Tareas" isActive={view === 'tasks'} onClick={() => setView('tasks')} hasAlert={hasUnreadTasks}/>
