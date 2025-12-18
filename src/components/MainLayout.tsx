@@ -1,6 +1,6 @@
 import React from 'react';
 import { Logo } from './Logo';
-import { Download, Share2, Sun, Moon, LogOut, ClipboardCheck, ClipboardList, LayoutGrid, ShieldCheck, ShoppingCart, HelpCircle } from 'lucide-react';
+import { Download, Share2, Sun, Moon, LogOut, ClipboardCheck, ClipboardList, LayoutGrid, ShieldCheck, ShoppingCart } from 'lucide-react';
 import { User, UserRole, CartItem } from '../types';
 
 interface MainLayoutProps {
@@ -92,9 +92,17 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
       {/* MODERN GLASS HEADER */}
       <header className="flex-shrink-0 bg-white/70 dark:bg-slate-900/70 backdrop-blur-2xl shadow-sm z-30 p-4 border-b border-slate-100 dark:border-slate-800 transition-all sticky top-0">
         <div className="flex justify-between items-center max-w-7xl mx-auto w-full">
-          <div className="flex items-center gap-3 group cursor-pointer" onClick={() => setShowGuideModal(true)}>
-            <div className="p-1.5 bg-red-600 rounded-xl shadow-lg shadow-red-600/20 group-hover:scale-110 transition-transform">
-                <Logo size="sm" solid />
+          {/* Logo HUB - Llamativo e interactivo para abrir la guía */}
+          <div className="flex items-center gap-3 group cursor-pointer relative" onClick={() => setShowGuideModal(true)}>
+            <div className="relative">
+              <div className="p-1.5 bg-red-600 rounded-xl shadow-lg shadow-red-600/20 group-hover:scale-110 transition-transform">
+                  <Logo size="sm" solid />
+              </div>
+              {/* Efecto ping para llamar la atención sobre el logo interactivo */}
+              <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-blue-500 border-2 border-white dark:border-slate-900"></span>
+              </span>
             </div>
             <div className="flex flex-col">
                 <span className="font-black text-xl text-slate-900 dark:text-white leading-none uppercase tracking-tighter">Hub</span>
@@ -103,16 +111,6 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Guide Button - Llamativo e Intuitivo */}
-            <button
-              onClick={() => setShowGuideModal(true)}
-              className="relative p-2.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-2xl hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-all active:scale-90 border border-blue-100 dark:border-blue-800/50"
-              title="Guía de Usuario"
-            >
-              <HelpCircle size={20} strokeWidth={2.5} />
-              <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-ping"></span>
-            </button>
-
             {/* Header Shopping Cart */}
             {user.role !== UserRole.GUEST && (
               <button
