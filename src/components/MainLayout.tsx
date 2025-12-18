@@ -103,7 +103,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
               </div>
               <div className="absolute -top-1 -right-1 flex h-3.5 w-3.5">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-blue-500 border-2 border-white dark:border-slate-900 shadow-sm"></span>
+                <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-blue-500 border-2 border-white dark:border-slate-950 shadow-sm"></span>
               </div>
             </div>
             <div className="flex flex-col">
@@ -113,7 +113,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3 overflow-x-auto no-scrollbar py-1">
-            {/* BOTÓN CARRITO NEO-GLOW: SIEMPRE DESTACA */}
+            {/* BOTÓN CARRITO "LIVING RUBY" - NOTIFICACIÓN VISUAL OPTIMIZADA */}
             {user.role !== UserRole.GUEST && (
               <div className={`cart-neon-container h-12 w-12 sm:h-14 sm:w-14 ${hasCartItems ? 'cart-neon-active' : 'cart-neon-empty'}`}>
                 <button
@@ -128,16 +128,15 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
                       className={`
                         transition-all duration-500
                         ${hasCartItems 
-                          ? 'text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]' 
+                          ? 'text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.4)]' 
                           : 'text-red-500/80 dark:text-red-400/80'}
                       `} 
                     />
                   </div>
 
+                  {/* Notificación LED en lugar de números */}
                   {hasCartItems && (
-                    <span className="cart-badge-jewel animate-pop-elastic">
-                      {cart.length}
-                    </span>
+                    <div className="cart-status-led"></div>
                   )}
                 </button>
               </div>

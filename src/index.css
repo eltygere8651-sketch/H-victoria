@@ -49,70 +49,86 @@ body {
   background: radial-gradient(circle at 50% 0%, #111827 0%, #060812 100%);
 }
 
-/* --- BOTÓN DE CARRITO "CRISTAL RUBÍ" (SIN FONDO NEGRO) --- */
+/* --- BOTÓN DE CARRITO "LIVING RUBY" (SIN NÚMEROS) --- */
 
 .cart-neon-container {
-  @apply relative p-[1.5px] rounded-[1.25rem] transition-all duration-500;
+  @apply relative p-[1.5px] rounded-[1.25rem] transition-all duration-700;
 }
 
-/* Borde de Neón: Mantiene la visibilidad */
 .cart-neon-empty {
-  background: linear-gradient(135deg, rgba(220, 38, 38, 0.4), rgba(220, 38, 38, 0.1), rgba(220, 38, 38, 0.4));
-  box-shadow: 0 4px 15px -5px rgba(220, 38, 38, 0.2);
+  background: linear-gradient(135deg, rgba(220, 38, 38, 0.2), rgba(220, 38, 38, 0.05), rgba(220, 38, 38, 0.2));
+  box-shadow: 0 4px 12px -4px rgba(0, 0, 0, 0.1);
 }
 
 .cart-neon-active {
   background: linear-gradient(135deg, #ff0000, #ff4d4d, #990000);
-  box-shadow: 0 0 20px rgba(220, 38, 38, 0.4);
-  animation: border-rotate 4s linear infinite;
+  box-shadow: 0 0 25px rgba(220, 38, 38, 0.4);
+  animation: cart-cardiac-pulse 2s infinite cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-@keyframes border-rotate {
-  0% { filter: hue-rotate(0deg); }
-  100% { filter: hue-rotate(15deg); }
+@keyframes cart-cardiac-pulse {
+  0% { transform: scale(1); box-shadow: 0 0 15px rgba(220, 38, 38, 0.4); }
+  5% { transform: scale(1.05); box-shadow: 0 0 25px rgba(220, 38, 38, 0.6); }
+  10% { transform: scale(1.02); }
+  15% { transform: scale(1.07); box-shadow: 0 0 30px rgba(220, 38, 38, 0.5); }
+  30% { transform: scale(1); box-shadow: 0 0 15px rgba(220, 38, 38, 0.4); }
+  100% { transform: scale(1); box-shadow: 0 0 15px rgba(220, 38, 38, 0.4); }
 }
 
 .cart-btn-core {
-  @apply h-full w-full rounded-[1.15rem] flex items-center justify-center transition-all duration-500 overflow-hidden relative backdrop-blur-md;
+  @apply h-full w-full rounded-[1.15rem] flex items-center justify-center transition-all duration-700 overflow-hidden relative backdrop-blur-md;
 }
 
-/* Interior del botón cuando está vacío: Cristal traslúcido, NADA de negro */
 .cart-core-empty {
   background: linear-gradient(145deg, rgba(255, 255, 255, 0.4) 0%, rgba(220, 38, 38, 0.05) 100%);
-  border: 1px solid rgba(220, 38, 38, 0.1);
+  border: 1px solid rgba(220, 38, 38, 0.05);
 }
 
 .dark .cart-core-empty {
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.05) 0%, rgba(220, 38, 38, 0.1) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.03) 0%, rgba(220, 38, 38, 0.08) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.03);
 }
 
-/* Interior del botón cuando está activo: Explosión de color (Mantiene el Rubí) */
 .cart-core-active {
   background: linear-gradient(145deg, #ff3b30 0%, #dc2626 45%, #8e0000 100%);
+  background-size: 200% 200%;
+  animation: fluid-bg 4s ease infinite;
 }
 
-/* Reflejo de cristal dinámico mejorado */
+@keyframes fluid-bg {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Micro-LED de Estado */
+.cart-status-led {
+  @apply absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full z-30;
+  background: #ffffff;
+  box-shadow: 
+    0 0 8px #ffffff,
+    0 0 12px rgba(255, 255, 255, 0.8);
+  animation: led-glow 1.5s infinite alternate;
+}
+
+.dark .cart-status-led {
+  background: #facc15; /* Amarillo eléctrico en modo oscuro */
+  box-shadow: 
+    0 0 8px #facc15,
+    0 0 12px rgba(250, 204, 21, 0.6);
+}
+
+@keyframes led-glow {
+  from { opacity: 0.4; transform: scale(0.8); }
+  to { opacity: 1; transform: scale(1.1); }
+}
+
 .glass-flare {
   position: absolute;
   top: -20%; left: -20%; width: 140%; height: 140%;
   background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.4) 0%, transparent 60%);
   pointer-events: none;
   mix-blend-mode: overlay;
-}
-
-/* Badge tipo Joya */
-.cart-badge-jewel {
-  @apply absolute -top-2 -right-2 min-w-[22px] h-[22px] rounded-full flex items-center justify-center text-[10px] font-black border-2 shadow-xl z-30;
-  background: #ffffff;
-  color: #dc2626;
-  border-color: #dc2626;
-}
-
-.dark .cart-badge-jewel {
-  background: #facc15; 
-  color: #000000;
-  border-color: #ffffff;
 }
 
 /* Botones secundarios Titanium */
@@ -123,14 +139,4 @@ body {
 
 .btn-header-action:active {
   @apply scale-90 bg-slate-100 dark:bg-slate-700/60;
-}
-
-@keyframes pop-in-elastic {
-  0% { transform: scale(0); opacity: 0; }
-  70% { transform: scale(1.2); }
-  100% { transform: scale(1); opacity: 1; }
-}
-
-.animate-pop-elastic {
-  animation: pop-in-elastic 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
 }
