@@ -30,16 +30,15 @@ body {
 }
 
 /* Scrollbar Minimalista */
-::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
 .dark ::-webkit-scrollbar-thumb { background: #1e293b; }
 
-/* Utilidades PWA */
 .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
 .pt-safe { padding-top: env(safe-area-inset-top); }
 
-/* Fondo Premium con Textura de Grano */
+/* Fondo Premium */
 .bg-premium {
   background: radial-gradient(circle at 50% 0%, #ffffff 0%, #f1f5f9 100%);
   position: relative;
@@ -50,80 +49,76 @@ body {
   background: radial-gradient(circle at 50% 0%, #111827 0%, #060812 100%);
 }
 
-.bg-premium::before {
-  content: "";
-  position: fixed;
-  top: 0; left: 0; width: 100%; height: 100%;
-  pointer-events: none; z-index: -1; opacity: 0.03;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='1'/%3E%3C/svg%3E");
+/* --- ESTILOS DEL CARRITO PREMIUM --- */
+
+.cart-btn-luxury {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-center: center;
+  transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: visible;
 }
 
-/* --- REDISEÑO BOTÓN PREMIUM --- */
-.cart-button-vibrant {
+/* Efecto de hundimiento al tocar */
+.cart-btn-luxury:active {
+  transform: scale(0.9) translateY(2px);
+}
+
+/* Estado Vacío: "Obsidiana" */
+.cart-luxury-empty {
+  background: linear-gradient(145deg, #1e293b 0%, #0f172a 100%);
+  box-shadow: 
+    0 8px 20px -6px rgba(0, 0, 0, 0.3),
+    inset 0 1px 1px rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Estado Activo: "Rubí Vibrante" */
+.cart-luxury-active {
   background: linear-gradient(135deg, #ff4d4d 0%, #dc2626 50%, #b30000 100%);
   box-shadow: 
-    0 10px 25px -5px rgba(220, 38, 38, 0.5),
-    0 0 15px rgba(220, 38, 38, 0.3),
+    0 12px 24px -6px rgba(220, 38, 38, 0.5),
+    0 0 15px rgba(220, 38, 38, 0.2),
     inset 0 1px 2px rgba(255, 255, 255, 0.4);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  position: relative;
-  overflow: hidden;
 }
 
-.cart-button-vibrant::after {
-  content: '';
+/* Reflejo de cristal superior */
+.glass-shine {
   position: absolute;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
-  background: radial-gradient(circle, rgba(255,255,255,0.2) 0%, transparent 70%);
-  opacity: 0;
-  transition: opacity 0.3s;
+  top: 0; left: 0; width: 100%; height: 50%;
+  background: linear-gradient(to bottom, rgba(255,255,255,0.15) 0%, transparent 100%);
+  pointer-events: none;
+  border-radius: inherit;
 }
 
-.cart-button-vibrant:active::after {
-  opacity: 1;
+/* Animación de Pulso Premium */
+@keyframes cart-pulse-glow {
+  0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.6); transform: scale(1); }
+  50% { box-shadow: 0 0 20px 4px rgba(220, 38, 38, 0.2); transform: scale(1.03); }
+  100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); transform: scale(1); }
 }
 
-.shadow-premium-cart {
-  box-shadow: 0 10px 25px -5px rgba(220, 38, 38, 0.4), 0 0 20px rgba(220, 38, 38, 0.2);
+.animate-luxury-pulse {
+  animation: cart-pulse-glow 3s infinite ease-in-out;
 }
 
-.glass-header-button {
-  @apply bg-white/40 dark:bg-white/5 backdrop-blur-md border border-white/40 dark:border-white/10 shadow-sm transition-all duration-300;
+/* Botones secundarios Titanium */
+.btn-glass-secondary {
+  @apply bg-white/40 dark:bg-white/5 backdrop-blur-xl border border-white/20 dark:border-white/10 shadow-sm transition-all duration-300;
 }
 
-.glass-header-button:active {
+.btn-glass-secondary:active {
   @apply scale-90 bg-white/60 dark:bg-white/10;
 }
 
-/* Animaciones */
-@keyframes popIn {
-  0% { transform: scale(0.95) translateY(10px); opacity: 0; }
-  100% { transform: scale(1) translateY(0); opacity: 1; }
+@keyframes pop-in-elastic {
+  0% { transform: scale(0); opacity: 0; }
+  70% { transform: scale(1.2); }
+  100% { transform: scale(1); opacity: 1; }
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+.animate-pop-elastic {
+  animation: pop-in-elastic 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
 }
-
-@keyframes slideUp {
-  from { transform: translateY(100%); }
-  to { transform: translateY(0); }
-}
-
-@keyframes cart-pulse-premium {
-  0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.6); }
-  70% { box-shadow: 0 0 0 15px rgba(220, 38, 38, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
-}
-
-.animate-cart-pulse {
-  animation: cart-pulse-premium 2s infinite;
-}
-
-.animate-pop-in { animation: popIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-.animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
-.animate-slide-up { animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }

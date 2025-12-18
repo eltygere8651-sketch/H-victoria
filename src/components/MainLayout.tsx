@@ -91,90 +91,90 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
         paddingRight: 'env(safe-area-inset-right)',
       }}
     >
-      {/* MODERN GLASS HEADER */}
-      <header className="flex-shrink-0 bg-white/70 dark:bg-slate-900/70 backdrop-blur-2xl shadow-sm z-30 p-4 border-b border-white/50 dark:border-white/5 transition-all sticky top-0">
+      {/* HEADER DE ALTA GAMA */}
+      <header className="flex-shrink-0 bg-white/70 dark:bg-slate-950/70 backdrop-blur-2xl shadow-sm z-30 p-4 border-b border-slate-200 dark:border-white/5 transition-all sticky top-0">
         <div className="flex justify-between items-center max-w-7xl mx-auto w-full gap-4">
           
-          {/* Logo HUB - Interactivo */}
+          {/* Logo HUB - Dinámico */}
           <div className="flex items-center gap-3 group cursor-pointer relative shrink-0" onClick={() => setShowGuideModal(true)}>
             <div className="relative">
-              <div className="p-1.5 bg-red-600 rounded-xl shadow-lg shadow-red-600/20 group-hover:scale-110 group-active:scale-95 transition-transform duration-300">
+              <div className="p-2 bg-gradient-to-br from-red-500 to-red-700 rounded-2xl shadow-xl shadow-red-600/20 group-hover:scale-110 group-active:scale-95 transition-all duration-500">
                   <Logo size="sm" solid />
               </div>
-              <span className="absolute -top-1 -right-1 flex h-3 w-3">
+              <div className="absolute -top-1 -right-1 flex h-3.5 w-3.5">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-blue-500 border-2 border-white dark:border-slate-900"></span>
-              </span>
+                <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-blue-500 border-2 border-white dark:border-slate-950 shadow-sm"></span>
+              </div>
             </div>
             <div className="flex flex-col">
-                <span className="font-black text-xl text-slate-900 dark:text-white leading-none uppercase tracking-tighter">Hub</span>
-                <span className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mt-0.5">Ecosystem</span>
+                <span className="font-black text-2xl text-slate-900 dark:text-white leading-none uppercase tracking-tighter italic">Hub</span>
+                <span className="text-[7px] font-black text-red-500 dark:text-red-400 uppercase tracking-[0.3em] mt-1 bg-red-50 dark:bg-red-500/10 px-1 rounded">Ecosystem</span>
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar py-1">
-            {/* EXCLUSIVE PREMIUM VIBRANT CART BUTTON */}
+          <div className="flex items-center gap-2 sm:gap-3 overflow-x-auto no-scrollbar py-1">
+            {/* BOTÓN CARRITO LUXURY - SIEMPRE PROFESIONAL */}
             {user.role !== UserRole.GUEST && (
               <button
                 onClick={() => { setView('replenish'); setShowMobileCart(true); }}
                 className={`
-                  relative h-11 w-11 sm:h-12 sm:w-12 rounded-2xl flex items-center justify-center transition-all duration-500 active:scale-95
+                  cart-btn-luxury h-12 w-12 sm:h-14 sm:w-14 rounded-2xl flex items-center justify-center
                   ${hasCartItems 
-                    ? 'cart-button-vibrant animate-cart-pulse scale-105' 
-                    : 'bg-slate-100 dark:bg-white/5 text-slate-400 dark:text-slate-500 border border-slate-200 dark:border-white/10'}
+                    ? 'cart-luxury-active animate-luxury-pulse' 
+                    : 'cart-luxury-empty active:scale-95'}
                 `}
               >
-                <div className="relative z-10">
+                {/* Capa de brillo superior para efecto 3D */}
+                <div className="glass-shine"></div>
+                
+                <div className="relative z-10 transition-transform duration-500 group-hover:scale-110">
                   <ShoppingCart 
-                    size={hasCartItems ? 22 : 20} 
+                    size={hasCartItems ? 24 : 22} 
                     strokeWidth={hasCartItems ? 3 : 2} 
-                    className={`${hasCartItems ? 'text-white drop-shadow-md' : ''}`} 
+                    className={`
+                      transition-all duration-500
+                      ${hasCartItems 
+                        ? 'text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.3)]' 
+                        : 'text-slate-400 dark:text-slate-500'}
+                    `} 
                   />
                 </div>
+
+                {/* Badge rediseñado - Ahora una burbuja real */}
                 {hasCartItems && (
-                  <span className="absolute -top-2 -right-2 min-w-[22px] h-5.5 bg-white dark:bg-slate-900 text-red-600 text-[11px] font-black rounded-full flex items-center justify-center px-1.5 border-2 border-red-500 animate-pop-in shadow-xl z-20">
+                  <span className="absolute -top-1.5 -right-1.5 min-w-[24px] h-6 bg-white dark:bg-slate-950 text-red-600 text-[11px] font-black rounded-full flex items-center justify-center px-1.5 border-2 border-red-500 animate-pop-elastic shadow-xl z-20">
                     {cart.length}
                   </span>
-                )}
-                {/* Glossy Reflection Effect */}
-                {hasCartItems && (
-                  <div className="absolute inset-0 bg-gradient-to-t from-transparent via-white/10 to-white/20 opacity-50 pointer-events-none rounded-2xl"></div>
                 )}
               </button>
             )}
 
-            {/* SECONDARY ACTION BUTTONS - GLASS STYLE */}
+            {/* BOTONES SECUNDARIOS ESTILO TITANIO */}
             {!isInstalled && (deferredPrompt || isIOS) && (
               <button 
                 onClick={() => isIOS ? setShowIOSPrompt(true) : deferredPrompt.prompt()} 
-                className="h-11 w-11 sm:h-12 sm:w-12 glass-header-button rounded-2xl flex items-center justify-center text-slate-600 dark:text-slate-300"
+                className="h-12 w-12 btn-glass-secondary rounded-2xl flex items-center justify-center text-slate-700 dark:text-slate-200"
                 title="Instalar App"
               >
+                <div className="glass-shine"></div>
                 <Download size={20} strokeWidth={2.5} />
               </button>
             )}
 
             {user.role === UserRole.ADMIN && (
-              <button 
-                onClick={handleSharePublicAccess} 
-                className="h-11 w-11 sm:h-12 sm:w-12 glass-header-button rounded-2xl flex items-center justify-center text-indigo-600 dark:text-indigo-400"
-                title="Compartir"
-              >
-                <Share2 size={20} strokeWidth={2.5} />
+              <button onClick={handleSharePublicAccess} className="h-12 w-12 btn-glass-secondary rounded-2xl flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                <div className="glass-shine"></div>
+                <Share2 size={20} strokeWidth={2.5}/>
               </button>
             )}
 
-            <button 
-              onClick={() => setDarkMode(!darkMode)} 
-              className="h-11 w-11 sm:h-12 sm:w-12 glass-header-button rounded-2xl flex items-center justify-center text-amber-500 dark:text-yellow-400"
-            >
+            <button onClick={() => setDarkMode(!darkMode)} className="h-12 w-12 btn-glass-secondary rounded-2xl flex items-center justify-center text-amber-500 dark:text-yellow-400">
+              <div className="glass-shine"></div>
               {darkMode ? <Sun size={20} strokeWidth={2.5}/> : <Moon size={20} strokeWidth={2.5}/>}
             </button>
-
-            <button 
-              onClick={handleLogout} 
-              className="h-11 w-11 sm:h-12 sm:w-12 glass-header-button rounded-2xl flex items-center justify-center text-red-500 dark:text-red-400"
-            >
+            
+            <button onClick={handleLogout} className="h-12 w-12 btn-glass-secondary rounded-2xl flex items-center justify-center text-red-500 dark:text-red-400">
+              <div className="glass-shine"></div>
               <LogOut size={20} strokeWidth={2.5}/>
             </button>
           </div>
@@ -186,7 +186,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
       </main>
 
       <div className="fixed bottom-6 inset-x-0 z-[45] flex justify-center px-6 pointer-events-none pb-safe">
-        <nav className="pointer-events-auto bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl border border-white dark:border-slate-800 shadow-[0_20px_50px_rgba(0,0,0,0.2)] rounded-[2.5rem] p-1.5 flex items-center justify-between gap-1 w-full max-w-md ring-1 ring-black/5">
+        <nav className="pointer-events-auto bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl border border-slate-200 dark:border-slate-800 shadow-[0_20px_50px_rgba(0,0,0,0.25)] rounded-[2.5rem] p-1.5 flex items-center justify-between gap-1 w-full max-w-md ring-1 ring-black/5">
             <NavButton icon={ClipboardCheck} label="Tareas" isActive={view === 'tasks'} onClick={() => setView('tasks')} hasAlert={hasUnreadTasks}/>
 
             {user.role !== UserRole.GUEST && (
