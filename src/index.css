@@ -3,8 +3,8 @@
 @tailwind utilities;
 
 :root {
-  --hub-red: #dc2626;
-  --hub-red-dark: #991b1b;
+  --hub-red: #ff3b30;
+  --hub-red-dark: #8e0000;
   --hub-slate-bg: #060812;
 }
 
@@ -58,7 +58,34 @@ body {
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='1'/%3E%3C/svg%3E");
 }
 
-/* Sombras y Efectos Premium */
+/* --- REDISEÑO BOTÓN PREMIUM --- */
+.cart-button-vibrant {
+  background: linear-gradient(135deg, #ff4d4d 0%, #dc2626 50%, #b30000 100%);
+  box-shadow: 
+    0 10px 25px -5px rgba(220, 38, 38, 0.5),
+    0 0 15px rgba(220, 38, 38, 0.3),
+    inset 0 1px 2px rgba(255, 255, 255, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  position: relative;
+  overflow: hidden;
+}
+
+.cart-button-vibrant::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(255,255,255,0.2) 0%, transparent 70%);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.cart-button-vibrant:active::after {
+  opacity: 1;
+}
+
 .shadow-premium-cart {
   box-shadow: 0 10px 25px -5px rgba(220, 38, 38, 0.4), 0 0 20px rgba(220, 38, 38, 0.2);
 }
@@ -69,11 +96,6 @@ body {
 
 .glass-header-button:active {
   @apply scale-90 bg-white/60 dark:bg-white/10;
-}
-
-/* Evitar zoom automático en iOS */
-@media screen and (max-width: 768px) {
-  input, select, textarea { font-size: 16px !important; }
 }
 
 /* Animaciones */
@@ -92,14 +114,14 @@ body {
   to { transform: translateY(0); }
 }
 
-@keyframes cart-pulse {
-  0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.4); }
-  70% { box-shadow: 0 0 0 10px rgba(220, 38, 38, 0); }
+@keyframes cart-pulse-premium {
+  0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.6); }
+  70% { box-shadow: 0 0 0 15px rgba(220, 38, 38, 0); }
   100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
 }
 
 .animate-cart-pulse {
-  animation: cart-pulse 2s infinite;
+  animation: cart-pulse-premium 2s infinite;
 }
 
 .animate-pop-in { animation: popIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }

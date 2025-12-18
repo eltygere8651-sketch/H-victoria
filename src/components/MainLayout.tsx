@@ -113,22 +113,32 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
           </div>
 
           <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar py-1">
-            {/* EXCLUSIVE PREMIUM CART BUTTON */}
+            {/* EXCLUSIVE PREMIUM VIBRANT CART BUTTON */}
             {user.role !== UserRole.GUEST && (
               <button
                 onClick={() => { setView('replenish'); setShowMobileCart(true); }}
                 className={`
-                  relative h-11 w-11 sm:h-12 sm:w-12 rounded-2xl flex items-center justify-center transition-all duration-500 active:scale-90
+                  relative h-11 w-11 sm:h-12 sm:w-12 rounded-2xl flex items-center justify-center transition-all duration-500 active:scale-95
                   ${hasCartItems 
-                    ? 'bg-gradient-to-br from-red-500 to-red-700 text-white shadow-premium-cart animate-cart-pulse' 
+                    ? 'cart-button-vibrant animate-cart-pulse scale-105' 
                     : 'bg-slate-100 dark:bg-white/5 text-slate-400 dark:text-slate-500 border border-slate-200 dark:border-white/10'}
                 `}
               >
-                <ShoppingCart size={hasCartItems ? 22 : 20} strokeWidth={hasCartItems ? 3 : 2} className={hasCartItems ? 'animate-bounce' : ''} />
+                <div className="relative z-10">
+                  <ShoppingCart 
+                    size={hasCartItems ? 22 : 20} 
+                    strokeWidth={hasCartItems ? 3 : 2} 
+                    className={`${hasCartItems ? 'text-white drop-shadow-md' : ''}`} 
+                  />
+                </div>
                 {hasCartItems && (
-                  <span className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 bg-white dark:bg-slate-900 text-red-600 text-[10px] font-black rounded-full flex items-center justify-center px-1 border-2 border-red-600 animate-pop-in shadow-md">
+                  <span className="absolute -top-2 -right-2 min-w-[22px] h-5.5 bg-white dark:bg-slate-900 text-red-600 text-[11px] font-black rounded-full flex items-center justify-center px-1.5 border-2 border-red-500 animate-pop-in shadow-xl z-20">
                     {cart.length}
                   </span>
+                )}
+                {/* Glossy Reflection Effect */}
+                {hasCartItems && (
+                  <div className="absolute inset-0 bg-gradient-to-t from-transparent via-white/10 to-white/20 opacity-50 pointer-events-none rounded-2xl"></div>
                 )}
               </button>
             )}
