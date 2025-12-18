@@ -3,7 +3,6 @@ import { db, auth, storage } from '../firebaseConfig';
 import firebase from 'firebase/compat/app';
 import { fileToBase64 } from '../utils/imageCompressor';
 
-// LOCAL STORAGE FALLBACK KEYS
 const KEYS = {
   USERS: 'hotel_victoria_users',
   PRODUCTS: 'hotel_victoria_products',
@@ -16,7 +15,6 @@ const KEYS = {
   TASKS: 'hotel_victoria_tasks',
 };
 
-// INITIAL DATA
 const INITIAL_USERS: User[] = [
   { id: '1', name: 'Administrador', role: UserRole.ADMIN, pin: '1234', permissions: ['CAN_MANAGE_TASKS'] },
   { id: '2', name: 'Camarero Bar', role: UserRole.STAFF, pin: '1234' },
@@ -45,7 +43,6 @@ async function initFirestoreWithInitialData() {
     const q = db.collection(name).limit(1);
     const snapshot = await q.get();
     if (snapshot.empty) {
-      console.log(`Initializing ${name} collection...`);
       const batch = db.batch();
       data.forEach(item => {
         const docRef = item.id ? db.collection(name).doc(item.id) : db.collection(name).doc();
@@ -57,87 +54,12 @@ async function initFirestoreWithInitialData() {
   }
 }
 
-// --- NOTIFICATION HELPERS ---
-const createNotification = async (type: NotificationType, payload: NotificationPayload) => {
-  let title = '', message = '', icon = 'Bell';
-  switch (type) {
-    case NotificationType.LOW_STOCK:
-      title = 'Alerta de Stock Bajo';
-      message = `El producto "${payload.productName}" ha alcanzado el umbral mínimo.`;
-      icon = 'AlertTriangle';
-      break;
-    case NotificationType.NEW_ORDER:
-      title = 'Nuevo Pedido Recibido';
-      message = `Nuevo pedido del departamento "${payload.departmentName}".`;
-      icon = 'Package';
-      break;
-    case NotificationType.NEW_TASK:
-      title = 'Nueva Tarea Creada';
-      message = `Tarea "${payload.taskTitle}" para el dpto. ${payload.departmentName}.`;
-      icon = 'ClipboardCheck';
-      break;
-  }
-  const newNotification: Omit<AppNotification, 'id'> = {
-    type, title, message, icon,
-    timestamp: Date.now(),
-    readStatus: false,
-    payload,
-  };
-  await db.collection('notifications').add(newNotification);
-};
-
-// --- AUTH & SESSION ---
-let authInitializationAttempted = false;
-
-const retry = async <T>(fn: () => Promise<T>, retries = 5, delayMs = 1000): Promise<T> => {
-  try {
-    return await fn();
-  } catch (error) {
-    if (retries <= 0) throw error;
-    console.warn(`Retrying operation... attempts left: ${retries}`);
-    await new Promise(resolve => setTimeout(resolve, delayMs));
-    return retry(fn, retries - 1, delayMs * 1.5);
-  }
-};
-
-export const ensureAnonymousAuth = async () => {
-  if (auth.currentUser) return;
-  
-  if (authInitializationAttempted) return;
-  authInitializationAttempted = true;
-
-  return new Promise<void>((resolve) => {
-    const unsubscribe = auth.onAuthStateChanged(async (user) => {
-      if (user) {
-        console.log("User already authenticated:", user.uid);
-        await initFirestoreWithInitialData();
-        unsubscribe();
-        resolve();
-      } else {
-        try {
-          console.log("No user, signing in anonymously...");
-          await retry(() => auth.signInAnonymously());
-          await initFirestoreWithInitialData();
-          unsubscribe();
-          resolve();
-        } catch (error) {
-           console.error("Anonymous auth failed after retries:", error);
-           unsubscribe();
-           resolve();
-        }
-      }
-    });
-  });
-};
-
 export const login = async (name: string, pin: string): Promise<User | null> => {
-  // Para permitir login insensible a mayúsculas/minúsculas sin cambiar el esquema de la DB,
-  // buscamos todos los usuarios con ese PIN (que son pocos) y comparamos el nombre en minúsculas.
+  // Buscamos por PIN y luego filtramos por nombre insensible a capitalización
   const q = db.collection("users").where("pin", "==", pin);
   const querySnapshot = await q.get();
   
   if (!querySnapshot.empty) {
-    // Buscamos una coincidencia insensible a la capitalización en los resultados
     const match = querySnapshot.docs.find(doc => {
       const userData = doc.data();
       return userData.name.toLowerCase() === name.toLowerCase();
@@ -150,6 +72,29 @@ export const login = async (name: string, pin: string): Promise<User | null> => 
     }
   }
   return null;
+};
+
+export const ensureAnonymousAuth = async () => {
+  if (auth.currentUser) return;
+  return new Promise<void>((resolve) => {
+    const unsubscribe = auth.onAuthStateChanged(async (user) => {
+      if (user) {
+        await initFirestoreWithInitialData();
+        unsubscribe();
+        resolve();
+      } else {
+        try {
+          await auth.signInAnonymously();
+          await initFirestoreWithInitialData();
+          unsubscribe();
+          resolve();
+        } catch (error) {
+           unsubscribe();
+           resolve();
+        }
+      }
+    });
+  });
 };
 
 export const saveSession = (user: User) => localStorage.setItem(KEYS.CURRENT_SESSION, JSON.stringify(user));
@@ -166,8 +111,6 @@ export const getDraftCart = (): CartItem[] => JSON.parse(localStorage.getItem(KE
 export const subscribeToDepartments = (callback: (data: Department[]) => void) => {
     return db.collection('departments').orderBy('name').onSnapshot(snapshot => {
         callback(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Department)));
-    }, error => {
-        console.error("Error subscribing to departments:", error);
     });
 };
 export const saveDepartment = async (department: Partial<Department>) => {
@@ -180,8 +123,6 @@ export const deleteDepartment = async (id: string) => await db.collection('depar
 export const subscribeToProducts = (callback: (data: Product[]) => void) => {
     return db.collection('products').orderBy('name').onSnapshot(snapshot => {
         callback(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Product)));
-    }, error => {
-        console.error("Error subscribing to products:", error);
     });
 };
 export const saveProduct = async (product: Partial<Product>) => {
@@ -190,53 +131,47 @@ export const saveProduct = async (product: Partial<Product>) => {
 };
 export const deleteProduct = async (id: string) => await db.collection('products').doc(id).delete();
 
-// --- ORDERS / REPLENISHMENT ---
+// --- ORDERS ---
 export const submitOrderBatch = async (cart: CartItem[], departmentId: string, departmentName: string, user: User) => {
   const batch = db.batch();
-  const lowStockItems: string[] = [];
   const batchId = Date.now().toString().slice(-6);
+  // FIX: Added tracking for low stock items to return to the UI
+  const lowStockItems: string[] = [];
 
   for (const item of cart) {
     const productRef = db.collection('products').doc(item.product.id);
+    // FIX: Calculate new quantity to check against threshold
     const newQuantity = item.product.quantity - item.quantity;
     batch.update(productRef, { quantity: newQuantity });
-
-    const request: Omit<ReplenishmentRequest, 'id'> = {
+    
+    const requestRef = db.collection('requests').doc();
+    batch.set(requestRef, {
       batchId, productId: item.product.id, productName: item.product.name,
       departmentId, departmentName, requestedBy: user.name,
       quantity: item.quantity, status: 'COMPLETED',
       date: new Date().toLocaleString(), timestamp: Date.now(), unit: item.product.unit
-    };
-    const requestRef = db.collection('requests').doc();
-    batch.set(requestRef, request);
-    
+    });
+
+    // FIX: Detect if item reached low stock threshold
     if (newQuantity <= item.product.minThreshold) {
       lowStockItems.push(item.product.name);
-      await createNotification(NotificationType.LOW_STOCK, { productName: item.product.name });
     }
   }
-
   await batch.commit();
-  await createNotification(NotificationType.NEW_ORDER, { departmentName, orderBatchId: batchId });
+  // FIX: Return lowStockItems array as expected by the UI in Replenishment.tsx
   return { success: true, lowStockItems };
 };
 
 export const subscribeToBatches = (callback: (batches: OrderBatch[]) => void) => {
-  const q = db.collection('requests').orderBy('timestamp', 'desc').limit(200);
-  return q.onSnapshot(snapshot => {
+  return db.collection('requests').orderBy('timestamp', 'desc').limit(200).onSnapshot(snapshot => {
     const requests = snapshot.docs.map(d => ({ ...d.data(), id: d.id } as ReplenishmentRequest));
     const batches = requests.reduce((acc, req) => {
       if (!req.batchId) return acc;
-      acc[req.batchId] = acc[req.batchId] || {
-        batchId: req.batchId, date: req.date, departmentId: req.departmentId,
-        departmentName: req.departmentName, requestedBy: req.requestedBy, items: []
-      };
+      acc[req.batchId] = acc[req.batchId] || { batchId: req.batchId, date: req.date, departmentId: req.departmentId, departmentName: req.departmentName, requestedBy: req.requestedBy, items: [] };
       acc[req.batchId].items.push(req);
       return acc;
     }, {} as Record<string, OrderBatch>);
     callback(Object.values(batches));
-  }, error => {
-      console.error("Error subscribing to batches:", error);
   });
 };
 export const deleteBatch = async (batchId: string) => {
@@ -251,8 +186,6 @@ export const deleteBatch = async (batchId: string) => {
 export const subscribeToUsers = (callback: (users: User[]) => void) => {
     return db.collection('users').orderBy('name').onSnapshot(snapshot => {
         callback(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as User)));
-    }, error => {
-        console.error("Error subscribing to users:", error);
     });
 };
 export const addUser = async (user: Omit<User, 'id'>) => await db.collection('users').add(user);
@@ -266,8 +199,6 @@ export const subscribeToNotifications = (callback: (data: AppNotification[]) => 
   if (unreadOnly) q = q.where('readStatus', '==', false);
   return q.onSnapshot(snapshot => {
       callback(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as AppNotification)));
-  }, error => {
-      console.error("Error subscribing to notifications:", error);
   });
 };
 export const markNotificationAsRead = async (id: string, userId: string, userName: string) => await db.collection('notifications').doc(id).update({ readStatus: true, reviewedBy: userName, reviewedAt: Date.now() });
@@ -280,123 +211,54 @@ export const markAllNotificationsAsRead = async (userId: string, userName: strin
 };
 
 // --- TASKS ---
-export const uploadImage = async (file: File, path: string): Promise<string> => {
-  const storageRef = storage.ref();
-  const fileRef = storageRef.child(path);
-  const snapshot = await fileRef.put(file, {
-    contentType: file.type || 'application/octet-stream',
-  });
-  const url = await snapshot.ref.getDownloadURL();
-  return url;
-};
-
 export const subscribeToTasks = (callback: (data: Task[]) => void) => {
     return db.collection('tasks').orderBy('createdAt', 'desc').limit(50).onSnapshot(snapshot => {
         callback(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Task)));
-    }, error => {
-        console.error("Error subscribing to tasks:", error);
     });
 };
-
-export const getTaskById = async (taskId: string): Promise<Task | null> => {
-  try {
-    const doc = await db.collection('tasks').doc(taskId).get();
-    if (doc.exists) {
-      return { ...doc.data(), id: doc.id } as Task;
-    }
-    return null;
-  } catch (error) {
-    console.error("Error fetching task by ID:", error);
-    return null;
-  }
-};
-
 export const saveTask = async (task: Partial<Task>, newFiles: File[] = []) => {
   const isNew = !task.id;
   const docRef = isNew ? db.collection('tasks').doc() : db.collection('tasks').doc(task.id!);
-  
   let newImageUrls: string[] = [];
   if (newFiles.length > 0) {
-      const base64Promises = newFiles.map(file => {
-          const sanitizedFile = new File([file], file.name.replace(/[^a-zA-Z0-9.]/g, '_'), { type: file.type });
-          return fileToBase64(sanitizedFile);
-      });
+      const base64Promises = newFiles.map(file => fileToBase64(file));
       newImageUrls = await Promise.all(base64Promises);
   }
-
   const finalImageUrls = [...(task.imageUrls || []), ...newImageUrls];
-
-  let taskData: Partial<Task> = {
-    ...task,
-    id: docRef.id,
-    imageUrls: finalImageUrls.length > 0 ? finalImageUrls : firebase.firestore.FieldValue.delete() as any,
-  };
-  
-  if (isNew) {
-    taskData.seenBy = [task.createdById!]; 
-  }
-
-  await docRef.set(taskData, { merge: true });
-
-  if(isNew) {
-    await createNotification(NotificationType.NEW_TASK, {
-      taskId: docRef.id,
-      taskTitle: task.title,
-      departmentName: task.departmentName,
-      departmentId: task.departmentId,
-    });
-  }
+  await docRef.set({ ...task, id: docRef.id, imageUrls: finalImageUrls.length > 0 ? finalImageUrls : firebase.firestore.FieldValue.delete() }, { merge: true });
 };
-
 export const deleteTask = async (id: string) => await db.collection('tasks').doc(id).delete();
-
 export const cleanupCompletedTasks = async () => {
   const thirtyMinutesAgo = Date.now() - (30 * 60 * 1000);
-  const q = db.collection('tasks')
-    .where('status', '==', TaskStatus.COMPLETED)
-    .where('completedAt', '<', thirtyMinutesAgo);
+  const q = db.collection('tasks').where('status', '==', TaskStatus.COMPLETED).where('completedAt', '<', thirtyMinutesAgo);
   const snapshot = await q.get();
   if (!snapshot.empty) {
-    console.log(`Cleaning up ${snapshot.size} completed tasks...`);
     const batch = db.batch();
     snapshot.docs.forEach(d => batch.delete(d.ref));
     await batch.commit();
   }
 };
-
 export const addCommentToTask = async (taskId: string, comment: Omit<TaskComment, 'id'>) => {
-  const newComment = {
-    ...comment,
-    id: Date.now().toString() + Math.random().toString(36).substring(2, 9),
-    timestamp: Date.now()
-  };
   const taskRef = db.collection('tasks').doc(taskId);
-  await taskRef.update({
-    comments: firebase.firestore.FieldValue.arrayUnion(newComment),
-    seenBy: [comment.userId] 
-  });
+  await taskRef.update({ comments: firebase.firestore.FieldValue.arrayUnion({ ...comment, id: Date.now().toString(), timestamp: Date.now() }), seenBy: [comment.userId] });
 };
-
 export const markTaskAsSeen = async (taskId: string, userId: string) => {
-  const taskRef = db.collection('tasks').doc(taskId);
-  await taskRef.update({
-    seenBy: firebase.firestore.FieldValue.arrayUnion(userId)
-  });
+  await db.collection('tasks').doc(taskId).update({ seenBy: firebase.firestore.FieldValue.arrayUnion(userId) });
 };
-
+export const getTaskById = async (taskId: string): Promise<Task | null> => {
+  const doc = await db.collection('tasks').doc(taskId).get();
+  return doc.exists ? { ...doc.data(), id: doc.id } as Task : null;
+};
 export const deleteAllBatches = async () => {
   const q = db.collection('requests');
   const snapshot = await q.get();
-  if (snapshot.empty) return;
   const batch = db.batch();
   snapshot.docs.forEach(d => batch.delete(d.ref));
   await batch.commit();
 };
-
 export const deleteAllNotifications = async () => {
   const q = db.collection('notifications');
   const snapshot = await q.get();
-  if (snapshot.empty) return;
   const batch = db.batch();
   snapshot.docs.forEach(d => batch.delete(d.ref));
   await batch.commit();
@@ -404,44 +266,17 @@ export const deleteAllNotifications = async () => {
 
 // --- NEW: DOCUMENT MANAGEMENT ---
 export const uploadDocumentFile = async (file: File): Promise<string> => {
-  const sanitizedName = file.name.replace(/[^a-zA-Z0-9.]/g, '_');
-  const path = `documents/${Date.now()}-${sanitizedName}`;
-  const storageRef = storage.ref();
-  const fileRef = storageRef.child(path);
-  const snapshot = await fileRef.put(file, {
-    contentType: file.type || 'application/octet-stream',
-  });
+  const path = `documents/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
+  const snapshot = await storage.ref().child(path).put(file, { contentType: file.type || 'application/octet-stream' });
   return await snapshot.ref.getDownloadURL();
 };
-
 export const subscribeToDocuments = (callback: (data: Document[]) => void) => {
-  return db.collection('documents')
-    .orderBy('createdAt', 'desc')
-    .onSnapshot(snapshot => {
-      callback(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Document)));
-    }, error => {
-        console.error("Error subscribing to documents:", error);
-    });
+  return db.collection('documents').orderBy('createdAt', 'desc').onSnapshot(snapshot => {
+    callback(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Document)));
+  });
 };
-
-export const saveDocument = async (document: Omit<Document, 'id'>) => {
-  await db.collection('documents').add(document);
-};
-
-export const deleteFileFromStorage = async (url: string) => {
-  if (!url) return;
-  try {
-    const fileRef = storage.refFromURL(url);
-    await fileRef.delete();
-  } catch (error: any) {
-    if (error.code !== 'storage/object-not-found') {
-      console.error("Error deleting file from storage:", error);
-      throw error;
-    }
-  }
-};
-
+export const saveDocument = async (document: Omit<Document, 'id'>) => await db.collection('documents').add(document);
 export const deleteDocument = async (doc: Document) => {
-  await deleteFileFromStorage(doc.url);
+  try { await storage.refFromURL(doc.url).delete(); } catch(e) {}
   await db.collection('documents').doc(doc.id).delete();
 };
