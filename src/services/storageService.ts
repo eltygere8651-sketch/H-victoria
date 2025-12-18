@@ -131,15 +131,27 @@ export const ensureAnonymousAuth = async () => {
 };
 
 export const login = async (name: string, pin: string): Promise<User | null> => {
-  const q = db.collection("users").where("name", "==", name).where("pin", "==", pin);
+  // Para permitir login insensible a mayúsculas/minúsculas sin cambiar el esquema de la DB,
+  // buscamos todos los usuarios con ese PIN (que son pocos) y comparamos el nombre en minúsculas.
+  const q = db.collection("users").where("pin", "==", pin);
   const querySnapshot = await q.get();
+  
   if (!querySnapshot.empty) {
-    const user = { ...querySnapshot.docs[0].data(), id: querySnapshot.docs[0].id } as User;
-    saveSession(user);
-    return user;
+    // Buscamos una coincidencia insensible a la capitalización en los resultados
+    const match = querySnapshot.docs.find(doc => {
+      const userData = doc.data();
+      return userData.name.toLowerCase() === name.toLowerCase();
+    });
+
+    if (match) {
+      const user = { ...match.data(), id: match.id } as User;
+      saveSession(user);
+      return user;
+    }
   }
   return null;
 };
+
 export const saveSession = (user: User) => localStorage.setItem(KEYS.CURRENT_SESSION, JSON.stringify(user));
 export const getSession = (): User | null => JSON.parse(localStorage.getItem(KEYS.CURRENT_SESSION) || 'null');
 export const clearSession = () => localStorage.removeItem(KEYS.CURRENT_SESSION);
