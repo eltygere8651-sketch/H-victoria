@@ -59,7 +59,14 @@ const App: React.FC = () => {
       const shareId = searchParams.get('shareId');
       const publicMode = searchParams.get('public');
       if (shareId) setSharedTaskId(shareId);
-      await storageService.ensureAnonymousAuth();
+      
+      // Artificial delay for splash screen visibility (optional, improves perceived quality)
+      const minSplashTime = new Promise(resolve => setTimeout(resolve, 2000));
+      
+      const authPromise = storageService.ensureAnonymousAuth();
+      
+      await Promise.all([authPromise, minSplashTime]);
+
       if (publicMode === 'true' && !storageService.getSession()) {
         const guestUser: User = { id: 'guest-' + Date.now(), name: 'Invitado', role: UserRole.GUEST, pin: '' };
         setUser(guestUser);
@@ -132,7 +139,38 @@ const App: React.FC = () => {
     displayedToastIds.current.delete(id);
   };
 
-  if (isInitializing) return <div className="flex h-screen items-center justify-center bg-premium"><Logo size="lg" className="animate-pulse" /></div>;
+  // --- SPLASH SCREEN (Pantalla de Carga) ---
+  if (isInitializing) {
+    return (
+      <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-slate-50 dark:bg-[#060812] transition-colors duration-500 overflow-hidden">
+        {/* Background Gradients */}
+        <div className="absolute top-[-20%] left-[-20%] w-[80%] h-[80%] bg-red-600/5 dark:bg-red-600/10 rounded-full blur-[150px] animate-pulse"></div>
+        <div className="absolute bottom-[-20%] right-[-20%] w-[80%] h-[80%] bg-slate-400/5 dark:bg-slate-700/5 rounded-full blur-[150px] animate-pulse" style={{ animationDelay: '1.5s' }}></div>
+
+        <div className="relative z-10 flex flex-col items-center animate-pop-in">
+          {/* Logo Container with Glass Effect */}
+          <div className="p-10 bg-white/40 dark:bg-white/5 rounded-[3rem] backdrop-blur-2xl border border-white/50 dark:border-white/10 shadow-2xl mb-8 relative">
+             <div className="absolute inset-0 bg-white/20 dark:bg-white/5 rounded-[3rem] blur-xl -z-10"></div>
+             {/* AQUÍ ESTÁ EL CAMBIO PRINCIPAL: Animated = True */}
+             <Logo size="2xl" animated={true} />
+          </div>
+          
+          <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter uppercase italic mb-2 drop-shadow-sm animate-fade-in">Hub</h1>
+          
+          <div className="flex items-center gap-2 mt-4">
+             <div className="w-2.5 h-2.5 bg-red-600 rounded-full animate-bounce" style={{ animationDelay: '0s' }}></div>
+             <div className="w-2.5 h-2.5 bg-red-600 rounded-full animate-bounce" style={{ animationDelay: '0.15s' }}></div>
+             <div className="w-2.5 h-2.5 bg-red-600 rounded-full animate-bounce" style={{ animationDelay: '0.3s' }}></div>
+          </div>
+          
+          <p className="absolute bottom-10 text-[10px] font-bold text-slate-400 dark:text-slate-600 uppercase tracking-[0.3em] animate-fade-in">
+            Cargando Sistema...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   if (sharedTaskId) return <PublicTaskViewer taskId={sharedTaskId} />;
   if (!user) return <Login onLogin={handleLogin} />;
 

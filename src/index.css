@@ -49,7 +49,45 @@ body {
   background: radial-gradient(circle at 50% 0%, #111827 0%, #060812 100%);
 }
 
-/* --- BOTÓN DE CARRITO "LIVING RUBY" (SIN NÚMEROS) --- */
+.bg-premium::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: -1;
+  opacity: 0.04;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='1'/%3E%3C/svg%3E");
+}
+
+.dark .bg-premium::before {
+  opacity: 0.06;
+}
+
+/* --- ANIMACIONES DE LOGO --- */
+
+@keyframes logo-float {
+  0%, 100% { transform: translateY(0px); filter: drop-shadow(0 10px 15px rgba(220, 38, 38, 0.3)); }
+  50% { transform: translateY(-8px); filter: drop-shadow(0 20px 25px rgba(220, 38, 38, 0.4)); }
+}
+
+.animate-logo-float {
+  animation: logo-float 4s ease-in-out infinite;
+}
+
+@keyframes logo-breathe {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.85; transform: scale(0.98); }
+}
+
+.animate-logo-breathe {
+  animation: logo-breathe 3s ease-in-out infinite;
+  transform-origin: center;
+}
+
+/* --- BOTÓN DE CARRITO --- */
 
 .cart-neon-container {
   @apply relative p-[1.5px] rounded-[1.25rem] transition-all duration-700;
@@ -101,7 +139,6 @@ body {
   100% { background-position: 0% 50%; }
 }
 
-/* Micro-LED de Estado */
 .cart-status-led {
   @apply absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full z-30;
   background: #ffffff;
@@ -112,7 +149,7 @@ body {
 }
 
 .dark .cart-status-led {
-  background: #facc15; /* Amarillo eléctrico en modo oscuro */
+  background: #facc15;
   box-shadow: 
     0 0 8px #facc15,
     0 0 12px rgba(250, 204, 21, 0.6);
@@ -123,15 +160,6 @@ body {
   to { opacity: 1; transform: scale(1.1); }
 }
 
-.glass-flare {
-  position: absolute;
-  top: -20%; left: -20%; width: 140%; height: 140%;
-  background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.4) 0%, transparent 60%);
-  pointer-events: none;
-  mix-blend-mode: overlay;
-}
-
-/* Botones secundarios Titanium */
 .btn-header-action {
   @apply h-12 w-12 rounded-2xl flex items-center justify-center transition-all duration-300 border;
   @apply bg-white/80 dark:bg-slate-800/40 backdrop-blur-xl border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 shadow-sm;
@@ -139,4 +167,10 @@ body {
 
 .btn-header-action:active {
   @apply scale-90 bg-slate-100 dark:bg-slate-700/60;
+}
+
+@media screen and (max-width: 768px) {
+  input, select, textarea {
+    font-size: 16px !important;
+  }
 }

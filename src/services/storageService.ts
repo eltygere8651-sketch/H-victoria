@@ -18,24 +18,27 @@ const KEYS = {
 const INITIAL_USERS: User[] = [
   { id: '1', name: 'Administrador', role: UserRole.ADMIN, pin: '1234', permissions: ['CAN_MANAGE_TASKS'] },
   { id: '2', name: 'Camarero Bar', role: UserRole.STAFF, pin: '1234' },
-  { id: '3', name: 'Chef Cocina', role: UserRole.STAFF, pin: '1234' }
+  { id: '3', name: 'Chef Restaurante', role: UserRole.STAFF, pin: '1234' }
 ];
+
+// Updated Departments: Only Bar and Restaurante are allowed by default
 const INITIAL_DEPARTMENTS: Department[] = [
   { id: 'd-bar', name: 'Bar' },
-  { id: 'd-cocina', name: 'Cocina' },
-  { id: 'd-limpieza', name: 'Limpieza' }
+  { id: 'd-restaurante', name: 'Restaurante' }
 ];
+
+// Updated Products to match the specific departments
 const INITIAL_PRODUCTS: Product[] = [
   { id: 'p1', name: 'Coca Cola', category: 'Bebidas', quantity: 24, unit: 'latas', minThreshold: 12, departmentId: 'd-bar', departmentName: 'Bar' },
   { id: 'p2', name: 'Agua Mineral', category: 'Bebidas', quantity: 48, unit: 'botellas', minThreshold: 24, departmentId: 'd-bar', departmentName: 'Bar' },
-  { id: 'p3', name: 'Harina de Trigo', category: 'Secos', quantity: 15, unit: 'kg', minThreshold: 5, departmentId: 'd-cocina', departmentName: 'Cocina' },
-  { id: 'p4', name: 'Lejía', category: 'Limpieza', quantity: 10, unit: 'litros', minThreshold: 4, departmentId: 'd-limpieza', departmentName: 'Limpieza' },
+  { id: 'p3', name: 'Harina de Trigo', category: 'Secos', quantity: 15, unit: 'kg', minThreshold: 5, departmentId: 'd-restaurante', departmentName: 'Restaurante' },
+  { id: 'p4', name: 'Aceite de Oliva', category: 'Cocina', quantity: 10, unit: 'litros', minThreshold: 4, departmentId: 'd-restaurante', departmentName: 'Restaurante' },
 ];
 
 async function initFirestoreWithInitialData() {
+  // 1. Initialize Users and Products (Only if empty)
   const collectionsToInit = [
     { name: 'users', data: INITIAL_USERS, key: KEYS.USERS },
-    { name: 'departments', data: INITIAL_DEPARTMENTS, key: KEYS.DEPARTMENTS },
     { name: 'products', data: INITIAL_PRODUCTS, key: KEYS.PRODUCTS },
   ];
 
@@ -52,10 +55,32 @@ async function initFirestoreWithInitialData() {
       localStorage.setItem(key, JSON.stringify(data));
     }
   }
+
+  // 2. STRICT SYNC FOR DEPARTMENTS
+  // This logic forces the database to match INITIAL_DEPARTMENTS exactly.
+  // It deletes any department not in the list and creates/updates the allowed ones.
+  const deptSnapshot = await db.collection('departments').get();
+  const deptBatch = db.batch();
+  const validDeptIds = INITIAL_DEPARTMENTS.map(d => d.id);
+
+  // A. Delete existing departments that are NOT in the new list (e.g., 'Cocina', 'Limpieza')
+  deptSnapshot.docs.forEach(doc => {
+    if (!validDeptIds.includes(doc.id)) {
+      deptBatch.delete(doc.ref);
+    }
+  });
+
+  // B. Ensure the valid departments (Bar, Restaurante) exist or are updated
+  INITIAL_DEPARTMENTS.forEach(dept => {
+    const docRef = db.collection('departments').doc(dept.id);
+    deptBatch.set(docRef, dept, { merge: true });
+  });
+
+  await deptBatch.commit();
+  localStorage.setItem(KEYS.DEPARTMENTS, JSON.stringify(INITIAL_DEPARTMENTS));
 }
 
 export const login = async (name: string, pin: string): Promise<User | null> => {
-  // Buscamos por PIN y luego filtramos por nombre insensible a capitalización
   const q = db.collection("users").where("pin", "==", pin);
   const querySnapshot = await q.get();
   
@@ -135,12 +160,10 @@ export const deleteProduct = async (id: string) => await db.collection('products
 export const submitOrderBatch = async (cart: CartItem[], departmentId: string, departmentName: string, user: User) => {
   const batch = db.batch();
   const batchId = Date.now().toString().slice(-6);
-  // FIX: Added tracking for low stock items to return to the UI
   const lowStockItems: string[] = [];
 
   for (const item of cart) {
     const productRef = db.collection('products').doc(item.product.id);
-    // FIX: Calculate new quantity to check against threshold
     const newQuantity = item.product.quantity - item.quantity;
     batch.update(productRef, { quantity: newQuantity });
     
@@ -152,13 +175,11 @@ export const submitOrderBatch = async (cart: CartItem[], departmentId: string, d
       date: new Date().toLocaleString(), timestamp: Date.now(), unit: item.product.unit
     });
 
-    // FIX: Detect if item reached low stock threshold
     if (newQuantity <= item.product.minThreshold) {
       lowStockItems.push(item.product.name);
     }
   }
   await batch.commit();
-  // FIX: Return lowStockItems array as expected by the UI in Replenishment.tsx
   return { success: true, lowStockItems };
 };
 

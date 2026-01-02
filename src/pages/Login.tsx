@@ -44,7 +44,8 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
         {/* Header Section */}
         <div className="bg-gradient-to-br from-slate-900 via-red-950 to-red-800 py-12 px-6 flex flex-col items-center justify-center text-white relative overflow-hidden">
           <div className="absolute top-0 right-0 p-4 opacity-5 transform translate-x-8 -translate-y-8 scale-150">
-            <Logo size="xl" solid />
+            {/* FORCE 'hub' VARIANT */}
+            <Logo size="xl" solid variant="hub" />
           </div>
           
           <button 
@@ -57,7 +58,8 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
           
           <div className="relative z-10 flex flex-col items-center">
               <div className="p-3.5 bg-white/10 backdrop-blur-2xl rounded-[1.25rem] border border-white/20 shadow-2xl mb-5 group hover:scale-110 transition-transform duration-500">
-                <Logo size="md" />
+                {/* FORCE 'hub' VARIANT */}
+                <Logo size="md" variant="hub" />
               </div>
               <h1 className="text-5xl font-black tracking-tighter text-center mb-1 uppercase italic">Hub</h1>
               <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-[10px] font-black uppercase tracking-[0.2em] text-red-400">
