@@ -178,6 +178,7 @@ const App: React.FC = () => {
         setShowGuideModal={setShowGuideModal}
         setShowMobileCart={setShowMobileCart}
         setShowIOSPrompt={setShowIOSPrompt}
+        showIOSPrompt={showIOSPrompt}
         deferredPrompt={deferredPrompt}
         isInstalled={isInstalled} isIOS={isIOS}
         hasUnreadTasks={hasUnreadTasks}

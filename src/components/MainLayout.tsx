@@ -1,6 +1,6 @@
 import React from 'react';
 import { Logo } from './Logo';
-import { Download, Share2, Sun, Moon, LogOut, ClipboardCheck, ClipboardList, LayoutGrid, ShieldCheck, ShoppingCart } from 'lucide-react';
+import { Download, Share2, Sun, Moon, LogOut, ClipboardCheck, ClipboardList, LayoutGrid, ShieldCheck, ShoppingCart, X } from 'lucide-react';
 import { User, UserRole, CartItem } from '../types';
 
 interface MainLayoutProps {
@@ -16,6 +16,7 @@ interface MainLayoutProps {
   setShowGuideModal: (value: boolean) => void;
   setShowMobileCart: (value: boolean) => void;
   setShowIOSPrompt: (value: boolean) => void;
+  showIOSPrompt?: boolean;
   deferredPrompt: any;
   isInstalled: boolean;
   isIOS: boolean;
@@ -75,6 +76,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
   setShowGuideModal,
   setShowMobileCart,
   setShowIOSPrompt,
+  showIOSPrompt,
   deferredPrompt,
   isInstalled,
   isIOS,
@@ -102,6 +104,22 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
+            {!isInstalled && (deferredPrompt || isIOS) && (
+              <button
+                onClick={() => {
+                  if (deferredPrompt) {
+                    deferredPrompt.prompt();
+                  } else if (isIOS) {
+                    setShowIOSPrompt(true);
+                  }
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-full text-xs font-bold uppercase tracking-wider hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors"
+                title="Instalar App"
+              >
+                <Download size={16} />
+                <span className="hidden sm:inline">Instalar</span>
+              </button>
+            )}
             {user.role !== UserRole.GUEST && (
               <div className={`cart-neon-container h-12 w-12 ${hasCartItems ? 'cart-neon-active' : 'cart-neon-empty'}`}>
                 <button
@@ -133,6 +151,35 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
             {user.role === UserRole.ADMIN && <NavButton icon={ShieldCheck} label="Admin" isActive={view === 'admin'} onClick={() => setView('admin')} hasAlert={unreadAdminNotificationsCount > 0} />}
         </nav>
       </div>
+
+      {/* IOS INSTALL PROMPT MODAL */}
+      {showIOSPrompt && (
+        <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-3xl p-6 shadow-2xl animate-slide-up relative">
+            <button 
+              onClick={() => setShowIOSPrompt(false)}
+              className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 bg-slate-100 dark:bg-slate-800 rounded-full transition-colors"
+            >
+              <X size={20} />
+            </button>
+            <div className="flex flex-col items-center text-center gap-4 pt-4">
+              <div className="p-4 bg-slate-100 dark:bg-slate-800 rounded-2xl">
+                <Share2 size={32} className="text-blue-500" />
+              </div>
+              <h3 className="text-xl font-bold text-slate-900 dark:text-white">Instalar App en iOS</h3>
+              <p className="text-slate-600 dark:text-slate-400 text-sm">
+                Para instalar esta aplicación en tu iPhone o iPad, pulsa el botón <strong>Compartir</strong> en la barra de navegación y luego selecciona <strong>"Añadir a la pantalla de inicio"</strong>.
+              </p>
+              <button 
+                onClick={() => setShowIOSPrompt(false)}
+                className="w-full mt-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold py-3 rounded-xl hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors"
+              >
+                Entendido
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

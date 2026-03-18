@@ -1,12 +1,12 @@
 
 {
-  "name": "Hub",
-  "short_name": "Hub",
+  "name": "V pedidos internos",
+  "short_name": "V pedidos internos",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#dc2626",
-  "description": "Centraliza el inventario, agiliza los pedidos y conecta a tu equipo.",
+  "description": "V pedidos internos",
   "orientation": "portrait",
   "gcm_sender_id": "103953800507",
   "icons": [
