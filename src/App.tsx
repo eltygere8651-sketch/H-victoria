@@ -155,17 +155,11 @@ const App: React.FC = () => {
              <Logo size="2xl" animated={true} />
           </div>
           
-          <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter uppercase italic mb-2 drop-shadow-sm animate-fade-in">Hub</h1>
-          
-          <div className="flex items-center gap-2 mt-4">
-             <div className="w-2.5 h-2.5 bg-red-600 rounded-full animate-bounce" style={{ animationDelay: '0s' }}></div>
-             <div className="w-2.5 h-2.5 bg-red-600 rounded-full animate-bounce" style={{ animationDelay: '0.15s' }}></div>
-             <div className="w-2.5 h-2.5 bg-red-600 rounded-full animate-bounce" style={{ animationDelay: '0.3s' }}></div>
+          <div className="absolute bottom-10 flex flex-col items-center justify-center animate-fade-in">
+            <div className="animate-spin">
+              <Logo size="sm" />
+            </div>
           </div>
-          
-          <p className="absolute bottom-10 text-[10px] font-bold text-slate-400 dark:text-slate-600 uppercase tracking-[0.3em] animate-fade-in">
-            Cargando Sistema...
-          </p>
         </div>
       </div>
     );

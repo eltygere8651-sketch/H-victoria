@@ -1,7 +1,7 @@
 import React, { useId } from 'react';
 
 // CONFIGURACIÓN: 'hub' es el diseño corporativo principal (H estilizada).
-const CURRENT_VARIANT: 'hub' | 'nexus' | 'pulse' | 'legacy' = 'hub';
+const CURRENT_VARIANT: 'hub' | 'nexus' | 'pulse' | 'legacy' = 'legacy';
 
 interface LogoProps {
   size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl';

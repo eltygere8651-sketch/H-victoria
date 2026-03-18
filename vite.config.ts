@@ -14,18 +14,8 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
-    sourcemap: false, // Deshabilitar sourcemaps en producción para ahorrar ancho de banda
-    target: 'es2020',
-    rollupOptions: {
-      output: {
-        // Estrategia de división de código (Code Splitting) para carga más rápida
-        manualChunks: {
-          'vendor-react': ['react', 'react-dom'],
-          'vendor-firebase': ['firebase/app', 'firebase/auth', 'firebase/firestore', 'firebase/storage', 'firebase/messaging'],
-          'vendor-ui': ['lucide-react', 'recharts']
-        }
-      }
-    }
+    sourcemap: false,
+    target: 'es2020'
   },
   esbuild: {
     target: 'es2020'
