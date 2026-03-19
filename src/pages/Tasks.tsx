@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { Task, User, Department, TaskStatus, TaskPriority, UserRole, TaskType, TaskComment } from '../types';
+import { Task, User, Department, TaskStatus, TaskPriority, UserRole, TaskType, TaskComment, TaskChecklistItem } from '../types';
 import * as storageService from '../services/storageService';
-import { ClipboardCheck, Plus, X, Save, Loader2, Edit2, Trash2, ChevronDown, MessagesSquare, Check, Camera, AlertTriangle, Share2, Send, Image, Info, Flame, Bold } from 'lucide-react';
+import { ClipboardCheck, Plus, X, Save, Loader2, Edit2, Trash2, ChevronDown, MessagesSquare, Check, Camera, AlertTriangle, Share2, Send, Image, Info, Flame, Bold, Calendar, Clock, List } from 'lucide-react';
 import { compressImage } from '../utils/imageCompressor';
 import { ImageViewer } from '../components/ImageViewer';
 import { DeletionTimer } from '../components/DeletionTimer';
@@ -41,6 +41,22 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
   const [shareData, setShareData] = useState({ url: '', title: '' });
 
   const [departmentFilter, setDepartmentFilter] = useState<string>('ALL');
+  const [viewMode, setViewMode] = useState<'LIST' | 'CALENDAR'>('LIST');
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+
+  const [newChecklistItemText, setNewChecklistItemText] = useState('');
+
+  const formatDateTimeLocal = (timestamp?: number) => {
+    if (!timestamp) return '';
+    const d = new Date(timestamp);
+    const tzOffset = d.getTimezoneOffset() * 60000;
+    return new Date(d.getTime() - tzOffset).toISOString().slice(0, 16);
+  };
+
+  const parseDateTimeLocal = (val: string) => {
+    if (!val) return undefined;
+    return new Date(val).getTime();
+  };
 
   // Derived state for the task currently being commented on
   const activeTaskForComments = allTasks.find(t => t.id === activeCommentTaskId);
@@ -90,6 +106,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
       setEditingTask(null);
       setSelectedImages([]);
       setPreviews([]);
+      setNewChecklistItemText('');
     } catch (error) {
       console.error(error);
       setSaveError('Error al guardar. Inténtalo de nuevo.');
@@ -148,6 +165,40 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
       timestamp: Date.now()
     });
     setNewComment('');
+  };
+
+  const handleToggleChecklistItem = async (taskId: string, itemIndex: number, currentChecklist: TaskChecklistItem[]) => {
+    const updatedChecklist = [...currentChecklist];
+    const item = updatedChecklist[itemIndex];
+    item.isCompleted = !item.isCompleted;
+    if (item.isCompleted) {
+      item.completedBy = currentUser.name;
+      item.completedAt = Date.now();
+    } else {
+      item.completedBy = undefined;
+      item.completedAt = undefined;
+    }
+    await storageService.saveTask({ id: taskId, checklist: updatedChecklist });
+  };
+
+  const handleAddChecklistItem = () => {
+    if (!newChecklistItemText.trim()) return;
+    const newItem: TaskChecklistItem = {
+      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+      text: newChecklistItemText.trim(),
+      isCompleted: false,
+    };
+    setEditingTask({
+      ...editingTask,
+      checklist: [...(editingTask?.checklist || []), newItem]
+    });
+    setNewChecklistItemText('');
+  };
+
+  const handleRemoveChecklistItem = (index: number) => {
+    const updatedChecklist = [...(editingTask?.checklist || [])];
+    updatedChecklist.splice(index, 1);
+    setEditingTask({ ...editingTask, checklist: updatedChecklist });
   };
 
   const handleShareTask = (task: Task) => {
@@ -243,6 +294,194 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
     return statusMatch && deptMatch;
   });
 
+  const generateRandomHospitalityTask = async () => {
+    const titles = [
+      "Limpieza profunda de habitación VIP",
+      "Revisión de stock en cámara frigorífica",
+      "Mantenimiento preventivo A/C",
+      "Montaje de salón para evento",
+      "Inventario de cristalería y loza",
+      "Preparación de mise en place",
+      "Atención queja de ruido (Hab. 412)",
+      "Recepción de pedido de bebidas",
+      "Limpieza de filtros de campana",
+      "Cierre de caja y auditoría",
+      "Revisión de caducidades (FIFO)",
+      "Desinfección de baños zona común",
+      "Preparación de coffee break",
+      "Revisión de luces de emergencia",
+      "Limpieza de terraza y mobiliario"
+    ];
+
+    const descriptions = [
+      "Por favor, realizar esta tarea lo antes posible. Es importante para el turno actual.",
+      "El cliente lo ha solicitado con urgencia. *Asegurarse* de dejar todo impecable y reportar cualquier anomalía.",
+      "Tarea rutinaria de fin de turno. Revisar bien todos los puntos. Si falta algún material, notificar a compras inmediatamente. *No olvidar* firmar el registro al terminar.",
+      "Atención: *Urgente*. Hay un evento especial hoy y esto debe estar listo antes de las 18:00. Coordinar con el resto del equipo si es necesario.",
+      "Revisión estándar. Seguir el protocolo habitual de hostelería y marcar los checks según se avance.",
+      "Revisar detalladamente. *Cuidado* con los productos frágiles. Anotar cualquier merma en el sistema.",
+      "Esta tarea es prioritaria para la apertura. Asegurarse de que todo el equipo esté informado."
+    ];
+
+    const checklistPools = [
+      // Pisos / Habitaciones
+      ["Cambiar sábanas", "Desinfectar baño", "Reponer amenities (jabón, champú)", "Aspirar alfombra", "Revisar minibar y reponer", "Comprobar luces y TV", "Limpiar cristales"],
+      // Bar / Restaurante
+      ["Limpiar máquina de café", "Rellenar molinillo", "Contar fondo de caja", "Limpiar mesas y sillas", "Tirar basura y reciclar vidrio", "Repasar cubiertos", "Rellenar saleros y pimenteros"],
+      // Mantenimiento
+      ["Revisar filtros de aire", "Comprobar presión de agua", "Anotar lecturas de contadores", "Limpiar zona de trabajo", "Reportar piezas rotas", "Revisar extintores", "Cambiar bombillas fundidas"],
+      // Cocina
+      ["Etiquetar mermas del día", "Desengrasar plancha", "Barrer y fregar cuarto frío", "Desinfectar tablas de cortar", "Revisar caducidades", "Limpiar freidoras", "Organizar cámara de verduras"],
+      // Eventos / Recepción
+      ["Preparar proyector y audio", "Colocar mantelería", "Distribuir sillas (formato escuela)", "Preparar estación de agua", "Revisar climatización del salón", "Imprimir listado de asistentes"]
+    ];
+
+    const randomTitle = titles[Math.floor(Math.random() * titles.length)];
+    const randomDesc = descriptions[Math.floor(Math.random() * descriptions.length)];
+    const randomPool = checklistPools[Math.floor(Math.random() * checklistPools.length)];
+    
+    // Pick random number of checklist items (2 to 6)
+    const numItems = Math.floor(Math.random() * 5) + 2;
+    const shuffledPool = [...randomPool].sort(() => 0.5 - Math.random());
+    const selectedChecklist = shuffledPool.slice(0, numItems).map((text, i) => ({
+      id: Date.now().toString() + i,
+      text,
+      isCompleted: false
+    }));
+
+    const priorities = [TaskPriority.LOW, TaskPriority.MEDIUM, TaskPriority.HIGH];
+    const randomPriority = priorities[Math.floor(Math.random() * priorities.length)];
+
+    const randomDept = departments.length > 0 
+      ? departments[Math.floor(Math.random() * departments.length)] 
+      : { id: 'general', name: 'General' };
+
+    const now = Date.now();
+    const randomStartOffset = (Math.floor(Math.random() * 5) - 2) * 24 * 60 * 60 * 1000; // -2 to +2 days
+    const randomDuration = (Math.floor(Math.random() * 8) + 1) * 60 * 60 * 1000; // 1 to 8 hours
+    const startDate = now + randomStartOffset;
+    const dueDate = startDate + randomDuration;
+
+    const testTask: Partial<Task> = {
+      title: randomTitle,
+      description: randomDesc,
+      departmentId: randomDept.id,
+      departmentName: randomDept.name,
+      priority: randomPriority,
+      status: TaskStatus.PENDING,
+      type: TaskType.TASK,
+      createdBy: currentUser.name,
+      createdById: currentUser.id,
+      createdAt: now,
+      startDate,
+      dueDate,
+      checklist: selectedChecklist
+    };
+
+    await storageService.saveTask(testTask);
+  };
+
+  const handleDayClick = (date: Date) => {
+    if (!canManageTasks) return;
+    const start = new Date(date);
+    start.setHours(9, 0, 0, 0);
+    const end = new Date(date);
+    end.setHours(18, 0, 0, 0);
+
+    setEditingTask({
+      startDate: start.getTime(),
+      dueDate: end.getTime(),
+    });
+    setSelectedImages([]);
+    setPreviews([]);
+    setShowTaskModal(true);
+  };
+
+  const renderCalendarView = () => {
+    const year = currentMonth.getFullYear();
+    const month = currentMonth.getMonth();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const firstDay = new Date(year, month, 1).getDay(); // 0 = Sunday
+
+    const days = [];
+    for (let i = 0; i < firstDay; i++) {
+      days.push(null);
+    }
+    for (let i = 1; i <= daysInMonth; i++) {
+      days.push(new Date(year, month, i));
+    }
+
+    const nextMonth = () => setCurrentMonth(new Date(year, month + 1, 1));
+    const prevMonth = () => setCurrentMonth(new Date(year, month - 1, 1));
+    const today = () => setCurrentMonth(new Date());
+
+    return (
+      <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-xl border border-gray-100 dark:border-slate-800 p-4 md:p-6 overflow-x-auto">
+        <div className="flex justify-between items-center mb-6 min-w-[600px]">
+          <h3 className="text-2xl font-black uppercase text-gray-900 dark:text-white">
+            {currentMonth.toLocaleString('es-ES', { month: 'long', year: 'numeric' })}
+          </h3>
+          <div className="flex gap-2">
+            <button onClick={prevMonth} className="px-4 py-2 bg-gray-100 dark:bg-slate-800 rounded-xl font-bold hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors">&lt;</button>
+            <button onClick={today} className="px-4 py-2 bg-gray-100 dark:bg-slate-800 rounded-xl font-bold hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors">Hoy</button>
+            <button onClick={nextMonth} className="px-4 py-2 bg-gray-100 dark:bg-slate-800 rounded-xl font-bold hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors">&gt;</button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-7 gap-2 mb-2 min-w-[600px]">
+          {['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'].map(d => (
+            <div key={d} className="text-center text-xs font-black text-gray-400 uppercase tracking-widest">{d}</div>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-7 gap-2 min-w-[600px]">
+          {days.map((date, i) => {
+            if (!date) return <div key={`empty-${i}`} className="min-h-[100px] bg-gray-50/50 dark:bg-slate-900/50 rounded-xl border border-dashed border-gray-200 dark:border-slate-800"></div>;
+            
+            const isToday = new Date().toDateString() === date.toDateString();
+            
+            // Find tasks for this day
+            const dayTasks = filteredTasks.filter(t => {
+              if (t.startDate && t.dueDate) {
+                const start = new Date(t.startDate);
+                start.setHours(0, 0, 0, 0);
+                const end = new Date(t.dueDate);
+                end.setHours(23, 59, 59, 999);
+                return date >= start && date <= end;
+              }
+              const taskDate = t.dueDate ? new Date(t.dueDate) : t.startDate ? new Date(t.startDate) : new Date(t.createdAt);
+              return taskDate.toDateString() === date.toDateString();
+            });
+
+            return (
+              <div 
+                key={date.toISOString()} 
+                onClick={() => handleDayClick(date)}
+                className={`min-h-[100px] p-2 rounded-xl border ${isToday ? 'border-red-500 bg-red-50/30 dark:bg-red-900/10' : 'border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800'} flex flex-col ${canManageTasks ? 'cursor-pointer hover:border-red-300 dark:hover:border-red-700 transition-colors' : ''}`}
+              >
+                <div className={`text-right text-sm font-bold mb-1 ${isToday ? 'text-red-600' : 'text-gray-500 dark:text-slate-400'}`}>
+                  {date.getDate()}
+                </div>
+                <div className="flex-1 flex flex-col gap-1 overflow-y-auto max-h-[120px] no-scrollbar">
+                  {dayTasks.map(t => (
+                    <div 
+                      key={t.id} 
+                      onClick={(e) => { e.stopPropagation(); setEditingTask(t); setShowTaskModal(true); }}
+                      className={`text-[10px] font-bold p-1.5 rounded-lg cursor-pointer truncate ${t.status === TaskStatus.COMPLETED ? 'bg-gray-100 text-gray-400 dark:bg-slate-700 dark:text-slate-500 line-through' : t.priority === TaskPriority.HIGH ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' : 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'}`}
+                      title={t.title}
+                    >
+                      {t.title}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
   if (loading) return <div className="flex h-full items-center justify-center"><Loader2 size={40} className="animate-spin text-red-600" /></div>;
 
   return (
@@ -255,20 +494,46 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
               Tareas <span className="text-red-600">Activas</span>
             </h2>
           </div>
-          {/* Only Admins or Staff with 'CAN_MANAGE_TASKS' permission can create new tasks */}
-          {canManageTasks && (
-            <button 
-              onClick={() => {
-                setEditingTask({});
-                setSelectedImages([]);
-                setPreviews([]);
-                setShowTaskModal(true);
-              }}
-              className="bg-gray-900 dark:bg-white text-white dark:text-gray-900 w-14 h-14 rounded-2xl flex items-center justify-center shadow-xl shadow-gray-400/20 hover:scale-105 transition-transform active:scale-95 border-2 border-transparent hover:border-gray-200 dark:hover:border-slate-700"
-            >
-              <Plus size={32} strokeWidth={3} />
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            <div className="flex bg-gray-100 dark:bg-slate-800 rounded-xl p-1">
+              <button
+                onClick={() => setViewMode('LIST')}
+                className={`p-2 rounded-lg flex items-center justify-center transition-colors ${viewMode === 'LIST' ? 'bg-white dark:bg-slate-700 shadow-sm text-red-600' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'}`}
+                title="Vista de Lista"
+              >
+                <List size={20} />
+              </button>
+              <button
+                onClick={() => setViewMode(viewMode === 'CALENDAR' ? 'LIST' : 'CALENDAR')}
+                className={`p-2 rounded-lg flex items-center justify-center transition-colors ${viewMode === 'CALENDAR' ? 'bg-white dark:bg-slate-700 shadow-sm text-red-600' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'}`}
+                title="Vista de Calendario"
+              >
+                <Calendar size={20} />
+              </button>
+            </div>
+            {/* Only Admins or Staff with 'CAN_MANAGE_TASKS' permission can create new tasks */}
+            {canManageTasks && (
+              <div className="flex gap-2">
+                <button
+                  onClick={generateRandomHospitalityTask}
+                  className="bg-indigo-600 text-white px-4 h-12 rounded-xl flex items-center justify-center shadow-md hover:bg-indigo-700 transition-colors font-bold text-sm"
+                >
+                  Generar Prueba
+                </button>
+                <button 
+                  onClick={() => {
+                    setEditingTask({});
+                    setSelectedImages([]);
+                    setPreviews([]);
+                    setShowTaskModal(true);
+                  }}
+                  className="bg-gray-900 dark:bg-white text-white dark:text-gray-900 w-14 h-14 rounded-2xl flex items-center justify-center shadow-xl shadow-gray-400/20 hover:scale-105 transition-transform active:scale-95 border-2 border-transparent hover:border-gray-200 dark:hover:border-slate-700"
+                >
+                  <Plus size={32} strokeWidth={3} />
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Filters */}
@@ -300,28 +565,29 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
       <div className="p-4 md:p-6 space-y-10">
         
         {/* SECTION: TASKS (HIGH IMPACT ACTION STYLE) */}
-        <div className="space-y-6">
-          {filteredTasks.length === 0 ? (
-            <div className="py-24 text-center bg-white dark:bg-slate-900 rounded-[2.5rem] border-4 border-dashed border-gray-200 dark:border-slate-800 shadow-inner">
-              <ClipboardCheck size={80} className="mx-auto mb-6 text-gray-300 dark:text-slate-700" />
-              <p className="text-3xl font-black text-gray-400 dark:text-slate-600 uppercase tracking-tighter">Sin Tareas Activas</p>
-              <p className="text-gray-400 dark:text-slate-500 font-medium mt-2">¡Todo al día!</p>
-            </div>
-          ) : (
-            filteredTasks.map(task => {
-              const isUrgent = task.priority === TaskPriority.HIGH;
-              const isCompleted = task.status === TaskStatus.COMPLETED;
+        {viewMode === 'LIST' ? (
+          <div className="space-y-6">
+            {filteredTasks.length === 0 ? (
+              <div className="py-24 text-center bg-white dark:bg-slate-900 rounded-[2.5rem] border-4 border-dashed border-gray-200 dark:border-slate-800 shadow-inner">
+                <ClipboardCheck size={80} className="mx-auto mb-6 text-gray-300 dark:text-slate-700" />
+                <p className="text-3xl font-black text-gray-400 dark:text-slate-600 uppercase tracking-tighter">Sin Tareas Activas</p>
+                <p className="text-gray-400 dark:text-slate-500 font-medium mt-2">¡Todo al día!</p>
+              </div>
+            ) : (
+              filteredTasks.map(task => {
+                const isUrgent = task.priority === TaskPriority.HIGH;
+                const isCompleted = task.status === TaskStatus.COMPLETED;
 
-              return (
-                <div 
-                  key={task.id} 
-                  className={`
-                    relative bg-white dark:bg-slate-900 rounded-[2rem] shadow-xl dark:shadow-black/50 
-                    border border-gray-100 dark:border-slate-800
-                    hover:shadow-2xl hover:scale-[1.01] transition-all duration-300 group
-                    overflow-hidden w-full
-                  `}
-                >
+                return (
+                  <div 
+                    key={task.id} 
+                    className={`
+                      relative bg-white dark:bg-slate-900 rounded-[2rem] shadow-xl dark:shadow-black/50 
+                      border border-gray-100 dark:border-slate-800
+                      hover:shadow-2xl hover:scale-[1.01] transition-all duration-300 group
+                      overflow-hidden w-full
+                    `}
+                  >
                   {/* Visual Priority Strip (Side) */}
                   <div className={`absolute left-0 top-0 bottom-0 w-3 md:w-4 ${getPriorityBorderClass(task.priority)}`}></div>
 
@@ -370,9 +636,31 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
                         >
                           {task.title}
                         </h3>
+
+                        {/* Dates */}
+                        {(task.startDate || task.dueDate) && (
+                          <div className="flex flex-wrap gap-3 mb-4">
+                            {task.startDate && (
+                              <div className="flex items-center gap-1.5 text-xs font-bold text-gray-500 dark:text-slate-400 bg-gray-100 dark:bg-slate-800 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-slate-700">
+                                <Clock size={14} />
+                                <span>Inicio: {new Date(task.startDate).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</span>
+                              </div>
+                            )}
+                            {task.dueDate && (
+                              <div className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg border ${
+                                !isCompleted && task.dueDate < Date.now() 
+                                  ? 'text-red-600 bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800/50' 
+                                  : 'text-gray-500 dark:text-slate-400 bg-gray-100 dark:bg-slate-800 border-gray-200 dark:border-slate-700'
+                              }`}>
+                                <Calendar size={14} />
+                                <span>Límite: {new Date(task.dueDate).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
                         
                         {task.description && (
-                           <div className={`p-5 rounded-2xl border-l-4 
+                           <div className={`p-5 rounded-2xl border-l-4 mb-4
                              ${isUrgent && !isCompleted
                                ? 'bg-red-50 dark:bg-red-900/10 border-red-500' 
                                : 'bg-gray-50 dark:bg-slate-800/50 border-gray-300 dark:border-slate-600'
@@ -390,6 +678,47 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
                                {renderDescriptionWithHighlights(task.description, isCompleted)}
                              </p>
                            </div>
+                        )}
+
+                        {/* Checklist Display */}
+                        {task.checklist && task.checklist.length > 0 && (
+                          <div className="space-y-2 mb-4">
+                            {task.checklist.map((item, index) => (
+                              <div 
+                                key={item.id} 
+                                className={`flex items-start gap-3 p-3 rounded-xl border-2 transition-colors ${
+                                  item.isCompleted 
+                                    ? 'bg-green-50/50 dark:bg-green-900/10 border-green-200 dark:border-green-900/30' 
+                                    : 'bg-gray-50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700'
+                                }`}
+                              >
+                                <button
+                                  onClick={() => handleToggleChecklistItem(task.id, index, task.checklist!)}
+                                  className={`mt-0.5 w-6 h-6 rounded-md flex items-center justify-center shrink-0 border-2 transition-colors ${
+                                    item.isCompleted 
+                                      ? 'bg-green-500 border-green-500 text-white' 
+                                      : 'bg-white dark:bg-slate-900 border-gray-300 dark:border-slate-600 text-transparent hover:border-green-500'
+                                  }`}
+                                >
+                                  <Check size={16} strokeWidth={4} />
+                                </button>
+                                <div className="flex flex-col">
+                                  <span className={`text-base font-bold ${
+                                    item.isCompleted 
+                                      ? 'text-gray-500 dark:text-slate-400 line-through decoration-2' 
+                                      : 'text-gray-800 dark:text-slate-200'
+                                  }`}>
+                                    {item.text}
+                                  </span>
+                                  {item.isCompleted && item.completedBy && (
+                                    <span className="text-[10px] font-bold text-green-600 dark:text-green-400 uppercase tracking-wider mt-0.5">
+                                      ✓ {item.completedBy}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
                         )}
                      </div>
 
@@ -472,6 +801,9 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
             })
           )}
         </div>
+        ) : (
+          renderCalendarView()
+        )}
       </div>
 
       {/* NEW COMMENTS MODAL (Bottom Sheet Style for Mobile) */}
@@ -569,6 +901,27 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
 
                 <div className="grid grid-cols-2 gap-4">
                    <div>
+                      <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Inicio (Opcional)</label>
+                      <input 
+                        type="datetime-local"
+                        value={formatDateTimeLocal(editingTask?.startDate)}
+                        onChange={e => setEditingTask({ ...editingTask, startDate: parseDateTimeLocal(e.target.value) })}
+                        className="w-full px-4 py-4 font-bold bg-gray-50 dark:bg-slate-800/50 border-2 border-gray-200 dark:border-slate-700 rounded-2xl focus:border-red-500 outline-none appearance-none dark:text-white text-sm"
+                      />
+                   </div>
+                   <div>
+                      <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Fin / Límite (Opcional)</label>
+                      <input 
+                        type="datetime-local"
+                        value={formatDateTimeLocal(editingTask?.dueDate)}
+                        onChange={e => setEditingTask({ ...editingTask, dueDate: parseDateTimeLocal(e.target.value) })}
+                        className="w-full px-4 py-4 font-bold bg-gray-50 dark:bg-slate-800/50 border-2 border-gray-200 dark:border-slate-700 rounded-2xl focus:border-red-500 outline-none appearance-none dark:text-white text-sm"
+                      />
+                   </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                   <div>
                       <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Departamento</label>
                       <div className="relative">
                         <select 
@@ -628,6 +981,47 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
                      <Info size={12} />
                      <span>Tip: Usa <span className="text-red-500 font-mono bg-red-50 dark:bg-red-900/20 px-1 rounded">*asteriscos*</span> para marcar texto urgente.</span>
                    </p>
+                </div>
+
+                {/* Checklist Input */}
+                <div>
+                   <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Lista de Tareas (Checklist)</label>
+                   
+                   {/* Existing Checklist Items */}
+                   {editingTask?.checklist && editingTask.checklist.length > 0 && (
+                     <div className="space-y-2 mb-3">
+                       {editingTask.checklist.map((item, index) => (
+                         <div key={item.id} className="flex items-center gap-2 bg-gray-50 dark:bg-slate-800/50 p-2 rounded-xl border border-gray-200 dark:border-slate-700">
+                           <div className="w-5 h-5 rounded border-2 border-gray-300 dark:border-slate-600 flex-shrink-0"></div>
+                           <span className="flex-1 text-sm font-bold text-gray-700 dark:text-slate-300">{item.text}</span>
+                           <button 
+                             onClick={() => handleRemoveChecklistItem(index)}
+                             className="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                           >
+                             <X size={16} strokeWidth={3} />
+                           </button>
+                         </div>
+                       ))}
+                     </div>
+                   )}
+
+                   {/* Add New Item */}
+                   <div className="flex gap-2">
+                     <input 
+                       value={newChecklistItemText}
+                       onChange={e => setNewChecklistItemText(e.target.value)}
+                       onKeyDown={e => e.key === 'Enter' && handleAddChecklistItem()}
+                       className="flex-1 px-4 py-3 font-bold text-sm bg-gray-50 dark:bg-slate-800/50 border-2 border-gray-200 dark:border-slate-700 rounded-xl focus:border-red-500 focus:bg-white dark:focus:bg-slate-900 outline-none transition-all dark:text-white placeholder-gray-400"
+                       placeholder="Añadir elemento a la lista..."
+                     />
+                     <button 
+                       onClick={handleAddChecklistItem}
+                       disabled={!newChecklistItemText.trim()}
+                       className="px-4 py-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-black uppercase tracking-wider rounded-xl disabled:opacity-50 transition-all active:scale-95"
+                     >
+                       Añadir
+                     </button>
+                   </div>
                 </div>
 
                 <div>

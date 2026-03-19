@@ -23,18 +23,18 @@ const INITIAL_USERS: User[] = [
 
 // REQUISITO: Solo Bar y Restaurante
 const INITIAL_DEPARTMENTS: Department[] = [
-  { id: 'd-bar', name: 'Bar' },
+  { id: 'd-bar', name: 'Bar / Cafetería' },
   { id: 'd-restaurante', name: 'Restaurante' }
 ];
 
 // Productos de ejemplo optimizados para los nuevos departamentos
 const INITIAL_PRODUCTS: Product[] = [
-  { id: 'p1', name: 'Coca Cola', category: 'Bebidas', quantity: 24, unit: 'latas', minThreshold: 12, departmentId: 'd-bar', departmentName: 'Bar' },
-  { id: 'p2', name: 'Agua Mineral', category: 'Bebidas', quantity: 48, unit: 'botellas', minThreshold: 24, departmentId: 'd-bar', departmentName: 'Bar' },
-  { id: 'p3', name: 'Cerveza', category: 'Bebidas', quantity: 50, unit: 'botellines', minThreshold: 10, departmentId: 'd-bar', departmentName: 'Bar' },
-  { id: 'p4', name: 'Harina de Trigo', category: 'Despensa', quantity: 15, unit: 'kg', minThreshold: 5, departmentId: 'd-restaurante', departmentName: 'Restaurante' },
-  { id: 'p5', name: 'Aceite de Oliva', category: 'Cocina', quantity: 10, unit: 'litros', minThreshold: 4, departmentId: 'd-restaurante', departmentName: 'Restaurante' },
-  { id: 'p6', name: 'Servilletas', category: 'Suministros', quantity: 100, unit: 'paquetes', minThreshold: 20, departmentId: 'd-restaurante', departmentName: 'Restaurante' },
+  { id: 'p1', name: 'Coca Cola', category: 'Bebidas', quantity: 24, unit: 'latas', minThreshold: 12, departmentId: 'd-bar', departmentName: 'Bar', departmentIds: ['d-bar', 'd-restaurante'], departmentNames: ['Bar', 'Restaurante'] },
+  { id: 'p2', name: 'Agua Mineral', category: 'Bebidas', quantity: 48, unit: 'botellas', minThreshold: 24, departmentId: 'd-bar', departmentName: 'Bar', departmentIds: ['d-bar', 'd-restaurante'], departmentNames: ['Bar', 'Restaurante'] },
+  { id: 'p3', name: 'Cerveza', category: 'Bebidas', quantity: 50, unit: 'botellines', minThreshold: 10, departmentId: 'd-bar', departmentName: 'Bar', departmentIds: ['d-bar'], departmentNames: ['Bar'] },
+  { id: 'p4', name: 'Harina de Trigo', category: 'Despensa', quantity: 15, unit: 'kg', minThreshold: 5, departmentId: 'd-restaurante', departmentName: 'Restaurante', departmentIds: ['d-restaurante'], departmentNames: ['Restaurante'] },
+  { id: 'p5', name: 'Aceite de Oliva', category: 'Cocina', quantity: 10, unit: 'litros', minThreshold: 4, departmentId: 'd-restaurante', departmentName: 'Restaurante', departmentIds: ['d-restaurante'], departmentNames: ['Restaurante'] },
+  { id: 'p6', name: 'Servilletas', category: 'Suministros', quantity: 100, unit: 'paquetes', minThreshold: 20, departmentId: 'd-restaurante', departmentName: 'Restaurante', departmentIds: ['d-restaurante'], departmentNames: ['Restaurante'] },
 ];
 
 async function initFirestoreWithInitialData() {
@@ -81,7 +81,7 @@ async function initFirestoreWithInitialData() {
   });
 
   await deptBatch.commit();
-  console.log("Sincronización de departamentos completada: Solo Bar y Restaurante activos.");
+  console.log("Sincronización de departamentos completada: Solo Bar / Cafetería y Restaurante activos.");
   localStorage.setItem(KEYS.DEPARTMENTS, JSON.stringify(INITIAL_DEPARTMENTS));
 }
 
@@ -175,6 +175,58 @@ export const saveProduct = async (product: Partial<Product>) => {
 };
 export const deleteProduct = async (id: string) => await db.collection('products').doc(id).delete();
 
+export const cleanAndBoostStock = async () => {
+  const snapshot = await db.collection('products').get();
+  const products = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Product));
+  
+  const seenNames = new Set<string>();
+  const batch = db.batch();
+  
+  for (const p of products) {
+    const normalizedName = p.name.trim().toLowerCase();
+    if (seenNames.has(normalizedName)) {
+      batch.delete(db.collection('products').doc(p.id));
+    } else {
+      seenNames.add(normalizedName);
+      batch.update(db.collection('products').doc(p.id), { quantity: 500 });
+    }
+  }
+  
+  await batch.commit();
+};
+
+export const generateRandomOrders = async (user: User) => {
+  const snapshot = await db.collection('products').get();
+  const products = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Product)).filter(p => p.quantity > 0);
+  
+  const deptSnapshot = await db.collection('departments').get();
+  const departments = deptSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Department));
+  
+  if (products.length === 0 || departments.length === 0) return;
+
+  const randomDept = departments[Math.floor(Math.random() * departments.length)];
+  
+  const availableProducts = products.filter(p => {
+    const pDeptIds = p.departmentIds || (p.departmentId ? [p.departmentId] : []);
+    return pDeptIds.includes(randomDept.id);
+  });
+
+  if (availableProducts.length === 0) return;
+
+  const shuffled = availableProducts.sort(() => 0.5 - Math.random());
+  const numItems = Math.floor(Math.random() * 4) + 2; // 2 to 5 items
+  const selected = shuffled.slice(0, numItems);
+
+  const cart: CartItem[] = selected.map(p => {
+    const qty = Math.floor(Math.random() * 15) + 5;
+    return { product: p, quantity: Math.min(qty, p.quantity) };
+  }).filter(item => item.quantity > 0);
+
+  if (cart.length > 0) {
+    await submitOrderBatch(cart, randomDept.id, randomDept.name, user);
+  }
+};
+
 // --- ORDERS ---
 export const submitOrderBatch = async (cart: CartItem[], departmentId: string, departmentName: string, user: User) => {
   const batch = db.batch();
@@ -224,6 +276,33 @@ export const submitOrderBatch = async (cart: CartItem[], departmentId: string, d
 
   await batch.commit();
   return { success: true, lowStockItems };
+};
+
+export const receiveStockBatch = async (items: { productId: string; quantityToAdd: number }[], userName: string) => {
+  const batch = db.batch();
+  
+  for (const item of items) {
+    const productRef = db.collection('products').doc(item.productId);
+    // We need to get the current quantity to add to it, but batch.update doesn't support increment directly in the client SDK without FieldValue.increment
+    // Using FieldValue.increment is safer for concurrent updates
+    batch.update(productRef, { 
+      quantity: firebase.firestore.FieldValue.increment(item.quantityToAdd) 
+    });
+  }
+
+  // Create a notification for the received stock
+  const notifRef = db.collection('notifications').doc();
+  batch.set(notifRef, {
+    type: NotificationType.STOCK_RECEIVED,
+    title: 'Ingreso de Mercancía',
+    message: `Se ha registrado el ingreso de ${items.length} producto(s) por ${userName}.`,
+    icon: 'PackagePlus',
+    timestamp: Date.now(),
+    readStatus: false,
+    payload: { itemCount: items.length }
+  });
+
+  await batch.commit();
 };
 
 export const subscribeToBatches = (callback: (batches: OrderBatch[]) => void) => {

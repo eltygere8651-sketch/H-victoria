@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Product, User, CartItem, Department, OrderBatch } from '../types';
+import { Product, User, CartItem, Department, OrderBatch, UserRole } from '../types';
 import * as storageService from '../services/storageService';
-import { Search, ShoppingCart, Plus, Minus, Trash2, CheckCircle2, X, ArrowRight, Package, ChevronUp, AlertTriangle, Siren, Loader2, ChevronDown, ListTree, Filter } from 'lucide-react';
+import { Search, ShoppingCart, Plus, Minus, Trash2, CheckCircle2, X, ArrowRight, Package, ChevronUp, AlertTriangle, Siren, Loader2, ChevronDown, ListTree, Filter, Zap } from 'lucide-react';
 
 interface ReplenishmentProps {
   currentUser: User;
@@ -30,6 +30,9 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCar
   
   const [showLowStockModal, setShowLowStockModal] = useState(false);
   const [lowStockList, setLowStockList] = useState<string[]>([]);
+  const [showRandomOrderConfirm, setShowRandomOrderConfirm] = useState(false);
+  const [qtyError, setQtyError] = useState('');
+  const [orderError, setOrderError] = useState('');
   
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -83,11 +86,13 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCar
   const openQtyModal = (product: Product) => {
     setSelectedProduct(product);
     setQtyValue('1');
+    setQtyError('');
   };
 
   const closeQtyModal = () => {
     setSelectedProduct(null);
     setQtyValue('1');
+    setQtyError('');
   };
 
   const playAlarm = () => {
@@ -133,9 +138,10 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCar
     if (isNaN(qty) || qty <= 0) return;
 
     if (qty > available) {
-      alert(`Solo quedan ${available} unidades disponibles.`);
+      setQtyError(`Solo quedan ${available} unidades disponibles.`);
       return;
     }
+    setQtyError('');
 
     setCart(prev => {
       const existing = prev.find(item => item.product.id === selectedProduct.id);
@@ -168,6 +174,17 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCar
     }));
   };
 
+  const handleRandomOrder = async () => {
+    setIsProcessing(true);
+    setShowRandomOrderConfirm(false);
+    await storageService.generateRandomOrders(currentUser);
+    setIsProcessing(false);
+    setShowSuccessModal(true);
+    setTimeout(() => {
+      setShowSuccessModal(false);
+    }, 2000);
+  };
+
   const processOrder = async () => {
     if (cart.length === 0 || !selectedDepartmentForOrder || !selectedDepartmentNameForOrder) return;
     setIsProcessing(true);
@@ -183,6 +200,7 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCar
     if (result.success) {
       setShowConfirmModal(false);
       setShowMobileCart(false);
+      setOrderError('');
       
       if (result.lowStockItems && result.lowStockItems.length > 0) {
         setLowStockList(result.lowStockItems);
@@ -195,8 +213,7 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCar
         }, 2000);
       }
     } else {
-      alert("Error al procesar el pedido.");
-      setShowConfirmModal(false);
+      setOrderError("Error al procesar el pedido.");
     }
   };
 
@@ -209,12 +226,13 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCar
     setSelectedDepartmentNameForOrder(departments.length > 0 ? departments[0].name : '');
   };
 
-  const filteredProducts = products.filter(p => 
-    p.quantity > 0 && 
-    p.departmentId === selectedDepartmentForOrder &&
-    (p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    p.category.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  const filteredProducts = products.filter(p => {
+    const pDeptIds = p.departmentIds || (p.departmentId ? [p.departmentId] : []);
+    return p.quantity > 0 && 
+      pDeptIds.includes(selectedDepartmentForOrder) &&
+      (p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      p.category.toLowerCase().includes(searchTerm.toLowerCase()));
+  });
 
   const isOrderButtonDisabled = cart.length === 0 || !selectedDepartmentForOrder || isProcessing;
 
@@ -289,6 +307,8 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCar
                 </button>
               </div>
 
+              {qtyError && <div className="text-red-600 font-bold text-center mb-4">{qtyError}</div>}
+
               <button 
                 onClick={confirmAddToCart}
                 className="w-full py-5 bg-red-600 text-white text-xl font-extrabold rounded-2xl shadow-xl shadow-button-red hover:bg-red-700 active:scale-[0.98] transition-all flex items-center justify-center gap-3"
@@ -346,6 +366,33 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCar
                   {isProcessing ? <Loader2 className="animate-spin text-white"/> : <><CheckCircle2 /> Confirmar</>}
                 </button>
               </div>
+              {orderError && <div className="text-red-600 font-bold text-center pb-4">{orderError}</div>}
+           </div>
+        </div>
+      )}
+
+      {/* MODAL CONFIRMAR PEDIDO ALEATORIO */}
+      {showRandomOrderConfirm && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 dark:bg-slate-900/90 backdrop-blur-sm p-4 animate-fade-in">
+           <div className="bg-white dark:bg-slate-800 w-full max-w-md rounded-3xl shadow-pop-in overflow-hidden animate-pop-in border border-gray-100 dark:border-slate-700/50">
+              <div className="p-6 border-b border-gray-100 dark:border-slate-700">
+                <h3 className="text-2xl font-extrabold text-gray-900 dark:text-white text-center drop-shadow-sm">Pedido Aleatorio</h3>
+                <p className="text-center text-gray-500 dark:text-slate-400 mt-2">¿Generar un pedido aleatorio para probar el sistema?</p>
+              </div>
+              <div className="p-6 flex gap-4">
+                <button 
+                  onClick={() => setShowRandomOrderConfirm(false)}
+                  className="flex-1 py-4 rounded-xl font-bold text-gray-600 dark:text-slate-400 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button 
+                  onClick={handleRandomOrder}
+                  className="flex-1 py-4 rounded-xl font-bold text-white bg-purple-600 hover:bg-purple-700 shadow-lg shadow-purple-600/30 transition-colors"
+                >
+                  Generar
+                </button>
+              </div>
            </div>
         </div>
       )}
@@ -393,6 +440,21 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCar
 
       <div className="flex-1 flex flex-col h-full lg:pb-0">
         <div className="bg-white dark:bg-slate-900 px-4 py-4 md:px-6 md:py-6 border-b border-gray-100 dark:border-slate-800 shadow-sm z-10 space-y-4 transition-colors duration-300">
+           <div className="flex justify-between items-center">
+             <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tighter uppercase italic">
+               Hacer <span className="text-red-600">Pedido</span>
+             </h2>
+             {currentUser.role === UserRole.ADMIN && (
+               <button 
+                 onClick={() => setShowRandomOrderConfirm(true)} 
+                 title="Generar pedido aleatorio"
+                 className="bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400 w-10 h-10 rounded-xl flex items-center justify-center hover:bg-purple-200 dark:hover:bg-purple-900/50 transition-colors"
+               >
+                 <Zap size={18} />
+               </button>
+             )}
+           </div>
+           
            <div className="relative">
               <label htmlFor="catalog-department-select" className="sr-only">Filtrar Productos por Departamento</label>
               <select

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Logo } from './Logo';
-import { Download, Share2, Sun, Moon, LogOut, ClipboardCheck, ClipboardList, LayoutGrid, ShieldCheck, ShoppingCart, X } from 'lucide-react';
+import { Download, Share2, Sun, Moon, LogOut, ClipboardCheck, ClipboardList, LayoutGrid, ShieldCheck, ShoppingCart, X, Volume2, VolumeX } from 'lucide-react';
 import { User, UserRole, CartItem } from '../types';
 
 interface MainLayoutProps {
@@ -11,6 +11,8 @@ interface MainLayoutProps {
   cart: CartItem[];
   darkMode: boolean;
   setDarkMode: (value: boolean) => void;
+  soundEnabled: boolean;
+  setSoundEnabled: (value: boolean) => void;
   handleLogout: () => void;
   handleSharePublicAccess: () => void;
   setShowGuideModal: (value: boolean) => void;
@@ -71,6 +73,8 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
   cart,
   darkMode,
   setDarkMode,
+  soundEnabled,
+  setSoundEnabled,
   handleLogout,
   handleSharePublicAccess,
   setShowGuideModal,
@@ -131,6 +135,9 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
                 </button>
               </div>
             )}
+            <button onClick={() => setSoundEnabled(!soundEnabled)} className={`btn-header-action ${soundEnabled ? 'text-blue-500 dark:text-blue-400' : 'text-gray-400 dark:text-slate-500'}`} title={soundEnabled ? 'Silenciar notificaciones' : 'Activar sonido de notificaciones'}>
+              {soundEnabled ? <Volume2 size={20} /> : <VolumeX size={20} />}
+            </button>
             <button onClick={() => setDarkMode(!darkMode)} className="btn-header-action text-amber-500 dark:text-yellow-400"><Sun size={20} /></button>
             <button onClick={handleLogout} className="btn-header-action text-red-500 dark:text-red-400"><LogOut size={20} /></button>
           </div>

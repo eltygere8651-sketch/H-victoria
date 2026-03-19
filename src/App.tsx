@@ -39,6 +39,11 @@ const App: React.FC = () => {
     return saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches);
   });
 
+  const [soundEnabled, setSoundEnabled] = useState(() => {
+    const saved = localStorage.getItem('hub_sound_enabled');
+    return saved ? JSON.parse(saved) : true;
+  });
+
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isInstalled, setIsInstalled] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
@@ -91,6 +96,53 @@ const App: React.FC = () => {
   }, [darkMode]);
 
   useEffect(() => {
+    localStorage.setItem('hub_sound_enabled', JSON.stringify(soundEnabled));
+  }, [soundEnabled]);
+
+  const playNotificationSound = () => {
+    if (!soundEnabled) return;
+    try {
+      const AudioCtor = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioCtor) return;
+      const ctx = new AudioCtor();
+      
+      const playBeep = (timeOffset: number, freq: number) => {
+        const osc = ctx.createOscillator();
+        const gainNode = ctx.createGain();
+        
+        osc.type = 'square';
+        osc.frequency.value = freq;
+        
+        const startTime = ctx.currentTime + timeOffset;
+        
+        gainNode.gain.setValueAtTime(0, startTime);
+        gainNode.gain.linearRampToValueAtTime(0.3, startTime + 0.05);
+        gainNode.gain.linearRampToValueAtTime(0.3, startTime + 0.25);
+        gainNode.gain.linearRampToValueAtTime(0, startTime + 0.35);
+        
+        osc.connect(gainNode);
+        gainNode.connect(ctx.destination);
+        
+        osc.start(startTime);
+        osc.stop(startTime + 0.4);
+      };
+
+      // 5 pitidos más largos y espaciados
+      playBeep(0, 2500);
+      playBeep(0.5, 3000);
+      playBeep(1.0, 2500);
+      playBeep(1.5, 3000);
+      playBeep(2.0, 2500);
+      
+      setTimeout(() => {
+        if (ctx.state !== 'closed') ctx.close();
+      }, 3000);
+    } catch (error) {
+      console.error('Error playing notification sound:', error);
+    }
+  };
+
+  useEffect(() => {
     const beforeInstallHandler = (e: Event) => { e.preventDefault(); setDeferredPrompt(e); };
     const appInstalledHandler = () => { setIsInstalled(true); setDeferredPrompt(null); };
     window.addEventListener('beforeinstallprompt', beforeInstallHandler);
@@ -111,6 +163,7 @@ const App: React.FC = () => {
       if (newToasts.length > 0) {
         setToasts(prev => [...prev, ...newToasts]);
         newToasts.forEach(n => displayedToastIds.current.add(n.id));
+        playNotificationSound();
       }
       if (user.role === UserRole.ADMIN) setUnreadAdminNotifications(unread);
     }, true);
@@ -173,6 +226,7 @@ const App: React.FC = () => {
       <MainLayout
         user={user} view={view} setView={setView} cart={cart}
         darkMode={darkMode} setDarkMode={setDarkMode}
+        soundEnabled={soundEnabled} setSoundEnabled={setSoundEnabled}
         handleLogout={handleLogout}
         handleSharePublicAccess={handleSharePublicAccess}
         setShowGuideModal={setShowGuideModal}

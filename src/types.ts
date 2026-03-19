@@ -27,8 +27,10 @@ export interface Product {
   quantity: number;
   unit: string; // e.g., 'unidades', 'litros', 'cajas'
   minThreshold: number; // For low stock alerts
-  departmentId: string; // New: Link to a department
-  departmentName: string; // New: For display purposes
+  departmentId: string; // Legacy/Primary department ID
+  departmentName: string; // Legacy/Primary department Name
+  departmentIds?: string[]; // New: Array of department IDs
+  departmentNames?: string[]; // New: Array of department names
 }
 
 export interface ReplenishmentRequest {
@@ -93,6 +95,14 @@ export interface TaskComment {
 }
 
 
+export interface TaskChecklistItem {
+  id: string;
+  text: string;
+  isCompleted: boolean;
+  completedBy?: string;
+  completedAt?: number;
+}
+
 export interface Task {
   id: string;
   title: string;
@@ -105,12 +115,15 @@ export interface Task {
   createdBy: string; // User's name
   createdById: string; // User's ID
   createdAt: number; // Timestamp
+  startDate?: number; // New: Task start date/time
+  dueDate?: number; // New: Task end/due date/time
   completedBy?: string;
   completedAt?: number;
   imageUrls?: string[]; // New: Store Firebase Storage URLs for images
   type: TaskType; // New: Differentiates between task and announcement
   comments?: TaskComment[]; // New: Thread for discussions
   seenBy?: string[]; // New: Array of user IDs who have seen the latest update
+  checklist?: TaskChecklistItem[]; // New: Interactive checklist for tasks
 }
 
 // --- Notification System Types ---
@@ -118,6 +131,7 @@ export enum NotificationType {
   LOW_STOCK = 'LOW_STOCK',
   NEW_ORDER = 'NEW_ORDER',
   NEW_TASK = 'NEW_TASK',
+  STOCK_RECEIVED = 'STOCK_RECEIVED',
 }
 
 export interface NotificationPayload {
@@ -128,6 +142,7 @@ export interface NotificationPayload {
   departmentName?: string;
   taskId?: string; // For new task notifications
   taskTitle?: string;
+  itemCount?: number;
 }
 
 export interface AppNotification {
