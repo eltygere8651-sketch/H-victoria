@@ -60,7 +60,7 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
     if (!selectedOrder) return;
     setIsGeneratingPdf(true);
     try {
-      const filename = `Pedido_${selectedOrder.batchId}_${selectedOrder.departmentName}.pdf`;
+      const filename = `Pedido_Interno_${selectedOrder.batchId}_${selectedOrder.departmentName}.pdf`;
       // Pass preview=false to ensure it uses the fixed A4 width styles
       await generatePdfFromReactComponent(<OrderPdfDocument order={selectedOrder} preview={false} />, filename);
     } catch (error) {
@@ -150,7 +150,7 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
     <div className="transition-colors duration-300 min-h-full pb-24 bg-gray-50 dark:bg-slate-950">
       <div className="bg-white dark:bg-slate-900 border-b dark:border-slate-800 sticky top-0 z-10 shadow-sm transition-colors duration-300">
         <div className="flex overflow-x-auto no-scrollbar">
-          <button onClick={() => setActiveTab('requests')} className={`flex-1 min-w-[120px] py-4 text-sm font-extrabold border-b-2 transition-colors duration-200 ${activeTab === 'requests' ? 'border-red-600 text-red-600 dark:text-red-400 dark:border-red-400 bg-red-50 dark:bg-red-900/10 shadow-inner' : 'border-transparent text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800/50'}`}>Pedidos</button>
+          <button onClick={() => setActiveTab('requests')} className={`flex-1 min-w-[120px] py-4 text-sm font-extrabold border-b-2 transition-colors duration-200 ${activeTab === 'requests' ? 'border-red-600 text-red-600 dark:text-red-400 dark:border-red-400 bg-red-50 dark:bg-red-900/10 shadow-inner' : 'border-transparent text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800/50'}`}>Historial de Albaranes</button>
           <button onClick={() => setActiveTab('reports')} className={`flex-1 min-w-[120px] py-4 text-sm font-extrabold border-b-2 transition-colors duration-200 relative ${activeTab === 'reports' ? 'border-red-600 text-red-600 dark:text-red-400 dark:border-red-400 bg-red-50 dark:bg-red-900/10 shadow-inner' : 'border-transparent text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800/50'}`}>
             Reportes
             {unreadNotificationsCount > 0 && (
@@ -167,7 +167,7 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
         {activeTab === 'requests' && (
           <div>
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-bold text-gray-900 dark:text-white">Historial de Pedidos</h3>
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white">Historial de Albaranes</h3>
               {orders.length > 0 && (
                 <button 
                   onClick={() => setShowClearOrdersConfirm(true)}
@@ -178,7 +178,7 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
               )}
             </div>
             <div className="space-y-4">
-               {orders.length === 0 && <div className="col-span-full py-20 text-center text-gray-400 dark:text-slate-600"><Package size={40} className="mx-auto mb-2 opacity-50" /><p>No hay pedidos registrados.</p></div>}
+               {orders.length === 0 && <div className="col-span-full py-20 text-center text-gray-400 dark:text-slate-600"><Package size={40} className="mx-auto mb-2 opacity-50" /><p>No hay albaranes registrados.</p></div>}
                <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
                   {orders.map((order) => (
                     <div key={order.batchId} className="bg-white dark:bg-slate-900 rounded-2xl shadow-md border border-gray-100 dark:border-slate-800 p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 hover:border-red-500/50 dark:hover:border-red-500/50 hover:shadow-lg transition-all group">
@@ -187,7 +187,7 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
                           <span className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-xs font-black px-2 py-1 rounded uppercase tracking-wider border border-red-100 dark:border-red-900/30">{order.departmentName}</span>
                           <span className="text-xs text-gray-400 dark:text-slate-500 font-mono">{order.date}</span>
                         </div>
-                        <h3 className="font-bold text-gray-900 dark:text-white text-lg">Pedido <span className="font-mono text-gray-500 dark:text-slate-400">#{order.batchId}</span></h3>
+                        <h3 className="font-bold text-gray-900 dark:text-white text-lg">Albarán <span className="font-mono text-gray-500 dark:text-slate-400">#{order.batchId}</span></h3>
                         <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">Solicitado por: <span className="font-bold text-gray-700 dark:text-slate-300">{order.requestedBy}</span></p>
                         <p className="text-sm font-extrabold text-gray-600 dark:text-slate-400 mt-2 flex items-center gap-2"><Package size={16} /> {order.items.reduce((acc, i) => acc + i.quantity, 0)} productos</p>
                       </div>
@@ -382,8 +382,8 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
       {batchToDelete && (
          <div className="fixed inset-0 bg-black/60 z-[120] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
           <div className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-sm p-6 text-center shadow-pop-in animate-pop-in">
-            <h3 className="font-bold text-lg text-gray-900 dark:text-white">¿Eliminar Pedido?</h3>
-            <p className="text-gray-500 dark:text-slate-400 text-sm my-4">Se eliminará el pedido <span className="font-bold text-gray-800 dark:text-slate-200">#{batchToDelete}</span>. Esta acción no se puede deshacer.</p>
+            <h3 className="font-bold text-lg text-gray-900 dark:text-white">¿Eliminar Albarán?</h3>
+            <p className="text-gray-500 dark:text-slate-400 text-sm my-4">Se eliminará el albarán <span className="font-bold text-gray-800 dark:text-slate-200">#{batchToDelete}</span>. Esta acción no se puede deshacer.</p>
             <div className="flex gap-4">
               <button onClick={() => setBatchToDelete(null)} className="flex-1 py-3 bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-300 rounded-xl font-bold active:scale-95">Cancelar</button>
               <button onClick={confirmDeleteBatch} className="flex-1 py-3 bg-red-600 text-white rounded-xl font-bold shadow-lg shadow-button-red active:scale-95">Eliminar</button>
@@ -397,7 +397,7 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
           <div className="bg-white dark:bg-slate-800 rounded-3xl w-full max-w-sm shadow-pop-in p-6 animate-pop-in border border-gray-100 dark:border-slate-700/50 text-center">
             <div className="w-16 h-16 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-4 text-red-600 dark:text-red-500 shadow-md"><Trash2 size={32} /></div>
             <h3 className="text-xl font-black text-gray-900 dark:text-white mb-2">¿Vaciar Historial?</h3>
-            <p className="text-gray-500 dark:text-slate-400 mb-6">Esta acción eliminará permanentemente <strong>todos</strong> los registros de pedidos. No se podrá deshacer.</p>
+            <p className="text-gray-500 dark:text-slate-400 mb-6">Esta acción eliminará permanentemente <strong>todos</strong> los registros de albaranes. No se podrá deshacer.</p>
             <div className="flex gap-3">
               <button onClick={() => setShowClearOrdersConfirm(false)} disabled={isClearing} className="flex-1 py-3 font-bold text-gray-600 dark:text-slate-400 bg-gray-100 dark:bg-slate-700/50 rounded-xl hover:bg-gray-200 dark:hover:bg-slate-700 active:scale-[0.98]">Cancelar</button>
               <button onClick={handleClearAllOrders} disabled={isClearing} className="flex-1 py-3 font-bold text-white bg-red-600 rounded-xl hover:bg-red-700 shadow-lg shadow-button-red active:scale-[0.98] flex items-center justify-center gap-2">

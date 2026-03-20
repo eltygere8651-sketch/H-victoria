@@ -21,7 +21,7 @@ export const GuideModal: React.FC<GuideModalProps> = ({ isOpen, onClose }) => {
     {
       icon: ShoppingCart,
       title: "Logística Digital",
-      desc: "Gestión de pedidos internos con generación automática de albaranes PDF.",
+      desc: "Gestión de albaranes internos con generación automática de PDFs.",
       tag: "Agilidad",
       colorClass: "text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20",
     },

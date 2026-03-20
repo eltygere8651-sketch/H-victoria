@@ -266,8 +266,8 @@ export const submitOrderBatch = async (cart: CartItem[], departmentId: string, d
   const orderNotifRef = db.collection('notifications').doc();
   batch.set(orderNotifRef, {
     type: NotificationType.NEW_ORDER,
-    title: 'Nuevo Pedido Recibido',
-    message: `Nuevo pedido del departamento "${departmentName}" realizado por ${user.name}.`,
+    title: 'Nuevo Albarán Recibido',
+    message: `Nuevo albarán del departamento "${departmentName}" realizado por ${user.name}.`,
     icon: 'Package',
     timestamp: Date.now(),
     readStatus: false,
@@ -278,15 +278,30 @@ export const submitOrderBatch = async (cart: CartItem[], departmentId: string, d
   return { success: true, lowStockItems };
 };
 
-export const receiveStockBatch = async (items: { productId: string; quantityToAdd: number }[], userName: string) => {
+export const receiveStockBatch = async (items: { productId: string; productName: string; quantityToAdd: number; unit: string }[], userName: string) => {
   const batch = db.batch();
+  const batchId = 'ING-' + Date.now().toString().slice(-6);
   
   for (const item of items) {
     const productRef = db.collection('products').doc(item.productId);
-    // We need to get the current quantity to add to it, but batch.update doesn't support increment directly in the client SDK without FieldValue.increment
-    // Using FieldValue.increment is safer for concurrent updates
     batch.update(productRef, { 
       quantity: firebase.firestore.FieldValue.increment(item.quantityToAdd) 
+    });
+
+    // Create a request document to represent this item in the Albarán
+    const requestRef = db.collection('requests').doc();
+    batch.set(requestRef, {
+      batchId, 
+      productId: item.productId, 
+      productName: item.productName,
+      departmentId: 'INGRESO', 
+      departmentName: 'Ingreso de Proveedor', 
+      requestedBy: userName,
+      quantity: item.quantityToAdd, 
+      status: 'COMPLETED',
+      date: new Date().toLocaleString(), 
+      timestamp: Date.now(), 
+      unit: item.unit
     });
   }
 
@@ -299,7 +314,7 @@ export const receiveStockBatch = async (items: { productId: string; quantityToAd
     icon: 'PackagePlus',
     timestamp: Date.now(),
     readStatus: false,
-    payload: { itemCount: items.length }
+    payload: { itemCount: items.length, orderBatchId: batchId }
   });
 
   await batch.commit();

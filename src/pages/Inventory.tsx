@@ -188,7 +188,12 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser }) => {
     if (receiveItems.length === 0) return;
     setLoading(true);
     await storageService.receiveStockBatch(
-      receiveItems.map(item => ({ productId: item.product.id, quantityToAdd: item.quantityToAdd })),
+      receiveItems.map(item => ({ 
+        productId: item.product.id, 
+        productName: item.product.name,
+        quantityToAdd: item.quantityToAdd,
+        unit: item.product.unit || 'unidades'
+      })),
       currentUser.name
     );
     setReceiveItems([]);

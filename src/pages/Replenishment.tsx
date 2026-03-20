@@ -442,7 +442,7 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCar
         <div className="bg-white dark:bg-slate-900 px-4 py-4 md:px-6 md:py-6 border-b border-gray-100 dark:border-slate-800 shadow-sm z-10 space-y-4 transition-colors duration-300">
            <div className="flex justify-between items-center">
              <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tighter uppercase italic">
-               Hacer <span className="text-red-600">Pedido</span>
+               Crear <span className="text-red-600">Pedido</span>
              </h2>
              {currentUser.role === UserRole.ADMIN && (
                <button 

@@ -25,7 +25,7 @@ const OrdersHistory: React.FC<OrdersHistoryProps> = ({ currentUser }) => {
     if (!selectedOrder) return;
     setIsGeneratingPdf(true);
     try {
-      const filename = `Pedido_${selectedOrder.batchId}_${selectedOrder.departmentName}.pdf`;
+      const filename = `Pedido_Interno_${selectedOrder.batchId}_${selectedOrder.departmentName}.pdf`;
       // Pass preview=false to ensure PDF dimensions are enforced (A4 fixed width)
       await generatePdfFromReactComponent(<OrderPdfDocument order={selectedOrder} preview={false} />, filename);
     } catch (error) {
@@ -37,7 +37,7 @@ const OrdersHistory: React.FC<OrdersHistoryProps> = ({ currentUser }) => {
   };
 
   const handleDelete = (batchId: string) => {
-    if (window.confirm('¿ATENCIÓN: Estás seguro de que quieres eliminar este pedido completo? Se borrará del historial.')) {
+    if (window.confirm('¿ATENCIÓN: Estás seguro de que quieres eliminar este albarán completo? Se borrará del historial.')) {
       storageService.deleteBatch(batchId);
       if (selectedOrder?.batchId === batchId) {
         setSelectedOrder(null);
@@ -52,7 +52,7 @@ const OrdersHistory: React.FC<OrdersHistoryProps> = ({ currentUser }) => {
       <div className="mb-8">
         <h2 className="text-3xl font-extrabold text-gray-900 dark:text-white flex items-center gap-3 drop-shadow-sm">
           <span className="bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 p-2 rounded-xl shadow-sm"><FileText size={32} /></span>
-          Historial de Pedidos
+          Historial de Albaranes
         </h2>
         <p className="text-gray-500 dark:text-slate-400 text-base mt-2 ml-1 drop-shadow-sm">Consulta y reimprime los albaranes anteriores</p>
       </div>
@@ -95,7 +95,7 @@ const OrdersHistory: React.FC<OrdersHistoryProps> = ({ currentUser }) => {
                 <button 
                   onClick={(e) => { e.stopPropagation(); handleDelete(order.batchId); }}
                   className="p-3 text-gray-400 dark:text-slate-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors border border-gray-100 dark:border-slate-700/50 hover:border-red-100 shadow-sm active:scale-95"
-                  title="Eliminar Pedido"
+                  title="Eliminar Albarán"
                 >
                   <Trash2 size={18} />
                 </button>
@@ -108,8 +108,8 @@ const OrdersHistory: React.FC<OrdersHistoryProps> = ({ currentUser }) => {
             <div className="bg-gray-50 dark:bg-slate-700/30 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 shadow-md">
               <FileText size={40} className="opacity-40" />
             </div>
-            <p className="text-xl font-bold text-gray-500 dark:text-slate-500 drop-shadow-sm">No hay pedidos registrados</p>
-            <p className="text-sm mt-1 text-gray-400 drop-shadow-sm">Realiza un nuevo pedido para verlo aquí.</p>
+            <p className="text-xl font-bold text-gray-500 dark:text-slate-500 drop-shadow-sm">No hay albaranes registrados</p>
+            <p className="text-sm mt-1 text-gray-400 drop-shadow-sm">Realiza un nuevo albarán para verlo aquí.</p>
           </div>
         )}
       </div>

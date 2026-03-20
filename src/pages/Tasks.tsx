@@ -44,6 +44,16 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
   const [viewMode, setViewMode] = useState<'LIST' | 'CALENDAR'>('LIST');
   const [currentMonth, setCurrentMonth] = useState(new Date());
 
+  const getStartOfWeek = (date: Date) => {
+    const d = new Date(date);
+    const day = d.getDay();
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is sunday
+    d.setDate(diff);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  };
+  const [currentWeekStart, setCurrentWeekStart] = useState(getStartOfWeek(new Date()));
+
   const [newChecklistItemText, setNewChecklistItemText] = useState('');
 
   const formatDateTimeLocal = (timestamp?: number) => {
@@ -292,6 +302,33 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
     const statusMatch = statusFilter === 'ALL' || task.status === statusFilter;
     const deptMatch = departmentFilter === 'ALL' || task.departmentId === departmentFilter;
     return statusMatch && deptMatch;
+  }).sort((a, b) => {
+    // 1. Completed tasks go to the bottom
+    if (a.status !== TaskStatus.COMPLETED && b.status === TaskStatus.COMPLETED) return -1;
+    if (a.status === TaskStatus.COMPLETED && b.status !== TaskStatus.COMPLETED) return 1;
+
+    // 2. Sort by dueDate (ascending) if available
+    if (a.dueDate && b.dueDate) return a.dueDate - b.dueDate;
+    if (a.dueDate && !b.dueDate) return -1;
+    if (!a.dueDate && b.dueDate) return 1;
+
+    // 3. Sort by startDate (ascending) if available
+    if (a.startDate && b.startDate) return a.startDate - b.startDate;
+    if (a.startDate && !b.startDate) return -1;
+    if (!a.startDate && b.startDate) return 1;
+
+    // 4. Fallback to createdAt (descending - newest first)
+    return b.createdAt - a.createdAt;
+  });
+
+  const currentWeekEnd = new Date(currentWeekStart);
+  currentWeekEnd.setDate(currentWeekEnd.getDate() + 6);
+  currentWeekEnd.setHours(23, 59, 59, 999);
+
+  const listTasks = filteredTasks.filter(t => {
+    // Assign each task to exactly one week based on its most relevant date
+    const taskDate = t.startDate ? new Date(t.startDate) : t.dueDate ? new Date(t.dueDate) : new Date(t.createdAt);
+    return taskDate >= currentWeekStart && taskDate <= currentWeekEnd;
   });
 
   const generateRandomHospitalityTask = async () => {
@@ -401,7 +438,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
     const year = currentMonth.getFullYear();
     const month = currentMonth.getMonth();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const firstDay = new Date(year, month, 1).getDay(); // 0 = Sunday
+    const firstDay = (new Date(year, month, 1).getDay() + 6) % 7; // 0 = Monday, 6 = Sunday
 
     const days = [];
     for (let i = 0; i < firstDay; i++) {
@@ -416,27 +453,27 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
     const today = () => setCurrentMonth(new Date());
 
     return (
-      <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-xl border border-gray-100 dark:border-slate-800 p-4 md:p-6 overflow-x-auto">
-        <div className="flex justify-between items-center mb-6 min-w-[600px]">
-          <h3 className="text-2xl font-black uppercase text-gray-900 dark:text-white">
+      <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-xl border border-gray-100 dark:border-slate-800 p-2 md:p-6">
+        <div className="flex flex-col sm:flex-row justify-between items-center mb-4 md:mb-6 gap-4">
+          <h3 className="text-xl md:text-2xl font-black uppercase text-gray-900 dark:text-white text-center">
             {currentMonth.toLocaleString('es-ES', { month: 'long', year: 'numeric' })}
           </h3>
           <div className="flex gap-2">
-            <button onClick={prevMonth} className="px-4 py-2 bg-gray-100 dark:bg-slate-800 rounded-xl font-bold hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors">&lt;</button>
-            <button onClick={today} className="px-4 py-2 bg-gray-100 dark:bg-slate-800 rounded-xl font-bold hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors">Hoy</button>
-            <button onClick={nextMonth} className="px-4 py-2 bg-gray-100 dark:bg-slate-800 rounded-xl font-bold hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors">&gt;</button>
+            <button onClick={prevMonth} className="px-3 py-2 md:px-4 bg-gray-100 dark:bg-slate-800 rounded-xl font-bold hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors">&lt;</button>
+            <button onClick={today} className="px-3 py-2 md:px-4 bg-gray-100 dark:bg-slate-800 rounded-xl font-bold hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors">Hoy</button>
+            <button onClick={nextMonth} className="px-3 py-2 md:px-4 bg-gray-100 dark:bg-slate-800 rounded-xl font-bold hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors">&gt;</button>
           </div>
         </div>
 
-        <div className="grid grid-cols-7 gap-2 mb-2 min-w-[600px]">
-          {['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'].map(d => (
-            <div key={d} className="text-center text-xs font-black text-gray-400 uppercase tracking-widest">{d}</div>
+        <div className="grid grid-cols-7 gap-1 md:gap-2 mb-2">
+          {['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'].map(d => (
+            <div key={d} className="text-center text-[10px] md:text-xs font-black text-gray-400 uppercase tracking-tighter md:tracking-widest truncate">{d}</div>
           ))}
         </div>
 
-        <div className="grid grid-cols-7 gap-2 min-w-[600px]">
+        <div className="grid grid-cols-7 gap-1 md:gap-2">
           {days.map((date, i) => {
-            if (!date) return <div key={`empty-${i}`} className="min-h-[100px] bg-gray-50/50 dark:bg-slate-900/50 rounded-xl border border-dashed border-gray-200 dark:border-slate-800"></div>;
+            if (!date) return <div key={`empty-${i}`} className="min-h-[60px] md:min-h-[100px] bg-gray-50/50 dark:bg-slate-900/50 rounded-lg md:rounded-xl border border-dashed border-gray-200 dark:border-slate-800"></div>;
             
             const isToday = new Date().toDateString() === date.toDateString();
             
@@ -457,17 +494,17 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
               <div 
                 key={date.toISOString()} 
                 onClick={() => handleDayClick(date)}
-                className={`min-h-[100px] p-2 rounded-xl border ${isToday ? 'border-red-500 bg-red-50/30 dark:bg-red-900/10' : 'border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800'} flex flex-col ${canManageTasks ? 'cursor-pointer hover:border-red-300 dark:hover:border-red-700 transition-colors' : ''}`}
+                className={`min-h-[60px] md:min-h-[100px] p-1 md:p-2 rounded-lg md:rounded-xl border ${isToday ? 'border-red-500 bg-red-50/30 dark:bg-red-900/10' : 'border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800'} flex flex-col ${canManageTasks ? 'cursor-pointer hover:border-red-300 dark:hover:border-red-700 transition-colors' : ''}`}
               >
-                <div className={`text-right text-sm font-bold mb-1 ${isToday ? 'text-red-600' : 'text-gray-500 dark:text-slate-400'}`}>
+                <div className={`text-center md:text-right text-xs md:text-sm font-bold mb-1 ${isToday ? 'text-red-600' : 'text-gray-500 dark:text-slate-400'}`}>
                   {date.getDate()}
                 </div>
-                <div className="flex-1 flex flex-col gap-1 overflow-y-auto max-h-[120px] no-scrollbar">
+                <div className="flex-1 flex flex-col gap-1 overflow-y-auto max-h-[60px] md:max-h-[120px] no-scrollbar">
                   {dayTasks.map(t => (
                     <div 
                       key={t.id} 
                       onClick={(e) => { e.stopPropagation(); setEditingTask(t); setShowTaskModal(true); }}
-                      className={`text-[10px] font-bold p-1.5 rounded-lg cursor-pointer truncate ${t.status === TaskStatus.COMPLETED ? 'bg-gray-100 text-gray-400 dark:bg-slate-700 dark:text-slate-500 line-through' : t.priority === TaskPriority.HIGH ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' : 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'}`}
+                      className={`text-[8px] md:text-[10px] font-bold p-1 md:p-1.5 rounded md:rounded-lg cursor-pointer truncate ${t.status === TaskStatus.COMPLETED ? 'bg-gray-100 text-gray-400 dark:bg-slate-700 dark:text-slate-500 line-through' : t.priority === TaskPriority.HIGH ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' : 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'}`}
                       title={t.title}
                     >
                       {t.title}
@@ -567,14 +604,41 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
         {/* SECTION: TASKS (HIGH IMPACT ACTION STYLE) */}
         {viewMode === 'LIST' ? (
           <div className="space-y-6">
-            {filteredTasks.length === 0 ? (
+            <div className="flex justify-between items-center bg-white dark:bg-slate-900 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-800">
+              <button 
+                onClick={() => setCurrentWeekStart(new Date(currentWeekStart.getTime() - 7 * 24 * 60 * 60 * 1000))}
+                className="p-2 bg-gray-100 dark:bg-slate-800 rounded-xl hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors"
+              >
+                &lt;
+              </button>
+              <div className="text-center flex flex-col items-center">
+                <p className="text-sm font-bold text-gray-500 dark:text-slate-400 uppercase tracking-widest mb-1">Semana</p>
+                <p className="text-lg font-black text-gray-900 dark:text-white">
+                  {currentWeekStart.getDate()} {currentWeekStart.toLocaleString('es-ES', { month: 'short' })} - {currentWeekEnd.getDate()} {currentWeekEnd.toLocaleString('es-ES', { month: 'short' })}
+                </p>
+                <button 
+                  onClick={() => setCurrentWeekStart(getStartOfWeek(new Date()))}
+                  className="mt-2 text-xs font-bold text-red-600 dark:text-red-400 hover:underline"
+                >
+                  Ir a semana actual
+                </button>
+              </div>
+              <button 
+                onClick={() => setCurrentWeekStart(new Date(currentWeekStart.getTime() + 7 * 24 * 60 * 60 * 1000))}
+                className="p-2 bg-gray-100 dark:bg-slate-800 rounded-xl hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors"
+              >
+                &gt;
+              </button>
+            </div>
+
+            {listTasks.length === 0 ? (
               <div className="py-24 text-center bg-white dark:bg-slate-900 rounded-[2.5rem] border-4 border-dashed border-gray-200 dark:border-slate-800 shadow-inner">
                 <ClipboardCheck size={80} className="mx-auto mb-6 text-gray-300 dark:text-slate-700" />
                 <p className="text-3xl font-black text-gray-400 dark:text-slate-600 uppercase tracking-tighter">Sin Tareas Activas</p>
-                <p className="text-gray-400 dark:text-slate-500 font-medium mt-2">¡Todo al día!</p>
+                <p className="text-gray-400 dark:text-slate-500 font-medium mt-2">¡Todo al día en esta semana!</p>
               </div>
             ) : (
-              filteredTasks.map(task => {
+              listTasks.map(task => {
                 const isUrgent = task.priority === TaskPriority.HIGH;
                 const isCompleted = task.status === TaskStatus.COMPLETED;
 
