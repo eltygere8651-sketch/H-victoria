@@ -14,6 +14,8 @@ import { ShareModal } from './components/ShareModal';
 import { GuideModal } from './components/GuideModal';
 import { MainLayout } from './components/MainLayout';
 
+import ProviderDelivery from './pages/ProviderDelivery';
+
 const App: React.FC = () => {
   const [isInitializing, setIsInitializing] = useState(true);
   const [user, setUser] = useState<User | null>(storageService.getSession());
@@ -63,6 +65,7 @@ const App: React.FC = () => {
       const searchParams = new URLSearchParams(window.location.search);
       const shareId = searchParams.get('shareId');
       const publicMode = searchParams.get('public');
+      const providerMode = searchParams.get('provider');
       if (shareId) setSharedTaskId(shareId);
       
       // Artificial delay for splash screen visibility (optional, improves perceived quality)
@@ -72,7 +75,11 @@ const App: React.FC = () => {
       
       await Promise.all([authPromise, minSplashTime]);
 
-      if (publicMode === 'true' && !storageService.getSession()) {
+      if (providerMode === 'true' && !storageService.getSession()) {
+        const providerUser: User = { id: 'provider-' + Date.now(), name: 'Proveedor', role: UserRole.PROVIDER, pin: '' };
+        setUser(providerUser);
+        setView('provider' as any);
+      } else if (publicMode === 'true' && !storageService.getSession()) {
         const guestUser: User = { id: 'guest-' + Date.now(), name: 'Invitado', role: UserRole.GUEST, pin: '' };
         setUser(guestUser);
         setView('tasks');
@@ -239,9 +246,10 @@ const App: React.FC = () => {
         unreadAdminNotificationsCount={unreadAdminNotifications.length}
       >
         {view === 'inventory' && user.role === UserRole.ADMIN && <Inventory currentUser={user} />}
-        {view === 'replenish' && user.role !== UserRole.GUEST && <Replenishment currentUser={user} cart={cart} setCart={setCart} showMobileCart={showMobileCart} setShowMobileCart={setShowMobileCart} />}
+        {view === 'replenish' && user.role !== UserRole.GUEST && user.role !== UserRole.PROVIDER && <Replenishment currentUser={user} cart={cart} setCart={setCart} showMobileCart={showMobileCart} setShowMobileCart={setShowMobileCart} />}
         {view === 'admin' && user.role === UserRole.ADMIN && <Admin currentUser={user} unreadNotificationsCount={unreadAdminNotifications.length} initialTab={initialAdminTab} />}
         {view === 'tasks' && <Tasks currentUser={user} />}
+        {(view as any) === 'provider' && <ProviderDelivery currentUser={user} />}
       </MainLayout>
 
       <GuideModal isOpen={showGuideModal} onClose={() => setShowGuideModal(false)} />

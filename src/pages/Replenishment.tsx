@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Product, User, CartItem, Department, OrderBatch, UserRole } from '../types';
+import { Product, User, CartItem, Department, OrderBatch, UserRole, ReplenishmentRequest } from '../types';
 import * as storageService from '../services/storageService';
-import { Search, ShoppingCart, Plus, Minus, Trash2, CheckCircle2, X, ArrowRight, Package, ChevronUp, AlertTriangle, Siren, Loader2, ChevronDown, ListTree, Filter, Zap } from 'lucide-react';
+import { Search, ShoppingCart, Plus, Minus, Trash2, CheckCircle2, X, ArrowRight, Package, ChevronUp, AlertTriangle, Siren, Loader2, ChevronDown, ListTree, Filter, Zap, Share2 } from 'lucide-react';
+import { sharePdfFromReactComponent } from '../utils/pdfGenerator';
+import { OrderPdfDocument } from '../components/OrderPdfDocument';
 
 interface ReplenishmentProps {
   currentUser: User;
@@ -197,10 +199,37 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCar
     );
     
     setIsProcessing(false);
-    if (result.success) {
+    if (result.success && result.batchId) {
       setShowConfirmModal(false);
       setShowMobileCart(false);
       setOrderError('');
+      
+      // Auto-share the PDF
+      const orderBatch: OrderBatch = {
+        batchId: result.batchId,
+        date: new Date().toLocaleString(),
+        departmentId: selectedDepartmentForOrder,
+        departmentName: selectedDepartmentNameForOrder,
+        requestedBy: currentUser.name,
+        items: cart.map(item => ({
+          id: '',
+          productId: item.product.id,
+          productName: item.product.name,
+          departmentId: selectedDepartmentForOrder,
+          departmentName: selectedDepartmentNameForOrder,
+          requestedBy: currentUser.name,
+          quantity: item.quantity,
+          status: 'COMPLETED',
+          date: new Date().toLocaleString(),
+          unit: item.product.unit
+        }))
+      };
+      const isIngreso = selectedDepartmentForOrder === 'INGRESO' || selectedDepartmentNameForOrder === 'Ingreso de Proveedor';
+      const prefix = isIngreso ? 'Albaran_de_Entrega' : 'Pedido_Interno';
+      const title = isIngreso ? 'Albarán de Entrega' : 'Pedido Interno';
+      const text = isIngreso ? 'Aquí tienes el albarán de entrega en formato PDF.' : 'Aquí tienes el pedido interno en formato PDF.';
+      const filename = `${prefix}_${result.batchId}_${selectedDepartmentNameForOrder}.pdf`;
+      sharePdfFromReactComponent(<OrderPdfDocument order={orderBatch} preview={false} />, filename, `${title} #${result.batchId}`, text).catch(console.error);
       
       if (result.lowStockItems && result.lowStockItems.length > 0) {
         setLowStockList(result.lowStockItems);

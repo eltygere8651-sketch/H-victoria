@@ -53,7 +53,9 @@ export const OrderPdfDocument: React.FC<OrderPdfDocumentProps> = ({ order, previ
             <Logo size={preview ? "md" : "lg"} simple />
             <div>
               <h1 className="text-3xl font-black uppercase tracking-tighter text-black leading-none">Hub</h1>
-              <p className="text-red-600 font-bold uppercase tracking-[0.3em] text-[10px] mt-1">Pedido Interno</p>
+              <p className="text-red-600 font-bold uppercase tracking-[0.3em] text-[10px] mt-1">
+                {order.departmentId === 'INGRESO' || order.departmentName === 'Ingreso de Proveedor' ? 'Albarán de Entrega' : 'Pedido Interno'}
+              </p>
             </div>
           </div>
           <div className={`${preview ? 'w-full sm:w-auto text-left sm:text-right' : 'text-right'}`}>

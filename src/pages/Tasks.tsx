@@ -1,11 +1,13 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Task, User, Department, TaskStatus, TaskPriority, UserRole, TaskType, TaskComment, TaskChecklistItem } from '../types';
 import * as storageService from '../services/storageService';
-import { ClipboardCheck, Plus, X, Save, Loader2, Edit2, Trash2, ChevronDown, MessagesSquare, Check, Camera, AlertTriangle, Share2, Send, Image, Info, Flame, Bold, Calendar, Clock, List } from 'lucide-react';
+import { ClipboardCheck, Plus, X, Save, Loader2, Edit2, Trash2, ChevronDown, MessagesSquare, Check, Camera, AlertTriangle, Share2, Send, Image, Info, Flame, Bold, Calendar, Clock, List, FileText } from 'lucide-react';
 import { compressImage } from '../utils/imageCompressor';
 import { ImageViewer } from '../components/ImageViewer';
 import { DeletionTimer } from '../components/DeletionTimer';
 import { ShareModal } from '../components/ShareModal';
+import { sharePdfFromReactComponent } from '../utils/pdfGenerator';
+import { TaskPdfDocument } from '../components/TaskPdfDocument';
 
 interface TasksProps {
   currentUser: User;
@@ -209,6 +211,17 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
     const updatedChecklist = [...(editingTask?.checklist || [])];
     updatedChecklist.splice(index, 1);
     setEditingTask({ ...editingTask, checklist: updatedChecklist });
+  };
+
+  const handleShareTaskPDF = async (task: Task) => {
+    try {
+      const filename = `Tarea_${task.id}_${task.departmentName}.pdf`;
+      const text = 'Aquí tienes los detalles de la tarea en formato PDF.';
+      await sharePdfFromReactComponent(<TaskPdfDocument task={task} preview={false} />, filename, `Tarea: ${task.title}`, text);
+    } catch (error) {
+      console.error("PDF Share Failed:", error);
+      alert('Hubo un error al compartir el PDF.');
+    }
   };
 
   const handleShareTask = (task: Task) => {
@@ -670,9 +683,14 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
                         <div className="flex items-center gap-2 self-end md:self-auto">
                           {/* Public Share Button */}
                           {currentUser.role === UserRole.ADMIN && (
-                            <button onClick={() => handleShareTask(task)} className="p-3 bg-gray-50 dark:bg-slate-800 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-xl transition-colors shadow-sm">
-                              <Share2 size={20} />
-                            </button>
+                            <>
+                              <button onClick={() => handleShareTask(task)} title="Compartir Enlace Público" className="p-3 bg-gray-50 dark:bg-slate-800 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-xl transition-colors shadow-sm">
+                                <Share2 size={20} />
+                              </button>
+                              <button onClick={() => handleShareTaskPDF(task)} title="Compartir PDF por WhatsApp" className="p-3 bg-gray-50 dark:bg-slate-800 text-gray-400 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-xl transition-colors shadow-sm">
+                                <FileText size={20} />
+                              </button>
+                            </>
                           )}
                           {(currentUser.role === UserRole.ADMIN || (currentUser.permissions?.includes('CAN_MANAGE_TASKS') && task.createdById === currentUser.id)) && (
                             <>

@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { Product, UserRole, User, Department } from '../types';
+import { Product, UserRole, User, Department, OrderBatch } from '../types';
 import * as storageService from '../services/storageService';
-import { Search, Plus, AlertTriangle, Edit2, Trash2, X, Save, Loader2, ListTree, ChevronDown, RefreshCw, Sparkles, Wand2, PackagePlus, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { Search, Plus, AlertTriangle, Edit2, Trash2, X, Save, Loader2, ListTree, ChevronDown, RefreshCw, Sparkles, Wand2, PackagePlus, ArrowRight, CheckCircle2, FileText, Share2 } from 'lucide-react';
+import { sharePdfFromReactComponent } from '../utils/pdfGenerator';
+import { OrderPdfDocument } from '../components/OrderPdfDocument';
 
 interface InventoryProps {
   currentUser: User;
@@ -187,7 +189,7 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser }) => {
   const handleConfirmReceiveStock = async () => {
     if (receiveItems.length === 0) return;
     setLoading(true);
-    await storageService.receiveStockBatch(
+    const result = await storageService.receiveStockBatch(
       receiveItems.map(item => ({ 
         productId: item.product.id, 
         productName: item.product.name,
@@ -196,6 +198,32 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser }) => {
       })),
       currentUser.name
     );
+    
+    if (result && result.success && result.batchId) {
+      const orderBatch: OrderBatch = {
+        batchId: result.batchId,
+        date: new Date().toLocaleString(),
+        departmentId: 'INGRESO',
+        departmentName: 'Ingreso de Proveedor',
+        requestedBy: currentUser.name,
+        items: receiveItems.map(item => ({
+          id: '',
+          productId: item.product.id,
+          productName: item.product.name,
+          departmentId: 'INGRESO',
+          departmentName: 'Ingreso de Proveedor',
+          requestedBy: currentUser.name,
+          quantity: item.quantityToAdd,
+          status: 'COMPLETED',
+          date: new Date().toLocaleString(),
+          unit: item.product.unit || 'unidades'
+        }))
+      };
+      const filename = `Albaran_de_Entrega_${result.batchId}_Ingreso_de_Proveedor.pdf`;
+      const text = 'Aquí tienes el albarán de entrega en formato PDF.';
+      sharePdfFromReactComponent(<OrderPdfDocument order={orderBatch} preview={false} />, filename, `Albarán de Entrega #${result.batchId}`, text).catch(console.error);
+    }
+    
     setReceiveItems([]);
     setShowReceiveStockModal(false);
     setLoading(false);
@@ -215,6 +243,25 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser }) => {
               Stock <span className="text-red-600">Total</span>
             </h2>
             <div className="flex gap-2">
+              <button 
+                onClick={() => {
+                  const url = `${window.location.origin}?provider=true`;
+                  if (navigator.share) {
+                    navigator.share({
+                      title: 'Ingreso de Proveedor',
+                      text: 'Accede a este enlace para registrar el ingreso de mercancía:',
+                      url: url
+                    }).catch(console.error);
+                  } else {
+                    navigator.clipboard.writeText(url);
+                    alert('Enlace de proveedor copiado al portapapeles');
+                  }
+                }}
+                title="Compartir Enlace a Proveedores"
+                className="bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400 w-12 h-12 rounded-2xl flex items-center justify-center hover:bg-indigo-200 dark:hover:bg-indigo-900/50 transition-colors"
+              >
+                <Share2 size={20} />
+              </button>
               <button 
                 onClick={() => setShowReceiveStockModal(true)} 
                 title="Ingreso de Mercancía"

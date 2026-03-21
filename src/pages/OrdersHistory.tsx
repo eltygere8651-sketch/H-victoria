@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import * as storageService from '../services/storageService';
 import { User, UserRole, OrderBatch } from '../types';
-import { FileText, Trash2, X, Eye, Package, Download, Loader2 } from 'lucide-react';
+import { FileText, Trash2, X, Eye, Package, Download, Loader2, Share2 } from 'lucide-react';
 import { Logo } from '../components/Logo';
-import { generatePdfFromReactComponent } from '../utils/pdfGenerator';
+import { generatePdfFromReactComponent, sharePdfFromReactComponent } from '../utils/pdfGenerator';
 import { OrderPdfDocument } from '../components/OrderPdfDocument';
 
 
@@ -25,12 +25,32 @@ const OrdersHistory: React.FC<OrdersHistoryProps> = ({ currentUser }) => {
     if (!selectedOrder) return;
     setIsGeneratingPdf(true);
     try {
-      const filename = `Pedido_Interno_${selectedOrder.batchId}_${selectedOrder.departmentName}.pdf`;
+      const isIngreso = selectedOrder.departmentId === 'INGRESO' || selectedOrder.departmentName === 'Ingreso de Proveedor';
+      const prefix = isIngreso ? 'Albaran_de_Entrega' : 'Pedido_Interno';
+      const filename = `${prefix}_${selectedOrder.batchId}_${selectedOrder.departmentName}.pdf`;
       // Pass preview=false to ensure PDF dimensions are enforced (A4 fixed width)
       await generatePdfFromReactComponent(<OrderPdfDocument order={selectedOrder} preview={false} />, filename);
     } catch (error) {
       console.error("PDF Generation Failed:", error);
       alert('Hubo un error al generar el PDF. Por favor, inténtalo de nuevo.');
+    } finally {
+      setIsGeneratingPdf(false);
+    }
+  };
+
+  const handleSharePDF = async () => {
+    if (!selectedOrder) return;
+    setIsGeneratingPdf(true);
+    try {
+      const isIngreso = selectedOrder.departmentId === 'INGRESO' || selectedOrder.departmentName === 'Ingreso de Proveedor';
+      const prefix = isIngreso ? 'Albaran_de_Entrega' : 'Pedido_Interno';
+      const title = isIngreso ? 'Albarán de Entrega' : 'Pedido Interno';
+      const text = isIngreso ? 'Aquí tienes el albarán de entrega en formato PDF.' : 'Aquí tienes el pedido interno en formato PDF.';
+      const filename = `${prefix}_${selectedOrder.batchId}_${selectedOrder.departmentName}.pdf`;
+      await sharePdfFromReactComponent(<OrderPdfDocument order={selectedOrder} preview={false} />, filename, `${title} #${selectedOrder.batchId}`, text);
+    } catch (error) {
+      console.error("PDF Share Failed:", error);
+      alert('Hubo un error al compartir el PDF. Por favor, inténtalo de nuevo.');
     } finally {
       setIsGeneratingPdf(false);
     }
@@ -134,6 +154,16 @@ const OrdersHistory: React.FC<OrdersHistoryProps> = ({ currentUser }) => {
                       </button>
                     )}
                     
+                    <button 
+                      onClick={handleSharePDF} 
+                      disabled={isGeneratingPdf}
+                      className="bg-green-600 text-white px-4 py-2.5 rounded-lg font-bold shadow-lg shadow-green-900/40 flex items-center gap-2 active:scale-95 disabled:opacity-50"
+                      title="Compartir por WhatsApp"
+                    >
+                      {isGeneratingPdf ? <Loader2 size={20} className="animate-spin" /> : <Share2 size={20} />}
+                      <span className="hidden sm:inline">Compartir</span> 
+                    </button>
+
                     <button 
                       onClick={handleDownloadPDF} 
                       disabled={isGeneratingPdf}

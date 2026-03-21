@@ -275,7 +275,7 @@ export const submitOrderBatch = async (cart: CartItem[], departmentId: string, d
   });
 
   await batch.commit();
-  return { success: true, lowStockItems };
+  return { success: true, lowStockItems, batchId };
 };
 
 export const receiveStockBatch = async (items: { productId: string; productName: string; quantityToAdd: number; unit: string }[], userName: string) => {
@@ -318,6 +318,7 @@ export const receiveStockBatch = async (items: { productId: string; productName:
   });
 
   await batch.commit();
+  return { success: true, batchId };
 };
 
 export const subscribeToBatches = (callback: (batches: OrderBatch[]) => void) => {
