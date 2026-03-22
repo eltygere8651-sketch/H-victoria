@@ -10,7 +10,7 @@ export interface User {
   name: string;
   role: UserRole;
   pin: string; // Simplified password for this demo
-  permissions?: ('CAN_MANAGE_TASKS')[]; // New: Granular permissions
+  permissions?: ('CAN_MANAGE_TASKS' | 'CAN_VIEW_NOTIFICATIONS')[]; // New: Granular permissions
   // FIX: Added optional pushToken for FCM integration.
   pushToken?: string;
 }

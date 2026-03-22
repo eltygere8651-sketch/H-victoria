@@ -1,6 +1,6 @@
 {
   "name": "Hub",
-  "description": "La inteligencia operativa que impulsa tu rentabilidad.",
+  "description": "Plataforma integral para la gestión en tiempo real de inventario, pedidos internos, tareas del personal y recepción de proveedores.",
   "requestFramePermissions": [
     "camera"
   ]

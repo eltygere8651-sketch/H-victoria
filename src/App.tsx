@@ -164,19 +164,34 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (!user || user.role === UserRole.GUEST) return;
+    
+    let isInitialLoad = true;
+    const canViewNotifications = user.role === UserRole.ADMIN || user.permissions?.includes('CAN_VIEW_NOTIFICATIONS');
+
     const unsubNotifs = storageService.subscribeToNotifications((notifications) => {
       const unread = notifications.filter(n => !n.readStatus);
-      const newToasts = unread.filter(n => !displayedToastIds.current.has(n.id));
-      if (newToasts.length > 0) {
-        setToasts(prev => [...prev, ...newToasts]);
-        newToasts.forEach(n => displayedToastIds.current.add(n.id));
-        playNotificationSound();
+      
+      if (canViewNotifications) {
+        if (isInitialLoad) {
+          // Prevent flood on initial load
+          unread.forEach(n => displayedToastIds.current.add(n.id));
+          isInitialLoad = false;
+        } else {
+          const newToasts = unread.filter(n => !displayedToastIds.current.has(n.id));
+          if (newToasts.length > 0) {
+            setToasts(prev => [...prev, ...newToasts]);
+            newToasts.forEach(n => displayedToastIds.current.add(n.id));
+            playNotificationSound();
+          }
+        }
+        setUnreadAdminNotifications(unread);
       }
-      if (user.role === UserRole.ADMIN) setUnreadAdminNotifications(unread);
     }, true);
+    
     const unsubTasks = storageService.subscribeToTasks((tasks) => {
       setHasUnreadTasks(tasks.some(task => !task.seenBy?.includes(user.id)));
     });
+    
     return () => { unsubNotifs(); unsubTasks(); };
   }, [user]);
 
@@ -190,7 +205,10 @@ const App: React.FC = () => {
   };
 
   const handleToastNavigation = (notif: AppNotification) => {
-    if (user?.role === UserRole.ADMIN) { setInitialAdminTab('reports'); setView('admin'); }
+    if (user?.role === UserRole.ADMIN || user?.permissions?.includes('CAN_VIEW_NOTIFICATIONS')) { 
+      setInitialAdminTab('reports'); 
+      setView('admin'); 
+    }
     handleToastDismiss(notif.id);
   };
 
@@ -247,7 +265,7 @@ const App: React.FC = () => {
       >
         {view === 'inventory' && user.role === UserRole.ADMIN && <Inventory currentUser={user} />}
         {view === 'replenish' && user.role !== UserRole.GUEST && user.role !== UserRole.PROVIDER && <Replenishment currentUser={user} cart={cart} setCart={setCart} showMobileCart={showMobileCart} setShowMobileCart={setShowMobileCart} />}
-        {view === 'admin' && user.role === UserRole.ADMIN && <Admin currentUser={user} unreadNotificationsCount={unreadAdminNotifications.length} initialTab={initialAdminTab} />}
+        {view === 'admin' && (user.role === UserRole.ADMIN || user.permissions?.includes('CAN_VIEW_NOTIFICATIONS')) && <Admin currentUser={user} unreadNotificationsCount={unreadAdminNotifications.length} initialTab={initialAdminTab} />}
         {view === 'tasks' && <Tasks currentUser={user} />}
         {(view as any) === 'provider' && <ProviderDelivery currentUser={user} />}
       </MainLayout>
