@@ -228,12 +228,17 @@ const App: React.FC = () => {
 
   const handleInstallClick = async () => {
     if (deferredPrompt) {
-      deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
-      if (outcome === 'accepted') {
-        setIsInstalled(true);
+      try {
+        await deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        if (outcome === 'accepted') {
+          setIsInstalled(true);
+        }
+        setDeferredPrompt(null);
+        setShowAndroidPrompt(false);
+      } catch (err) {
+        console.error('Error prompting install:', err);
       }
-      setDeferredPrompt(null);
     } else if (isIOS) {
       setShowIOSPrompt(true);
     } else if (isAndroid) {

@@ -206,19 +206,31 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
                 <Download size={32} className="text-red-500" />
               </div>
               <h3 className="text-xl font-bold text-slate-900 dark:text-white">Instalar App en Android</h3>
-              {deferredPrompt ? (
-                <p className="text-slate-600 dark:text-slate-400 text-sm">
-                  Instala esta aplicación en tu dispositivo para un acceso más rápido y una mejor experiencia.
-                </p>
-              ) : (
-                <p className="text-slate-600 dark:text-slate-400 text-sm">
-                  Para instalar esta aplicación, pulsa el menú de los <strong>3 puntos</strong> en la esquina superior derecha de tu navegador y selecciona <strong>"Instalar aplicación"</strong> o <strong>"Añadir a la pantalla de inicio"</strong>.
-                </p>
-              )}
+              {(() => {
+                const isInAppBrowser = /FBAV|FBAN|Instagram|Line|Snapchat|WhatsApp|Viber|Twitter|TikTok/i.test(navigator.userAgent);
+                if (deferredPrompt) {
+                  return (
+                    <p className="text-slate-600 dark:text-slate-400 text-sm">
+                      Instala esta aplicación en tu dispositivo para un acceso más rápido y una mejor experiencia.
+                    </p>
+                  );
+                } else if (isInAppBrowser) {
+                  return (
+                    <p className="text-slate-600 dark:text-slate-400 text-sm">
+                      Estás usando un navegador integrado. Para instalar la app, pulsa el menú y selecciona <strong>"Abrir en Chrome"</strong> o <strong>"Abrir en el navegador"</strong>.
+                    </p>
+                  );
+                } else {
+                  return (
+                    <p className="text-slate-600 dark:text-slate-400 text-sm">
+                      Para instalar esta aplicación, pulsa el menú de los <strong>3 puntos</strong> en la esquina superior derecha de tu navegador y selecciona <strong>"Instalar aplicación"</strong> o <strong>"Añadir a la pantalla de inicio"</strong>.
+                    </p>
+                  );
+                }
+              })()}
               {deferredPrompt ? (
                 <button 
                   onClick={() => {
-                    setShowAndroidPrompt(false);
                     if (onInstallClick) onInstallClick();
                   }}
                   className="w-full mt-2 bg-red-600 text-white font-bold py-3 rounded-xl hover:bg-red-700 transition-colors shadow-lg shadow-red-600/30"
