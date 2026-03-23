@@ -7,7 +7,7 @@ import Tasks from './pages/Tasks';
 import { PublicTaskViewer } from './components/PublicTaskViewer';
 import * as storageService from './services/storageService';
 import { Logo } from './components/Logo';
-import { User, UserRole, AppNotification, CartItem } from './types';
+import { User, UserRole, AppNotification, CartItem, NotificationType } from './types';
 import { NotificationToast } from './components/NotificationToast';
 import { initializePushNotifications } from './services/pushNotificationService';
 import { ShareModal } from './components/ShareModal';
@@ -49,7 +49,12 @@ const App: React.FC = () => {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isInstalled, setIsInstalled] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
+  const [isAndroid, setIsAndroid] = useState(false);
   const [showIOSPrompt, setShowIOSPrompt] = useState(false);
+  const [showAndroidPrompt, setShowAndroidPrompt] = useState(false);
+  const [hasSeenAndroidPrompt, setHasSeenAndroidPrompt] = useState(
+    localStorage.getItem('hasSeenAndroidPrompt') === 'true'
+  );
   const [toasts, setToasts] = useState<AppNotification[]>([]);
   const [unreadAdminNotifications, setUnreadAdminNotifications] = useState<AppNotification[]>([]);
   const [initialAdminTab, setInitialAdminTab] = useState<'requests' | 'users' | 'reports'>('requests');
@@ -156,6 +161,19 @@ const App: React.FC = () => {
     window.addEventListener('appinstalled', appInstalledHandler);
     if (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true) setIsInstalled(true);
     setIsIOS(/iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream);
+    const isAndroidDevice = /Android/i.test(navigator.userAgent);
+    setIsAndroid(isAndroidDevice);
+    
+    // Automatically show Android prompt if not installed and hasn't seen it
+    if (isAndroidDevice && !window.matchMedia('(display-mode: standalone)').matches && localStorage.getItem('hasSeenAndroidPrompt') !== 'true') {
+      // Small delay to not interrupt initial render
+      setTimeout(() => {
+        setShowAndroidPrompt(true);
+        localStorage.setItem('hasSeenAndroidPrompt', 'true');
+        setHasSeenAndroidPrompt(true);
+      }, 3000);
+    }
+
     return () => {
       window.removeEventListener('beforeinstallprompt', beforeInstallHandler);
       window.removeEventListener('appinstalled', appInstalledHandler);
@@ -166,24 +184,28 @@ const App: React.FC = () => {
     if (!user || user.role === UserRole.GUEST) return;
     
     let isInitialLoad = true;
-    const canViewNotifications = user.role === UserRole.ADMIN || user.permissions?.includes('CAN_VIEW_NOTIFICATIONS');
 
     const unsubNotifs = storageService.subscribeToNotifications((notifications) => {
-      const unread = notifications.filter(n => !n.readStatus);
+      const relevantNotifications = user.role === UserRole.ADMIN 
+        ? notifications 
+        : notifications.filter(n => n.type === NotificationType.NEW_TASK);
+
+      const unread = relevantNotifications.filter(n => !n.readStatus);
       
-      if (canViewNotifications) {
-        if (isInitialLoad) {
-          // Prevent flood on initial load
-          unread.forEach(n => displayedToastIds.current.add(n.id));
-          isInitialLoad = false;
-        } else {
-          const newToasts = unread.filter(n => !displayedToastIds.current.has(n.id));
-          if (newToasts.length > 0) {
-            setToasts(prev => [...prev, ...newToasts]);
-            newToasts.forEach(n => displayedToastIds.current.add(n.id));
-            playNotificationSound();
-          }
+      if (isInitialLoad) {
+        // Prevent flood on initial load
+        unread.forEach(n => displayedToastIds.current.add(n.id));
+        isInitialLoad = false;
+      } else {
+        const newToasts = unread.filter(n => !displayedToastIds.current.has(n.id));
+        if (newToasts.length > 0) {
+          setToasts(prev => [...prev, ...newToasts]);
+          newToasts.forEach(n => displayedToastIds.current.add(n.id));
+          playNotificationSound();
         }
+      }
+      
+      if (user.role === UserRole.ADMIN) {
         setUnreadAdminNotifications(unread);
       }
     }, true);
@@ -204,8 +226,25 @@ const App: React.FC = () => {
     setShowShareModal(true);
   };
 
+  const handleInstallClick = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        setIsInstalled(true);
+      }
+      setDeferredPrompt(null);
+    } else if (isIOS) {
+      setShowIOSPrompt(true);
+    } else if (isAndroid) {
+      setShowAndroidPrompt(true);
+    }
+  };
+
   const handleToastNavigation = (notif: AppNotification) => {
-    if (user?.role === UserRole.ADMIN || user?.permissions?.includes('CAN_VIEW_NOTIFICATIONS')) { 
+    if (notif.type === NotificationType.NEW_TASK) {
+      setView('tasks');
+    } else if (user?.role === UserRole.ADMIN) { 
       setInitialAdminTab('reports'); 
       setView('admin'); 
     }
@@ -256,16 +295,17 @@ const App: React.FC = () => {
         handleSharePublicAccess={handleSharePublicAccess}
         setShowGuideModal={setShowGuideModal}
         setShowMobileCart={setShowMobileCart}
-        setShowIOSPrompt={setShowIOSPrompt}
-        showIOSPrompt={showIOSPrompt}
+        showIOSPrompt={showIOSPrompt} showAndroidPrompt={showAndroidPrompt}
         deferredPrompt={deferredPrompt}
-        isInstalled={isInstalled} isIOS={isIOS}
+        onInstallClick={handleInstallClick}
+        isInstalled={isInstalled} isIOS={isIOS} isAndroid={isAndroid}
+        setShowIOSPrompt={setShowIOSPrompt} setShowAndroidPrompt={setShowAndroidPrompt}
         hasUnreadTasks={hasUnreadTasks}
         unreadAdminNotificationsCount={unreadAdminNotifications.length}
       >
         {view === 'inventory' && user.role === UserRole.ADMIN && <Inventory currentUser={user} />}
         {view === 'replenish' && user.role !== UserRole.GUEST && user.role !== UserRole.PROVIDER && <Replenishment currentUser={user} cart={cart} setCart={setCart} showMobileCart={showMobileCart} setShowMobileCart={setShowMobileCart} />}
-        {view === 'admin' && (user.role === UserRole.ADMIN || user.permissions?.includes('CAN_VIEW_NOTIFICATIONS')) && <Admin currentUser={user} unreadNotificationsCount={unreadAdminNotifications.length} initialTab={initialAdminTab} />}
+        {view === 'admin' && user.role === UserRole.ADMIN && <Admin currentUser={user} unreadNotificationsCount={unreadAdminNotifications.length} initialTab={initialAdminTab} />}
         {view === 'tasks' && <Tasks currentUser={user} />}
         {(view as any) === 'provider' && <ProviderDelivery currentUser={user} />}
       </MainLayout>

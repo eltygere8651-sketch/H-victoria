@@ -14,9 +14,7 @@ interface AdminProps {
 }
 
 const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, initialTab = 'requests' }) => {
-  const [activeTab, setActiveTab] = useState<'requests' | 'users' | 'reports'>(
-    currentUser.role === UserRole.ADMIN ? initialTab : 'reports'
-  );
+  const [activeTab, setActiveTab] = useState<'requests' | 'users' | 'reports'>(initialTab);
   
   const [orders, setOrders] = useState<OrderBatch[]>([]);
   const [users, setUsers] = useState<User[]>([]);
@@ -24,7 +22,7 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
-  const [newUser, setNewUser] = useState({ name: '', role: UserRole.STAFF, pin: '', permissions: [] as ('CAN_MANAGE_TASKS' | 'CAN_VIEW_NOTIFICATIONS')[] });
+  const [newUser, setNewUser] = useState({ name: '', role: UserRole.STAFF, pin: '', permissions: [] as ('CAN_MANAGE_TASKS')[] });
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<OrderBatch | null>(null);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
@@ -38,12 +36,8 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
   const [isClearing, setIsClearing] = useState(false);
 
   useEffect(() => {
-    if (currentUser.role === UserRole.ADMIN) {
-      setActiveTab(initialTab);
-    } else {
-      setActiveTab('reports');
-    }
-  }, [initialTab, currentUser.role]);
+    setActiveTab(initialTab);
+  }, [initialTab]);
 
   useEffect(() => {
     const unsubOrders = storageService.subscribeToBatches(setOrders);
@@ -169,17 +163,14 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
     ? notifications.filter(n => !n.readStatus)
     : notifications;
 
-  const canAccessAdmin = currentUser.role === UserRole.ADMIN || currentUser.permissions?.includes('CAN_VIEW_NOTIFICATIONS');
-  if (!canAccessAdmin) return <div className="p-8 text-center text-red-600">Acceso Denegado</div>;
+  if (currentUser.role !== UserRole.ADMIN) return <div className="p-8 text-center text-red-600">Acceso Denegado</div>;
   if (isLoading) return <div className="flex h-full items-center justify-center"><Loader2 size={40} className="animate-spin text-red-600" /></div>;
 
   return (
     <div className="transition-colors duration-300 min-h-full pb-24 bg-gray-50 dark:bg-slate-950">
       <div className="bg-white dark:bg-slate-900 border-b dark:border-slate-800 sticky top-0 z-10 shadow-sm transition-colors duration-300">
         <div className="flex overflow-x-auto no-scrollbar">
-          {currentUser.role === UserRole.ADMIN && (
-            <button onClick={() => setActiveTab('requests')} className={`flex-1 min-w-[120px] py-4 text-sm font-extrabold border-b-2 transition-colors duration-200 ${activeTab === 'requests' ? 'border-red-600 text-red-600 dark:text-red-400 dark:border-red-400 bg-red-50 dark:bg-red-900/10 shadow-inner' : 'border-transparent text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800/50'}`}>Historial de Albaranes</button>
-          )}
+          <button onClick={() => setActiveTab('requests')} className={`flex-1 min-w-[120px] py-4 text-sm font-extrabold border-b-2 transition-colors duration-200 ${activeTab === 'requests' ? 'border-red-600 text-red-600 dark:text-red-400 dark:border-red-400 bg-red-50 dark:bg-red-900/10 shadow-inner' : 'border-transparent text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800/50'}`}>Historial de Albaranes</button>
           <button onClick={() => setActiveTab('reports')} className={`flex-1 min-w-[120px] py-4 text-sm font-extrabold border-b-2 transition-colors duration-200 relative ${activeTab === 'reports' ? 'border-red-600 text-red-600 dark:text-red-400 dark:border-red-400 bg-red-50 dark:bg-red-900/10 shadow-inner' : 'border-transparent text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800/50'}`}>
             Reportes
             {unreadNotificationsCount > 0 && (
@@ -188,9 +179,7 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
                 </span>
             )}
           </button>
-          {currentUser.role === UserRole.ADMIN && (
-            <button onClick={() => setActiveTab('users')} className={`flex-1 min-w-[120px] py-4 text-sm font-extrabold border-b-2 transition-colors duration-200 ${activeTab === 'users' ? 'border-red-600 text-red-600 dark:text-red-400 dark:border-red-400 bg-red-50 dark:bg-red-900/10 shadow-inner' : 'border-transparent text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800/50'}`}>Usuarios</button>
-          )}
+          <button onClick={() => setActiveTab('users')} className={`flex-1 min-w-[120px] py-4 text-sm font-extrabold border-b-2 transition-colors duration-200 ${activeTab === 'users' ? 'border-red-600 text-red-600 dark:text-red-400 dark:border-red-400 bg-red-50 dark:bg-red-900/10 shadow-inner' : 'border-transparent text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800/50'}`}>Usuarios</button>
         </div>
       </div>
 
@@ -246,7 +235,7 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
                   </select>
                 </div>
                  {newUser.role === UserRole.STAFF && (
-                  <div className="pt-2 space-y-2">
+                  <div className="pt-2">
                     <label className="flex items-center gap-3 p-3 border-2 border-transparent rounded-xl bg-gray-100 dark:bg-slate-800/60 cursor-pointer">
                       <input
                         type="checkbox"
@@ -254,26 +243,12 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
                         checked={!!newUser.permissions?.includes('CAN_MANAGE_TASKS')}
                         onChange={e => {
                           const newPermissions = e.target.checked
-                            ? [...(newUser.permissions || []), 'CAN_MANAGE_TASKS']
-                            : (newUser.permissions || []).filter(p => p !== 'CAN_MANAGE_TASKS');
-                          setNewUser({ ...newUser, permissions: newPermissions as ('CAN_MANAGE_TASKS' | 'CAN_VIEW_NOTIFICATIONS')[] });
+                            ? ['CAN_MANAGE_TASKS']
+                            : [];
+                          setNewUser({ ...newUser, permissions: newPermissions as ('CAN_MANAGE_TASKS')[] });
                         }}
                       />
                       <span className="font-semibold text-gray-700 dark:text-slate-300">Permitir gestionar tareas (crear, editar, eliminar)</span>
-                    </label>
-                    <label className="flex items-center gap-3 p-3 border-2 border-transparent rounded-xl bg-gray-100 dark:bg-slate-800/60 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        className="w-5 h-5 rounded text-red-600 focus:ring-red-500 border-gray-300 dark:border-slate-600 bg-gray-200 dark:bg-slate-700"
-                        checked={!!newUser.permissions?.includes('CAN_VIEW_NOTIFICATIONS')}
-                        onChange={e => {
-                          const newPermissions = e.target.checked
-                            ? [...(newUser.permissions || []), 'CAN_VIEW_NOTIFICATIONS']
-                            : (newUser.permissions || []).filter(p => p !== 'CAN_VIEW_NOTIFICATIONS');
-                          setNewUser({ ...newUser, permissions: newPermissions as ('CAN_MANAGE_TASKS' | 'CAN_VIEW_NOTIFICATIONS')[] });
-                        }}
-                      />
-                      <span className="font-semibold text-gray-700 dark:text-slate-300">Permitir ver notificaciones</span>
                     </label>
                   </div>
                 )}
@@ -299,7 +274,6 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
 
         {activeTab === 'reports' && (
            <div className="space-y-8">
-             {currentUser.role === UserRole.ADMIN && (
                <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-md border border-gray-100 dark:border-slate-800">
                  <h3 className="text-lg font-bold mb-4 text-gray-900 dark:text-white flex items-center gap-2">
                    <BarChartIcon size={20} className="text-red-600 dark:text-red-400" /> Top 10 Productos en Stock Crítico
@@ -327,7 +301,6 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
                     )}
                  </div>
                </div>
-             )}
              
              <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-md border border-gray-100 dark:border-slate-800">
                 <div className="flex justify-between items-center mb-4">
@@ -402,34 +375,18 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
                 <option value={UserRole.STAFF}>Personal</option><option value={UserRole.ADMIN}>Admin</option>
               </select>
               {editingUser.role === UserRole.STAFF && (
-                <div className="pt-2 space-y-2">
+                <div className="pt-2">
                     <label className="flex items-center gap-3 p-3 border-2 border-transparent rounded-xl bg-gray-100 dark:bg-slate-800/60 cursor-pointer">
                         <input
                             type="checkbox"
                             className="w-5 h-5 rounded text-red-600 focus:ring-red-500 border-gray-300 dark:border-slate-600 bg-gray-200 dark:bg-slate-700"
                             checked={!!editingUser.permissions?.includes('CAN_MANAGE_TASKS')}
                             onChange={e => {
-                                const newPermissions = e.target.checked 
-                                  ? [...(editingUser.permissions || []), 'CAN_MANAGE_TASKS'] 
-                                  : (editingUser.permissions || []).filter(p => p !== 'CAN_MANAGE_TASKS');
-                                setEditingUser({ ...editingUser, permissions: newPermissions as ('CAN_MANAGE_TASKS' | 'CAN_VIEW_NOTIFICATIONS')[] });
+                                const newPermissions = e.target.checked ? ['CAN_MANAGE_TASKS'] : [];
+                                setEditingUser({ ...editingUser, permissions: newPermissions as ('CAN_MANAGE_TASKS')[] });
                             }}
                         />
                         <span className="font-semibold text-gray-700 dark:text-slate-300">Puede gestionar tareas</span>
-                    </label>
-                    <label className="flex items-center gap-3 p-3 border-2 border-transparent rounded-xl bg-gray-100 dark:bg-slate-800/60 cursor-pointer">
-                        <input
-                            type="checkbox"
-                            className="w-5 h-5 rounded text-red-600 focus:ring-red-500 border-gray-300 dark:border-slate-600 bg-gray-200 dark:bg-slate-700"
-                            checked={!!editingUser.permissions?.includes('CAN_VIEW_NOTIFICATIONS')}
-                            onChange={e => {
-                                const newPermissions = e.target.checked 
-                                  ? [...(editingUser.permissions || []), 'CAN_VIEW_NOTIFICATIONS'] 
-                                  : (editingUser.permissions || []).filter(p => p !== 'CAN_VIEW_NOTIFICATIONS');
-                                setEditingUser({ ...editingUser, permissions: newPermissions as ('CAN_MANAGE_TASKS' | 'CAN_VIEW_NOTIFICATIONS')[] });
-                            }}
-                        />
-                        <span className="font-semibold text-gray-700 dark:text-slate-300">Puede ver notificaciones</span>
                     </label>
                 </div>
               )}
@@ -497,7 +454,6 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
                 <div className="md:hidden"></div> 
 
                 <div className="flex gap-2 ml-auto">
-                    {currentUser.role === UserRole.ADMIN && (
                       <button 
                         onClick={() => handleDeleteBatchClick(selectedOrder.batchId)}
                         className="p-2.5 bg-red-900/30 text-red-400 border border-red-900/50 rounded-lg font-bold flex items-center justify-center active:scale-95"
@@ -505,7 +461,6 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
                       >
                         <Trash2 size={20} />
                       </button>
-                    )}
                     
                     <button 
                       onClick={handleSharePDF} 

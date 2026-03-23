@@ -19,9 +19,13 @@ interface MainLayoutProps {
   setShowMobileCart: (value: boolean) => void;
   setShowIOSPrompt: (value: boolean) => void;
   showIOSPrompt?: boolean;
+  setShowAndroidPrompt: (value: boolean) => void;
+  showAndroidPrompt?: boolean;
+  onInstallClick?: () => void;
   deferredPrompt: any;
   isInstalled: boolean;
   isIOS: boolean;
+  isAndroid: boolean;
   hasUnreadTasks: boolean;
   unreadAdminNotificationsCount: number;
 }
@@ -81,9 +85,13 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
   setShowMobileCart,
   setShowIOSPrompt,
   showIOSPrompt,
+  setShowAndroidPrompt,
+  showAndroidPrompt,
+  onInstallClick,
   deferredPrompt,
   isInstalled,
   isIOS,
+  isAndroid,
   hasUnreadTasks,
   unreadAdminNotificationsCount
 }) => {
@@ -108,15 +116,9 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
-            {!isInstalled && (deferredPrompt || isIOS) && (
+            {!isInstalled && (deferredPrompt || isIOS || isAndroid) && (
               <button
-                onClick={() => {
-                  if (deferredPrompt) {
-                    deferredPrompt.prompt();
-                  } else if (isIOS) {
-                    setShowIOSPrompt(true);
-                  }
-                }}
+                onClick={onInstallClick}
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-full text-xs font-bold uppercase tracking-wider hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors"
                 title="Instalar App"
               >
@@ -156,7 +158,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
               <NavButton icon={ClipboardCheck} label="Tareas" isActive={view === 'tasks'} onClick={() => setView('tasks')} hasAlert={hasUnreadTasks}/>
               {user.role !== UserRole.GUEST && <NavButton icon={ClipboardList} label="Pedidos" isActive={view === 'replenish'} onClick={() => setView('replenish')} />}
               {user.role === UserRole.ADMIN && <NavButton icon={LayoutGrid} label="Stock" isActive={view === 'inventory'} onClick={() => setView('inventory')} />}
-              {(user.role === UserRole.ADMIN || user.permissions?.includes('CAN_VIEW_NOTIFICATIONS')) && <NavButton icon={ShieldCheck} label="Admin" isActive={view === 'admin'} onClick={() => setView('admin')} hasAlert={unreadAdminNotificationsCount > 0} />}
+              {user.role === UserRole.ADMIN && <NavButton icon={ShieldCheck} label="Admin" isActive={view === 'admin'} onClick={() => setView('admin')} hasAlert={unreadAdminNotificationsCount > 0} />}
           </nav>
         </div>
       )}
@@ -185,6 +187,52 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
               >
                 Entendido
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showAndroidPrompt && (
+        <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-3xl p-6 shadow-2xl animate-slide-up relative">
+            <button 
+              onClick={() => setShowAndroidPrompt(false)}
+              className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 bg-slate-100 dark:bg-slate-800 rounded-full transition-colors"
+            >
+              <X size={20} />
+            </button>
+            <div className="flex flex-col items-center text-center gap-4 pt-4">
+              <div className="p-4 bg-slate-100 dark:bg-slate-800 rounded-2xl">
+                <Download size={32} className="text-red-500" />
+              </div>
+              <h3 className="text-xl font-bold text-slate-900 dark:text-white">Instalar App en Android</h3>
+              {deferredPrompt ? (
+                <p className="text-slate-600 dark:text-slate-400 text-sm">
+                  Instala esta aplicación en tu dispositivo para un acceso más rápido y una mejor experiencia.
+                </p>
+              ) : (
+                <p className="text-slate-600 dark:text-slate-400 text-sm">
+                  Para instalar esta aplicación, pulsa el menú de los <strong>3 puntos</strong> en la esquina superior derecha de tu navegador y selecciona <strong>"Instalar aplicación"</strong> o <strong>"Añadir a la pantalla de inicio"</strong>.
+                </p>
+              )}
+              {deferredPrompt ? (
+                <button 
+                  onClick={() => {
+                    setShowAndroidPrompt(false);
+                    if (onInstallClick) onInstallClick();
+                  }}
+                  className="w-full mt-2 bg-red-600 text-white font-bold py-3 rounded-xl hover:bg-red-700 transition-colors shadow-lg shadow-red-600/30"
+                >
+                  Instalar Ahora
+                </button>
+              ) : (
+                <button 
+                  onClick={() => setShowAndroidPrompt(false)}
+                  className="w-full mt-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold py-3 rounded-xl hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors"
+                >
+                  Entendido
+                </button>
+              )}
             </div>
           </div>
         </div>

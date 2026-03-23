@@ -41,7 +41,11 @@ messaging.onBackgroundMessage((payload) => {
   self.registration.showNotification(notificationTitle, notificationOptions);
 });
 
-// 2. MANEJO DEL CLIC EN LA NOTIFICACIÓN (CRÍTICO PARA APP CERRADA)
+// 3. MANEJO DE FETCH (REQUERIDO PARA PWA INSTALLABILITY)
+self.addEventListener('fetch', (event) => {
+  // Pass-through fetch handler to satisfy PWA requirements
+  event.respondWith(fetch(event.request).catch(() => new Response("Offline")));
+});
 self.addEventListener('notificationclick', function(event) {
   console.log('[firebase-messaging-sw.js] Notificación clickeada.');
   
