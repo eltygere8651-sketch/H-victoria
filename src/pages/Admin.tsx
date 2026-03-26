@@ -31,7 +31,6 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
   const [notificationFilter, setNotificationFilter] = useState<'all' | 'unread'>('unread');
 
   // New states for clearing history
-  const [showClearOrdersConfirm, setShowClearOrdersConfirm] = useState(false);
   const [showClearNotificationsConfirm, setShowClearNotificationsConfirm] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
 
@@ -139,13 +138,6 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
     await storageService.markAllNotificationsAsRead(currentUser.id, currentUser.name);
   };
   
-  const handleClearAllOrders = async () => {
-    setIsClearing(true);
-    await storageService.deleteAllBatches();
-    setIsClearing(false);
-    setShowClearOrdersConfirm(false);
-  };
-  
   const handleClearAllNotifications = async () => {
     setIsClearing(true);
     await storageService.deleteAllNotifications();
@@ -188,14 +180,6 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
           <div>
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xl font-bold text-gray-900 dark:text-white">Historial de Albaranes</h3>
-              {orders.length > 0 && (
-                <button 
-                  onClick={() => setShowClearOrdersConfirm(true)}
-                  className="flex items-center gap-2 text-sm font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 px-3 py-2 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
-                >
-                  <Trash2 size={16} /> Vaciar Historial
-                </button>
-              )}
             </div>
             <div className="space-y-4">
                {orders.length === 0 && <div className="col-span-full py-20 text-center text-gray-400 dark:text-slate-600"><Package size={40} className="mx-auto mb-2 opacity-50" /><p>No hay albaranes registrados.</p></div>}
@@ -407,22 +391,6 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
             <div className="flex gap-4">
               <button onClick={() => setBatchToDelete(null)} className="flex-1 py-3 bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-300 rounded-xl font-bold active:scale-95">Cancelar</button>
               <button onClick={confirmDeleteBatch} className="flex-1 py-3 bg-red-600 text-white rounded-xl font-bold shadow-lg shadow-button-red active:scale-95">Eliminar</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showClearOrdersConfirm && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white dark:bg-slate-800 rounded-3xl w-full max-w-sm shadow-pop-in p-6 animate-pop-in border border-gray-100 dark:border-slate-700/50 text-center">
-            <div className="w-16 h-16 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-4 text-red-600 dark:text-red-500 shadow-md"><Trash2 size={32} /></div>
-            <h3 className="text-xl font-black text-gray-900 dark:text-white mb-2">¿Vaciar Historial?</h3>
-            <p className="text-gray-500 dark:text-slate-400 mb-6">Esta acción eliminará permanentemente <strong>todos</strong> los registros de albaranes. No se podrá deshacer.</p>
-            <div className="flex gap-3">
-              <button onClick={() => setShowClearOrdersConfirm(false)} disabled={isClearing} className="flex-1 py-3 font-bold text-gray-600 dark:text-slate-400 bg-gray-100 dark:bg-slate-700/50 rounded-xl hover:bg-gray-200 dark:hover:bg-slate-700 active:scale-[0.98]">Cancelar</button>
-              <button onClick={handleClearAllOrders} disabled={isClearing} className="flex-1 py-3 font-bold text-white bg-red-600 rounded-xl hover:bg-red-700 shadow-lg shadow-button-red active:scale-[0.98] flex items-center justify-center gap-2">
-                {isClearing ? <Loader2 className="animate-spin" /> : 'Sí, Vaciar'}
-              </button>
             </div>
           </div>
         </div>

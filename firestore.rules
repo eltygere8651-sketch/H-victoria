@@ -20,10 +20,9 @@ service cloud.firestore {
     function canUserManageTasks(userId) {
       // 1. El usuario debe existir en la DB (Bloquea a Invitados)
       // 2. Debe ser ADMIN o tener el permiso 'CAN_MANAGE_TASKS'
-      let userDoc = get(/databases/$(database)/documents/users/$(userId));
       return isVerifiedUser(userId) &&
-             (userDoc.data.role == 'ADMIN' ||
-              ('permissions' in userDoc.data && userDoc.data.permissions.hasAny(['CAN_MANAGE_TASKS'])));
+             (get(/databases/$(database)/documents/users/$(userId)).data.role == 'ADMIN' ||
+              ('permissions' in get(/databases/$(database)/documents/users/$(userId)).data && get(/databases/$(database)/documents/users/$(userId)).data.permissions.hasAny(['CAN_MANAGE_TASKS'])));
     }
 
     // --- COLLECTION RULES ---
@@ -76,6 +75,11 @@ service cloud.firestore {
 
     // NOTIFICACIONES
     match /notifications/{notifId} {
+      allow read, write: if isSignedIn();
+    }
+    
+    // SYSTEM
+    match /system/{docId} {
       allow read, write: if isSignedIn();
     }
     

@@ -24,7 +24,6 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser }) => {
   const [newDepartmentName, setNewDepartmentName] = useState('');
   const [isDeletingDept, setIsDeletingDept] = useState<string | null>(null);
   const [deptToDelete, setDeptToDelete] = useState<string | null>(null);
-  const [showCleanConfirm, setShowCleanConfirm] = useState(false);
   const [formError, setFormError] = useState('');
   const [smartSuggestion, setSmartSuggestion] = useState(false);
 
@@ -162,13 +161,6 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser }) => {
     return matchesDept && matchesSearch;
   });
 
-  const handleCleanAndBoost = async () => {
-    setLoading(true);
-    setShowCleanConfirm(false);
-    await storageService.cleanAndBoostStock();
-    setLoading(false);
-  };
-
   const handleAddReceiveItem = () => {
     if (!selectedProductToReceive) return;
     const qty = parseInt(receiveQuantityInput, 10);
@@ -268,13 +260,6 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser }) => {
                 className="bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 w-12 h-12 rounded-2xl flex items-center justify-center hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
               >
                 <PackagePlus size={20} />
-              </button>
-              <button 
-                onClick={() => setShowCleanConfirm(true)} 
-                title="Limpiar duplicados y llenar stock"
-                className="bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400 w-12 h-12 rounded-2xl flex items-center justify-center hover:bg-emerald-200 dark:hover:bg-emerald-900/50 transition-colors"
-              >
-                <Wand2 size={20} />
               </button>
               <button onClick={() => setShowManageDepartmentsModal(true)} className="btn-header-action"><ListTree size={20} /></button>
               <button 
@@ -443,32 +428,6 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser }) => {
               ))}
             </div>
           </div>
-        </div>
-      )}
-
-      {/* MODAL CONFIRMAR LIMPIEZA */}
-      {showCleanConfirm && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 dark:bg-slate-900/90 backdrop-blur-sm p-4 animate-fade-in">
-           <div className="bg-white dark:bg-slate-800 w-full max-w-md rounded-3xl shadow-pop-in overflow-hidden animate-pop-in border border-gray-100 dark:border-slate-700/50">
-              <div className="p-6 border-b border-gray-100 dark:border-slate-700">
-                <h3 className="text-2xl font-extrabold text-gray-900 dark:text-white text-center drop-shadow-sm">Limpiar y Rellenar Stock</h3>
-                <p className="text-center text-gray-500 dark:text-slate-400 mt-2">¿Seguro que quieres eliminar duplicados y rellenar el stock de todos los productos a 500 unidades?</p>
-              </div>
-              <div className="p-6 flex gap-4">
-                <button 
-                  onClick={() => setShowCleanConfirm(false)}
-                  className="flex-1 py-4 rounded-xl font-bold text-gray-600 dark:text-slate-400 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors"
-                >
-                  Cancelar
-                </button>
-                <button 
-                  onClick={handleCleanAndBoost}
-                  className="flex-1 py-4 rounded-xl font-bold text-white bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-600/30 transition-colors"
-                >
-                  Confirmar
-                </button>
-              </div>
-           </div>
         </div>
       )}
 

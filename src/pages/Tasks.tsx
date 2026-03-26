@@ -570,6 +570,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
                 >
                   Generar Prueba
                 </button>
+              {(currentUser.role === UserRole.ADMIN || currentUser.permissions?.includes('CAN_MANAGE_TASKS')) && (
                 <button 
                   onClick={() => {
                     setEditingTask({});
@@ -581,6 +582,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
                 >
                   <Plus size={32} strokeWidth={3} />
                 </button>
+              )}
               </div>
             )}
           </div>
@@ -973,6 +975,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
                 <div>
                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Título de la Tarea</label>
                    <input 
+                     disabled={!canManageTasks}
                      value={editingTask?.title || ''}
                      onChange={e => setEditingTask({ ...editingTask, title: e.target.value })}
                      className="w-full px-5 py-4 text-xl font-black bg-gray-50 dark:bg-slate-800/50 border-2 border-gray-200 dark:border-slate-700 rounded-2xl focus:border-red-500 focus:bg-white dark:focus:bg-slate-900 outline-none transition-all dark:text-white placeholder-gray-400"
@@ -985,6 +988,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
                    <div>
                       <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Inicio (Opcional)</label>
                       <input 
+                        disabled={!canManageTasks}
                         type="datetime-local"
                         value={formatDateTimeLocal(editingTask?.startDate)}
                         onChange={e => setEditingTask({ ...editingTask, startDate: parseDateTimeLocal(e.target.value) })}
@@ -994,6 +998,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
                    <div>
                       <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Fin / Límite (Opcional)</label>
                       <input 
+                        disabled={!canManageTasks}
                         type="datetime-local"
                         value={formatDateTimeLocal(editingTask?.dueDate)}
                         onChange={e => setEditingTask({ ...editingTask, dueDate: parseDateTimeLocal(e.target.value) })}
@@ -1007,6 +1012,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
                       <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Departamento</label>
                       <div className="relative">
                         <select 
+                          disabled={!canManageTasks}
                           value={editingTask?.departmentId || ''}
                           onChange={e => setEditingTask({ ...editingTask, departmentId: e.target.value })}
                           className="w-full pl-4 pr-10 py-4 font-bold bg-gray-50 dark:bg-slate-800/50 border-2 border-gray-200 dark:border-slate-700 rounded-2xl focus:border-red-500 outline-none appearance-none dark:text-white text-sm"
@@ -1023,6 +1029,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
                       <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Prioridad</label>
                       <div className="relative">
                         <select 
+                          disabled={!canManageTasks}
                           value={editingTask?.priority || TaskPriority.MEDIUM}
                           onChange={e => setEditingTask({ ...editingTask, priority: e.target.value as TaskPriority })}
                           className="w-full pl-4 pr-10 py-4 font-bold bg-gray-50 dark:bg-slate-800/50 border-2 border-gray-200 dark:border-slate-700 rounded-2xl focus:border-red-500 outline-none appearance-none dark:text-white text-sm"
@@ -1053,6 +1060,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
                    </div>
                    
                    <textarea 
+                     disabled={!canManageTasks}
                      ref={descriptionInputRef}
                      value={editingTask?.description || ''}
                      onChange={e => setEditingTask({ ...editingTask, description: e.target.value })}
@@ -1175,16 +1183,18 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
              {/* Modal Footer */}
              <div className="p-6 border-t border-gray-100 dark:border-slate-800 bg-gray-50 dark:bg-slate-900 flex gap-4 sticky bottom-0 z-10">
                 <button onClick={() => setShowTaskModal(false)} className="flex-1 py-4 font-bold text-gray-500 dark:text-slate-400 hover:bg-gray-200 dark:hover:bg-slate-800 rounded-2xl transition-colors">
-                  Cancelar
+                  {canManageTasks ? 'Cancelar' : 'Cerrar'}
                 </button>
-                <button 
-                  onClick={handleSaveTask} 
-                  disabled={isSaving || isCompressing}
-                  className="flex-[2] py-4 bg-red-600 hover:bg-red-700 text-white font-black uppercase tracking-wider rounded-2xl shadow-xl shadow-button-red active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:scale-100"
-                >
-                  {isSaving || isCompressing ? <Loader2 className="animate-spin" strokeWidth={3} /> : <Save size={22} strokeWidth={3} />}
-                  {isSaving ? 'Guardando...' : isCompressing ? 'Procesando...' : 'PUBLICAR TAREA'}
-                </button>
+                {canManageTasks && (
+                  <button 
+                    onClick={handleSaveTask} 
+                    disabled={isSaving || isCompressing}
+                    className="flex-[2] py-4 bg-red-600 hover:bg-red-700 text-white font-black uppercase tracking-wider rounded-2xl shadow-xl shadow-button-red active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:scale-100"
+                  >
+                    {isSaving || isCompressing ? <Loader2 className="animate-spin" strokeWidth={3} /> : <Save size={22} strokeWidth={3} />}
+                    {isSaving ? 'Guardando...' : isCompressing ? 'Procesando...' : 'PUBLICAR TAREA'}
+                  </button>
+                )}
              </div>
           </div>
         </div>

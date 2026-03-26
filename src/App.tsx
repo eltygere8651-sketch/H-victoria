@@ -58,7 +58,8 @@ const App: React.FC = () => {
   const [toasts, setToasts] = useState<AppNotification[]>([]);
   const [unreadAdminNotifications, setUnreadAdminNotifications] = useState<AppNotification[]>([]);
   const [initialAdminTab, setInitialAdminTab] = useState<'requests' | 'users' | 'reports'>('requests');
-  const [cart, setCart] = useState<CartItem[]>(storageService.getDraftCart());
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [isCartLoaded, setIsCartLoaded] = useState(false);
   const [showMobileCart, setShowMobileCart] = useState(false);
   const [hasUnreadTasks, setHasUnreadTasks] = useState(false);
   
@@ -95,12 +96,32 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    if (isInitializing) return;
     if (user && user.role !== UserRole.GUEST) initializePushNotifications(user);
     if (user && user.role === UserRole.ADMIN && !cleanupPerformed.current) {
       storageService.cleanupCompletedTasks();
       cleanupPerformed.current = true;
     }
-  }, [user]);
+    
+    // Load draft cart when user logs in
+    const loadCart = async () => {
+      if (user) {
+        setIsCartLoaded(false);
+        const savedCart = await storageService.getDraftCart(user.id);
+        setCart(savedCart);
+        setIsCartLoaded(true);
+      }
+    };
+    loadCart();
+  }, [user, isInitializing]);
+
+  useEffect(() => {
+    // Save draft cart when it changes, but only after it has been loaded
+    if (isInitializing) return;
+    if (user && isCartLoaded) {
+      storageService.saveDraftCart(user.id, cart);
+    }
+  }, [cart, user, isCartLoaded, isInitializing]);
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', darkMode);
@@ -181,7 +202,7 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (!user || user.role === UserRole.GUEST) return;
+    if (isInitializing || !user || user.role === UserRole.GUEST) return;
     
     let isInitialLoad = true;
 
@@ -215,7 +236,7 @@ const App: React.FC = () => {
     });
     
     return () => { unsubNotifs(); unsubTasks(); };
-  }, [user]);
+  }, [user, isInitializing]);
 
   const handleLogin = (u: User) => { setUser(u); storageService.saveSession(u); };
   const handleLogout = () => { storageService.clearSession(); setUser(null); };

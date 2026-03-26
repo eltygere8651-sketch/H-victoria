@@ -40,49 +40,51 @@ const INITIAL_PRODUCTS: Product[] = [
 async function initFirestoreWithInitialData() {
   console.log("Iniciando sincronización de datos base...");
 
-  // 1. Usuarios y Productos (Solo si está vacío para no sobrescribir stock real)
-  const collectionsToInit = [
-    { name: 'users', data: INITIAL_USERS, key: KEYS.USERS },
-    { name: 'products', data: INITIAL_PRODUCTS, key: KEYS.PRODUCTS },
-  ];
+  try {
+    const initRef = db.collection('system').doc('initialization');
+    const initDoc = await initRef.get();
 
-  for (const { name, data, key } of collectionsToInit) {
-    const q = db.collection(name).limit(1);
-    const snapshot = await q.get();
-    if (snapshot.empty) {
-      const batch = db.batch();
-      data.forEach(item => {
-        const docRef = item.id ? db.collection(name).doc(item.id) : db.collection(name).doc();
-        batch.set(docRef, { ...item, id: item.id || docRef.id });
+    if (initDoc.exists && initDoc.data()?.isInitialized) {
+      console.log("La base de datos ya fue inicializada previamente. Omitiendo sincronización para no perder datos del usuario.");
+      return;
+    }
+
+    // 1. Usuarios y Productos (Solo si está vacío para no sobrescribir stock real)
+    const collectionsToInit = [
+      { name: 'users', data: INITIAL_USERS, key: KEYS.USERS },
+      { name: 'products', data: INITIAL_PRODUCTS, key: KEYS.PRODUCTS },
+    ];
+
+    for (const { name, data, key } of collectionsToInit) {
+      const q = db.collection(name).limit(1);
+      const snapshot = await q.get();
+      if (snapshot.empty) {
+        const batch = db.batch();
+        data.forEach(item => {
+          const docRef = item.id ? db.collection(name).doc(item.id) : db.collection(name).doc();
+          batch.set(docRef, { ...item, id: item.id || docRef.id });
+        });
+        await batch.commit();
+      }
+    }
+
+    // 2. Inicializar departamentos si está vacío
+    const deptSnapshot = await db.collection('departments').limit(1).get();
+    if (deptSnapshot.empty) {
+      const deptBatch = db.batch();
+      INITIAL_DEPARTMENTS.forEach(dept => {
+        const docRef = db.collection('departments').doc(dept.id);
+        deptBatch.set(docRef, dept, { merge: true });
       });
-      await batch.commit();
-      localStorage.setItem(key, JSON.stringify(data));
+      await deptBatch.commit();
     }
+
+    // Marcar como inicializado para no volver a ejecutar esto y borrar datos del usuario
+    await initRef.set({ isInitialized: true, timestamp: Date.now() });
+    console.log("Sincronización inicial completada y marcada como inicializada.");
+  } catch (error) {
+    console.error("Error during initFirestoreWithInitialData:", error);
   }
-
-  // 2. SINCRONIZACIÓN ESTRICTA DE DEPARTAMENTOS
-  // Esto garantiza que SIEMPRE tengas solo 'Bar' y 'Restaurante', eliminando cualquier basura vieja.
-  const deptSnapshot = await db.collection('departments').get();
-  const deptBatch = db.batch();
-  const validDeptIds = INITIAL_DEPARTMENTS.map(d => d.id);
-
-  // A. Eliminar departamentos que NO sean Bar o Restaurante
-  deptSnapshot.docs.forEach(doc => {
-    if (!validDeptIds.includes(doc.id)) {
-      console.log(`Eliminando departamento obsoleto: ${doc.id}`);
-      deptBatch.delete(doc.ref);
-    }
-  });
-
-  // B. Asegurar que Bar y Restaurante existan con los datos correctos
-  INITIAL_DEPARTMENTS.forEach(dept => {
-    const docRef = db.collection('departments').doc(dept.id);
-    deptBatch.set(docRef, dept, { merge: true });
-  });
-
-  await deptBatch.commit();
-  console.log("Sincronización de departamentos completada: Solo Bar / Cafetería y Restaurante activos.");
-  localStorage.setItem(KEYS.DEPARTMENTS, JSON.stringify(INITIAL_DEPARTMENTS));
 }
 
 // --- AUTH HELPERS ---
@@ -121,21 +123,28 @@ export const ensureAnonymousAuth = async () => {
   if (auth.currentUser) return;
   return new Promise<void>((resolve) => {
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
-      if (user) {
-        await initFirestoreWithInitialData();
-        unsubscribe();
-        resolve();
-      } else {
-        try {
-          await retry(() => auth.signInAnonymously());
+      try {
+        if (user) {
           await initFirestoreWithInitialData();
           unsubscribe();
           resolve();
-        } catch (error) {
-           console.error("Auth error", error);
-           unsubscribe();
-           resolve();
+        } else {
+          try {
+            await retry(() => auth.signInAnonymously());
+            // Do not resolve or unsubscribe here, let the onAuthStateChanged listener handle the new user
+          } catch (error: any) {
+             console.error("Auth error", error);
+             if (error.code === 'auth/operation-not-allowed') {
+               alert("Error crítico: La autenticación anónima no está habilitada en Firebase. Por favor, habilítala en la consola de Firebase (Authentication > Sign-in method > Anonymous).");
+             }
+             unsubscribe();
+             resolve();
+          }
         }
+      } catch (error) {
+        console.error("Error in onAuthStateChanged:", error);
+        unsubscribe();
+        resolve();
       }
     });
   });
@@ -148,8 +157,30 @@ export const saveLastView = (view: string) => localStorage.setItem(KEYS.LAST_VIE
 export const getLastView = (): string | null => localStorage.getItem(KEYS.LAST_VIEW);
 
 // --- CART ---
-export const saveDraftCart = (cart: CartItem[]) => localStorage.setItem(KEYS.DRAFT_CART, JSON.stringify(cart));
-export const getDraftCart = (): CartItem[] => JSON.parse(localStorage.getItem(KEYS.DRAFT_CART) || '[]');
+export const saveDraftCart = async (userId: string, cart: CartItem[]) => {
+  localStorage.setItem(KEYS.DRAFT_CART, JSON.stringify(cart));
+  if (userId && userId !== 'guest' && !userId.startsWith('guest-')) {
+    try {
+      await db.collection('users').doc(userId).update({ draftCart: cart });
+    } catch (e) {
+      console.error("Error saving draft cart to cloud", e);
+    }
+  }
+};
+
+export const getDraftCart = async (userId?: string): Promise<CartItem[]> => {
+  if (userId && userId !== 'guest' && !userId.startsWith('guest-')) {
+    try {
+      const doc = await db.collection('users').doc(userId).get();
+      if (doc.exists && doc.data()?.draftCart) {
+        return doc.data()?.draftCart as CartItem[];
+      }
+    } catch (e) {
+      console.error("Error getting draft cart from cloud", e);
+    }
+  }
+  return JSON.parse(localStorage.getItem(KEYS.DRAFT_CART) || '[]');
+};
 
 // --- DEPARTMENTS ---
 export const subscribeToDepartments = (callback: (data: Department[]) => void) => {
@@ -175,25 +206,7 @@ export const saveProduct = async (product: Partial<Product>) => {
 };
 export const deleteProduct = async (id: string) => await db.collection('products').doc(id).delete();
 
-export const cleanAndBoostStock = async () => {
-  const snapshot = await db.collection('products').get();
-  const products = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Product));
-  
-  const seenNames = new Set<string>();
-  const batch = db.batch();
-  
-  for (const p of products) {
-    const normalizedName = p.name.trim().toLowerCase();
-    if (seenNames.has(normalizedName)) {
-      batch.delete(db.collection('products').doc(p.id));
-    } else {
-      seenNames.add(normalizedName);
-      batch.update(db.collection('products').doc(p.id), { quantity: 500 });
-    }
-  }
-  
-  await batch.commit();
-};
+// Removed cleanAndBoostStock to prevent accidental data loss
 
 export const generateRandomOrders = async (user: User) => {
   const snapshot = await db.collection('products').get();
@@ -378,14 +391,18 @@ export const subscribeToTasks = (callback: (data: Task[]) => void) => {
 export const saveTask = async (task: Partial<Task>, newFiles: File[] = []) => {
   const isNew = !task.id;
   const docRef = isNew ? db.collection('tasks').doc() : db.collection('tasks').doc(task.id!);
-  let newImageUrls: string[] = [];
+  
+  let taskData: any = { ...task, id: docRef.id };
+
   if (newFiles.length > 0) {
       const base64Promises = newFiles.map(file => fileToBase64(file));
-      newImageUrls = await Promise.all(base64Promises);
+      const newImageUrls = await Promise.all(base64Promises);
+      const finalImageUrls = [...(task.imageUrls || []), ...newImageUrls];
+      taskData.imageUrls = finalImageUrls;
+  } else if (task.imageUrls !== undefined) {
+      taskData.imageUrls = task.imageUrls.length > 0 ? task.imageUrls : firebase.firestore.FieldValue.delete();
   }
-  const finalImageUrls = [...(task.imageUrls || []), ...newImageUrls];
   
-  const taskData = { ...task, id: docRef.id, imageUrls: finalImageUrls.length > 0 ? finalImageUrls : firebase.firestore.FieldValue.delete() };
   await docRef.set(taskData, { merge: true });
 
   if (isNew) {
@@ -422,13 +439,6 @@ export const markTaskAsSeen = async (taskId: string, userId: string) => {
 export const getTaskById = async (taskId: string): Promise<Task | null> => {
   const doc = await db.collection('tasks').doc(taskId).get();
   return doc.exists ? { ...doc.data(), id: doc.id } as Task : null;
-};
-export const deleteAllBatches = async () => {
-  const q = db.collection('requests');
-  const snapshot = await q.get();
-  const batch = db.batch();
-  snapshot.docs.forEach(d => batch.delete(d.ref));
-  await batch.commit();
 };
 export const deleteAllNotifications = async () => {
   const q = db.collection('notifications');
