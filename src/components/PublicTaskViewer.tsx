@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { Task, TaskStatus, TaskPriority } from '../types';
+import { Task, TaskStatus, TaskPriority, TaskChecklistItem, TaskComment } from '../types';
 import * as storageService from '../services/storageService';
-import { Loader2, Calendar, User, MapPin, Flag, AlertTriangle, CheckCircle2, ClipboardCheck, LogIn } from 'lucide-react';
+import { db, auth } from '../firebaseConfig';
+import { Loader2, Calendar, User, MapPin, Flag, AlertTriangle, CheckCircle2, ClipboardCheck, LogIn, Check, Clock, MessagesSquare, Send, X, Share2 } from 'lucide-react';
 import { Logo } from './Logo';
 import { ImageViewer } from './ImageViewer';
+import { ShareModal } from './ShareModal';
 
 interface PublicTaskViewerProps {
   taskId: string;
@@ -14,24 +16,112 @@ export const PublicTaskViewer: React.FC<PublicTaskViewerProps> = ({ taskId }) =>
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [viewingImages, setViewingImages] = useState<{ images: string[], startIndex: number } | null>(null);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [newComment, setNewComment] = useState('');
+  const [showShareModal, setShowShareModal] = useState(false);
 
   useEffect(() => {
-    const loadTask = async () => {
-      try {
-        const data = await storageService.getTaskById(taskId);
-        if (data) {
-          setTask(data);
-        } else {
-          setError('La tarea no existe o ha sido eliminada.');
-        }
-      } catch (err) {
-        setError('Error al cargar la información.');
-      } finally {
-        setLoading(false);
+    const unsubscribe = db.collection('tasks').doc(taskId).onSnapshot((doc) => {
+      if (doc.exists) {
+        setTask({ ...doc.data(), id: doc.id } as Task);
+        setError('');
+      } else {
+        setError('La tarea no existe o ha sido eliminada.');
       }
-    };
-    loadTask();
+      setLoading(false);
+    }, (err) => {
+      console.error("Error loading shared task:", err);
+      setError('Error al cargar la información. Es posible que no tengas permisos.');
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
   }, [taskId]);
+
+  const handleToggleChecklistItem = async (itemIndex: number) => {
+    if (!task || !task.checklist || isUpdating) return;
+    
+    setIsUpdating(true);
+    try {
+      const updatedChecklist = [...task.checklist];
+      const item = updatedChecklist[itemIndex];
+      item.isCompleted = !item.isCompleted;
+      
+      if (item.isCompleted) {
+        item.completedBy = auth.currentUser?.displayName || 'Invitado';
+        item.completedAt = Date.now();
+      } else {
+        item.completedBy = undefined;
+        item.completedAt = undefined;
+      }
+      
+      await storageService.saveTask({ id: task.id, checklist: updatedChecklist });
+    } catch (err) {
+      console.error("Error updating checklist item:", err);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleCompleteTask = async () => {
+    if (!task || isUpdating || task.status === TaskStatus.COMPLETED) return;
+
+    setIsUpdating(true);
+    try {
+      await storageService.saveTask({ 
+        id: task.id, 
+        status: TaskStatus.COMPLETED,
+        completedBy: auth.currentUser?.displayName || 'Invitado',
+        completedAt: Date.now()
+      });
+    } catch (err) {
+      console.error("Error completing task:", err);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleAddComment = async () => {
+    if (!task || !newComment.trim() || isUpdating) return;
+
+    setIsUpdating(true);
+    try {
+      const comment: TaskComment = {
+        id: 'c-' + Date.now(),
+        userId: auth.currentUser?.uid || 'guest',
+        userName: auth.currentUser?.displayName || 'Invitado',
+        message: newComment.trim(),
+        timestamp: Date.now()
+      };
+
+      const updatedComments = [...(task.comments || []), comment];
+      await storageService.saveTask({ id: task.id, comments: updatedComments });
+      setNewComment('');
+    } catch (err) {
+      console.error("Error adding comment:", err);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const renderDescriptionWithHighlights = (text: string, isCompleted: boolean) => {
+    if (!text) return null;
+    const parts = text.split(/(\*[^*]+\*)/g);
+    return parts.map((part, index) => {
+      if (part.startsWith('*') && part.endsWith('*') && part.length > 2) {
+        const content = part.slice(1, -1);
+        return (
+          <span 
+            key={index} 
+            className={`${isCompleted ? '' : 'text-red-700 dark:text-red-400 font-black bg-red-100 dark:bg-red-900/40 px-1.5 py-0.5 rounded-md mx-0.5 tracking-wide border border-red-200 dark:border-red-800/50 shadow-sm'}`}
+          >
+            {content}
+          </span>
+        );
+      }
+      return <span key={index}>{part}</span>;
+    });
+  };
 
   const handleGoToApp = () => {
     const url = new URL(window.location.href);
@@ -74,12 +164,20 @@ export const PublicTaskViewer: React.FC<PublicTaskViewerProps> = ({ taskId }) =>
               <Logo size="sm" />
               <span className="font-extrabold text-xl text-gray-900 dark:text-white">Hub</span>
             </div>
-            <button 
-              onClick={handleGoToApp}
-              className="text-sm font-bold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 px-3 py-2 rounded-lg transition-colors flex items-center gap-2"
-            >
-              <LogIn size={16} /> Acceder
-            </button>
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={() => setShowShareModal(true)}
+                className="text-sm font-bold text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800 px-3 py-2 rounded-lg transition-colors flex items-center gap-2"
+              >
+                <Share2 size={16} /> Compartir
+              </button>
+              <button 
+                onClick={handleGoToApp}
+                className="text-sm font-bold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 px-3 py-2 rounded-lg transition-colors flex items-center gap-2"
+              >
+                <LogIn size={16} /> Acceder
+              </button>
+            </div>
           </div>
         </header>
 
@@ -112,7 +210,7 @@ export const PublicTaskViewer: React.FC<PublicTaskViewerProps> = ({ taskId }) =>
             <div className="p-6 md:p-8 space-y-8">
               <div className="prose dark:prose-invert max-w-none">
                 <p className="text-lg text-gray-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed">
-                  {task.description || 'Sin descripción adicional.'}
+                  {task.description ? renderDescriptionWithHighlights(task.description, task.status === TaskStatus.COMPLETED) : 'Sin descripción adicional.'}
                 </p>
               </div>
 
@@ -150,7 +248,142 @@ export const PublicTaskViewer: React.FC<PublicTaskViewerProps> = ({ taskId }) =>
                     </p>
                   </div>
                 </div>
+                {task.dueDate && (
+                  <div className="flex items-center gap-3 sm:col-span-2">
+                    <div className="w-10 h-10 rounded-full bg-white dark:bg-slate-700 flex items-center justify-center text-gray-400 shadow-sm"><Clock size={20} /></div>
+                    <div>
+                      <p className="text-xs font-bold text-gray-400 uppercase">Fecha Límite</p>
+                      <p className={`font-semibold ${!task.completedAt && task.dueDate < Date.now() ? 'text-red-600' : 'text-gray-900 dark:text-white'}`}>
+                        {new Date(task.dueDate).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
+
+              {/* Checklist Section */}
+              {task.checklist && task.checklist.length > 0 && (
+                <div className="space-y-4">
+                  <h3 className="font-bold text-gray-900 dark:text-white flex items-center gap-2 text-lg">
+                    <ClipboardCheck size={20} className="text-red-600" />
+                    Lista de Verificación
+                  </h3>
+                  <div className="grid gap-3">
+                    {task.checklist.map((item, index) => (
+                      <button
+                        key={item.id}
+                        disabled={isUpdating}
+                        onClick={() => handleToggleChecklistItem(index)}
+                        className={`flex items-start gap-4 p-4 rounded-2xl border-2 text-left transition-all ${
+                          item.isCompleted 
+                            ? 'bg-green-50/50 dark:bg-green-900/10 border-green-200 dark:border-green-900/30' 
+                            : 'bg-white dark:bg-slate-800 border-gray-100 dark:border-slate-700 hover:border-red-200 dark:hover:border-red-900/30'
+                        }`}
+                      >
+                        <div className={`mt-0.5 w-6 h-6 rounded-lg flex items-center justify-center shrink-0 border-2 transition-colors ${
+                          item.isCompleted 
+                            ? 'bg-green-500 border-green-500 text-white' 
+                            : 'bg-gray-100 dark:bg-slate-900 border-gray-300 dark:border-slate-600 text-transparent'
+                        }`}>
+                          <Check size={16} strokeWidth={4} />
+                        </div>
+                        <div className="flex flex-col">
+                          <span className={`text-base font-bold ${
+                            item.isCompleted 
+                              ? 'text-gray-500 dark:text-slate-400 line-through decoration-2' 
+                              : 'text-gray-800 dark:text-slate-200'
+                          }`}>
+                            {item.text}
+                          </span>
+                          {item.isCompleted && item.completedBy && (
+                            <span className="text-[10px] font-bold text-green-600 dark:text-green-400 uppercase tracking-wider mt-1">
+                              ✓ Completado por {item.completedBy}
+                            </span>
+                          )}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Comments Section */}
+              <div className="space-y-4">
+                <h3 className="font-bold text-gray-900 dark:text-white flex items-center gap-2 text-lg">
+                  <MessagesSquare size={20} className="text-blue-600" />
+                  Comentarios ({task.comments?.length || 0})
+                </h3>
+                
+                <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 no-scrollbar">
+                  {task.comments?.map((comment) => (
+                    <div 
+                      key={comment.id} 
+                      className={`p-4 rounded-2xl shadow-sm border ${
+                        comment.userId === auth.currentUser?.uid 
+                          ? 'bg-blue-50/50 dark:bg-blue-900/10 border-blue-100 dark:border-blue-900/30 ml-4' 
+                          : 'bg-gray-50/50 dark:bg-slate-800/50 border-gray-100 dark:border-slate-700 mr-4'
+                      }`}
+                    >
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="text-[10px] font-black text-gray-400 dark:text-slate-500 uppercase tracking-wider">
+                          {comment.userName}
+                        </span>
+                        <span className="text-[10px] font-bold text-gray-400 dark:text-slate-500">
+                          {new Date(comment.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                        </span>
+                      </div>
+                      <p className="text-sm font-bold text-gray-800 dark:text-slate-200">
+                        {comment.message}
+                      </p>
+                    </div>
+                  ))}
+                  
+                  {(!task.comments || task.comments.length === 0) && (
+                    <div className="text-center py-6 bg-gray-50/50 dark:bg-slate-800/50 rounded-2xl border border-dashed border-gray-200 dark:border-slate-700">
+                      <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">No hay comentarios aún</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Add Comment Input */}
+                <div className="flex gap-2 items-center bg-gray-100 dark:bg-slate-800 p-1.5 rounded-2xl">
+                  <input 
+                    value={newComment}
+                    onChange={(e) => setNewComment(e.target.value)}
+                    placeholder="Escribe un comentario..."
+                    className="flex-1 px-4 py-3 bg-transparent outline-none font-bold text-gray-700 dark:text-white placeholder-gray-400 text-sm"
+                    onKeyDown={e => e.key === 'Enter' && handleAddComment()}
+                    disabled={isUpdating}
+                  />
+                  <button 
+                    onClick={handleAddComment} 
+                    disabled={!newComment.trim() || isUpdating}
+                    className="bg-blue-600 text-white w-10 h-10 rounded-xl flex items-center justify-center hover:bg-blue-700 disabled:opacity-50 disabled:bg-gray-400 active:scale-95 transition-all shadow-md shrink-0"
+                  >
+                    <Send size={18} className="ml-0.5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Complete Task Button */}
+              {task.status !== TaskStatus.COMPLETED && (
+                <div className="pt-4">
+                  <button
+                    disabled={isUpdating}
+                    onClick={handleCompleteTask}
+                    className="w-full bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white font-black py-4 rounded-2xl shadow-lg shadow-green-600/20 flex items-center justify-center gap-3 transition-all active:scale-95"
+                  >
+                    {isUpdating ? (
+                      <Loader2 size={24} className="animate-spin" />
+                    ) : (
+                      <>
+                        <CheckCircle2 size={24} />
+                        MARCAR TAREA COMO COMPLETADA
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
 
               {task.imageUrls && task.imageUrls.length > 0 && (
                 <div>
@@ -173,6 +406,13 @@ export const PublicTaskViewer: React.FC<PublicTaskViewerProps> = ({ taskId }) =>
             </div>
           </div>
         </main>
+
+        <ShareModal 
+          isOpen={showShareModal} 
+          onClose={() => setShowShareModal(false)} 
+          url={window.location.href} 
+          title={task.title} 
+        />
 
         <footer className="text-center py-8 text-gray-400 text-sm">
           <p>Compartido vía Hub App</p>
