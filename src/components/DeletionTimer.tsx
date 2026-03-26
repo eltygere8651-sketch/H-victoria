@@ -5,10 +5,11 @@ interface DeletionTimerProps {
   completedAt: number;
 }
 
-const DELETION_WINDOW_MS = 30 * 60 * 1000;
+const DELETION_WINDOW_MS = 12 * 60 * 60 * 1000; // 12 Hours
 
 export const DeletionTimer: React.FC<DeletionTimerProps> = ({ completedAt }) => {
   const [timeLeft, setTimeLeft] = useState('');
+  const [isExpired, setIsExpired] = useState(false);
 
   useEffect(() => {
     const calculateTimeLeft = () => {
@@ -18,17 +19,17 @@ export const DeletionTimer: React.FC<DeletionTimerProps> = ({ completedAt }) => 
 
       if (difference <= 0) {
         setTimeLeft('Pendiente de eliminación');
-        clearInterval(interval);
+        setIsExpired(true);
         return;
       }
 
-      const hours = Math.floor((difference / (1000 * 60 * 60)) % 24);
+      const hours = Math.floor((difference / (1000 * 60 * 60)));
       const minutes = Math.floor((difference / 1000 / 60) % 60);
 
       if (hours > 0) {
-        setTimeLeft(`Se eliminará en aprox. ${hours}h ${minutes}m`);
+        setTimeLeft(`Eliminación en ${hours}h ${minutes}m`);
       } else {
-        setTimeLeft(`Se eliminará en aprox. ${minutes}m`);
+        setTimeLeft(`Eliminación en ${minutes}m`);
       }
     };
 
@@ -39,8 +40,12 @@ export const DeletionTimer: React.FC<DeletionTimerProps> = ({ completedAt }) => 
   }, [completedAt]);
 
   return (
-    <div className="flex items-center justify-center gap-2 text-xs text-amber-600 dark:text-amber-500 font-semibold bg-amber-50 dark:bg-amber-900/20 px-2 py-1.5 rounded-lg">
-      <Clock size={14} />
+    <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-wider px-3 py-2 rounded-xl shadow-sm border w-fit mx-auto sm:mx-0 ${
+      isExpired 
+        ? 'bg-red-50 text-red-600 border-red-100 dark:bg-red-900/20 dark:text-red-400 dark:border-red-900/30' 
+        : 'bg-amber-50 text-amber-700 border-amber-100 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-900/30'
+    }">
+      <Clock size={14} strokeWidth={3} />
       <span>{timeLeft}</span>
     </div>
   );

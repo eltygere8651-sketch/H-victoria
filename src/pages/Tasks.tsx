@@ -134,6 +134,25 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
     }
   };
 
+  // Auto-deletion logic for completed tasks after 12 hours
+  useEffect(() => {
+    const DELETION_WINDOW_MS = 12 * 60 * 60 * 1000;
+    const interval = setInterval(() => {
+      const now = Date.now();
+      const tasksToDelete = allTasks.filter(task => 
+        task.status === TaskStatus.COMPLETED && 
+        task.completedAt && 
+        (now - task.completedAt) > DELETION_WINDOW_MS
+      );
+
+      tasksToDelete.forEach(task => {
+        storageService.deleteTask(task.id);
+      });
+    }, 60000); // Check every minute
+
+    return () => clearInterval(interval);
+  }, [allTasks]);
+
   const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       setIsCompressing(true);
@@ -190,7 +209,17 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
       item.completedBy = undefined;
       item.completedAt = undefined;
     }
-    await storageService.saveTask({ id: taskId, checklist: updatedChecklist });
+
+    const allCompleted = updatedChecklist.every(i => i.isCompleted);
+    const updateData: any = { id: taskId, checklist: updatedChecklist };
+    
+    if (allCompleted && updatedChecklist.length > 0) {
+      updateData.status = TaskStatus.COMPLETED;
+      updateData.completedBy = currentUser.name;
+      updateData.completedAt = Date.now();
+    }
+
+    await storageService.saveTask(updateData);
   };
 
   const handleAddChecklistItem = () => {
@@ -872,9 +901,11 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
                               </div>
                             )}
                             
-                            {task.status === TaskStatus.COMPLETED && task.completedAt && (
-                              <DeletionTimer completedAt={task.completedAt} />
-                            )}
+                             {task.status === TaskStatus.COMPLETED && task.completedAt && (
+                               <DeletionTimer 
+                                 completedAt={task.completedAt} 
+                               />
+                             )}
                         </div>
                      </div>
                      

@@ -6,6 +6,7 @@ import { Loader2, Calendar, User, MapPin, Flag, AlertTriangle, CheckCircle2, Cli
 import { Logo } from './Logo';
 import { ImageViewer } from './ImageViewer';
 import { ShareModal } from './ShareModal';
+import { DeletionTimer } from './DeletionTimer';
 
 interface PublicTaskViewerProps {
   taskId: string;
@@ -55,7 +56,16 @@ export const PublicTaskViewer: React.FC<PublicTaskViewerProps> = ({ taskId }) =>
         item.completedAt = undefined;
       }
       
-      await storageService.saveTask({ id: task.id, checklist: updatedChecklist });
+      const allCompleted = updatedChecklist.every(i => i.isCompleted);
+      const updateData: any = { id: task.id, checklist: updatedChecklist };
+
+      if (allCompleted && updatedChecklist.length > 0) {
+        updateData.status = TaskStatus.COMPLETED;
+        updateData.completedBy = auth.currentUser?.displayName || 'Invitado';
+        updateData.completedAt = Date.now();
+      }
+
+      await storageService.saveTask(updateData);
     } catch (err) {
       console.error("Error updating checklist item:", err);
     } finally {
@@ -382,6 +392,14 @@ export const PublicTaskViewer: React.FC<PublicTaskViewerProps> = ({ taskId }) =>
                       </>
                     )}
                   </button>
+                </div>
+              )}
+
+              {task.status === TaskStatus.COMPLETED && task.completedAt && (
+                <div className="pt-4 flex justify-center">
+                  <DeletionTimer 
+                    completedAt={task.completedAt} 
+                  />
                 </div>
               )}
 
