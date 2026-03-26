@@ -552,7 +552,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
   return (
     <div className="font-sans pb-24 bg-gray-50 dark:bg-slate-950 min-h-screen">
       {/* Header */}
-      <div className="sticky top-0 z-30 bg-white/95 dark:bg-slate-950/95 backdrop-blur-xl border-b border-gray-200 dark:border-slate-800 px-4 py-3 md:px-6 shadow-sm">
+      <div className="sticky top-20 z-30 bg-white/95 dark:bg-slate-950/95 backdrop-blur-xl border-b border-gray-200 dark:border-slate-800 px-4 py-3 md:px-6 shadow-sm">
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-3">
           <div className="flex items-center justify-between w-full sm:w-auto">
             <h2 className="text-3xl md:text-4xl font-black text-gray-900 dark:text-white tracking-tighter uppercase italic drop-shadow-sm">
@@ -597,10 +597,10 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
 
             {/* Only Admins or Staff with 'CAN_MANAGE_TASKS' permission can create new tasks */}
             {canManageTasks && (
-              <div className="flex gap-2 w-full sm:w-auto">
+              <div className="flex flex-row gap-2 w-full sm:w-auto">
                 <button
                   onClick={generateRandomHospitalityTask}
-                  className="flex-1 sm:flex-none bg-indigo-600 text-white px-4 h-12 rounded-xl flex items-center justify-center shadow-md hover:bg-indigo-700 transition-colors font-bold text-xs md:text-sm uppercase tracking-wider"
+                  className="flex bg-indigo-600 text-white px-3 h-12 rounded-xl items-center justify-center shadow-md hover:bg-indigo-700 transition-colors font-bold text-[10px] uppercase tracking-wider"
                 >
                   Prueba
                 </button>
@@ -611,9 +611,10 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
                     setPreviews([]);
                     setShowTaskModal(true);
                   }}
-                  className="hidden sm:flex bg-gray-900 dark:bg-white text-white dark:text-gray-900 w-12 h-12 md:w-14 md:h-14 rounded-2xl items-center justify-center shadow-xl shadow-gray-400/20 hover:scale-105 transition-transform active:scale-95 border-2 border-transparent hover:border-gray-200 dark:hover:border-slate-700"
+                  className="flex-1 sm:flex-none bg-red-600 dark:bg-red-500 text-white h-12 sm:px-4 sm:rounded-2xl rounded-xl items-center justify-center shadow-xl shadow-red-600/30 hover:scale-105 transition-transform active:scale-95 border-2 border-transparent hover:border-red-400 dark:hover:border-red-400 gap-2 px-4"
                 >
-                  <Plus size={28} strokeWidth={3} />
+                  <Plus size={24} strokeWidth={3} />
+                  <span className="font-black uppercase tracking-tighter italic text-sm sm:text-lg">Crear Tarea</span>
                 </button>
               </div>
             )}
@@ -1059,7 +1060,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
             setPreviews([]);
             setShowTaskModal(true);
           }}
-          className="fixed bottom-6 right-6 z-40 sm:hidden bg-gray-900 dark:bg-white text-white dark:text-gray-900 w-16 h-16 rounded-full flex items-center justify-center shadow-2xl active:scale-95 transition-all animate-bounce-subtle"
+          className="fixed bottom-32 right-6 z-[100] sm:hidden bg-red-600 text-white w-16 h-16 rounded-full flex items-center justify-center shadow-[0_10px_40px_rgba(220,38,38,0.5)] active:scale-90 transition-all border-4 border-white dark:border-slate-900"
         >
           <Plus size={32} strokeWidth={3} />
         </button>
