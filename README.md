@@ -45,3 +45,4 @@ npm run clean
 ## Configuración
 
 Asegúrate de configurar tus variables de entorno en un archivo `.env` o en el panel de tu proveedor de hosting (Vercel/Netlify) utilizando las claves definidas en `src/firebaseCredentials.ts` o `.env.example`.
+
