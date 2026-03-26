@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { Task, User, Department, TaskStatus, TaskPriority, UserRole, TaskType, TaskComment, TaskChecklistItem } from '../types';
 import * as storageService from '../services/storageService';
 import { ClipboardCheck, Plus, X, Save, Loader2, Edit2, Trash2, ChevronDown, MessagesSquare, Check, Camera, AlertTriangle, Share2, Send, Image, Info, Flame, Bold, Calendar, Clock, List, FileText } from 'lucide-react';
@@ -8,6 +8,7 @@ import { DeletionTimer } from '../components/DeletionTimer';
 import { ShareModal } from '../components/ShareModal';
 import { sharePdfFromReactComponent } from '../utils/pdfGenerator';
 import { TaskPdfDocument } from '../components/TaskPdfDocument';
+import { TaskCard } from '../components/TaskCard';
 
 interface TasksProps {
   currentUser: User;
@@ -198,7 +199,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
     setNewComment('');
   };
 
-  const handleToggleChecklistItem = async (taskId: string, itemIndex: number, currentChecklist: TaskChecklistItem[]) => {
+  const handleToggleChecklistItem = useCallback(async (taskId: string, itemIndex: number, currentChecklist: TaskChecklistItem[]) => {
     const updatedChecklist = [...currentChecklist];
     const item = updatedChecklist[itemIndex];
     item.isCompleted = !item.isCompleted;
@@ -220,7 +221,32 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
     }
 
     await storageService.saveTask(updateData);
-  };
+  }, [currentUser.name]);
+
+  const handleStartTask = useCallback(async (taskId: string) => {
+    await storageService.saveTask({ id: taskId, status: TaskStatus.IN_PROGRESS });
+  }, []);
+
+  const handleCompleteTask = useCallback(async (taskId: string) => {
+    await storageService.saveTask({ id: taskId, status: TaskStatus.COMPLETED, completedBy: currentUser.name, completedAt: Date.now() });
+  }, [currentUser.name]);
+
+  const handleEditTask = useCallback((task: Task) => {
+    setEditingTask(task);
+    setShowTaskModal(true);
+  }, []);
+
+  const handleDeleteTaskConfirm = useCallback((task: Task) => {
+    setTaskToDelete(task);
+  }, []);
+
+  const handleCommentTask = useCallback((taskId: string) => {
+    setActiveCommentTaskId(taskId);
+  }, []);
+
+  const handleViewImagesAction = useCallback((images: string[], index: number) => {
+    setViewingImages({ images, startIndex: index });
+  }, []);
 
   const handleAddChecklistItem = () => {
     if (!newChecklistItemText.trim()) return;
@@ -242,18 +268,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
     setEditingTask({ ...editingTask, checklist: updatedChecklist });
   };
 
-  const handleShareTaskPDF = async (task: Task) => {
-    try {
-      const filename = `Tarea_${task.id}_${task.departmentName}.pdf`;
-      const text = 'Aquí tienes los detalles de la tarea en formato PDF.';
-      await sharePdfFromReactComponent(<TaskPdfDocument task={task} preview={false} />, filename, `Tarea: ${task.title}`, text);
-    } catch (error) {
-      console.error("PDF Share Failed:", error);
-      alert('Hubo un error al compartir el PDF.');
-    }
-  };
-
-  const handleShareTask = (task: Task) => {
+  const handleShareTask = useCallback((task: Task) => {
     try {
       const url = new URL(window.location.href);
       url.search = ''; 
@@ -266,7 +281,22 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
     } catch (error) {
       console.error("Failed to construct share URL", error);
     }
-  };
+  }, []);
+
+  const handleShareTaskAction = useCallback((task: Task) => {
+    handleShareTask(task);
+  }, [handleShareTask]);
+
+  const handleSharePdfAction = useCallback(async (task: Task) => {
+    try {
+      const filename = `Tarea_${task.id}_${task.departmentName}.pdf`;
+      const text = 'Aquí tienes los detalles de la tarea en formato PDF.';
+      await sharePdfFromReactComponent(<TaskPdfDocument task={task} preview={false} />, filename, `Tarea: ${task.title}`, text);
+    } catch (error) {
+      console.error("PDF Share Failed:", error);
+      alert('Hubo un error al compartir el PDF.');
+    }
+  }, []);
 
   // Helper to insert *bold* syntax in textarea
   const insertUrgentMarker = () => {
@@ -294,50 +324,6 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
         textarea.setSelectionRange(start + 1 + selection.length + 1, start + 1 + selection.length + 1);
       }, 0);
     }
-  };
-
-  const getPriorityColor = (priority: TaskPriority) => {
-    switch (priority) {
-      case TaskPriority.HIGH: return 'bg-red-600 text-white shadow-red-200';
-      case TaskPriority.MEDIUM: return 'bg-amber-500 text-white shadow-amber-200';
-      case TaskPriority.LOW: return 'bg-blue-500 text-white shadow-blue-200';
-      default: return 'bg-gray-500 text-white';
-    }
-  };
-
-  const getPriorityBorderClass = (priority: TaskPriority) => {
-    switch (priority) {
-      case TaskPriority.HIGH: return 'bg-red-600';
-      case TaskPriority.MEDIUM: return 'bg-amber-500';
-      case TaskPriority.LOW: return 'bg-blue-500';
-      default: return 'bg-gray-300';
-    }
-  };
-
-  // Improved Parser: Uses *asterisks* which are safer for normal language (vs !exclamation!).
-  // Splits by *...* allowing mixed content.
-  const renderDescriptionWithHighlights = (text: string, isCompleted: boolean) => {
-    if (!text) return null;
-    
-    // Split by segments enclosed in asterisks e.g. "Clean the *kitchen* now" -> ["Clean the ", "*kitchen*", " now"]
-    // The regex captures the delimiter so we can process it.
-    const parts = text.split(/(\*[^*]+\*)/g);
-
-    return parts.map((part, index) => {
-      // Check if matches *text*
-      if (part.startsWith('*') && part.endsWith('*') && part.length > 2) {
-        const content = part.slice(1, -1); // Remove *
-        return (
-          <span 
-            key={index} 
-            className={`${isCompleted ? '' : 'text-red-700 dark:text-red-400 font-black bg-red-100 dark:bg-red-900/40 px-1.5 py-0.5 rounded-md mx-0.5 tracking-wide border border-red-200 dark:border-red-800/50 shadow-sm'}`}
-          >
-            {content}
-          </span>
-        );
-      }
-      return <span key={index}>{part}</span>;
-    });
   };
 
   const filteredTasks = allTasks.filter(task => {
@@ -566,15 +552,33 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
   return (
     <div className="font-sans pb-24 bg-gray-50 dark:bg-slate-950 min-h-screen">
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-white/90 dark:bg-slate-950/90 backdrop-blur-xl border-b border-gray-200 dark:border-slate-800 px-4 py-4 md:px-6 shadow-sm">
-        <div className="flex justify-between items-center mb-4">
-          <div>
-            <h2 className="text-4xl font-black text-gray-900 dark:text-white tracking-tighter uppercase italic drop-shadow-sm">
+      <div className="sticky top-0 z-30 bg-white/95 dark:bg-slate-950/95 backdrop-blur-xl border-b border-gray-200 dark:border-slate-800 px-4 py-3 md:px-6 shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-3">
+          <div className="flex items-center justify-between w-full sm:w-auto">
+            <h2 className="text-3xl md:text-4xl font-black text-gray-900 dark:text-white tracking-tighter uppercase italic drop-shadow-sm">
               Tareas <span className="text-red-600">Activas</span>
             </h2>
+            
+            {/* Mobile View Mode Toggle */}
+            <div className="flex sm:hidden bg-gray-100 dark:bg-slate-800 rounded-xl p-1">
+              <button
+                onClick={() => setViewMode('LIST')}
+                className={`p-2 rounded-lg flex items-center justify-center transition-colors ${viewMode === 'LIST' ? 'bg-white dark:bg-slate-700 shadow-sm text-red-600' : 'text-gray-500 dark:text-gray-400'}`}
+              >
+                <List size={18} />
+              </button>
+              <button
+                onClick={() => setViewMode(viewMode === 'CALENDAR' ? 'LIST' : 'CALENDAR')}
+                className={`p-2 rounded-lg flex items-center justify-center transition-colors ${viewMode === 'CALENDAR' ? 'bg-white dark:bg-slate-700 shadow-sm text-red-600' : 'text-gray-500 dark:text-gray-400'}`}
+              >
+                <Calendar size={18} />
+              </button>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="flex bg-gray-100 dark:bg-slate-800 rounded-xl p-1">
+
+          <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto">
+            {/* Desktop View Mode Toggle */}
+            <div className="hidden sm:flex bg-gray-100 dark:bg-slate-800 rounded-xl p-1">
               <button
                 onClick={() => setViewMode('LIST')}
                 className={`p-2 rounded-lg flex items-center justify-center transition-colors ${viewMode === 'LIST' ? 'bg-white dark:bg-slate-700 shadow-sm text-red-600' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'}`}
@@ -590,16 +594,16 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
                 <Calendar size={20} />
               </button>
             </div>
+
             {/* Only Admins or Staff with 'CAN_MANAGE_TASKS' permission can create new tasks */}
             {canManageTasks && (
-              <div className="flex gap-2">
+              <div className="flex gap-2 w-full sm:w-auto">
                 <button
                   onClick={generateRandomHospitalityTask}
-                  className="bg-indigo-600 text-white px-4 h-12 rounded-xl flex items-center justify-center shadow-md hover:bg-indigo-700 transition-colors font-bold text-sm"
+                  className="flex-1 sm:flex-none bg-indigo-600 text-white px-4 h-12 rounded-xl flex items-center justify-center shadow-md hover:bg-indigo-700 transition-colors font-bold text-xs md:text-sm uppercase tracking-wider"
                 >
-                  Generar Prueba
+                  Prueba
                 </button>
-              {(currentUser.role === UserRole.ADMIN || currentUser.permissions?.includes('CAN_MANAGE_TASKS')) && (
                 <button 
                   onClick={() => {
                     setEditingTask({});
@@ -607,11 +611,10 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
                     setPreviews([]);
                     setShowTaskModal(true);
                   }}
-                  className="bg-gray-900 dark:bg-white text-white dark:text-gray-900 w-14 h-14 rounded-2xl flex items-center justify-center shadow-xl shadow-gray-400/20 hover:scale-105 transition-transform active:scale-95 border-2 border-transparent hover:border-gray-200 dark:hover:border-slate-700"
+                  className="hidden sm:flex bg-gray-900 dark:bg-white text-white dark:text-gray-900 w-12 h-12 md:w-14 md:h-14 rounded-2xl items-center justify-center shadow-xl shadow-gray-400/20 hover:scale-105 transition-transform active:scale-95 border-2 border-transparent hover:border-gray-200 dark:hover:border-slate-700"
                 >
-                  <Plus size={32} strokeWidth={3} />
+                  <Plus size={28} strokeWidth={3} />
                 </button>
-              )}
               </div>
             )}
           </div>
@@ -682,240 +685,24 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
                 <p className="text-gray-400 dark:text-slate-500 font-medium mt-2">¡Todo al día en esta semana!</p>
               </div>
             ) : (
-              listTasks.map(task => {
-                const isUrgent = task.priority === TaskPriority.HIGH;
-                const isCompleted = task.status === TaskStatus.COMPLETED;
-
-                return (
-                  <div 
-                    key={task.id} 
-                    className={`
-                      relative bg-white dark:bg-slate-900 rounded-[2rem] shadow-xl dark:shadow-black/50 
-                      border border-gray-100 dark:border-slate-800
-                      hover:shadow-2xl hover:scale-[1.01] transition-all duration-300 group
-                      overflow-hidden w-full
-                    `}
-                  >
-                  {/* Visual Priority Strip (Side) */}
-                  <div className={`absolute left-0 top-0 bottom-0 w-3 md:w-4 ${getPriorityBorderClass(task.priority)}`}></div>
-
-                  <div className="pl-6 md:pl-8 p-6 flex flex-col h-full">
-                     {/* Header Row */}
-                     <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-5">
-                        <div className="flex flex-wrap gap-2 items-center">
-                           <span className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest shadow-sm ${getPriorityColor(task.priority)}`}>
-                              {task.priority === TaskPriority.HIGH ? <><AlertTriangle size={14} className="inline mr-1 mb-0.5"/>URGENTE</> : task.priority === TaskPriority.MEDIUM ? 'PRIORIDAD MEDIA' : 'BAJA'}
-                           </span>
-                           <span className="px-4 py-2 rounded-xl bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-300 text-xs font-black uppercase tracking-wider border border-gray-200 dark:border-slate-700">
-                              {task.departmentName}
-                           </span>
-                        </div>
-                        
-                        <div className="flex items-center gap-2 self-end md:self-auto">
-                          {/* Public Share Button */}
-                          {currentUser.role === UserRole.ADMIN && (
-                            <>
-                              <button onClick={() => handleShareTask(task)} title="Compartir Enlace Público" className="p-3 bg-gray-50 dark:bg-slate-800 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-xl transition-colors shadow-sm">
-                                <Share2 size={20} />
-                              </button>
-                              <button onClick={() => handleShareTaskPDF(task)} title="Compartir PDF por WhatsApp" className="p-3 bg-gray-50 dark:bg-slate-800 text-gray-400 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-xl transition-colors shadow-sm">
-                                <FileText size={20} />
-                              </button>
-                            </>
-                          )}
-                          {(currentUser.role === UserRole.ADMIN || (currentUser.permissions?.includes('CAN_MANAGE_TASKS') && task.createdById === currentUser.id)) && (
-                            <>
-                               <button onClick={() => { setEditingTask(task); setShowTaskModal(true); }} className="p-3 bg-gray-50 dark:bg-slate-800 text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-xl transition-colors shadow-sm">
-                                  <Edit2 size={20} />
-                               </button>
-                               <button onClick={() => setTaskToDelete(task)} className="p-3 bg-gray-50 dark:bg-slate-800 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors shadow-sm">
-                                  <Trash2 size={20} />
-                               </button>
-                            </>
-                          )}
-                        </div>
-                     </div>
-
-                     {/* Main Content */}
-                     <div className="mb-6">
-                        {/* Title - Red if Urgent and Not Completed */}
-                        <h3 className={`text-3xl md:text-4xl font-black uppercase tracking-tighter leading-[0.9] mb-4 break-words 
-                          ${isCompleted 
-                            ? 'text-gray-900 dark:text-white line-through decoration-4 decoration-gray-300 dark:decoration-slate-700 opacity-60' 
-                            : isUrgent 
-                              ? 'text-red-600 dark:text-red-500 drop-shadow-sm' 
-                              : 'text-gray-900 dark:text-white'
-                          }`}
-                        >
-                          {task.title}
-                        </h3>
-
-                        {/* Dates */}
-                        {(task.startDate || task.dueDate) && (
-                          <div className="flex flex-wrap gap-3 mb-4">
-                            {task.startDate && (
-                              <div className="flex items-center gap-1.5 text-xs font-bold text-gray-500 dark:text-slate-400 bg-gray-100 dark:bg-slate-800 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-slate-700">
-                                <Clock size={14} />
-                                <span>Inicio: {new Date(task.startDate).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</span>
-                              </div>
-                            )}
-                            {task.dueDate && (
-                              <div className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg border ${
-                                !isCompleted && task.dueDate < Date.now() 
-                                  ? 'text-red-600 bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800/50' 
-                                  : 'text-gray-500 dark:text-slate-400 bg-gray-100 dark:bg-slate-800 border-gray-200 dark:border-slate-700'
-                              }`}>
-                                <Calendar size={14} />
-                                <span>Límite: {new Date(task.dueDate).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</span>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                        
-                        {task.description && (
-                           <div className={`p-5 rounded-2xl border-l-4 mb-4
-                             ${isUrgent && !isCompleted
-                               ? 'bg-red-50 dark:bg-red-900/10 border-red-500' 
-                               : 'bg-gray-50 dark:bg-slate-800/50 border-gray-300 dark:border-slate-600'
-                             }`}
-                           >
-                             <p className={`text-lg md:text-xl font-bold leading-snug whitespace-pre-wrap 
-                               ${isCompleted 
-                                 ? 'text-gray-700 dark:text-slate-300 opacity-60' 
-                                 : isUrgent 
-                                   ? 'text-red-800 dark:text-red-300' 
-                                   : 'text-gray-700 dark:text-slate-300'
-                               }`}
-                             >
-                               {/* Use the new renderer function here */}
-                               {renderDescriptionWithHighlights(task.description, isCompleted)}
-                             </p>
-                           </div>
-                        )}
-
-                        {/* Checklist Display */}
-                        {task.checklist && task.checklist.length > 0 && (
-                          <div className="space-y-2 mb-4">
-                            {task.checklist.map((item, index) => (
-                              <div 
-                                key={item.id} 
-                                className={`flex items-start gap-3 p-3 rounded-xl border-2 transition-colors ${
-                                  item.isCompleted 
-                                    ? 'bg-green-50/50 dark:bg-green-900/10 border-green-200 dark:border-green-900/30' 
-                                    : 'bg-gray-50 dark:bg-slate-800/50 border-gray-200 dark:border-slate-700'
-                                }`}
-                              >
-                                <button
-                                  onClick={() => handleToggleChecklistItem(task.id, index, task.checklist!)}
-                                  className={`mt-0.5 w-6 h-6 rounded-md flex items-center justify-center shrink-0 border-2 transition-colors ${
-                                    item.isCompleted 
-                                      ? 'bg-green-500 border-green-500 text-white' 
-                                      : 'bg-white dark:bg-slate-900 border-gray-300 dark:border-slate-600 text-transparent hover:border-green-500'
-                                  }`}
-                                >
-                                  <Check size={16} strokeWidth={4} />
-                                </button>
-                                <div className="flex flex-col">
-                                  <span className={`text-base font-bold ${
-                                    item.isCompleted 
-                                      ? 'text-gray-500 dark:text-slate-400 line-through decoration-2' 
-                                      : 'text-gray-800 dark:text-slate-200'
-                                  }`}>
-                                    {item.text}
-                                  </span>
-                                  {item.isCompleted && item.completedBy && (
-                                    <span className="text-[10px] font-bold text-green-600 dark:text-green-400 uppercase tracking-wider mt-0.5">
-                                      ✓ {item.completedBy}
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                     </div>
-
-                     {/* Images - UPDATED for iOS SCROLL */}
-                     {task.imageUrls && task.imageUrls.length > 0 && (
-                       <div 
-                          className="flex gap-3 mb-6 overflow-x-auto pb-2 no-scrollbar touch-pan-x snap-x snap-mandatory"
-                          style={{ WebkitOverflowScrolling: 'touch' }}
-                       >
-                          {task.imageUrls.map((url, i) => (
-                            <button 
-                              key={i} 
-                              onClick={() => setViewingImages({ images: task.imageUrls!, startIndex: i })} 
-                              className="relative w-28 h-28 rounded-2xl border-2 border-gray-100 dark:border-slate-700 overflow-hidden flex-shrink-0 hover:border-red-500 transition-colors shadow-md snap-start"
-                            >
-                               <img src={url} className="w-full h-full object-cover" loading="lazy" />
-                            </button>
-                          ))}
-                       </div>
-                     )}
-
-                     {/* Footer Actions */}
-                     <div className="mt-auto pt-5 border-t-2 border-gray-100 dark:border-slate-800 flex flex-wrap justify-between items-center gap-4">
-                        
-                        {/* User Info */}
-                        <div className="flex items-center gap-3">
-                           <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-slate-800 flex items-center justify-center font-bold text-gray-500 dark:text-slate-400 shadow-inner text-sm">
-                             {task.createdBy.charAt(0)}
-                           </div>
-                           <div className="flex flex-col">
-                              <span className="font-bold text-gray-900 dark:text-white text-sm leading-tight">{task.createdBy}</span>
-                              <span className="text-xs font-bold text-gray-400 dark:text-slate-500">{new Date(task.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
-                           </div>
-                        </div>
-
-                        <div className="flex items-center gap-3">
-                            {/* Comments Button */}
-                            <button 
-                              onClick={() => setActiveCommentTaskId(task.id)}
-                              className={`flex items-center gap-2 px-4 py-3 rounded-xl font-bold text-sm transition-all border-2 ${
-                                (task.comments?.length || 0) > 0 
-                                  ? 'bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-900/30' 
-                                  : 'bg-white text-gray-500 border-gray-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700 hover:bg-gray-50'
-                              }`}
-                            >
-                               <MessagesSquare size={20} strokeWidth={2.5} />
-                               <span>{task.comments?.length || 0}</span>
-                            </button>
-
-                            {/* Action Buttons */}
-                            {task.status !== TaskStatus.COMPLETED && (
-                              <div className="flex gap-2">
-                                 {task.status === TaskStatus.PENDING && (
-                                   <button 
-                                     onClick={() => storageService.saveTask({ id: task.id, status: TaskStatus.IN_PROGRESS })}
-                                     className="px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white text-sm font-black uppercase tracking-wider rounded-xl shadow-lg shadow-blue-200 dark:shadow-none transition-all active:scale-95 flex items-center gap-2"
-                                   >
-                                     Iniciar
-                                   </button>
-                                 )}
-                                 <button 
-                                   onClick={() => storageService.saveTask({ id: task.id, status: TaskStatus.COMPLETED, completedBy: currentUser.name, completedAt: Date.now() })}
-                                   className="px-5 py-3 bg-green-600 hover:bg-green-700 text-white text-sm font-black uppercase tracking-wider rounded-xl shadow-lg shadow-green-200 dark:shadow-none transition-all active:scale-95 flex items-center gap-2"
-                                 >
-                                   <Check size={20} strokeWidth={4} /> Completar
-                                 </button>
-                              </div>
-                            )}
-                            
-                             {task.status === TaskStatus.COMPLETED && task.completedAt && (
-                               <DeletionTimer 
-                                 completedAt={task.completedAt} 
-                               />
-                             )}
-                        </div>
-                     </div>
-                     
-                     {/* Comments Section Removed from here and moved to a global modal */}
-                  </div>
-                </div>
-              );
-            })
-          )}
-        </div>
+              listTasks.map(task => (
+                <TaskCard 
+                  key={task.id}
+                  task={task}
+                  currentUser={currentUser}
+                  onToggleChecklist={handleToggleChecklistItem}
+                  onStart={handleStartTask}
+                  onComplete={handleCompleteTask}
+                  onEdit={handleEditTask}
+                  onDelete={handleDeleteTaskConfirm}
+                  onComment={handleCommentTask}
+                  onShare={handleShareTaskAction}
+                  onSharePdf={handleSharePdfAction}
+                  onViewImages={handleViewImagesAction}
+                />
+              ))
+            )}
+          </div>
         ) : (
           renderCalendarView()
         )}
@@ -1262,6 +1049,21 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
         url={shareData.url} 
         title={shareData.title} 
       />
+
+      {/* Floating Action Button for Mobile */}
+      {canManageTasks && (
+        <button 
+          onClick={() => {
+            setEditingTask({});
+            setSelectedImages([]);
+            setPreviews([]);
+            setShowTaskModal(true);
+          }}
+          className="fixed bottom-6 right-6 z-40 sm:hidden bg-gray-900 dark:bg-white text-white dark:text-gray-900 w-16 h-16 rounded-full flex items-center justify-center shadow-2xl active:scale-95 transition-all animate-bounce-subtle"
+        >
+          <Plus size={32} strokeWidth={3} />
+        </button>
+      )}
 
     </div>
   );

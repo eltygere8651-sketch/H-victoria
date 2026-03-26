@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Task, TaskStatus, TaskPriority, TaskChecklistItem, TaskComment } from '../types';
 import * as storageService from '../services/storageService';
 import { db, auth } from '../firebaseConfig';
@@ -39,7 +39,7 @@ export const PublicTaskViewer: React.FC<PublicTaskViewerProps> = ({ taskId }) =>
     return () => unsubscribe();
   }, [taskId]);
 
-  const handleToggleChecklistItem = async (itemIndex: number) => {
+  const handleToggleChecklistItem = useCallback(async (itemIndex: number) => {
     if (!task || !task.checklist || isUpdating) return;
     
     setIsUpdating(true);
@@ -71,9 +71,9 @@ export const PublicTaskViewer: React.FC<PublicTaskViewerProps> = ({ taskId }) =>
     } finally {
       setIsUpdating(false);
     }
-  };
+  }, [task, isUpdating]);
 
-  const handleCompleteTask = async () => {
+  const handleCompleteTask = useCallback(async () => {
     if (!task || isUpdating || task.status === TaskStatus.COMPLETED) return;
 
     setIsUpdating(true);
@@ -89,9 +89,9 @@ export const PublicTaskViewer: React.FC<PublicTaskViewerProps> = ({ taskId }) =>
     } finally {
       setIsUpdating(false);
     }
-  };
+  }, [task, isUpdating]);
 
-  const handleAddComment = async () => {
+  const handleAddComment = useCallback(async () => {
     if (!task || !newComment.trim() || isUpdating) return;
 
     setIsUpdating(true);
@@ -112,9 +112,9 @@ export const PublicTaskViewer: React.FC<PublicTaskViewerProps> = ({ taskId }) =>
     } finally {
       setIsUpdating(false);
     }
-  };
+  }, [task, newComment, isUpdating]);
 
-  const renderDescriptionWithHighlights = (text: string, isCompleted: boolean) => {
+  const renderDescriptionWithHighlights = useCallback((text: string, isCompleted: boolean) => {
     if (!text) return null;
     const parts = text.split(/(\*[^*]+\*)/g);
     return parts.map((part, index) => {
@@ -131,7 +131,7 @@ export const PublicTaskViewer: React.FC<PublicTaskViewerProps> = ({ taskId }) =>
       }
       return <span key={index}>{part}</span>;
     });
-  };
+  }, []);
 
   const handleGoToApp = () => {
     const url = new URL(window.location.href);
@@ -415,7 +415,7 @@ export const PublicTaskViewer: React.FC<PublicTaskViewerProps> = ({ taskId }) =>
                         onClick={() => setViewingImages({ images: task.imageUrls!, startIndex: index })}
                         className="aspect-square rounded-xl overflow-hidden shadow-sm hover:opacity-90 transition-opacity bg-gray-100 dark:bg-slate-800"
                       >
-                        <img src={url} alt={`Adjunto ${index + 1}`} className="w-full h-full object-cover" loading="lazy" />
+                        <img src={url} alt={`Adjunto ${index + 1}`} className="w-full h-full object-cover" loading="lazy" referrerPolicy="no-referrer" />
                       </button>
                     ))}
                   </div>
