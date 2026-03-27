@@ -78,15 +78,6 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCar
     setSelectedDepartmentNameForOrder(dep ? dep.name : '');
   }, [selectedDepartmentForOrder, departments]);
 
-  useEffect(() => {
-    if (selectedProduct && inputRef.current) {
-      setTimeout(() => {
-        inputRef.current?.focus();
-        inputRef.current?.select();
-      }, 100);
-    }
-  }, [selectedProduct]);
-
   const openQtyModal = (product: Product) => {
     setSelectedProduct(product);
     setQtyValue('1');
@@ -334,6 +325,14 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCar
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              onAnimationComplete={() => {
+                setTimeout(() => {
+                  if (inputRef.current) {
+                    inputRef.current.focus();
+                    inputRef.current.select();
+                  }
+                }, 50);
+              }}
               className="bg-white dark:bg-slate-900 w-full md:max-w-sm rounded-t-[2rem] md:rounded-[1.5rem] shadow-2xl overflow-hidden border-t md:border border-gray-100 dark:border-white/5 relative z-10"
             >
               {/* Mobile Drag Handle */}
@@ -367,6 +366,7 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCar
                   <div className="flex-1 flex flex-col items-center">
                     <input
                       ref={inputRef}
+                      autoFocus
                       type="number"
                       inputMode="numeric"
                       pattern="[0-9]*"
