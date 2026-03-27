@@ -227,14 +227,17 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser }) => {
     <div className="font-sans relative">
       {/* SUB-CABECERA DE INVENTARIO FIJA */}
       <div 
-        className="sticky top-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-b border-slate-200 dark:border-slate-800 shadow-md px-4 py-6"
+        className="sticky top-20 z-40 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 shadow-md px-4 py-2 md:py-3"
       >
         <div className="max-w-7xl mx-auto">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter uppercase italic">
-              Stock <span className="text-red-600">Total</span>
-            </h2>
-            <div className="flex gap-2">
+          <div className="flex justify-between items-center mb-2">
+            <div className="flex flex-col">
+              <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.3em] leading-none mb-1">Control de</span>
+              <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tighter leading-none">
+                Stock <span className="text-red-600 dark:text-red-500 italic">Total</span>
+              </h2>
+            </div>
+            <div className="flex gap-1.5">
               <button 
                 onClick={() => {
                   const url = `${window.location.origin}?provider=true`;
@@ -250,18 +253,24 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser }) => {
                   }
                 }}
                 title="Compartir Enlace a Proveedores"
-                className="bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400 w-12 h-12 rounded-2xl flex items-center justify-center hover:bg-indigo-200 dark:hover:bg-indigo-900/50 transition-colors"
+                className="bg-indigo-50 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-400 w-8 h-8 rounded-full flex items-center justify-center hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition-all active:scale-90 shadow-sm border border-indigo-100 dark:border-indigo-800/50"
               >
-                <Share2 size={20} />
+                <Share2 size={16} />
               </button>
               <button 
                 onClick={() => setShowReceiveStockModal(true)} 
                 title="Ingreso de Mercancía"
-                className="bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 w-12 h-12 rounded-2xl flex items-center justify-center hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
+                className="bg-blue-600 text-white w-8 h-8 rounded-full flex items-center justify-center hover:bg-blue-700 transition-all active:scale-90 shadow-lg shadow-blue-600/20"
               >
-                <PackagePlus size={20} />
+                <PackagePlus size={16} />
               </button>
-              <button onClick={() => setShowManageDepartmentsModal(true)} className="btn-header-action"><ListTree size={20} /></button>
+              <button 
+                onClick={() => setShowManageDepartmentsModal(true)} 
+                className="bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-400 w-8 h-8 rounded-full flex items-center justify-center hover:bg-gray-200 dark:hover:bg-slate-700 transition-all active:scale-90"
+                title="Gestionar Departamentos"
+              >
+                <ListTree size={16} />
+              </button>
               <button 
                 onClick={() => { setEditProductForm({}); setShowEditProductModal(true); }}
                 className="bg-red-600 text-white w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg shadow-red-600/30 active:scale-90 transition-transform"

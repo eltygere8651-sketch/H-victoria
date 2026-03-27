@@ -468,47 +468,52 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCar
       )}
 
       <div className="flex-1 flex flex-col h-full lg:pb-0">
-        <div className="bg-white dark:bg-slate-900 px-4 py-4 md:px-6 md:py-6 border-b border-gray-100 dark:border-slate-800 shadow-sm z-10 space-y-4 transition-colors duration-300">
+        <div className="sticky top-20 bg-white dark:bg-slate-900 px-4 py-2 md:px-6 md:py-3 border-b border-gray-100 dark:border-slate-800 shadow-md z-30 space-y-2 transition-colors duration-300">
            <div className="flex justify-between items-center">
-             <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tighter uppercase italic">
-               Crear <span className="text-red-600">Pedido</span>
-             </h2>
+             <div className="flex flex-col">
+               <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.3em] leading-none mb-1">Suministros</span>
+               <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tighter leading-none">
+                 Crear <span className="text-red-600 dark:text-red-500 italic">Pedido</span>
+               </h2>
+             </div>
              {currentUser.role === UserRole.ADMIN && (
                <button 
                  onClick={() => setShowRandomOrderConfirm(true)} 
                  title="Generar pedido aleatorio"
-                 className="bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400 w-10 h-10 rounded-xl flex items-center justify-center hover:bg-purple-200 dark:hover:bg-purple-900/50 transition-colors"
+                 className="bg-purple-600 text-white w-8 h-8 rounded-full flex items-center justify-center hover:bg-purple-700 transition-all active:scale-90 shadow-lg shadow-purple-600/20"
                >
-                 <Zap size={18} />
+                 <Zap size={14} fill="white" />
                </button>
              )}
            </div>
            
-           <div className="relative">
-              <label htmlFor="catalog-department-select" className="sr-only">Filtrar Productos por Departamento</label>
-              <select
-                id="catalog-department-select"
-                value={selectedDepartmentForOrder}
-                onChange={(e) => setSelectedDepartmentForOrder(e.target.value)}
-                className="w-full px-4 py-3.5 pl-11 rounded-xl border-2 border-gray-200 dark:border-slate-700 focus:ring-4 focus:ring-red-100 dark:focus:ring-red-500/30 focus:border-red-500 outline-none transition-all bg-white dark:bg-slate-800/60 dark:text-white shadow-sm appearance-none font-bold text-gray-700"
-              >
-                {departments.map((dep) => (
-                  <option key={dep.id} value={dep.id}>{dep.name}</option>
-                ))}
-              </select>
-              <Filter className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500 pointer-events-none" size={18} />
-              <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500 pointer-events-none" size={20} />
-            </div>
+           <div className="flex gap-2">
+             <div className="relative flex-1">
+                <label htmlFor="catalog-department-select" className="sr-only">Filtrar Productos por Departamento</label>
+                <select
+                  id="catalog-department-select"
+                  value={selectedDepartmentForOrder}
+                  onChange={(e) => setSelectedDepartmentForOrder(e.target.value)}
+                  className="w-full px-4 py-2 pl-9 rounded-xl border-2 border-gray-100 dark:border-slate-800 focus:border-red-500 outline-none transition-all bg-gray-50 dark:bg-slate-800/60 dark:text-white shadow-sm appearance-none font-bold text-[10px] sm:text-xs text-gray-500"
+                >
+                  {departments.map((dep) => (
+                    <option key={dep.id} value={dep.id}>{dep.name}</option>
+                  ))}
+                </select>
+                <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500 pointer-events-none" size={14} />
+                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500 pointer-events-none" size={16} />
+             </div>
 
-           <div className="relative">
-             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" size={20} />
-             <input 
-               type="text" 
-               placeholder="Buscar producto..." 
-               value={searchTerm}
-               onChange={(e) => setSearchTerm(e.target.value)}
-               className="w-full pl-11 pr-4 py-3.5 rounded-xl border-2 border-gray-200 dark:border-slate-700 text-base focus:border-red-500 focus:ring-4 focus:ring-red-100 dark:focus:ring-red-500/30 outline-none transition-all bg-white dark:bg-slate-800/60 dark:text-white placeholder-gray-500 dark:placeholder-slate-400 shadow-sm font-medium text-gray-900"
-             />
+             <div className="relative flex-[1.5]">
+               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" size={14} />
+               <input 
+                 type="text" 
+                 placeholder="Buscar producto..." 
+                 value={searchTerm}
+                 onChange={(e) => setSearchTerm(e.target.value)}
+                 className="w-full pl-9 pr-4 py-2 rounded-xl border-2 border-gray-100 dark:border-slate-800 text-[10px] sm:text-xs focus:border-red-500 outline-none transition-all bg-gray-50 dark:bg-slate-800/60 dark:text-white placeholder-gray-500 dark:placeholder-slate-400 shadow-sm font-medium text-gray-900"
+               />
+             </div>
            </div>
         </div>
 

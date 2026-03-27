@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { Task, User, Department, TaskStatus, TaskPriority, UserRole, TaskType, TaskComment, TaskChecklistItem } from '../types';
 import * as storageService from '../services/storageService';
-import { ClipboardCheck, Plus, X, Save, Loader2, Edit2, Trash2, ChevronDown, MessagesSquare, Check, Camera, AlertTriangle, Share2, Send, Image, Info, Flame, Bold, Calendar, Clock, List, FileText } from 'lucide-react';
+import { ClipboardCheck, Plus, X, Save, Loader2, Edit2, Trash2, ChevronDown, MessagesSquare, Check, Camera, AlertTriangle, Share2, Send, Image, Info, Flame, Bold, Calendar, Clock, List, FileText, Zap } from 'lucide-react';
 import { compressImage } from '../utils/imageCompressor';
 import { ImageViewer } from '../components/ImageViewer';
 import { DeletionTimer } from '../components/DeletionTimer';
@@ -552,57 +552,61 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
   return (
     <div className="font-sans pb-24 bg-gray-50 dark:bg-slate-950 min-h-screen">
       {/* Header */}
-      <div className="sticky top-20 z-30 bg-white/95 dark:bg-slate-950/95 backdrop-blur-xl border-b border-gray-200 dark:border-slate-800 px-4 py-3 md:px-6 shadow-sm">
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-3">
+      <div className="sticky top-20 z-30 bg-white dark:bg-slate-950 border-b border-gray-200 dark:border-slate-800 px-4 py-2 md:px-6 shadow-md">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-2">
           <div className="flex items-center justify-between w-full sm:w-auto">
-            <h2 className="text-3xl md:text-4xl font-black text-gray-900 dark:text-white tracking-tighter uppercase italic drop-shadow-sm">
-              Tareas <span className="text-red-600">Activas</span>
-            </h2>
+            <div className="flex flex-col">
+              <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.3em] leading-none mb-1">Servicios</span>
+              <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tighter leading-none">
+                Tareas <span className="text-red-600 dark:text-red-500 italic">Activas</span>
+              </h2>
+            </div>
             
             {/* Mobile View Mode Toggle */}
             <div className="flex sm:hidden bg-gray-100 dark:bg-slate-800 rounded-xl p-1">
               <button
                 onClick={() => setViewMode('LIST')}
-                className={`p-2 rounded-lg flex items-center justify-center transition-colors ${viewMode === 'LIST' ? 'bg-white dark:bg-slate-700 shadow-sm text-red-600' : 'text-gray-500 dark:text-gray-400'}`}
+                className={`p-1.5 rounded-lg flex items-center justify-center transition-colors ${viewMode === 'LIST' ? 'bg-white dark:bg-slate-700 shadow-sm text-red-600' : 'text-gray-500 dark:text-gray-400'}`}
+              >
+                <List size={16} />
+              </button>
+              <button
+                onClick={() => setViewMode(viewMode === 'CALENDAR' ? 'LIST' : 'CALENDAR')}
+                className={`p-1.5 rounded-lg flex items-center justify-center transition-colors ${viewMode === 'CALENDAR' ? 'bg-white dark:bg-slate-700 shadow-sm text-red-600' : 'text-gray-500 dark:text-gray-400'}`}
+              >
+                <Calendar size={16} />
+              </button>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between sm:justify-end gap-1.5 w-full sm:w-auto">
+            {/* Desktop View Mode Toggle */}
+            <div className="hidden sm:flex bg-gray-100 dark:bg-slate-800 rounded-xl p-1">
+              <button
+                onClick={() => setViewMode('LIST')}
+                className={`p-1.5 rounded-lg flex items-center justify-center transition-colors ${viewMode === 'LIST' ? 'bg-white dark:bg-slate-700 shadow-sm text-red-600' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'}`}
+                title="Vista de Lista"
               >
                 <List size={18} />
               </button>
               <button
                 onClick={() => setViewMode(viewMode === 'CALENDAR' ? 'LIST' : 'CALENDAR')}
-                className={`p-2 rounded-lg flex items-center justify-center transition-colors ${viewMode === 'CALENDAR' ? 'bg-white dark:bg-slate-700 shadow-sm text-red-600' : 'text-gray-500 dark:text-gray-400'}`}
-              >
-                <Calendar size={18} />
-              </button>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto">
-            {/* Desktop View Mode Toggle */}
-            <div className="hidden sm:flex bg-gray-100 dark:bg-slate-800 rounded-xl p-1">
-              <button
-                onClick={() => setViewMode('LIST')}
-                className={`p-2 rounded-lg flex items-center justify-center transition-colors ${viewMode === 'LIST' ? 'bg-white dark:bg-slate-700 shadow-sm text-red-600' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'}`}
-                title="Vista de Lista"
-              >
-                <List size={20} />
-              </button>
-              <button
-                onClick={() => setViewMode(viewMode === 'CALENDAR' ? 'LIST' : 'CALENDAR')}
-                className={`p-2 rounded-lg flex items-center justify-center transition-colors ${viewMode === 'CALENDAR' ? 'bg-white dark:bg-slate-700 shadow-sm text-red-600' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'}`}
+                className={`p-1.5 rounded-lg flex items-center justify-center transition-colors ${viewMode === 'CALENDAR' ? 'bg-white dark:bg-slate-700 shadow-sm text-red-600' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'}`}
                 title="Vista de Calendario"
               >
-                <Calendar size={20} />
+                <Calendar size={18} />
               </button>
             </div>
 
             {/* Only Admins or Staff with 'CAN_MANAGE_TASKS' permission can create new tasks */}
             {canManageTasks && (
-              <div className="flex flex-row gap-2 w-full sm:w-auto">
+              <div className="flex items-center gap-1.5">
                 <button
                   onClick={generateRandomHospitalityTask}
-                  className="flex bg-indigo-600 text-white px-3 h-12 rounded-xl items-center justify-center shadow-md hover:bg-indigo-700 transition-colors font-bold text-[10px] uppercase tracking-wider"
+                  className="flex items-center justify-center w-8 h-8 bg-blue-600 hover:bg-blue-700 text-white rounded-full transition-all active:scale-90 shadow-lg shadow-blue-600/20"
+                  title="Generar Tarea de Prueba"
                 >
-                  Prueba
+                  <Zap size={14} fill="white" />
                 </button>
                 <button 
                   onClick={() => {
@@ -611,39 +615,70 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
                     setPreviews([]);
                     setShowTaskModal(true);
                   }}
-                  className="flex-1 sm:flex-none bg-red-600 dark:bg-red-500 text-white h-12 sm:px-4 sm:rounded-2xl rounded-xl items-center justify-center shadow-xl shadow-red-600/30 hover:scale-105 transition-transform active:scale-95 border-2 border-transparent hover:border-red-400 dark:hover:border-red-400 gap-2 px-4"
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold uppercase tracking-wider rounded-full transition-all active:scale-95 shadow-lg shadow-red-600/20"
                 >
-                  <Plus size={24} strokeWidth={3} />
-                  <span className="font-black uppercase tracking-tighter italic text-sm sm:text-lg">Crear Tarea</span>
+                  <Plus size={14} strokeWidth={3} />
+                  <span>Nueva Tarea</span>
                 </button>
               </div>
             )}
           </div>
         </div>
 
-        {/* Filters */}
-        <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
-           <select 
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as TaskStatus | 'ALL')}
-            className="px-4 py-3 rounded-xl font-bold text-sm bg-gray-100 dark:bg-slate-800 border-2 border-transparent focus:border-red-500 outline-none dark:text-white shadow-sm"
-          >
-            <option value="ALL">Todos los Estados</option>
-            <option value={TaskStatus.PENDING}>Pendientes</option>
-            <option value={TaskStatus.IN_PROGRESS}>En Curso</option>
-            <option value={TaskStatus.COMPLETED}>Completadas</option>
-          </select>
+        {/* Filters and Week Navigation inside sticky header */}
+        <div className="flex flex-col gap-2">
+          <div className="flex gap-2">
+            <select 
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as TaskStatus | 'ALL')}
+              className="flex-1 min-w-0 px-2 sm:px-4 py-2 rounded-xl font-bold text-[10px] sm:text-xs bg-gray-100 dark:bg-slate-800 border-2 border-transparent focus:border-red-500 outline-none dark:text-white shadow-sm appearance-none text-center"
+            >
+              <option value="ALL">Estados</option>
+              <option value={TaskStatus.PENDING}>Pendientes</option>
+              <option value={TaskStatus.IN_PROGRESS}>En Curso</option>
+              <option value={TaskStatus.COMPLETED}>Completadas</option>
+            </select>
 
-          <select 
-            value={departmentFilter}
-            onChange={(e) => setDepartmentFilter(e.target.value)}
-            className="px-4 py-3 rounded-xl font-bold text-sm bg-gray-100 dark:bg-slate-800 border-2 border-transparent focus:border-red-500 outline-none dark:text-white shadow-sm"
-          >
-            <option value="ALL">Todos los Dptos.</option>
-            {departments.map(d => (
-              <option key={d.id} value={d.id}>{d.name}</option>
-            ))}
-          </select>
+            <select 
+              value={departmentFilter}
+              onChange={(e) => setDepartmentFilter(e.target.value)}
+              className="flex-1 min-w-0 px-2 sm:px-4 py-2 rounded-xl font-bold text-[10px] sm:text-xs bg-gray-100 dark:bg-slate-800 border-2 border-transparent focus:border-red-500 outline-none dark:text-white shadow-sm appearance-none text-center"
+            >
+              <option value="ALL">Dptos.</option>
+              {departments.map(d => (
+                <option key={d.id} value={d.id}>{d.name}</option>
+              ))}
+            </select>
+          </div>
+
+          {viewMode === 'LIST' && (
+            <div className="flex justify-between items-center bg-gray-50 dark:bg-slate-900/50 p-2 rounded-xl border border-gray-100 dark:border-slate-800/50">
+              <button 
+                onClick={() => setCurrentWeekStart(new Date(currentWeekStart.getTime() - 7 * 24 * 60 * 60 * 1000))}
+                className="p-1.5 bg-white dark:bg-slate-800 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors shadow-sm"
+              >
+                <ChevronDown size={16} className="rotate-90" />
+              </button>
+              <div className="text-center flex items-center gap-2">
+                <p className="text-[9px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-widest">Semana:</p>
+                <p className="text-[11px] font-bold text-gray-900 dark:text-white">
+                  {currentWeekStart.getDate()} {currentWeekStart.toLocaleString('es-ES', { month: 'short' })} - {currentWeekEnd.getDate()} {currentWeekEnd.toLocaleString('es-ES', { month: 'short' })}
+                </p>
+                <button 
+                  onClick={() => setCurrentWeekStart(getStartOfWeek(new Date()))}
+                  className="text-[9px] font-bold text-red-600 dark:text-red-400 hover:underline"
+                >
+                  Hoy
+                </button>
+              </div>
+              <button 
+                onClick={() => setCurrentWeekStart(new Date(currentWeekStart.getTime() + 7 * 24 * 60 * 60 * 1000))}
+                className="p-1.5 bg-white dark:bg-slate-800 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors shadow-sm"
+              >
+                <ChevronDown size={16} className="-rotate-90" />
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -652,32 +687,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
         {/* SECTION: TASKS (HIGH IMPACT ACTION STYLE) */}
         {viewMode === 'LIST' ? (
           <div className="space-y-6">
-            <div className="flex justify-between items-center bg-white dark:bg-slate-900 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-800">
-              <button 
-                onClick={() => setCurrentWeekStart(new Date(currentWeekStart.getTime() - 7 * 24 * 60 * 60 * 1000))}
-                className="p-2 bg-gray-100 dark:bg-slate-800 rounded-xl hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors"
-              >
-                &lt;
-              </button>
-              <div className="text-center flex flex-col items-center">
-                <p className="text-sm font-bold text-gray-500 dark:text-slate-400 uppercase tracking-widest mb-1">Semana</p>
-                <p className="text-lg font-black text-gray-900 dark:text-white">
-                  {currentWeekStart.getDate()} {currentWeekStart.toLocaleString('es-ES', { month: 'short' })} - {currentWeekEnd.getDate()} {currentWeekEnd.toLocaleString('es-ES', { month: 'short' })}
-                </p>
-                <button 
-                  onClick={() => setCurrentWeekStart(getStartOfWeek(new Date()))}
-                  className="mt-2 text-xs font-bold text-red-600 dark:text-red-400 hover:underline"
-                >
-                  Ir a semana actual
-                </button>
-              </div>
-              <button 
-                onClick={() => setCurrentWeekStart(new Date(currentWeekStart.getTime() + 7 * 24 * 60 * 60 * 1000))}
-                className="p-2 bg-gray-100 dark:bg-slate-800 rounded-xl hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors"
-              >
-                &gt;
-              </button>
-            </div>
+            {/* Week navigation removed from here as it is now in the sticky header */}
 
             {listTasks.length === 0 ? (
               <div className="py-24 text-center bg-white dark:bg-slate-900 rounded-[2.5rem] border-4 border-dashed border-gray-200 dark:border-slate-800 shadow-inner">
@@ -1051,20 +1061,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
         title={shareData.title} 
       />
 
-      {/* Floating Action Button for Mobile */}
-      {canManageTasks && (
-        <button 
-          onClick={() => {
-            setEditingTask({});
-            setSelectedImages([]);
-            setPreviews([]);
-            setShowTaskModal(true);
-          }}
-          className="fixed bottom-32 right-6 z-[100] sm:hidden bg-red-600 text-white w-16 h-16 rounded-full flex items-center justify-center shadow-[0_10px_40px_rgba(220,38,38,0.5)] active:scale-90 transition-all border-4 border-white dark:border-slate-900"
-        >
-          <Plus size={32} strokeWidth={3} />
-        </button>
-      )}
+      {/* Floating Action Button for Mobile removed for cleaner UI */}
 
     </div>
   );

@@ -253,36 +253,36 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-center sm:justify-end">
             {/* Comments Button */}
             <button 
               onClick={() => onComment(task.id)}
-              className={`flex items-center gap-2 px-4 py-3 rounded-xl font-bold text-sm transition-all border-2 ${
+              className={`flex items-center gap-2 px-3 py-2.5 rounded-xl font-bold text-sm transition-all border-2 ${
                 (task.comments?.length || 0) > 0 
                   ? 'bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-900/30' 
                   : 'bg-white text-gray-500 border-gray-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700 hover:bg-gray-50'
               }`}
             >
-              <MessagesSquare size={20} strokeWidth={2.5} />
+              <MessagesSquare size={18} strokeWidth={2.5} />
               <span>{task.comments?.length || 0}</span>
             </button>
 
             {/* Action Buttons */}
             {task.status !== TaskStatus.COMPLETED && (
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-1 sm:flex-none">
                 {task.status === TaskStatus.PENDING && (
                   <button 
                     onClick={() => onStart(task.id)}
-                    className="px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white text-sm font-black uppercase tracking-wider rounded-xl shadow-lg shadow-blue-200 dark:shadow-none transition-all active:scale-95 flex items-center gap-2"
+                    className="flex-1 sm:flex-none px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-[10px] sm:text-xs font-black uppercase tracking-wider rounded-xl shadow-lg shadow-blue-200 dark:shadow-none transition-all active:scale-95 flex items-center justify-center gap-1.5"
                   >
                     Iniciar
                   </button>
                 )}
                 <button 
                   onClick={() => onComplete(task.id)}
-                  className="px-5 py-3 bg-green-600 hover:bg-green-700 text-white text-sm font-black uppercase tracking-wider rounded-xl shadow-lg shadow-green-200 dark:shadow-none transition-all active:scale-95 flex items-center gap-2"
+                  className="flex-1 sm:flex-none px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white text-[10px] sm:text-xs font-black uppercase tracking-wider rounded-xl shadow-lg shadow-green-200 dark:shadow-none transition-all active:scale-95 flex items-center justify-center gap-1.5"
                 >
-                  <Check size={20} strokeWidth={4} /> Completar
+                  <Check size={16} strokeWidth={4} /> Completar
                 </button>
               </div>
             )}

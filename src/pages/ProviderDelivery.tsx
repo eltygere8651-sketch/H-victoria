@@ -69,18 +69,20 @@ const ProviderDelivery: React.FC<ProviderDeliveryProps> = ({ currentUser }) => {
 
   return (
     <div className="font-sans relative min-h-screen bg-slate-50 dark:bg-slate-950 pb-24">
-      <div className="sticky top-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-b border-slate-200 dark:border-slate-800 shadow-md px-4 py-6">
+      <div className="sticky top-20 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-b border-slate-200 dark:border-slate-800 shadow-md px-4 py-3 md:py-4 transition-all duration-300">
         <div className="max-w-3xl mx-auto flex justify-between items-center">
-          <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tighter uppercase italic flex items-center gap-2">
-            <PackagePlus className="text-blue-600" size={28} />
-            Ingreso de <span className="text-blue-600">Proveedor</span>
-          </h2>
+          <div className="flex flex-col">
+            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.3em] leading-none mb-1">Logística</span>
+            <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tighter leading-none flex items-center gap-2">
+              Ingreso <span className="text-blue-600 italic">Proveedor</span>
+            </h2>
+          </div>
           <button 
             onClick={handleLogout}
-            className="p-2 text-slate-400 hover:text-red-500 transition-colors"
+            className="p-2 text-slate-400 hover:text-red-500 transition-colors bg-slate-100 dark:bg-slate-800 rounded-full"
             title="Salir"
           >
-            <LogOut size={24} />
+            <LogOut size={20} />
           </button>
         </div>
       </div>

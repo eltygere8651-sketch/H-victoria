@@ -160,7 +160,7 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
 
   return (
     <div className="transition-colors duration-300 min-h-full pb-24 bg-gray-50 dark:bg-slate-950">
-      <div className="bg-white dark:bg-slate-900 border-b dark:border-slate-800 sticky top-0 z-10 shadow-sm transition-colors duration-300">
+      <div className="bg-white dark:bg-slate-900 border-b dark:border-slate-800 sticky top-20 z-30 shadow-md transition-colors duration-300">
         <div className="flex overflow-x-auto no-scrollbar">
           <button onClick={() => setActiveTab('requests')} className={`flex-1 min-w-[120px] py-4 text-sm font-extrabold border-b-2 transition-colors duration-200 ${activeTab === 'requests' ? 'border-red-600 text-red-600 dark:text-red-400 dark:border-red-400 bg-red-50 dark:bg-red-900/10 shadow-inner' : 'border-transparent text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800/50'}`}>Historial de Albaranes</button>
           <button onClick={() => setActiveTab('reports')} className={`flex-1 min-w-[120px] py-4 text-sm font-extrabold border-b-2 transition-colors duration-200 relative ${activeTab === 'reports' ? 'border-red-600 text-red-600 dark:text-red-400 dark:border-red-400 bg-red-50 dark:bg-red-900/10 shadow-inner' : 'border-transparent text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800/50'}`}>
@@ -179,7 +179,12 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
         {activeTab === 'requests' && (
           <div>
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-bold text-gray-900 dark:text-white">Historial de Albaranes</h3>
+              <div className="flex flex-col">
+                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.3em] leading-none mb-1">Registro de</span>
+                <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tighter leading-none">
+                  Historial de <span className="text-red-600 dark:text-red-500 italic">Albaranes</span>
+                </h2>
+              </div>
             </div>
             <div className="space-y-4">
                {orders.length === 0 && <div className="col-span-full py-20 text-center text-gray-400 dark:text-slate-600"><Package size={40} className="mx-auto mb-2 opacity-50" /><p>No hay albaranes registrados.</p></div>}
@@ -209,7 +214,14 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
         {activeTab === 'users' && (
           <div>
             <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-md border border-gray-100 dark:border-slate-800 mb-6">
-              <div className="flex items-center gap-2 mb-4 text-gray-900 dark:text-white"><Users className="text-red-600 dark:text-red-400" size={24} /><h3 className="font-bold text-xl">Registrar Empleado</h3></div>
+              <div className="flex items-center gap-2 mb-4">
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.3em] leading-none mb-1">Gestión de</span>
+                  <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tighter leading-none">
+                    Registrar <span className="text-red-600 dark:text-red-500 italic">Empleado</span>
+                  </h2>
+                </div>
+              </div>
               <form onSubmit={handleAddUser} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <input type="text" placeholder="Nombre" value={newUser.name} onChange={e => setNewUser({...newUser, name: e.target.value})} className="p-3 border-2 border-gray-200 dark:border-slate-700 rounded-xl bg-gray-100 dark:bg-slate-800/60 dark:text-white outline-none focus:border-red-500 focus:ring-2 focus:ring-red-200 dark:focus:ring-red-500/50 shadow-sm" required />
