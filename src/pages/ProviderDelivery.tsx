@@ -69,11 +69,11 @@ const ProviderDelivery: React.FC<ProviderDeliveryProps> = ({ currentUser }) => {
 
   return (
     <div className="font-sans relative min-h-screen bg-slate-50 dark:bg-slate-950 pb-24">
-      <div className="sticky top-20 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-b border-slate-200 dark:border-slate-800 shadow-md px-4 py-3 md:py-4 transition-all duration-300">
+      <div className="sticky top-[var(--header-h)] z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-b border-slate-200 dark:border-slate-800 shadow-md px-4 py-3 md:py-4 transition-all duration-300">
         <div className="max-w-3xl mx-auto flex justify-between items-center">
           <div className="flex flex-col">
             <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.3em] leading-none mb-1">Logística</span>
-            <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tighter leading-none flex items-center gap-2">
+            <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tighter leading-none flex items-center gap-2 drop-shadow-sm">
               Ingreso <span className="text-blue-600 italic">Proveedor</span>
             </h2>
           </div>

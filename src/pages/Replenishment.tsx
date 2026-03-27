@@ -467,12 +467,12 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCar
         </div>
       )}
 
-      <div className="flex-1 flex flex-col h-full lg:pb-0">
-        <div className="sticky top-20 bg-white dark:bg-slate-900 px-4 py-2 md:px-6 md:py-3 border-b border-gray-100 dark:border-slate-800 shadow-md z-30 space-y-2 transition-colors duration-300">
+      <div className="flex-1 flex flex-col lg:pb-0">
+        <div className="sticky top-[var(--header-h)] bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl px-4 pt-4 pb-3 md:px-6 md:py-4 border-b border-gray-100 dark:border-slate-800 shadow-md z-30 space-y-3 transition-all duration-300">
            <div className="flex justify-between items-center">
              <div className="flex flex-col">
                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.3em] leading-none mb-1">Suministros</span>
-               <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tighter leading-none">
+               <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tighter leading-none drop-shadow-sm">
                  Crear <span className="text-red-600 dark:text-red-500 italic">Pedido</span>
                </h2>
              </div>

@@ -159,8 +159,8 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
   if (isLoading) return <div className="flex h-full items-center justify-center"><Loader2 size={40} className="animate-spin text-red-600" /></div>;
 
   return (
-    <div className="transition-colors duration-300 min-h-full pb-24 bg-gray-50 dark:bg-slate-950">
-      <div className="bg-white dark:bg-slate-900 border-b dark:border-slate-800 sticky top-20 z-30 shadow-md transition-colors duration-300">
+    <div className="transition-colors duration-300 min-h-screen pb-24 bg-gray-50 dark:bg-slate-950">
+      <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-b dark:border-slate-800 sticky top-[var(--header-h)] z-30 shadow-md transition-all duration-300">
         <div className="flex overflow-x-auto no-scrollbar">
           <button onClick={() => setActiveTab('requests')} className={`flex-1 min-w-[120px] py-4 text-sm font-extrabold border-b-2 transition-colors duration-200 ${activeTab === 'requests' ? 'border-red-600 text-red-600 dark:text-red-400 dark:border-red-400 bg-red-50 dark:bg-red-900/10 shadow-inner' : 'border-transparent text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800/50'}`}>Historial de Albaranes</button>
           <button onClick={() => setActiveTab('reports')} className={`flex-1 min-w-[120px] py-4 text-sm font-extrabold border-b-2 transition-colors duration-200 relative ${activeTab === 'reports' ? 'border-red-600 text-red-600 dark:text-red-400 dark:border-red-400 bg-red-50 dark:bg-red-900/10 shadow-inner' : 'border-transparent text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800/50'}`}>

@@ -98,56 +98,56 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
   const hasCartItems = cart.length > 0;
 
   return (
-    <div className={`min-h-[100dvh] w-full flex flex-col font-sans transition-colors duration-500 antialiased ${darkMode ? 'dark' : ''} bg-premium relative overflow-x-hidden`}>
+    <div className={`min-h-[100dvh] w-full flex flex-col font-sans transition-colors duration-500 antialiased ${darkMode ? 'dark' : ''} bg-premium relative`}>
       {/* HEADER GLOBAL FIJO */}
       <header 
-        className="fixed top-0 left-0 right-0 h-20 bg-white/80 dark:bg-slate-900/90 backdrop-blur-2xl shadow-sm z-50 border-b border-slate-200 dark:border-white/5 flex items-center px-4"
+        className="fixed top-0 left-0 right-0 h-[var(--header-h)] bg-white/80 dark:bg-slate-900/90 backdrop-blur-2xl shadow-sm z-50 border-b border-slate-200 dark:border-white/5 flex items-center px-4 pb-1"
         style={{ paddingTop: 'env(safe-area-inset-top)' }}
       >
         <div className="max-w-7xl mx-auto w-full flex justify-between items-center gap-4">
           <div className="flex items-center gap-3 group cursor-pointer shrink-0" onClick={() => setShowGuideModal(true)}>
-            <div className="p-2 bg-gradient-to-br from-red-500 to-red-700 rounded-2xl shadow-lg shadow-red-600/20 group-hover:scale-105 transition-transform">
+            <div className="p-1.5 bg-gradient-to-br from-red-500 to-red-700 rounded-2xl shadow-lg shadow-red-600/20 group-hover:scale-105 transition-transform">
               <Logo size="sm" solid />
             </div>
             <div className="flex flex-col">
-              <span className="font-black text-xl text-slate-900 dark:text-white uppercase tracking-tighter italic">Hub</span>
-              <span className="text-[6px] font-black text-red-600 dark:text-red-400 uppercase tracking-widest leading-none">Ecosystem</span>
+              <span className="font-black text-xl text-slate-900 dark:text-white uppercase tracking-tighter italic leading-none">Hub</span>
+              <span className="text-[6px] font-black text-red-600 dark:text-red-400 uppercase tracking-widest leading-none mt-0.5">Ecosystem</span>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             {!isInstalled && (deferredPrompt || isIOS || isAndroid) && (
               <button
                 onClick={onInstallClick}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-full text-xs font-bold uppercase tracking-wider hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors"
+                className="flex items-center gap-1 px-2.5 py-1.5 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-full text-[10px] font-bold uppercase tracking-wider hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors"
                 title="Instalar App"
               >
-                <Download size={16} />
+                <Download size={14} />
                 <span className="hidden sm:inline">Instalar</span>
               </button>
             )}
             {user.role !== UserRole.GUEST && user.role !== UserRole.PROVIDER && (
-              <div className={`cart-neon-container h-12 w-12 ${hasCartItems ? 'cart-neon-active' : 'cart-neon-empty'}`}>
+              <div className={`cart-neon-container h-10 w-10 ${hasCartItems ? 'cart-neon-active' : 'cart-neon-empty'}`}>
                 <button
                   onClick={() => { setView('replenish'); setShowMobileCart(true); }}
                   className={`cart-btn-core ${hasCartItems ? 'cart-core-active' : 'cart-core-empty'} group`}
                 >
-                  <ShoppingCart size={20} className={hasCartItems ? 'text-white' : 'text-slate-400'} />
+                  <ShoppingCart size={18} className={hasCartItems ? 'text-white' : 'text-slate-400'} />
                   {hasCartItems && <div className="cart-status-led"></div>}
                 </button>
               </div>
             )}
-            <button onClick={() => setSoundEnabled(!soundEnabled)} className={`btn-header-action ${soundEnabled ? 'text-blue-500 dark:text-blue-400' : 'text-gray-400 dark:text-slate-500'}`} title={soundEnabled ? 'Silenciar notificaciones' : 'Activar sonido de notificaciones'}>
-              {soundEnabled ? <Volume2 size={20} /> : <VolumeX size={20} />}
+            <button onClick={() => setSoundEnabled(!soundEnabled)} className={`btn-header-action h-10 w-10 ${soundEnabled ? 'text-blue-500 dark:text-blue-400' : 'text-gray-400 dark:text-slate-500'}`} title={soundEnabled ? 'Silenciar notificaciones' : 'Activar sonido de notificaciones'}>
+              {soundEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
             </button>
-            <button onClick={() => setDarkMode(!darkMode)} className="btn-header-action text-amber-500 dark:text-yellow-400"><Sun size={20} /></button>
-            <button onClick={handleLogout} className="btn-header-action text-red-500 dark:text-red-400"><LogOut size={20} /></button>
+            <button onClick={() => setDarkMode(!darkMode)} className="btn-header-action h-10 w-10 text-amber-500 dark:text-yellow-400"><Sun size={18} /></button>
+            <button onClick={handleLogout} className="btn-header-action h-10 w-10 text-red-500 dark:text-red-400"><LogOut size={18} /></button>
           </div>
         </div>
       </header>
 
       {/* CONTENIDO CON PADDING PARA LA CABECERA FIJA */}
-      <main className="flex-1 w-full pt-20 pb-32">
+      <main className="flex-1 w-full pt-[var(--header-h)] pb-32">
         {children}
       </main>
 

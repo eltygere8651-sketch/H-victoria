@@ -552,12 +552,12 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
   return (
     <div className="font-sans pb-24 bg-gray-50 dark:bg-slate-950 min-h-screen">
       {/* Header */}
-      <div className="sticky top-20 z-30 bg-white dark:bg-slate-950 border-b border-gray-200 dark:border-slate-800 px-4 py-2 md:px-6 shadow-md">
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-2">
+      <div className="sticky top-[var(--header-h)] z-30 bg-white/95 dark:bg-slate-950/95 backdrop-blur-xl border-b border-gray-200 dark:border-slate-800 px-4 pt-4 pb-3 md:px-6 shadow-md transition-all duration-300">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-2">
           <div className="flex items-center justify-between w-full sm:w-auto">
             <div className="flex flex-col">
               <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.3em] leading-none mb-1">Servicios</span>
-              <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tighter leading-none">
+              <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tighter leading-none drop-shadow-sm">
                 Tareas <span className="text-red-600 dark:text-red-500 italic">Activas</span>
               </h2>
             </div>

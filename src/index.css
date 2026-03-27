@@ -6,6 +6,13 @@
   --hub-red: #ff3b30;
   --hub-red-dark: #8e0000;
   --hub-slate-bg: #060812;
+  --header-h: 80px;
+}
+
+@supports (padding-top: env(safe-area-inset-top)) {
+  :root {
+    --header-h: calc(80px + env(safe-area-inset-top));
+  }
 }
 
 html, body, #root {
