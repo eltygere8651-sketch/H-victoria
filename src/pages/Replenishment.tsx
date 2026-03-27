@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Product, User, CartItem, Department, OrderBatch, UserRole, ReplenishmentRequest } from '../types';
 import * as storageService from '../services/storageService';
-import { Search, ShoppingCart, Plus, Minus, Trash2, CheckCircle2, X, ArrowRight, Package, ChevronUp, AlertTriangle, Siren, Loader2, ChevronDown, ListTree, Filter, Zap, Share2 } from 'lucide-react';
+import { Search, ShoppingCart, Plus, Minus, Trash2, CheckCircle2, X, ArrowRight, Package, ChevronUp, AlertTriangle, Siren, Loader2, ChevronDown, ListTree, Filter, Zap, Share2, Sparkles } from 'lucide-react';
 import { sharePdfFromReactComponent } from '../utils/pdfGenerator';
 import { OrderPdfDocument } from '../components/OrderPdfDocument';
+import { motion, AnimatePresence } from 'motion/react';
 
 interface ReplenishmentProps {
   currentUser: User;
@@ -35,6 +36,7 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCar
   const [showRandomOrderConfirm, setShowRandomOrderConfirm] = useState(false);
   const [qtyError, setQtyError] = useState('');
   const [orderError, setOrderError] = useState('');
+  const [justAddedId, setJustAddedId] = useState<string | null>(null);
   
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -127,6 +129,29 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCar
             ctx.close().catch(e => console.error("Error closing AudioContext", e));
         }
     }, 1000);
+  };
+
+  const quickAddToCart = (product: Product) => {
+    const inCart = cart.find(c => c.product.id === product.id);
+    const currentInCart = inCart?.quantity || 0;
+    const available = product.quantity - currentInCart;
+
+    if (available <= 0) return;
+
+    setCart(prev => {
+      const existing = prev.find(item => item.product.id === product.id);
+      if (existing) {
+        return prev.map(item => 
+          item.product.id === product.id 
+            ? { ...item, quantity: item.quantity + 1 } 
+            : item
+        );
+      }
+      return [...prev, { product: product, quantity: 1 }];
+    });
+
+    setJustAddedId(product.id);
+    setTimeout(() => setJustAddedId(null), 1000);
   };
 
   const confirmAddToCart = () => {
@@ -292,113 +317,189 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCar
   }
 
   return (
-    <div className="h-full flex flex-col lg:flex-row bg-gray-50 dark:bg-slate-950 relative font-sans transition-colors duration-300">
+    <div className="min-h-full flex flex-col lg:flex-row bg-gray-50 dark:bg-slate-950 relative font-sans transition-colors duration-300">
       
-      {selectedProduct && (
-        <div className="fixed inset-0 z-[70] flex items-end md:items-center justify-center bg-black/70 dark:bg-slate-900/90 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white dark:bg-slate-800 w-full md:max-w-md rounded-t-3xl md:rounded-3xl shadow-pop-in overflow-hidden animate-pop-in border border-gray-100 dark:border-slate-700/50">
-            <div className="p-5 flex justify-between items-center border-b border-gray-100 dark:border-slate-700/50">
-              <h3 className="font-extrabold text-xl md:text-2xl text-gray-900 dark:text-white truncate drop-shadow-sm">{selectedProduct.name}</h3>
-              <button onClick={closeQtyModal} className="text-gray-400 hover:text-gray-600 dark:hover:text-white p-2 -mr-2 rounded-full hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors">
-                <X size={28} />
-              </button>
-            </div>
-            
-            <div className="p-6">
-              <p className="text-sm font-semibold text-gray-500 dark:text-slate-400 mb-6 text-center">
-                Stock disponible: <span className="font-bold text-red-600 dark:text-red-400">{selectedProduct.quantity} {selectedProduct.unit}</span>
-              </p>
-
-              <div className="flex items-center gap-4 mb-8">
+      <AnimatePresence>
+        {selectedProduct && (
+          <div className="fixed inset-0 z-[70] flex items-end md:items-center justify-center p-0 md:p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={closeQtyModal}
+              className="absolute inset-0 bg-black/40 dark:bg-slate-950/60 backdrop-blur-[2px]"
+            />
+            <motion.div 
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="bg-white dark:bg-slate-900 w-full md:max-w-sm rounded-t-[2rem] md:rounded-[1.5rem] shadow-2xl overflow-hidden border-t md:border border-gray-100 dark:border-white/5 relative z-10"
+            >
+              {/* Mobile Drag Handle */}
+              <div className="w-12 h-1.5 bg-gray-200 dark:bg-slate-700 rounded-full mx-auto mt-4 mb-1 md:hidden" />
+              
+              <div className="px-6 py-4 flex justify-between items-center border-b border-gray-50 dark:border-white/5">
+                <div className="min-w-0">
+                  <h3 className="font-black text-lg text-gray-900 dark:text-white truncate leading-tight">{selectedProduct.name}</h3>
+                  <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                    Disponible: <span className="text-red-600 dark:text-red-500">{selectedProduct.quantity} {selectedProduct.unit}</span>
+                  </p>
+                </div>
                 <button 
-                  onClick={() => setQtyValue(prev => String(Math.max(1, parseInt(prev || '0') - 1)))}
-                  className="w-16 h-16 rounded-2xl bg-gray-100 dark:bg-slate-700 text-gray-800 dark:text-white flex items-center justify-center hover:bg-gray-200 dark:hover:bg-slate-600 active:scale-95 transition-all shadow-md"
+                  onClick={closeQtyModal} 
+                  className="text-slate-400 hover:text-slate-600 dark:hover:text-white p-1 transition-colors"
                 >
-                  <Minus size={32} />
-                </button>
-                
-                <input
-                  ref={inputRef}
-                  type="number"
-                  value={qtyValue}
-                  onChange={(e) => setQtyValue(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && confirmAddToCart()}
-                  className="flex-1 h-16 text-center text-4xl font-extrabold border-2 border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-white rounded-2xl focus:border-red-600 focus:ring-4 focus:ring-red-100 dark:focus:ring-red-500/30 outline-none shadow-md"
-                  min="1"
-                  max={selectedProduct.quantity}
-                />
-
-                <button 
-                  onClick={() => setQtyValue(prev => String(Math.min(selectedProduct.quantity, parseInt(prev || '0') + 1)))}
-                  className="w-16 h-16 rounded-2xl bg-gray-100 dark:bg-slate-700 text-gray-800 dark:text-white flex items-center justify-center hover:bg-gray-200 dark:hover:bg-slate-600 active:scale-95 transition-all shadow-md"
-                >
-                  <Plus size={32} />
+                  <X size={20} />
                 </button>
               </div>
-
-              {qtyError && <div className="text-red-600 font-bold text-center mb-4">{qtyError}</div>}
-
-              <button 
-                onClick={confirmAddToCart}
-                className="w-full py-5 bg-red-600 text-white text-xl font-extrabold rounded-2xl shadow-xl shadow-button-red hover:bg-red-700 active:scale-[0.98] transition-all flex items-center justify-center gap-3"
-              >
-                <span>Añadir al Carrito</span>
-                <ArrowRight size={24} />
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showConfirmModal && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 dark:bg-slate-900/90 backdrop-blur-sm p-4 animate-fade-in">
-           <div className="bg-white dark:bg-slate-800 w-full max-w-md rounded-3xl shadow-pop-in overflow-hidden animate-pop-in border border-gray-100 dark:border-slate-700/50">
-              <div className="p-6 border-b border-gray-100 dark:border-slate-700">
-                <h3 className="text-2xl font-extrabold text-gray-900 dark:text-white text-center drop-shadow-sm">Confirmar Pedido</h3>
-                <p className="text-center text-gray-500 dark:text-slate-400 mt-1">Vas a solicitar <b>{cart.length} productos</b>.</p>
-                <div className="mt-4 relative">
-                  <label htmlFor="department-select" className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">Selecciona el área de destino:</label>
-                  <select
-                    id="department-select"
-                    value={selectedDepartmentForOrder}
-                    onChange={(e) => setSelectedDepartmentForOrder(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-slate-600/50 focus:ring-4 focus:ring-red-100 dark:focus:ring-red-500/30 focus:border-red-500 outline-none transition-all bg-gray-50 dark:bg-slate-700/50 dark:text-white focus:bg-white dark:focus:bg-slate-700 shadow-sm appearance-none pr-10"
+              
+              <div className="p-6">
+                <div className="flex items-center justify-between gap-3 mb-6">
+                  <motion.button 
+                    whileTap={{ scale: 0.9 }}
+                    onClick={() => setQtyValue(prev => String(Math.max(1, parseInt(prev || '0') - 1)))}
+                    className="w-14 h-14 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white flex items-center justify-center transition-all shadow-sm"
                   >
-                    {departments.map((dep) => (
-                      <option key={dep.id} value={dep.id}>{dep.name}</option>
-                    ))}
-                  </select>
-                  <ChevronDown className="absolute right-4 top-[58%] -translate-y-1/2 text-gray-400 dark:text-slate-500 pointer-events-none" size={22} />
+                    <Minus size={24} />
+                  </motion.button>
+                  
+                  <div className="flex-1 flex flex-col items-center">
+                    <input
+                      ref={inputRef}
+                      type="number"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      value={qtyValue}
+                      onChange={(e) => setQtyValue(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && confirmAddToCart()}
+                      className="w-full text-center text-4xl font-black bg-transparent text-slate-900 dark:text-white outline-none"
+                      min="1"
+                      max={selectedProduct.quantity}
+                    />
+                    <button 
+                      onClick={() => setQtyValue(String(selectedProduct.quantity))}
+                      className="text-[10px] font-black text-red-600 dark:text-red-500 uppercase tracking-tighter hover:underline mt-1"
+                    >
+                      USAR MÁXIMO
+                    </button>
+                  </div>
+
+                  <motion.button 
+                    whileTap={{ scale: 0.9 }}
+                    onClick={() => setQtyValue(prev => String(Math.min(selectedProduct.quantity, parseInt(prev || '0') + 1)))}
+                    className="w-14 h-14 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white flex items-center justify-center transition-all shadow-sm"
+                  >
+                    <Plus size={24} />
+                  </motion.button>
+                </div>
+
+                {qtyError && (
+                  <motion.div 
+                    initial={{ x: -10 }}
+                    animate={{ x: 0 }}
+                    className="text-red-600 dark:text-red-400 text-[10px] font-bold text-center mb-4"
+                  >
+                    {qtyError}
+                  </motion.div>
+                )}
+
+                <motion.button 
+                  whileTap={{ scale: 0.98 }}
+                  onClick={confirmAddToCart}
+                  className="w-full py-4 bg-red-600 text-white text-sm font-black rounded-2xl shadow-lg shadow-red-500/20 hover:bg-red-700 transition-all flex items-center justify-center gap-2"
+                >
+                  <span>AÑADIR AL PEDIDO</span>
+                  <ArrowRight size={18} />
+                </motion.button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showConfirmModal && (
+          <div className="fixed inset-0 z-[70] flex items-end md:items-center justify-center p-0 md:p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowConfirmModal(false)}
+              className="absolute inset-0 bg-black/60 dark:bg-slate-950/80 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="bg-white dark:bg-slate-900 w-full max-w-md rounded-t-[2.5rem] md:rounded-[2rem] shadow-2xl overflow-hidden border-t md:border border-gray-100 dark:border-white/5 relative z-10"
+            >
+              {/* Mobile Drag Handle */}
+              <div className="w-12 h-1.5 bg-gray-200 dark:bg-slate-700 rounded-full mx-auto mt-3 mb-1 md:hidden" />
+              
+              <div className="p-6 border-b border-gray-50 dark:border-slate-800/50">
+                <h3 className="text-2xl font-black text-gray-900 dark:text-white text-center drop-shadow-sm">Finalizar Pedido</h3>
+                <p className="text-center text-gray-500 dark:text-slate-400 mt-1 text-sm font-medium">Estás solicitando <span className="text-red-600 dark:text-red-500 font-black">{cart.length} productos</span></p>
+                
+                <div className="mt-6">
+                  <label htmlFor="department-select" className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2 ml-1">Área de Destino</label>
+                  <div className="relative">
+                    <select
+                      id="department-select"
+                      value={selectedDepartmentForOrder}
+                      onChange={(e) => setSelectedDepartmentForOrder(e.target.value)}
+                      className="w-full px-5 py-4 rounded-2xl border-2 border-slate-100 dark:border-slate-800 focus:ring-4 focus:ring-red-100 dark:focus:ring-red-500/10 focus:border-red-500 outline-none transition-all bg-slate-50 dark:bg-slate-800/50 dark:text-white font-bold shadow-sm appearance-none pr-12"
+                    >
+                      {departments.map((dep) => (
+                        <option key={dep.id} value={dep.id}>{dep.name}</option>
+                      ))}
+                    </select>
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2 w-8 h-8 bg-white dark:bg-slate-700 rounded-lg flex items-center justify-center shadow-sm pointer-events-none border border-slate-100 dark:border-slate-600">
+                      <ChevronDown className="text-slate-400 dark:text-slate-300" size={18} />
+                    </div>
+                  </div>
                 </div>
               </div>
-              <div className="max-h-[40vh] overflow-y-auto p-4 bg-gray-50 dark:bg-slate-900/50">
+
+              <div className="max-h-[35vh] overflow-y-auto p-6 space-y-3 bg-slate-50/50 dark:bg-slate-950/30">
                 {cart.map((item, idx) => (
-                  <div key={idx} className="flex justify-between items-center py-3 border-b border-gray-200 dark:border-slate-700 last:border-0">
-                    <span className="font-bold text-gray-700 dark:text-slate-300 drop-shadow-sm">{item.product.name}</span>
-                    <span className="font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 px-3 py-1 rounded-lg drop-shadow-sm">x{item.quantity}</span>
+                  <div key={idx} className="flex justify-between items-center p-4 bg-white dark:bg-slate-800/40 rounded-2xl border border-slate-100 dark:border-white/5 shadow-sm">
+                    <div className="flex flex-col">
+                      <span className="font-bold text-slate-900 dark:text-white text-sm">{item.product.name}</span>
+                      <span className="text-[10px] font-medium text-slate-400 dark:text-slate-500 uppercase">{item.product.category}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-slate-400">Cant.</span>
+                      <span className="font-black text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 px-3 py-1 rounded-xl text-sm border border-red-100 dark:border-red-900/30">
+                        {item.quantity}
+                      </span>
+                    </div>
                   </div>
                 ))}
               </div>
-              <div className="p-6 flex gap-4">
+
+              <div className="p-6 flex gap-4 bg-white dark:bg-slate-900 border-t border-slate-50 dark:border-slate-800/50">
                 <button 
                   onClick={() => setShowConfirmModal(false)}
                   disabled={isProcessing}
-                  className="flex-1 py-4 rounded-xl font-bold text-gray-600 dark:text-slate-400 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 active:scale-[0.98] transition-colors"
+                  className="flex-1 py-4 rounded-2xl font-black text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 active:scale-95 transition-all text-sm"
                 >
-                  Cancelar
+                  VOLVER
                 </button>
                 <button 
                   onClick={processOrder}
                   disabled={isOrderButtonDisabled}
-                  className="flex-1 py-4 rounded-xl font-bold text-white bg-green-600 hover:bg-green-700 shadow-lg shadow-button-green flex items-center justify-center gap-2 active:scale-[0.98] disabled:bg-gray-100 dark:disabled:bg-slate-700 disabled:text-gray-400 disabled:shadow-none"
+                  className="flex-[2] py-4 rounded-2xl font-black text-white bg-green-600 hover:bg-green-700 shadow-xl shadow-green-500/30 flex items-center justify-center gap-2 active:scale-[0.97] transition-all disabled:opacity-50 disabled:shadow-none text-sm"
                 >
-                  {isProcessing ? <Loader2 className="animate-spin text-white"/> : <><CheckCircle2 /> Confirmar</>}
+                  {isProcessing ? <Loader2 className="animate-spin text-white" size={20}/> : <><CheckCircle2 size={20} /> ENVIAR PEDIDO</>}
                 </button>
               </div>
-              {orderError && <div className="text-red-600 font-bold text-center pb-4">{orderError}</div>}
-           </div>
-        </div>
-      )}
+              {orderError && <div className="text-red-600 dark:text-red-400 font-bold text-center pb-6 px-6 text-xs">{orderError}</div>}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* MODAL CONFIRMAR PEDIDO ALEATORIO */}
       {showRandomOrderConfirm && (
@@ -426,54 +527,104 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCar
         </div>
       )}
 
-      {showSuccessModal && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-white/90 dark:bg-slate-900/90 backdrop-blur-md p-4 animate-fade-in">
-          <div className="text-center bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-pop-in border border-gray-100 dark:border-slate-700/50 animate-pop-in">
-            <div className="w-24 h-24 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl shadow-green-200/50 dark:shadow-green-900/30 animate-bounce">
-              <CheckCircle2 size={48} className="text-white" />
-            </div>
-            <h2 className="text-3xl font-black text-gray-900 dark:text-white mb-2 drop-shadow-sm">¡Pedido Enviado!</h2>
-            <p className="text-xl text-gray-500 dark:text-slate-400 drop-shadow-sm">Stock actualizado correctamente.</p>
+      <AnimatePresence>
+        {showSuccessModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-white/80 dark:bg-slate-950/90 backdrop-blur-xl"
+            />
+            <motion.div 
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.8, opacity: 0 }}
+              className="text-center bg-white dark:bg-slate-900 p-10 rounded-[3rem] shadow-2xl border border-gray-100 dark:border-white/5 max-w-xs w-full relative z-10"
+            >
+              <motion.div 
+                initial={{ y: 20 }}
+                animate={{ y: 0 }}
+                className="w-24 h-24 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-8 shadow-xl shadow-green-500/40"
+              >
+                <CheckCircle2 size={48} className="text-white" />
+              </motion.div>
+              <h2 className="text-3xl font-black text-gray-900 dark:text-white mb-3 drop-shadow-sm leading-tight">¡Pedido<br/>Enviado!</h2>
+              <p className="text-sm font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Stock actualizado</p>
+              
+              <button 
+                onClick={resetOrderState}
+                className="mt-8 w-full py-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black rounded-2xl hover:opacity-90 active:scale-95 transition-all shadow-lg"
+              >
+                CONTINUAR
+              </button>
+            </motion.div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
 
-      {showLowStockModal && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/80 dark:bg-slate-950/90 backdrop-blur-md p-4 animate-fade-in">
-          <div className="bg-white dark:bg-slate-800 w-full max-w-sm rounded-3xl shadow-pop-in overflow-hidden animate-pop-in border-2 border-red-500 text-center">
-            <div className="bg-red-600 text-white p-6 flex flex-col items-center">
-               <Siren size={48} className="animate-pulse mb-2 drop-shadow-lg" />
-               <h3 className="text-2xl font-black uppercase tracking-tight drop-shadow-sm">¡ATENCIÓN!</h3>
-               <p className="font-bold opacity-90 drop-shadow-sm">STOCK BAJO EN ALMACÉN</p>
-            </div>
-            <div className="p-6">
-               <div className="bg-red-50 dark:bg-red-900/20 rounded-xl p-4 mb-6 border border-red-100 dark:border-red-900/30">
-                 <ul className="text-left space-y-2">
-                   {lowStockList.map((name, i) => (
-                     <li key={i} className="flex items-center gap-2 font-bold text-red-700 dark:text-red-400 drop-shadow-sm">
-                       <AlertTriangle size={16} /> {name}
-                     </li>
-                   ))}
-                 </ul>
-               </div>
-               <button 
-                  onClick={resetOrderState}
-                  className="w-full py-4 bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-bold rounded-xl hover:bg-black dark:hover:bg-gray-200 transition-colors active:scale-[0.98] shadow-lg shadow-gray-200/50 dark:shadow-none"
-               >
-                 Entendido, Aceptar
-               </button>
-            </div>
+      <AnimatePresence>
+        {showLowStockModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/80 dark:bg-slate-950/95 backdrop-blur-md"
+            />
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-[2.5rem] shadow-2xl overflow-hidden border border-red-500/30 text-center relative z-10"
+            >
+              <div className="bg-red-600 text-white p-8 flex flex-col items-center relative overflow-hidden">
+                 <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent pointer-events-none" />
+                 <motion.div
+                   animate={{ scale: [1, 1.1, 1] }}
+                   transition={{ repeat: Infinity, duration: 2 }}
+                 >
+                   <Siren size={56} className="mb-4 drop-shadow-lg" />
+                 </motion.div>
+                 <h3 className="text-3xl font-black uppercase tracking-tighter drop-shadow-sm leading-none">¡ALERTA!</h3>
+                 <p className="font-bold opacity-90 drop-shadow-sm mt-2 text-sm tracking-widest uppercase">STOCK CRÍTICO</p>
+              </div>
+              <div className="p-8">
+                 <div className="bg-red-50 dark:bg-red-900/10 rounded-2xl p-5 mb-8 border border-red-100 dark:border-red-900/20">
+                    <p className="text-red-700 dark:text-red-400 font-bold text-sm mb-4">Los siguientes productos están por debajo del mínimo:</p>
+                    <ul className="space-y-3">
+                      {lowStockList.map((name, i) => (
+                        <li key={i} className="flex items-center justify-center gap-2 font-black text-red-600 dark:text-red-500 text-lg drop-shadow-sm">
+                          <AlertTriangle size={20} /> {name}
+                        </li>
+                      ))}
+                    </ul>
+                 </div>
+                 <button 
+                    onClick={resetOrderState}
+                    className="w-full py-5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-black rounded-[1.5rem] hover:bg-black dark:hover:bg-gray-200 transition-all active:scale-[0.97] shadow-xl shadow-gray-900/20 dark:shadow-none uppercase tracking-widest text-sm"
+                 >
+                    Entendido, Aceptar
+                 </button>
+              </div>
+            </motion.div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
 
       <div className="flex-1 flex flex-col lg:pb-0">
-        <div className="sticky top-[var(--header-h)] bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl px-4 pt-4 pb-3 md:px-6 md:py-4 border-b border-gray-100 dark:border-slate-800 shadow-md z-30 space-y-3 transition-all duration-300">
-           <div className="flex justify-between items-center">
+        <div className="sticky top-[calc(var(--header-h)+2px)] bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl px-4 py-4 md:px-6 border-b border-gray-200 dark:border-white/5 shadow-sm z-30 space-y-4 transition-all duration-300 ring-1 ring-black/5 dark:ring-white/5 rounded-b-2xl md:rounded-b-none">
+           <div className="flex justify-between items-end">
              <div className="flex flex-col">
-               <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.3em] leading-none mb-1">Suministros</span>
-               <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tighter leading-none drop-shadow-sm">
-                 Crear <span className="text-red-600 dark:text-red-500 italic">Pedido</span>
+               <motion.span 
+                 initial={{ opacity: 0, x: -10 }}
+                 animate={{ opacity: 1, x: 0 }}
+                 className="text-[10px] font-black text-red-600 dark:text-red-500 uppercase tracking-[0.4em] leading-none mb-2"
+               >
+                 Suministros
+               </motion.span>
+               <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tighter leading-none drop-shadow-sm">
+                 Crear <span className="italic opacity-80">Pedido</span>
                </h2>
              </div>
              {currentUser.role === UserRole.ADMIN && (
@@ -517,49 +668,92 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCar
            </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4 md:p-6 bg-gray-50 dark:bg-slate-950 transition-colors duration-300 pb-32">
+        <div className="p-4 md:p-6 bg-gray-50 dark:bg-slate-950 transition-colors duration-300 pb-40">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {filteredProducts.map(product => {
+            {filteredProducts.map((product, index) => {
                const inCart = cart.find(c => c.product.id === product.id);
                const currentInCart = inCart?.quantity || 0;
                const available = product.quantity - currentInCart;
+               const isJustAdded = justAddedId === product.id;
 
                return (
-                <button 
+                <motion.div 
+                  layout
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: Math.min(index * 0.05, 0.5) }}
                   key={product.id} 
-                  onClick={() => available > 0 && openQtyModal(product)}
-                  disabled={available <= 0}
-                  className={`text-left group relative bg-white dark:bg-slate-900 p-5 rounded-2xl shadow-md border border-gray-100 dark:border-slate-800 transition-all duration-200 min-h-[140px] flex flex-col justify-between
+                  className={`group relative bg-white dark:bg-slate-900 p-4 rounded-[1.5rem] shadow-sm border border-gray-100 dark:border-white/5 transition-all duration-300 min-h-[130px] flex flex-col justify-between
                     ${available <= 0 
-                      ? 'opacity-60 bg-gray-100 dark:bg-slate-800/60 cursor-not-allowed grayscale' 
-                      : 'hover:border-red-500 dark:hover:border-red-500 hover:shadow-lg active:scale-[0.98]'}
+                      ? 'opacity-60 bg-gray-100 dark:bg-slate-800/60 grayscale' 
+                      : 'hover:border-red-500/50 dark:hover:border-red-500/50 hover:shadow-xl hover:shadow-red-500/5'}
                   `}
                 >
-                  <div className="flex justify-between items-start mb-2">
-                    <div className="flex-1 pr-2">
-                      <h3 className="text-base md:text-lg font-extrabold text-gray-900 dark:text-white leading-snug line-clamp-2">{product.name}</h3>
-                      <p className="text-xs font-semibold text-gray-400 dark:text-slate-500 mt-1 uppercase tracking-wider">{product.category}</p>
+                  <div 
+                    className="flex-1 cursor-pointer"
+                    onClick={() => available > 0 && openQtyModal(product)}
+                  >
+                    <div className="flex justify-between items-start mb-1">
+                      <div className="flex-1 pr-8">
+                        <h3 className="text-sm md:text-base font-black text-slate-900 dark:text-white leading-tight line-clamp-2 group-hover:text-red-600 dark:group-hover:text-red-500 transition-colors">{product.name}</h3>
+                        <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 mt-1 uppercase tracking-widest">{product.category}</p>
+                      </div>
+                      {inCart && (
+                        <motion.span 
+                          initial={{ scale: 0.5, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          className="bg-red-600 text-white text-[10px] font-black px-2 py-1 rounded-lg shadow-lg shadow-red-600/20 shrink-0"
+                        >
+                          {inCart.quantity}
+                        </motion.span>
+                      )}
                     </div>
-                    {inCart && (
-                      <span className="bg-red-600 text-white text-sm font-bold px-2.5 py-1 rounded-lg shadow-md animate-fade-in shrink-0">
-                        {inCart.quantity}
-                      </span>
-                    )}
-                  </div>
-                  
-                  <div className="mt-2 flex items-center justify-between">
-                    <div className={`text-sm font-bold px-3 py-1.5 rounded-lg ${available <= 0 ? 'bg-gray-200 text-gray-500 dark:bg-slate-700 dark:text-slate-400' : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'}`}>
-                      {available <= 0 ? 'AGOTADO' : `${available} ${product.unit}`}
+                    
+                    <div className="mt-auto pt-3 flex items-center justify-between">
+                      <div className={`text-[10px] font-black px-2.5 py-1.5 rounded-xl border ${available <= 0 ? 'bg-gray-100 text-gray-400 border-gray-200 dark:bg-slate-800 dark:text-slate-500 dark:border-slate-700' : 'bg-green-50 text-green-600 border-green-100 dark:bg-green-900/20 dark:text-green-400 dark:border-green-900/30'}`}>
+                        {available <= 0 ? 'SIN STOCK' : `${available} ${product.unit}`}
+                      </div>
                     </div>
                   </div>
-                </button>
+
+                  {available > 0 && (
+                    <motion.button
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        quickAddToCart(product);
+                      }}
+                      className={`absolute bottom-3 right-3 w-11 h-11 rounded-2xl flex items-center justify-center shadow-lg transition-all z-10
+                        ${isJustAdded 
+                          ? 'bg-green-500 text-white shadow-green-500/40' 
+                          : 'bg-red-600 text-white hover:bg-red-700 shadow-red-600/30'}
+                      `}
+                    >
+                      {isJustAdded ? <CheckCircle2 size={22} /> : <Plus size={22} />}
+                      <AnimatePresence>
+                        {isJustAdded && (
+                          <motion.div
+                            initial={{ scale: 0, opacity: 1 }}
+                            animate={{ scale: 2, opacity: 0 }}
+                            exit={{ opacity: 0 }}
+                            className="absolute inset-0 bg-green-500 rounded-2xl"
+                          />
+                        )}
+                      </AnimatePresence>
+                    </motion.button>
+                  )}
+                </motion.div>
                );
             })}
           </div>
         </div>
       </div>
 
-      <div className={`
+      <motion.div 
+        initial={false}
+        animate={{ y: showMobileCart ? 0 : '100%' }}
+        className={`
           fixed lg:relative inset-x-0 bottom-0 z-50 lg:z-auto
           w-full lg:w-96 
           bg-white dark:bg-slate-900 
@@ -569,7 +763,7 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCar
           h-[85vh] lg:h-full 
           transition-transform duration-300 ease-out
           rounded-t-3xl lg:rounded-none
-          ${showMobileCart ? 'translate-y-0' : 'translate-y-full lg:translate-y-0'}
+          lg:translate-y-0
       `}>
         <div 
           className="lg:hidden w-full p-4 flex justify-center items-center border-b border-gray-100 dark:border-slate-800 cursor-pointer"
@@ -624,7 +818,7 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCar
             <CheckCircle2 size={24} /> FINALIZAR PEDIDO
           </button>
         </div>
-      </div>
+      </motion.div>
       
       {showMobileCart && <div className="lg:hidden fixed inset-0 bg-black/50 z-40 backdrop-blur-sm" onClick={() => setShowMobileCart(false)}></div>}
     </div>
