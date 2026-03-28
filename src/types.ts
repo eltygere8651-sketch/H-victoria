@@ -169,3 +169,41 @@ export interface Document {
   uploadedBy: string; // User's name
   createdAt: number; // Timestamp
 }
+
+// --- New Salones / Reservation Types ---
+export interface Room {
+  id: string;
+  name: string;
+  floorPlanUrl?: string; // Optional background image
+  createdAt: number;
+}
+
+export interface Table {
+  id: string;
+  roomId: string; // Associated room
+  number: string;
+  capacity: number;
+  status: 'AVAILABLE' | 'OCCUPIED' | 'RESERVED';
+  x: number; // Percentage-based position for responsiveness
+  y: number; // Percentage-based position for responsiveness
+  width: number; // Percentage-based width
+  height: number; // Percentage-based height
+  shape: 'SQUARE' | 'RECTANGLE' | 'CIRCLE';
+}
+
+export interface Reservation {
+  id: string;
+  roomId: string; // Associated room
+  clientName: string;
+  phoneNumber: string;
+  numPeople: number; // "numero de personas en mesas"
+  numDiners: number; // "numero de comensales"
+  tableNumber: string;
+  tableId: string;
+  startTime: number;
+  endTime?: number;
+  status: 'PENDING' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
+  notes?: string;
+  createdAt: number;
+  createdBy: string;
+}

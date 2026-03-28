@@ -1,4 +1,4 @@
-import { Product, User, ReplenishmentRequest, UserRole, Department, CartItem, AppNotification, NotificationType, NotificationPayload, OrderBatch, Task, TaskStatus, TaskPriority, TaskType, TaskComment, Document } from '../types';
+import { Product, User, ReplenishmentRequest, UserRole, Department, CartItem, AppNotification, NotificationType, NotificationPayload, OrderBatch, Task, TaskStatus, TaskPriority, TaskType, TaskComment, Document, Reservation, Table, Room } from '../types';
 import { db, auth, storage } from '../firebaseConfig';
 import firebase from 'firebase/compat/app';
 import { fileToBase64 } from '../utils/imageCompressor';
@@ -13,6 +13,9 @@ const KEYS = {
   LAST_VIEW: 'hotel_victoria_last_view',
   NOTIFICATIONS: 'hotel_victoria_notifications',
   TASKS: 'hotel_victoria_tasks',
+  RESERVATIONS: 'hotel_victoria_reservations',
+  TABLES: 'hotel_victoria_tables',
+  ROOMS: 'hotel_victoria_rooms',
 };
 
 const INITIAL_USERS: User[] = [
@@ -25,6 +28,23 @@ const INITIAL_USERS: User[] = [
 const INITIAL_DEPARTMENTS: Department[] = [
   { id: 'd-bar', name: 'Bar / Cafetería' },
   { id: 'd-restaurante', name: 'Restaurante' }
+];
+
+const INITIAL_ROOMS: Room[] = [
+  { id: 'r-victoria', name: 'Salón Victoria', createdAt: Date.now() },
+  { id: 'r-gastrobar', name: 'Gastro Bar', createdAt: Date.now() },
+];
+
+// Mesas iniciales basadas en la foto del salón (Hotel Victoria)
+const INITIAL_TABLES: Table[] = [
+  { id: 't1', roomId: 'r-victoria', number: '1', capacity: 4, status: 'AVAILABLE', x: 12, y: 72, width: 28, height: 22, shape: 'RECTANGLE' }, // Primer plano izq
+  { id: 't2', roomId: 'r-victoria', number: '2', capacity: 6, status: 'AVAILABLE', x: 58, y: 68, width: 32, height: 26, shape: 'RECTANGLE' }, // Primer plano der
+  { id: 't3', roomId: 'r-victoria', number: '3', capacity: 4, status: 'AVAILABLE', x: 18, y: 45, width: 22, height: 18, shape: 'RECTANGLE' }, // Fila media izq
+  { id: 't4', roomId: 'r-victoria', number: '4', capacity: 4, status: 'AVAILABLE', x: 52, y: 45, width: 22, height: 18, shape: 'RECTANGLE' }, // Fila media der
+  { id: 't5', roomId: 'r-victoria', number: '5', capacity: 2, status: 'AVAILABLE', x: 12, y: 15, width: 12, height: 12, shape: 'SQUARE' },    // Barra 1 (fondo izq)
+  { id: 't6', roomId: 'r-victoria', number: '6', capacity: 2, status: 'AVAILABLE', x: 30, y: 15, width: 12, height: 12, shape: 'SQUARE' },    // Barra 2 (fondo izq)
+  { id: 't7', roomId: 'r-victoria', number: '7', capacity: 4, status: 'AVAILABLE', x: 55, y: 15, width: 18, height: 15, shape: 'RECTANGLE' }, // Ventana 1 (fondo der)
+  { id: 't8', roomId: 'r-victoria', number: '8', capacity: 4, status: 'AVAILABLE', x: 78, y: 15, width: 16, height: 15, shape: 'RECTANGLE' }, // Ventana 2 (fondo der)
 ];
 
 // Productos de ejemplo optimizados para los nuevos departamentos
@@ -77,6 +97,28 @@ async function initFirestoreWithInitialData() {
         deptBatch.set(docRef, dept, { merge: true });
       });
       await deptBatch.commit();
+    }
+
+    // 3. Inicializar mesas si está vacío
+    const tableSnapshot = await db.collection('tables').limit(1).get();
+    if (tableSnapshot.empty) {
+      const tableBatch = db.batch();
+      INITIAL_TABLES.forEach(table => {
+        const docRef = db.collection('tables').doc(table.id);
+        tableBatch.set(docRef, table, { merge: true });
+      });
+      await tableBatch.commit();
+    }
+
+    // 4. Inicializar salones si está vacío
+    const roomSnapshot = await db.collection('rooms').limit(1).get();
+    if (roomSnapshot.empty) {
+      const roomBatch = db.batch();
+      INITIAL_ROOMS.forEach(room => {
+        const docRef = db.collection('rooms').doc(room.id);
+        roomBatch.set(docRef, room, { merge: true });
+      });
+      await roomBatch.commit();
     }
 
     // Marcar como inicializado para no volver a ejecutar esto y borrar datos del usuario
@@ -463,4 +505,95 @@ export const saveDocument = async (document: Omit<Document, 'id'>) => await db.c
 export const deleteDocument = async (doc: Document) => {
   try { await storage.refFromURL(doc.url).delete(); } catch(e) {}
   await db.collection('documents').doc(doc.id).delete();
+};
+
+// --- NEW: SALONES / RESERVATIONS ---
+export const subscribeToRooms = (callback: (data: Room[]) => void) => {
+  return db.collection('rooms').orderBy('createdAt', 'asc').onSnapshot(snapshot => {
+    callback(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Room)));
+  });
+};
+
+export const saveRoom = async (room: Partial<Room>) => {
+  const docRef = room.id ? db.collection('rooms').doc(room.id) : db.collection('rooms').doc();
+  await docRef.set({ ...room, id: docRef.id, createdAt: room.createdAt || Date.now() }, { merge: true });
+};
+
+export const deleteRoom = async (id: string) => {
+  // Delete all tables and reservations for this room
+  const tables = await db.collection('tables').where('roomId', '==', id).get();
+  const reservations = await db.collection('reservations').where('roomId', '==', id).get();
+  
+  const batch = db.batch();
+  tables.docs.forEach(d => batch.delete(d.ref));
+  reservations.docs.forEach(d => batch.delete(d.ref));
+  batch.delete(db.collection('rooms').doc(id));
+  
+  await batch.commit();
+};
+
+export const uploadFloorPlan = async (file: File): Promise<string> => {
+  const path = `floorplans/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
+  const snapshot = await storage.ref().child(path).put(file, { contentType: file.type || 'application/octet-stream' });
+  return await snapshot.ref.getDownloadURL();
+};
+
+export const subscribeToTables = (callback: (data: Table[]) => void, roomId?: string) => {
+  let q: firebase.firestore.Query = db.collection('tables').orderBy('number');
+  if (roomId) q = q.where('roomId', '==', roomId);
+  return q.onSnapshot(snapshot => {
+    callback(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Table)));
+  });
+};
+
+export const saveTable = async (table: Partial<Table>) => {
+  const docRef = table.id ? db.collection('tables').doc(table.id) : db.collection('tables').doc();
+  await docRef.set({ ...table, id: docRef.id }, { merge: true });
+};
+
+export const deleteTable = async (id: string) => await db.collection('tables').doc(id).delete();
+
+export const subscribeToReservations = (callback: (data: Reservation[]) => void, roomId?: string) => {
+  let q: firebase.firestore.Query = db.collection('reservations').orderBy('startTime', 'asc');
+  if (roomId) q = q.where('roomId', '==', roomId);
+  return q.onSnapshot(snapshot => {
+    callback(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Reservation)));
+  });
+};
+
+export const saveReservation = async (reservation: Partial<Reservation>) => {
+  const docRef = reservation.id ? db.collection('reservations').doc(reservation.id) : db.collection('reservations').doc();
+  
+  const resData = { 
+    ...reservation, 
+    id: docRef.id,
+    createdAt: reservation.createdAt || Date.now()
+  };
+
+  await docRef.set(resData, { merge: true });
+
+  // Update table status if tableId is provided
+  if (reservation.tableId) {
+    const tableStatus = reservation.status === 'ACTIVE' ? 'OCCUPIED' : 
+                        reservation.status === 'PENDING' ? 'RESERVED' : 'AVAILABLE';
+    await db.collection('tables').doc(reservation.tableId).update({ status: tableStatus });
+  }
+};
+
+export const deleteReservation = async (id: string, tableId?: string) => {
+  await db.collection('reservations').doc(id).delete();
+  if (tableId) {
+    await db.collection('tables').doc(tableId).update({ status: 'AVAILABLE' });
+  }
+};
+
+export const resetTables = async () => {
+  const snapshot = await db.collection('tables').get();
+  const batch = db.batch();
+  snapshot.docs.forEach(doc => batch.delete(doc.ref));
+  INITIAL_TABLES.forEach(table => {
+    const docRef = db.collection('tables').doc(table.id);
+    batch.set(docRef, table);
+  });
+  await batch.commit();
 };

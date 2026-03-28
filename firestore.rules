@@ -13,7 +13,7 @@ service cloud.firestore {
     // Verifica si el ID de usuario proporcionado existe realmente en la colección 'users'.
     // Esto distingue al Personal/Admin (cuyos IDs están en la DB) de los Invitados (cuyos IDs son temporales y no están en la DB).
     function isVerifiedUser(userId) {
-      return exists(/databases/$(database)/documents/users/$(userId));
+      return exists(/databases/$(database)/documents/hotel_victoria_users/$(userId));
     }
 
     // Verifica si el usuario tiene permisos específicos para gestionar tareas (Admin o Staff con permiso)
@@ -21,22 +21,22 @@ service cloud.firestore {
       // 1. El usuario debe existir en la DB (Bloquea a Invitados)
       // 2. Debe ser ADMIN o tener el permiso 'CAN_MANAGE_TASKS'
       return isVerifiedUser(userId) &&
-             (get(/databases/$(database)/documents/users/$(userId)).data.role == 'ADMIN' ||
-              ('permissions' in get(/databases/$(database)/documents/users/$(userId)).data && get(/databases/$(database)/documents/users/$(userId)).data.permissions.hasAny(['CAN_MANAGE_TASKS'])));
+             (get(/databases/$(database)/documents/hotel_victoria_users/$(userId)).data.role == 'ADMIN' ||
+              ('permissions' in get(/databases/$(database)/documents/hotel_victoria_users/$(userId)).data && get(/databases/$(database)/documents/hotel_victoria_users/$(userId)).data.permissions.hasAny(['CAN_MANAGE_TASKS'])));
     }
 
     // --- COLLECTION RULES ---
 
     // USERS:
     // Lectura permitida para el login. Escritura restringida.
-    match /users/{userId} {
+    match /hotel_victoria_users/{userId} {
       allow read: if isSignedIn();
       allow write: if isSignedIn(); // Necesario para el setup inicial y seed.
     }
 
     // TASKS:
     // Reglas estrictas para separar Invitados de Personal.
-    match /tasks/{taskId} {
+    match /hotel_victoria_tasks/{taskId} {
       // LEER: Permitido a todos los autenticados (Incluye Invitados para ver tareas públicas)
       allow read: if isSignedIn();
 
@@ -57,7 +57,7 @@ service cloud.firestore {
 
     // REQUESTS (Pedidos):
     // Invitados no deberían poder crear pedidos.
-    match /requests/{reqId} {
+    match /hotel_victoria_requests/{reqId} {
       allow read: if isSignedIn();
       // Solo permitimos crear si el usuario está firmado.
       // La UI de invitados no muestra opción de pedidos.
@@ -66,25 +66,33 @@ service cloud.firestore {
 
     // INVENTARIO Y DEPARTAMENTOS
     // Lectura abierta para funcionamiento de la app.
-    match /departments/{deptId} {
+    match /hotel_victoria_departments/{deptId} {
       allow read, write: if isSignedIn();
     }
-    match /products/{productId} {
+    match /hotel_victoria_products/{productId} {
       allow read, write: if isSignedIn();
     }
 
     // NOTIFICACIONES
-    match /notifications/{notifId} {
+    match /hotel_victoria_notifications/{notifId} {
       allow read, write: if isSignedIn();
     }
     
     // SYSTEM
-    match /system/{docId} {
+    match /hotel_victoria_system/{docId} {
       allow read, write: if isSignedIn();
     }
     
+    // SALONES (Mesas y Reservas)
+    match /hotel_victoria_tables/{tableId} {
+      allow read, write: if isSignedIn();
+    }
+    match /hotel_victoria_reservations/{resId} {
+      allow read, write: if isSignedIn();
+    }
+
     // DOCUMENTOS
-    match /documents/{docId} {
+    match /hotel_victoria_documents/{docId} {
       allow read, write: if isSignedIn();
     }
   }
