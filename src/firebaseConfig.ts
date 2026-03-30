@@ -25,7 +25,8 @@ db.settings({
   experimentalForceLongPolling: true,
 });
 
-// Habilitar la persistencia offline de Firestore
+// Habilitar la persistencia offline de Firestore (Deshabilitado para evitar errores de estado interno en el entorno de AI Studio)
+/*
 try {
   db.enablePersistence({ synchronizeTabs: true })
     .catch((err) => {
@@ -38,3 +39,4 @@ try {
 } catch (error) {
   console.error("Could not enable Firestore persistence", error);
 }
+*/

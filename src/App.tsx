@@ -291,17 +291,13 @@ const App: React.FC = () => {
         <div className="absolute bottom-[-20%] right-[-20%] w-[80%] h-[80%] bg-slate-400/5 dark:bg-slate-700/5 rounded-full blur-[150px] animate-pulse" style={{ animationDelay: '1.5s' }}></div>
 
         <div className="relative z-10 flex flex-col items-center animate-pop-in">
-          {/* Logo Container with Glass Effect */}
-          <div className="p-10 bg-white/40 dark:bg-white/5 rounded-[3rem] backdrop-blur-2xl border border-white/50 dark:border-white/10 shadow-2xl mb-8 relative">
-             <div className="absolute inset-0 bg-white/20 dark:bg-white/5 rounded-[3rem] blur-xl -z-10"></div>
-             {/* AQUÍ ESTÁ EL CAMBIO PRINCIPAL: Animated = True */}
-             <Logo size="2xl" animated={true} />
-          </div>
-          
-          <div className="absolute bottom-10 flex flex-col items-center justify-center animate-fade-in">
-            <div className="animate-spin">
+          <div className="flex flex-col items-center justify-center">
+            <div className="animate-spin" style={{ animationDuration: '3s' }}>
               <Logo size="sm" />
             </div>
+            <p className="mt-4 text-xs font-medium tracking-[0.3em] uppercase text-slate-400 dark:text-slate-500 opacity-60">
+              Cargando
+            </p>
           </div>
         </div>
       </div>

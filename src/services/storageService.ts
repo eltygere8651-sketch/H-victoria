@@ -1,4 +1,4 @@
-import { Product, User, ReplenishmentRequest, UserRole, Department, CartItem, AppNotification, NotificationType, NotificationPayload, OrderBatch, Task, TaskStatus, TaskPriority, TaskType, TaskComment, Document } from '../types';
+import { Product, User, ReplenishmentRequest, UserRole, Department, CartItem, AppNotification, NotificationType, NotificationPayload, OrderBatch, Task, TaskStatus, TaskPriority, TaskType, TaskComment, Document, Reservation, Table, Room } from '../types';
 import { db, auth, storage } from '../firebaseConfig';
 import firebase from 'firebase/compat/app';
 import { fileToBase64 } from '../utils/imageCompressor';
@@ -13,6 +13,11 @@ const KEYS = {
   LAST_VIEW: 'hotel_victoria_last_view',
   NOTIFICATIONS: 'hotel_victoria_notifications',
   TASKS: 'hotel_victoria_tasks',
+  RESERVATIONS: 'hotel_victoria_reservations',
+  TABLES: 'hotel_victoria_tables',
+  ROOMS: 'hotel_victoria_rooms',
+  DOCUMENTS: 'hotel_victoria_documents',
+  SYSTEM: 'hotel_victoria_system',
 };
 
 const INITIAL_USERS: User[] = [
@@ -27,6 +32,23 @@ const INITIAL_DEPARTMENTS: Department[] = [
   { id: 'd-restaurante', name: 'Restaurante' }
 ];
 
+const INITIAL_ROOMS: Room[] = [
+  { id: 'r-victoria', name: 'Salón Victoria', createdAt: Date.now() },
+  { id: 'r-gastrobar', name: 'Gastro Bar', createdAt: Date.now() },
+];
+
+// Mesas iniciales basadas en la foto del salón (Hotel Victoria)
+const INITIAL_TABLES: Table[] = [
+  { id: 't1', roomId: 'r-victoria', number: '1', capacity: 4, status: 'AVAILABLE', x: 12, y: 72, width: 28, height: 22, shape: 'RECTANGLE' }, // Primer plano izq
+  { id: 't2', roomId: 'r-victoria', number: '2', capacity: 6, status: 'AVAILABLE', x: 58, y: 68, width: 32, height: 26, shape: 'RECTANGLE' }, // Primer plano der
+  { id: 't3', roomId: 'r-victoria', number: '3', capacity: 4, status: 'AVAILABLE', x: 18, y: 45, width: 22, height: 18, shape: 'RECTANGLE' }, // Fila media izq
+  { id: 't4', roomId: 'r-victoria', number: '4', capacity: 4, status: 'AVAILABLE', x: 52, y: 45, width: 22, height: 18, shape: 'RECTANGLE' }, // Fila media der
+  { id: 't5', roomId: 'r-victoria', number: '5', capacity: 2, status: 'AVAILABLE', x: 12, y: 15, width: 12, height: 12, shape: 'SQUARE' },    // Barra 1 (fondo izq)
+  { id: 't6', roomId: 'r-victoria', number: '6', capacity: 2, status: 'AVAILABLE', x: 30, y: 15, width: 12, height: 12, shape: 'SQUARE' },    // Barra 2 (fondo izq)
+  { id: 't7', roomId: 'r-victoria', number: '7', capacity: 4, status: 'AVAILABLE', x: 55, y: 15, width: 18, height: 15, shape: 'RECTANGLE' }, // Ventana 1 (fondo der)
+  { id: 't8', roomId: 'r-victoria', number: '8', capacity: 4, status: 'AVAILABLE', x: 78, y: 15, width: 16, height: 15, shape: 'RECTANGLE' }, // Ventana 2 (fondo der)
+];
+
 // Productos de ejemplo optimizados para los nuevos departamentos
 const INITIAL_PRODUCTS: Product[] = [
   { id: 'p1', name: 'Coca Cola', category: 'Bebidas', quantity: 24, unit: 'latas', minThreshold: 12, departmentId: 'd-bar', departmentName: 'Bar', departmentIds: ['d-bar', 'd-restaurante'], departmentNames: ['Bar', 'Restaurante'] },
@@ -37,11 +59,62 @@ const INITIAL_PRODUCTS: Product[] = [
   { id: 'p6', name: 'Servilletas', category: 'Suministros', quantity: 100, unit: 'paquetes', minThreshold: 20, departmentId: 'd-restaurante', departmentName: 'Restaurante', departmentIds: ['d-restaurante'], departmentNames: ['Restaurante'] },
 ];
 
+enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
+interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+  authInfo: {
+    userId?: string;
+    email?: string | null;
+    emailVerified?: boolean;
+    isAnonymous?: boolean;
+    tenantId?: string | null;
+    providerInfo: {
+      providerId: string;
+      displayName: string | null;
+      email: string | null;
+      photoUrl: string | null;
+    }[];
+  }
+}
+
+function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errInfo: FirestoreErrorInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    authInfo: {
+      userId: auth.currentUser?.uid || 'no-user',
+      email: auth.currentUser?.email,
+      emailVerified: auth.currentUser?.emailVerified,
+      isAnonymous: auth.currentUser?.isAnonymous,
+      tenantId: auth.currentUser?.tenantId,
+      providerInfo: auth.currentUser?.providerData.filter(p => !!p).map(provider => ({
+        providerId: provider!.providerId,
+        displayName: provider!.displayName || '',
+        email: provider!.email || '',
+        photoUrl: provider!.photoURL || ''
+      })) || []
+    },
+    operationType,
+    path
+  }
+  console.error('Firestore Error: ', JSON.stringify(errInfo));
+  throw new Error(JSON.stringify(errInfo));
+}
+
 async function initFirestoreWithInitialData() {
   console.log("Iniciando sincronización de datos base...");
 
   try {
-    const initRef = db.collection('system').doc('initialization');
+    const initRef = db.collection(KEYS.SYSTEM).doc('initialization');
     const initDoc = await initRef.get();
 
     if (initDoc.exists && initDoc.data()?.isInitialized) {
@@ -51,11 +124,11 @@ async function initFirestoreWithInitialData() {
 
     // 1. Usuarios y Productos (Solo si está vacío para no sobrescribir stock real)
     const collectionsToInit = [
-      { name: 'users', data: INITIAL_USERS, key: KEYS.USERS },
-      { name: 'products', data: INITIAL_PRODUCTS, key: KEYS.PRODUCTS },
+      { name: KEYS.USERS, data: INITIAL_USERS },
+      { name: KEYS.PRODUCTS, data: INITIAL_PRODUCTS },
     ];
 
-    for (const { name, data, key } of collectionsToInit) {
+    for (const { name, data } of collectionsToInit) {
       const q = db.collection(name).limit(1);
       const snapshot = await q.get();
       if (snapshot.empty) {
@@ -69,28 +142,50 @@ async function initFirestoreWithInitialData() {
     }
 
     // 2. Inicializar departamentos si está vacío
-    const deptSnapshot = await db.collection('departments').limit(1).get();
+    const deptSnapshot = await db.collection(KEYS.DEPARTMENTS).limit(1).get();
     if (deptSnapshot.empty) {
       const deptBatch = db.batch();
       INITIAL_DEPARTMENTS.forEach(dept => {
-        const docRef = db.collection('departments').doc(dept.id);
+        const docRef = db.collection(KEYS.DEPARTMENTS).doc(dept.id);
         deptBatch.set(docRef, dept, { merge: true });
       });
       await deptBatch.commit();
+    }
+
+    // 3. Inicializar mesas si está vacío
+    const tableSnapshot = await db.collection(KEYS.TABLES).limit(1).get();
+    if (tableSnapshot.empty) {
+      const tableBatch = db.batch();
+      INITIAL_TABLES.forEach(table => {
+        const docRef = db.collection(KEYS.TABLES).doc(table.id);
+        tableBatch.set(docRef, table, { merge: true });
+      });
+      await tableBatch.commit();
+    }
+
+    // 4. Inicializar salones si está vacío
+    const roomSnapshot = await db.collection(KEYS.ROOMS).limit(1).get();
+    if (roomSnapshot.empty) {
+      const roomBatch = db.batch();
+      INITIAL_ROOMS.forEach(room => {
+        const docRef = db.collection(KEYS.ROOMS).doc(room.id);
+        roomBatch.set(docRef, room, { merge: true });
+      });
+      await roomBatch.commit();
     }
 
     // Marcar como inicializado para no volver a ejecutar esto y borrar datos del usuario
     await initRef.set({ isInitialized: true, timestamp: Date.now() });
     console.log("Sincronización inicial completada y marcada como inicializada.");
   } catch (error) {
-    console.error("Error during initFirestoreWithInitialData:", error);
+    handleFirestoreError(error, OperationType.WRITE, KEYS.SYSTEM);
   }
 }
 
 // --- AUTH HELPERS ---
 
 export const login = async (name: string, pin: string): Promise<User | null> => {
-  const q = db.collection("users").where("pin", "==", pin);
+  const q = db.collection(KEYS.USERS).where("pin", "==", pin);
   const querySnapshot = await q.get();
   
   if (!querySnapshot.empty) {
@@ -161,7 +256,7 @@ export const saveDraftCart = async (userId: string, cart: CartItem[]) => {
   localStorage.setItem(KEYS.DRAFT_CART, JSON.stringify(cart));
   if (userId && userId !== 'guest' && !userId.startsWith('guest-')) {
     try {
-      await db.collection('users').doc(userId).update({ draftCart: cart });
+      await db.collection(KEYS.USERS).doc(userId).update({ draftCart: cart });
     } catch (e) {
       console.error("Error saving draft cart to cloud", e);
     }
@@ -171,7 +266,7 @@ export const saveDraftCart = async (userId: string, cart: CartItem[]) => {
 export const getDraftCart = async (userId?: string): Promise<CartItem[]> => {
   if (userId && userId !== 'guest' && !userId.startsWith('guest-')) {
     try {
-      const doc = await db.collection('users').doc(userId).get();
+      const doc = await db.collection(KEYS.USERS).doc(userId).get();
       if (doc.exists && doc.data()?.draftCart) {
         return doc.data()?.draftCart as CartItem[];
       }
@@ -184,35 +279,35 @@ export const getDraftCart = async (userId?: string): Promise<CartItem[]> => {
 
 // --- DEPARTMENTS ---
 export const subscribeToDepartments = (callback: (data: Department[]) => void) => {
-    return db.collection('departments').orderBy('name').onSnapshot(snapshot => {
+    return db.collection(KEYS.DEPARTMENTS).orderBy('name').onSnapshot(snapshot => {
         callback(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Department)));
-    });
+    }, error => handleFirestoreError(error, OperationType.GET, KEYS.DEPARTMENTS));
 };
 export const saveDepartment = async (department: Partial<Department>) => {
-  const docRef = department.id ? db.collection('departments').doc(department.id) : db.collection('departments').doc();
+  const docRef = department.id ? db.collection(KEYS.DEPARTMENTS).doc(department.id) : db.collection(KEYS.DEPARTMENTS).doc();
   await docRef.set({ ...department, id: docRef.id }, { merge: true });
 };
-export const deleteDepartment = async (id: string) => await db.collection('departments').doc(id).delete();
+export const deleteDepartment = async (id: string) => await db.collection(KEYS.DEPARTMENTS).doc(id).delete();
 
 // --- PRODUCTS ---
 export const subscribeToProducts = (callback: (data: Product[]) => void) => {
-    return db.collection('products').orderBy('name').onSnapshot(snapshot => {
+    return db.collection(KEYS.PRODUCTS).orderBy('name').onSnapshot(snapshot => {
         callback(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Product)));
-    });
+    }, error => handleFirestoreError(error, OperationType.GET, KEYS.PRODUCTS));
 };
 export const saveProduct = async (product: Partial<Product>) => {
-  const docRef = product.id ? db.collection('products').doc(product.id) : db.collection('products').doc();
+  const docRef = product.id ? db.collection(KEYS.PRODUCTS).doc(product.id) : db.collection(KEYS.PRODUCTS).doc();
   await docRef.set({ ...product, id: docRef.id }, { merge: true });
 };
-export const deleteProduct = async (id: string) => await db.collection('products').doc(id).delete();
+export const deleteProduct = async (id: string) => await db.collection(KEYS.PRODUCTS).doc(id).delete();
 
 // Removed cleanAndBoostStock to prevent accidental data loss
 
 export const generateRandomOrders = async (user: User) => {
-  const snapshot = await db.collection('products').get();
+  const snapshot = await db.collection(KEYS.PRODUCTS).get();
   const products = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Product)).filter(p => p.quantity > 0);
   
-  const deptSnapshot = await db.collection('departments').get();
+  const deptSnapshot = await db.collection(KEYS.DEPARTMENTS).get();
   const departments = deptSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Department));
   
   if (products.length === 0 || departments.length === 0) return;
@@ -247,11 +342,11 @@ export const submitOrderBatch = async (cart: CartItem[], departmentId: string, d
   const lowStockItems: string[] = [];
 
   for (const item of cart) {
-    const productRef = db.collection('products').doc(item.product.id);
+    const productRef = db.collection(KEYS.PRODUCTS).doc(item.product.id);
     const newQuantity = item.product.quantity - item.quantity;
     batch.update(productRef, { quantity: newQuantity });
     
-    const requestRef = db.collection('requests').doc();
+    const requestRef = db.collection(KEYS.REQUESTS).doc();
     batch.set(requestRef, {
       batchId, productId: item.product.id, productName: item.product.name,
       departmentId, departmentName, requestedBy: user.name,
@@ -262,7 +357,7 @@ export const submitOrderBatch = async (cart: CartItem[], departmentId: string, d
     if (newQuantity <= item.product.minThreshold) {
       lowStockItems.push(item.product.name);
       // Create notification for low stock
-      const notifRef = db.collection('notifications').doc();
+      const notifRef = db.collection(KEYS.NOTIFICATIONS).doc();
       batch.set(notifRef, {
         type: NotificationType.LOW_STOCK,
         title: 'Alerta de Stock Bajo',
@@ -276,7 +371,7 @@ export const submitOrderBatch = async (cart: CartItem[], departmentId: string, d
   }
   
   // Create notification for new order
-  const orderNotifRef = db.collection('notifications').doc();
+  const orderNotifRef = db.collection(KEYS.NOTIFICATIONS).doc();
   batch.set(orderNotifRef, {
     type: NotificationType.NEW_ORDER,
     title: 'Nuevo Albarán Recibido',
@@ -296,13 +391,13 @@ export const receiveStockBatch = async (items: { productId: string; productName:
   const batchId = 'ING-' + Date.now().toString().slice(-6);
   
   for (const item of items) {
-    const productRef = db.collection('products').doc(item.productId);
+    const productRef = db.collection(KEYS.PRODUCTS).doc(item.productId);
     batch.update(productRef, { 
       quantity: firebase.firestore.FieldValue.increment(item.quantityToAdd) 
     });
 
     // Create a request document to represent this item in the Albarán
-    const requestRef = db.collection('requests').doc();
+    const requestRef = db.collection(KEYS.REQUESTS).doc();
     batch.set(requestRef, {
       batchId, 
       productId: item.productId, 
@@ -319,7 +414,7 @@ export const receiveStockBatch = async (items: { productId: string; productName:
   }
 
   // Create a notification for the received stock
-  const notifRef = db.collection('notifications').doc();
+  const notifRef = db.collection(KEYS.NOTIFICATIONS).doc();
   batch.set(notifRef, {
     type: NotificationType.STOCK_RECEIVED,
     title: 'Ingreso de Mercancía',
@@ -335,7 +430,7 @@ export const receiveStockBatch = async (items: { productId: string; productName:
 };
 
 export const subscribeToBatches = (callback: (batches: OrderBatch[]) => void) => {
-  return db.collection('requests').orderBy('timestamp', 'desc').limit(200).onSnapshot(snapshot => {
+  return db.collection(KEYS.REQUESTS).orderBy('timestamp', 'desc').limit(200).onSnapshot(snapshot => {
     const requests = snapshot.docs.map(d => ({ ...d.data(), id: d.id } as ReplenishmentRequest));
     const batches = requests.reduce((acc, req) => {
       if (!req.batchId) return acc;
@@ -344,10 +439,10 @@ export const subscribeToBatches = (callback: (batches: OrderBatch[]) => void) =>
       return acc;
     }, {} as Record<string, OrderBatch>);
     callback(Object.values(batches));
-  });
+  }, error => handleFirestoreError(error, OperationType.GET, KEYS.REQUESTS));
 };
 export const deleteBatch = async (batchId: string) => {
-  const q = db.collection('requests').where('batchId', '==', batchId);
+  const q = db.collection(KEYS.REQUESTS).where('batchId', '==', batchId);
   const snapshot = await q.get();
   const batch = db.batch();
   snapshot.docs.forEach(d => batch.delete(d.ref));
@@ -356,26 +451,26 @@ export const deleteBatch = async (batchId: string) => {
 
 // --- USERS ---
 export const subscribeToUsers = (callback: (users: User[]) => void) => {
-    return db.collection('users').orderBy('name').onSnapshot(snapshot => {
+    return db.collection(KEYS.USERS).orderBy('name').onSnapshot(snapshot => {
         callback(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as User)));
-    });
+    }, error => handleFirestoreError(error, OperationType.GET, KEYS.USERS));
 };
-export const addUser = async (user: Omit<User, 'id'>) => await db.collection('users').add(user);
-export const updateUser = async (user: User) => await db.collection('users').doc(user.id).update({ ...user });
-export const deleteUser = async (id: string) => await db.collection('users').doc(id).delete();
-export const savePushToken = async (userId: string, token: string) => await db.collection('users').doc(userId).update({ pushToken: token });
+export const addUser = async (user: Omit<User, 'id'>) => await db.collection(KEYS.USERS).add(user);
+export const updateUser = async (user: User) => await db.collection(KEYS.USERS).doc(user.id).update({ ...user });
+export const deleteUser = async (id: string) => await db.collection(KEYS.USERS).doc(id).delete();
+export const savePushToken = async (userId: string, token: string) => await db.collection(KEYS.USERS).doc(userId).update({ pushToken: token });
 
 // --- NOTIFICATIONS ---
 export const subscribeToNotifications = (callback: (data: AppNotification[]) => void, unreadOnly = false) => {
-  let q: firebase.firestore.Query = db.collection('notifications').orderBy('timestamp', 'desc');
+  let q: firebase.firestore.Query = db.collection(KEYS.NOTIFICATIONS).orderBy('timestamp', 'desc');
   if (unreadOnly) q = q.where('readStatus', '==', false);
   return q.onSnapshot(snapshot => {
       callback(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as AppNotification)));
-  });
+  }, error => handleFirestoreError(error, OperationType.GET, KEYS.NOTIFICATIONS));
 };
-export const markNotificationAsRead = async (id: string, userId: string, userName: string) => await db.collection('notifications').doc(id).update({ readStatus: true, reviewedBy: userName, reviewedAt: Date.now() });
+export const markNotificationAsRead = async (id: string, userId: string, userName: string) => await db.collection(KEYS.NOTIFICATIONS).doc(id).update({ readStatus: true, reviewedBy: userName, reviewedAt: Date.now() });
 export const markAllNotificationsAsRead = async (userId: string, userName: string) => {
-  const q = db.collection('notifications').where('readStatus', '==', false);
+  const q = db.collection(KEYS.NOTIFICATIONS).where('readStatus', '==', false);
   const snapshot = await q.get();
   const batch = db.batch();
   snapshot.docs.forEach(d => batch.update(d.ref, { readStatus: true, reviewedBy: userName, reviewedAt: Date.now() }));
@@ -384,13 +479,13 @@ export const markAllNotificationsAsRead = async (userId: string, userName: strin
 
 // --- TASKS ---
 export const subscribeToTasks = (callback: (data: Task[]) => void) => {
-    return db.collection('tasks').orderBy('createdAt', 'desc').limit(50).onSnapshot(snapshot => {
+    return db.collection(KEYS.TASKS).orderBy('createdAt', 'desc').limit(50).onSnapshot(snapshot => {
         callback(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Task)));
-    });
+    }, error => handleFirestoreError(error, OperationType.GET, KEYS.TASKS));
 };
 export const saveTask = async (task: Partial<Task>, newFiles: File[] = []) => {
   const isNew = !task.id;
-  const docRef = isNew ? db.collection('tasks').doc() : db.collection('tasks').doc(task.id!);
+  const docRef = isNew ? db.collection(KEYS.TASKS).doc() : db.collection(KEYS.TASKS).doc(task.id!);
   
   let taskData: any = { ...task, id: docRef.id };
 
@@ -407,7 +502,7 @@ export const saveTask = async (task: Partial<Task>, newFiles: File[] = []) => {
 
   if (isNew) {
      // Notify about new task
-     await db.collection('notifications').add({
+     await db.collection(KEYS.NOTIFICATIONS).add({
         type: NotificationType.NEW_TASK,
         title: 'Nueva Tarea Creada',
         message: `Tarea "${task.title}" asignada a ${task.departmentName}.`,
@@ -418,10 +513,10 @@ export const saveTask = async (task: Partial<Task>, newFiles: File[] = []) => {
      });
   }
 };
-export const deleteTask = async (id: string) => await db.collection('tasks').doc(id).delete();
+export const deleteTask = async (id: string) => await db.collection(KEYS.TASKS).doc(id).delete();
 export const cleanupCompletedTasks = async () => {
   const thirtyMinutesAgo = Date.now() - (30 * 60 * 1000);
-  const q = db.collection('tasks').where('status', '==', TaskStatus.COMPLETED).where('completedAt', '<', thirtyMinutesAgo);
+  const q = db.collection(KEYS.TASKS).where('status', '==', TaskStatus.COMPLETED).where('completedAt', '<', thirtyMinutesAgo);
   const snapshot = await q.get();
   if (!snapshot.empty) {
     const batch = db.batch();
@@ -430,18 +525,18 @@ export const cleanupCompletedTasks = async () => {
   }
 };
 export const addCommentToTask = async (taskId: string, comment: Omit<TaskComment, 'id'>) => {
-  const taskRef = db.collection('tasks').doc(taskId);
+  const taskRef = db.collection(KEYS.TASKS).doc(taskId);
   await taskRef.update({ comments: firebase.firestore.FieldValue.arrayUnion({ ...comment, id: Date.now().toString(), timestamp: Date.now() }), seenBy: [comment.userId] });
 };
 export const markTaskAsSeen = async (taskId: string, userId: string) => {
-  await db.collection('tasks').doc(taskId).update({ seenBy: firebase.firestore.FieldValue.arrayUnion(userId) });
+  await db.collection(KEYS.TASKS).doc(taskId).update({ seenBy: firebase.firestore.FieldValue.arrayUnion(userId) });
 };
 export const getTaskById = async (taskId: string): Promise<Task | null> => {
-  const doc = await db.collection('tasks').doc(taskId).get();
+  const doc = await db.collection(KEYS.TASKS).doc(taskId).get();
   return doc.exists ? { ...doc.data(), id: doc.id } as Task : null;
 };
 export const deleteAllNotifications = async () => {
-  const q = db.collection('notifications');
+  const q = db.collection(KEYS.NOTIFICATIONS);
   const snapshot = await q.get();
   const batch = db.batch();
   snapshot.docs.forEach(d => batch.delete(d.ref));
@@ -455,12 +550,103 @@ export const uploadDocumentFile = async (file: File): Promise<string> => {
   return await snapshot.ref.getDownloadURL();
 };
 export const subscribeToDocuments = (callback: (data: Document[]) => void) => {
-  return db.collection('documents').orderBy('createdAt', 'desc').onSnapshot(snapshot => {
+  return db.collection(KEYS.DOCUMENTS).orderBy('createdAt', 'desc').onSnapshot(snapshot => {
     callback(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Document)));
-  });
+  }, error => handleFirestoreError(error, OperationType.GET, KEYS.DOCUMENTS));
 };
-export const saveDocument = async (document: Omit<Document, 'id'>) => await db.collection('documents').add(document);
+export const saveDocument = async (document: Omit<Document, 'id'>) => await db.collection(KEYS.DOCUMENTS).add(document);
 export const deleteDocument = async (doc: Document) => {
   try { await storage.refFromURL(doc.url).delete(); } catch(e) {}
-  await db.collection('documents').doc(doc.id).delete();
+  await db.collection(KEYS.DOCUMENTS).doc(doc.id).delete();
+};
+
+// --- NEW: SALONES / RESERVATIONS ---
+export const subscribeToRooms = (callback: (data: Room[]) => void) => {
+  return db.collection(KEYS.ROOMS).orderBy('createdAt', 'asc').onSnapshot(snapshot => {
+    callback(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Room)));
+  }, error => handleFirestoreError(error, OperationType.GET, KEYS.ROOMS));
+};
+
+export const saveRoom = async (room: Partial<Room>) => {
+  const docRef = room.id ? db.collection(KEYS.ROOMS).doc(room.id) : db.collection(KEYS.ROOMS).doc();
+  await docRef.set({ ...room, id: docRef.id, createdAt: room.createdAt || Date.now() }, { merge: true });
+};
+
+export const deleteRoom = async (id: string) => {
+  // Delete all tables and reservations for this room
+  const tables = await db.collection(KEYS.TABLES).where('roomId', '==', id).get();
+  const reservations = await db.collection(KEYS.RESERVATIONS).where('roomId', '==', id).get();
+  
+  const batch = db.batch();
+  tables.docs.forEach(d => batch.delete(d.ref));
+  reservations.docs.forEach(d => batch.delete(d.ref));
+  batch.delete(db.collection(KEYS.ROOMS).doc(id));
+  
+  await batch.commit();
+};
+
+export const uploadFloorPlan = async (file: File): Promise<string> => {
+  const path = `floorplans/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
+  const snapshot = await storage.ref().child(path).put(file, { contentType: file.type || 'application/octet-stream' });
+  return await snapshot.ref.getDownloadURL();
+};
+
+export const subscribeToTables = (callback: (data: Table[]) => void, roomId?: string) => {
+  let q: firebase.firestore.Query = db.collection(KEYS.TABLES).orderBy('number');
+  if (roomId) q = q.where('roomId', '==', roomId);
+  return q.onSnapshot(snapshot => {
+    callback(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Table)));
+  }, error => handleFirestoreError(error, OperationType.GET, KEYS.TABLES));
+};
+
+export const saveTable = async (table: Partial<Table>) => {
+  const docRef = table.id ? db.collection(KEYS.TABLES).doc(table.id) : db.collection(KEYS.TABLES).doc();
+  await docRef.set({ ...table, id: docRef.id }, { merge: true });
+};
+
+export const deleteTable = async (id: string) => await db.collection(KEYS.TABLES).doc(id).delete();
+
+export const subscribeToReservations = (callback: (data: Reservation[]) => void, roomId?: string) => {
+  let q: firebase.firestore.Query = db.collection(KEYS.RESERVATIONS).orderBy('startTime', 'asc');
+  if (roomId) q = q.where('roomId', '==', roomId);
+  return q.onSnapshot(snapshot => {
+    callback(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Reservation)));
+  }, error => handleFirestoreError(error, OperationType.GET, KEYS.RESERVATIONS));
+};
+
+export const saveReservation = async (reservation: Partial<Reservation>) => {
+  const docRef = reservation.id ? db.collection(KEYS.RESERVATIONS).doc(reservation.id) : db.collection(KEYS.RESERVATIONS).doc();
+  
+  const resData = { 
+    ...reservation, 
+    id: docRef.id,
+    createdAt: reservation.createdAt || Date.now()
+  };
+
+  await docRef.set(resData, { merge: true });
+
+  // Update table status if tableId is provided
+  if (reservation.tableId) {
+    const tableStatus = reservation.status === 'ACTIVE' ? 'OCCUPIED' : 
+                        reservation.status === 'PENDING' ? 'RESERVED' : 'AVAILABLE';
+    await db.collection(KEYS.TABLES).doc(reservation.tableId).update({ status: tableStatus });
+  }
+};
+
+export const deleteReservation = async (id: string, tableId?: string) => {
+  await db.collection(KEYS.RESERVATIONS).doc(id).delete();
+  if (tableId) {
+    await db.collection(KEYS.TABLES).doc(tableId).update({ status: 'AVAILABLE' });
+  }
+};
+
+export const resetTables = async () => {
+  const snapshot = await db.collection(KEYS.TABLES).get();
+  const batch = db.batch();
+  snapshot.docs.forEach(doc => batch.delete(doc.ref));
+  INITIAL_TABLES.forEach(table => {
+    const docRef = db.collection(KEYS.TABLES).doc(table.id);
+    batch.set(docRef, table);
+  });
+  await batch.commit();
 };

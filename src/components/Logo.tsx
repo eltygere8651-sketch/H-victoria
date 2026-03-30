@@ -1,15 +1,15 @@
 import React, { useId } from 'react';
 
-// CONFIGURACIÓN: 'hub' es el diseño corporativo principal (H estilizada).
-const CURRENT_VARIANT: 'hub' | 'nexus' | 'pulse' | 'legacy' = 'legacy';
+// CONFIGURACIÓN: 'v' es el diseño profesional simplificado.
+const CURRENT_VARIANT: 'v' = 'v';
 
 interface LogoProps {
   size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl';
   className?: string;
   solid?: boolean;
   simple?: boolean;
-  variant?: 'hub' | 'nexus' | 'pulse' | 'legacy';
-  animated?: boolean; // Nueva propiedad para activar animación
+  variant?: 'v';
+  animated?: boolean;
 }
 
 export const Logo: React.FC<LogoProps> = ({ 
@@ -34,39 +34,13 @@ export const Logo: React.FC<LogoProps> = ({
   const shadowId = `shadow-${uniqueId}`;
   const innerShadowId = `inner-${uniqueId}`;
 
-  // Definición de los trazados (Paths) para cada opción de logo
+  // Definición del logo "V" profesional y óptimo
   const logoPaths = {
-    // OPCIÓN 1: HUB (Corporativo, Solidez, Conexión) - Una H estilizada y gruesa
-    hub: (
+    v: (
       <path 
-        d="M28 24 C28 21.79 29.79 20 32 20 H36 C38.21 20 40 21.79 40 24 V44 H60 V24 C60 21.79 61.79 20 64 20 H68 C70.21 20 72 21.79 72 24 V76 C72 78.21 70.21 80 68 80 H64 C61.79 80 60 78.21 60 76 V52 H40 V76 C40 78.21 38.21 80 36 80 H32 C29.79 80 28 78.21 28 76 V24 Z" 
+        d="M22 28 L50 82 L78 28 H62 L50 58 L38 28 Z" 
         fill="white"
       />
-    ),
-    
-    // OPCIÓN 2: NEXUS (Logística, Red, Distribución)
-    nexus: (
-      <g fill="white">
-        <rect x="38" y="38" width="24" height="24" rx="6" />
-        <path d="M50 20 V34 M50 66 V80 M20 50 H34 M66 50 H80" stroke="white" strokeWidth="6" strokeLinecap="round" />
-        <circle cx="50" cy="18" r="5" />
-        <circle cx="50" cy="82" r="5" />
-        <circle cx="18" cy="50" r="5" />
-        <circle cx="82" cy="50" r="5" />
-      </g>
-    ),
-
-    // OPCIÓN 3: PULSE (Operativo, Tiempo Real)
-    pulse: (
-      <path 
-        d="M50 20 C33.43 20 20 33.43 20 50 C20 66.57 33.43 80 50 80 C66.57 80 80 66.57 80 50 C80 33.43 66.57 20 50 20 Z M50 70 C38.95 70 30 61.05 30 50 C30 38.95 38.95 30 50 30 C61.05 30 70 38.95 70 50 C70 61.05 61.05 70 50 70 Z M46 42 L60 50 L46 58 V42 Z" 
-        fill="white"
-      />
-    ),
-
-    // OPCIÓN 4: LEGACY (La "V" Original)
-    legacy: (
-      <path d="M30 35 L50 75 L70 35 H58 L50 51 L42 35 Z" fill="white" />
     )
   };
 

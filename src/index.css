@@ -76,8 +76,8 @@ body {
 /* --- ANIMACIONES DE LOGO --- */
 
 @keyframes logo-float {
-  0%, 100% { transform: translateY(0px); filter: drop-shadow(0 10px 15px rgba(220, 38, 38, 0.3)); }
-  50% { transform: translateY(-8px); filter: drop-shadow(0 20px 25px rgba(220, 38, 38, 0.4)); }
+  0%, 100% { transform: translateY(0px); filter: drop-shadow(0 10px 15px rgba(220, 38, 38, 0.2)); }
+  50% { transform: translateY(-12px); filter: drop-shadow(0 25px 30px rgba(220, 38, 38, 0.3)); }
 }
 
 .animate-logo-float {
@@ -86,12 +86,21 @@ body {
 
 @keyframes logo-breathe {
   0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.85; transform: scale(0.98); }
+  50% { opacity: 0.9; transform: scale(0.96); }
 }
 
 .animate-logo-breathe {
   animation: logo-breathe 3s ease-in-out infinite;
   transform-origin: center;
+}
+
+@keyframes spin-reverse {
+  from { transform: rotate(360deg); }
+  to { transform: rotate(0deg); }
+}
+
+.animate-spin-reverse {
+  animation: spin-reverse 8s linear infinite;
 }
 
 /* --- BOTÓN DE CARRITO --- */
