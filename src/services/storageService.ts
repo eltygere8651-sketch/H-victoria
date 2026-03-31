@@ -1,4 +1,4 @@
-import { Product, User, ReplenishmentRequest, UserRole, Department, CartItem, AppNotification, NotificationType, NotificationPayload, OrderBatch, Task, TaskStatus, TaskPriority, TaskType, TaskComment, Document, Reservation, Table, Room } from '../types';
+import { Product, User, ReplenishmentRequest, UserRole, Department, CartItem, AppNotification, NotificationType, NotificationPayload, OrderBatch, Task, TaskStatus, TaskPriority, TaskType, TaskComment, Document, ScheduledTask, TaskRecurrence } from '../types';
 import { db, auth, storage } from '../firebaseConfig';
 import firebase from 'firebase/compat/app';
 import { fileToBase64 } from '../utils/imageCompressor';
@@ -13,9 +13,7 @@ const KEYS = {
   LAST_VIEW: 'hotel_victoria_last_view',
   NOTIFICATIONS: 'hotel_victoria_notifications',
   TASKS: 'hotel_victoria_tasks',
-  RESERVATIONS: 'hotel_victoria_reservations',
-  TABLES: 'hotel_victoria_tables',
-  ROOMS: 'hotel_victoria_rooms',
+  SCHEDULED_TASKS: 'hotel_victoria_scheduled_tasks',
   DOCUMENTS: 'hotel_victoria_documents',
   SYSTEM: 'hotel_victoria_system',
 };
@@ -30,23 +28,6 @@ const INITIAL_USERS: User[] = [
 const INITIAL_DEPARTMENTS: Department[] = [
   { id: 'd-bar', name: 'Bar / Cafetería' },
   { id: 'd-restaurante', name: 'Restaurante' }
-];
-
-const INITIAL_ROOMS: Room[] = [
-  { id: 'r-victoria', name: 'Salón Victoria', createdAt: Date.now() },
-  { id: 'r-gastrobar', name: 'Gastro Bar', createdAt: Date.now() },
-];
-
-// Mesas iniciales basadas en la foto del salón (Hotel Victoria)
-const INITIAL_TABLES: Table[] = [
-  { id: 't1', roomId: 'r-victoria', number: '1', capacity: 4, status: 'AVAILABLE', x: 12, y: 72, width: 28, height: 22, shape: 'RECTANGLE' }, // Primer plano izq
-  { id: 't2', roomId: 'r-victoria', number: '2', capacity: 6, status: 'AVAILABLE', x: 58, y: 68, width: 32, height: 26, shape: 'RECTANGLE' }, // Primer plano der
-  { id: 't3', roomId: 'r-victoria', number: '3', capacity: 4, status: 'AVAILABLE', x: 18, y: 45, width: 22, height: 18, shape: 'RECTANGLE' }, // Fila media izq
-  { id: 't4', roomId: 'r-victoria', number: '4', capacity: 4, status: 'AVAILABLE', x: 52, y: 45, width: 22, height: 18, shape: 'RECTANGLE' }, // Fila media der
-  { id: 't5', roomId: 'r-victoria', number: '5', capacity: 2, status: 'AVAILABLE', x: 12, y: 15, width: 12, height: 12, shape: 'SQUARE' },    // Barra 1 (fondo izq)
-  { id: 't6', roomId: 'r-victoria', number: '6', capacity: 2, status: 'AVAILABLE', x: 30, y: 15, width: 12, height: 12, shape: 'SQUARE' },    // Barra 2 (fondo izq)
-  { id: 't7', roomId: 'r-victoria', number: '7', capacity: 4, status: 'AVAILABLE', x: 55, y: 15, width: 18, height: 15, shape: 'RECTANGLE' }, // Ventana 1 (fondo der)
-  { id: 't8', roomId: 'r-victoria', number: '8', capacity: 4, status: 'AVAILABLE', x: 78, y: 15, width: 16, height: 15, shape: 'RECTANGLE' }, // Ventana 2 (fondo der)
 ];
 
 // Productos de ejemplo optimizados para los nuevos departamentos
@@ -150,28 +131,6 @@ async function initFirestoreWithInitialData() {
         deptBatch.set(docRef, dept, { merge: true });
       });
       await deptBatch.commit();
-    }
-
-    // 3. Inicializar mesas si está vacío
-    const tableSnapshot = await db.collection(KEYS.TABLES).limit(1).get();
-    if (tableSnapshot.empty) {
-      const tableBatch = db.batch();
-      INITIAL_TABLES.forEach(table => {
-        const docRef = db.collection(KEYS.TABLES).doc(table.id);
-        tableBatch.set(docRef, table, { merge: true });
-      });
-      await tableBatch.commit();
-    }
-
-    // 4. Inicializar salones si está vacío
-    const roomSnapshot = await db.collection(KEYS.ROOMS).limit(1).get();
-    if (roomSnapshot.empty) {
-      const roomBatch = db.batch();
-      INITIAL_ROOMS.forEach(room => {
-        const docRef = db.collection(KEYS.ROOMS).doc(room.id);
-        roomBatch.set(docRef, room, { merge: true });
-      });
-      await roomBatch.commit();
     }
 
     // Marcar como inicializado para no volver a ejecutar esto y borrar datos del usuario
@@ -535,6 +494,68 @@ export const getTaskById = async (taskId: string): Promise<Task | null> => {
   const doc = await db.collection(KEYS.TASKS).doc(taskId).get();
   return doc.exists ? { ...doc.data(), id: doc.id } as Task : null;
 };
+
+// --- SCHEDULED TASKS ---
+export const subscribeToScheduledTasks = (callback: (data: ScheduledTask[]) => void) => {
+  return db.collection(KEYS.SCHEDULED_TASKS).orderBy('createdAt', 'desc').onSnapshot(snapshot => {
+    callback(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as ScheduledTask)));
+  }, error => handleFirestoreError(error, OperationType.GET, KEYS.SCHEDULED_TASKS));
+};
+
+export const saveScheduledTask = async (task: Partial<ScheduledTask>) => {
+  const isNew = !task.id;
+  const docRef = isNew ? db.collection(KEYS.SCHEDULED_TASKS).doc() : db.collection(KEYS.SCHEDULED_TASKS).doc(task.id!);
+  await docRef.set({ ...task, id: docRef.id, createdAt: task.createdAt || Date.now() }, { merge: true });
+};
+
+export const deleteScheduledTask = async (id: string) => await db.collection(KEYS.SCHEDULED_TASKS).doc(id).delete();
+
+export const processScheduledTasks = async (user: User) => {
+  if (user.role !== UserRole.ADMIN) return;
+
+  const now = Date.now();
+  const snapshot = await db.collection(KEYS.SCHEDULED_TASKS).where('active', '==', true).get();
+  const scheduledTasks = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as ScheduledTask));
+
+  for (const st of scheduledTasks) {
+    let shouldGenerate = false;
+    const lastGen = st.lastGeneratedAt || 0;
+    const oneDay = 24 * 60 * 60 * 1000;
+    const oneWeek = 7 * oneDay;
+    const oneMonth = 30 * oneDay;
+
+    if (st.recurrence === TaskRecurrence.DAILY) {
+      if (now - lastGen >= oneDay) shouldGenerate = true;
+    } else if (st.recurrence === TaskRecurrence.WEEKLY) {
+      if (now - lastGen >= oneWeek) shouldGenerate = true;
+    } else if (st.recurrence === TaskRecurrence.MONTHLY) {
+      if (now - lastGen >= oneMonth) shouldGenerate = true;
+    }
+
+    if (shouldGenerate) {
+      // Create the actual task
+      const newTask: Partial<Task> = {
+        title: st.title + ' (Programada)',
+        description: st.description,
+        priority: st.priority,
+        location: st.location,
+        departmentId: st.departmentId,
+        departmentName: st.departmentName,
+        status: TaskStatus.PENDING,
+        type: st.type,
+        checklist: st.checklist,
+        createdBy: st.createdBy,
+        createdById: st.createdById,
+        createdAt: now,
+        recurrence: st.recurrence,
+      };
+
+      await saveTask(newTask);
+      await db.collection(KEYS.SCHEDULED_TASKS).doc(st.id).update({ lastGeneratedAt: now });
+    }
+  }
+};
+
 export const deleteAllNotifications = async () => {
   const q = db.collection(KEYS.NOTIFICATIONS);
   const snapshot = await q.get();
@@ -558,95 +579,4 @@ export const saveDocument = async (document: Omit<Document, 'id'>) => await db.c
 export const deleteDocument = async (doc: Document) => {
   try { await storage.refFromURL(doc.url).delete(); } catch(e) {}
   await db.collection(KEYS.DOCUMENTS).doc(doc.id).delete();
-};
-
-// --- NEW: SALONES / RESERVATIONS ---
-export const subscribeToRooms = (callback: (data: Room[]) => void) => {
-  return db.collection(KEYS.ROOMS).orderBy('createdAt', 'asc').onSnapshot(snapshot => {
-    callback(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Room)));
-  }, error => handleFirestoreError(error, OperationType.GET, KEYS.ROOMS));
-};
-
-export const saveRoom = async (room: Partial<Room>) => {
-  const docRef = room.id ? db.collection(KEYS.ROOMS).doc(room.id) : db.collection(KEYS.ROOMS).doc();
-  await docRef.set({ ...room, id: docRef.id, createdAt: room.createdAt || Date.now() }, { merge: true });
-};
-
-export const deleteRoom = async (id: string) => {
-  // Delete all tables and reservations for this room
-  const tables = await db.collection(KEYS.TABLES).where('roomId', '==', id).get();
-  const reservations = await db.collection(KEYS.RESERVATIONS).where('roomId', '==', id).get();
-  
-  const batch = db.batch();
-  tables.docs.forEach(d => batch.delete(d.ref));
-  reservations.docs.forEach(d => batch.delete(d.ref));
-  batch.delete(db.collection(KEYS.ROOMS).doc(id));
-  
-  await batch.commit();
-};
-
-export const uploadFloorPlan = async (file: File): Promise<string> => {
-  const path = `floorplans/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
-  const snapshot = await storage.ref().child(path).put(file, { contentType: file.type || 'application/octet-stream' });
-  return await snapshot.ref.getDownloadURL();
-};
-
-export const subscribeToTables = (callback: (data: Table[]) => void, roomId?: string) => {
-  let q: firebase.firestore.Query = db.collection(KEYS.TABLES).orderBy('number');
-  if (roomId) q = q.where('roomId', '==', roomId);
-  return q.onSnapshot(snapshot => {
-    callback(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Table)));
-  }, error => handleFirestoreError(error, OperationType.GET, KEYS.TABLES));
-};
-
-export const saveTable = async (table: Partial<Table>) => {
-  const docRef = table.id ? db.collection(KEYS.TABLES).doc(table.id) : db.collection(KEYS.TABLES).doc();
-  await docRef.set({ ...table, id: docRef.id }, { merge: true });
-};
-
-export const deleteTable = async (id: string) => await db.collection(KEYS.TABLES).doc(id).delete();
-
-export const subscribeToReservations = (callback: (data: Reservation[]) => void, roomId?: string) => {
-  let q: firebase.firestore.Query = db.collection(KEYS.RESERVATIONS).orderBy('startTime', 'asc');
-  if (roomId) q = q.where('roomId', '==', roomId);
-  return q.onSnapshot(snapshot => {
-    callback(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Reservation)));
-  }, error => handleFirestoreError(error, OperationType.GET, KEYS.RESERVATIONS));
-};
-
-export const saveReservation = async (reservation: Partial<Reservation>) => {
-  const docRef = reservation.id ? db.collection(KEYS.RESERVATIONS).doc(reservation.id) : db.collection(KEYS.RESERVATIONS).doc();
-  
-  const resData = { 
-    ...reservation, 
-    id: docRef.id,
-    createdAt: reservation.createdAt || Date.now()
-  };
-
-  await docRef.set(resData, { merge: true });
-
-  // Update table status if tableId is provided
-  if (reservation.tableId) {
-    const tableStatus = reservation.status === 'ACTIVE' ? 'OCCUPIED' : 
-                        reservation.status === 'PENDING' ? 'RESERVED' : 'AVAILABLE';
-    await db.collection(KEYS.TABLES).doc(reservation.tableId).update({ status: tableStatus });
-  }
-};
-
-export const deleteReservation = async (id: string, tableId?: string) => {
-  await db.collection(KEYS.RESERVATIONS).doc(id).delete();
-  if (tableId) {
-    await db.collection(KEYS.TABLES).doc(tableId).update({ status: 'AVAILABLE' });
-  }
-};
-
-export const resetTables = async () => {
-  const snapshot = await db.collection(KEYS.TABLES).get();
-  const batch = db.batch();
-  snapshot.docs.forEach(doc => batch.delete(doc.ref));
-  INITIAL_TABLES.forEach(table => {
-    const docRef = db.collection(KEYS.TABLES).doc(table.id);
-    batch.set(docRef, table);
-  });
-  await batch.commit();
 };

@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
-import { Task, User, Department, TaskStatus, TaskPriority, UserRole, TaskType, TaskComment, TaskChecklistItem, Reservation, Table, Room, RoomElement } from '../types';
+import { Task, User, Department, TaskStatus, TaskPriority, UserRole, TaskType, TaskComment, TaskChecklistItem, TaskRecurrence, ScheduledTask } from '../types';
 import * as storageService from '../services/storageService';
-import { ClipboardCheck, Plus, X, Save, Loader2, Edit2, Trash2, ChevronDown, MessagesSquare, Check, Camera, AlertTriangle, Share2, Send, Image, Info, Flame, Bold, Calendar, Clock, List, FileText, Zap, Users, Phone, Hash, LayoutGrid, Map as MapIcon, ChevronRight, User as UserIcon, RotateCcw, Edit3, Move, Maximize, Minimize, Square, Circle, Type, Upload, Settings, DoorOpen, Grid, Tag } from 'lucide-react';
+import { ClipboardCheck, Plus, X, Save, Loader2, Edit2, Trash2, ChevronDown, MessagesSquare, Check, Camera, AlertTriangle, Share2, Send, Image, Info, Flame, Bold, Calendar, Clock, List, FileText, Zap, Users, Phone, Hash, ChevronRight, User as UserIcon } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { compressImage } from '../utils/imageCompressor';
 import { ImageViewer } from '../components/ImageViewer';
@@ -17,16 +17,21 @@ interface TasksProps {
 
 const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
   const [allTasks, setAllTasks] = useState<Task[]>([]);
+  const [scheduledTasks, setScheduledTasks] = useState<ScheduledTask[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   
   const [statusFilter, setStatusFilter] = useState<TaskStatus | 'ALL'>('ALL');
+  const [activeTab, setActiveTab] = useState<'ACTIVE' | 'SCHEDULED'>('ACTIVE');
   
   const [showTaskModal, setShowTaskModal] = useState(false);
+  const [showScheduledModal, setShowScheduledModal] = useState(false);
   const [editingTask, setEditingTask] = useState<Partial<Task> | null>(null);
+  const [editingScheduledTask, setEditingScheduledTask] = useState<Partial<ScheduledTask> | null>(null);
   const [taskToDelete, setTaskToDelete] = useState<Task | null>(null);
+  const [scheduledToDelete, setScheduledToDelete] = useState<ScheduledTask | null>(null);
   
   const [isCompressing, setIsCompressing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -60,32 +65,6 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
 
   const [newChecklistItemText, setNewChecklistItemText] = useState('');
 
-  // --- Salones / Reservations State ---
-  const [activeTab, setActiveTab] = useState<'TASKS' | 'SALONES'>('TASKS');
-  const [rooms, setRooms] = useState<Room[]>([]);
-  const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
-  const [tables, setTables] = useState<Table[]>([]);
-  const [reservations, setReservations] = useState<Reservation[]>([]);
-  const [showReservationModal, setShowReservationModal] = useState(false);
-  const [editingReservation, setEditingReservation] = useState<Partial<Reservation> | null>(null);
-  const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
-
-  // Editor State
-  const [isEditMode, setIsEditMode] = useState(false);
-  const [isDrawingMode, setIsDrawingMode] = useState(false);
-  const [selectedElementType, setSelectedElementType] = useState<'WALL' | 'TEXT' | 'DOOR' | 'WINDOW' | 'AREA_LABEL' | null>(null);
-  const [editingElement, setEditingElement] = useState<RoomElement | null>(null);
-  const [dragStartElement, setDragStartElement] = useState<{ x: number, y: number, elementX: number, elementY: number } | null>(null);
-  const [resizeStartElement, setResizeStartElement] = useState<{ x: number, y: number, width: number, height: number } | null>(null);
-  const [editingTable, setEditingTable] = useState<Table | null>(null);
-  const [dragStart, setDragStart] = useState<{ x: number, y: number, tableX: number, tableY: number } | null>(null);
-  const [resizeStart, setResizeStart] = useState<{ x: number, y: number, width: number, height: number } | null>(null);
-  const [showRoomModal, setShowRoomModal] = useState(false);
-  const [editingRoom, setEditingRoom] = useState<Partial<Room> | null>(null);
-  const [isUploadingPlan, setIsUploadingPlan] = useState(false);
-  const floorPlanInputRef = useRef<HTMLInputElement>(null);
-  const mapContainerRef = useRef<HTMLDivElement>(null);
-
   const formatDateTimeLocal = (timestamp?: number) => {
     if (!timestamp) return '';
     const d = new Date(timestamp);
@@ -100,7 +79,6 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
 
   // Derived state for the task currently being commented on
   const activeTaskForComments = allTasks.find(t => t.id === activeCommentTaskId);
-  const activeRoom = rooms.find(r => r.id === activeRoomId);
 
   // Permission Check
   const canManageTasks = currentUser.role === UserRole.ADMIN || 
@@ -111,31 +89,19 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
       setAllTasks(tasks);
       setLoading(false);
     });
+    const unsubscribeScheduled = storageService.subscribeToScheduledTasks(setScheduledTasks);
     const unsubscribeDepartments = storageService.subscribeToDepartments(setDepartments);
-    const unsubscribeRooms = storageService.subscribeToRooms((rooms) => {
-      setRooms(rooms);
-      if (rooms.length > 0 && !activeRoomId) {
-        setActiveRoomId(rooms[0].id);
-      }
-    });
+
+    if (currentUser.role === UserRole.ADMIN) {
+      storageService.processScheduledTasks(currentUser);
+    }
 
     return () => {
       unsubscribeTasks();
+      unsubscribeScheduled();
       unsubscribeDepartments();
-      unsubscribeRooms();
     };
-  }, [activeRoomId]);
-
-  useEffect(() => {
-    if (activeRoomId) {
-      const unsubscribeTables = storageService.subscribeToTables(setTables, activeRoomId);
-      const unsubscribeReservations = storageService.subscribeToReservations(setReservations, activeRoomId);
-      return () => {
-        unsubscribeTables();
-        unsubscribeReservations();
-      };
-    }
-  }, [activeRoomId]);
+  }, []);
 
   const handleSaveTask = async () => {
     if (!editingTask?.title || !editingTask?.departmentId) {
@@ -154,19 +120,47 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
         departmentName: department?.name || 'General',
         priority: editingTask.priority || TaskPriority.MEDIUM,
         status: editingTask.status || TaskStatus.PENDING,
-        // Default to TASK type
-        type: TaskType.TASK, 
+        type: TaskType.TASK,
         createdBy: editingTask.createdBy || currentUser.name,
         createdById: editingTask.createdById || currentUser.id,
         createdAt: editingTask.createdAt || Date.now(),
       };
 
-      await storageService.saveTask(taskData, selectedImages);
-      setShowTaskModal(false);
-      setEditingTask(null);
-      setSelectedImages([]);
-      setPreviews([]);
-      setNewChecklistItemText('');
+      if (editingTask.recurrence && editingTask.recurrence !== TaskRecurrence.NONE) {
+        // Save as ScheduledTask
+        const scheduledData: Partial<ScheduledTask> = {
+          title: taskData.title,
+          description: taskData.description,
+          departmentId: taskData.departmentId,
+          departmentName: taskData.departmentName,
+          priority: taskData.priority,
+          type: taskData.type,
+          createdBy: taskData.createdBy,
+          createdById: taskData.createdById,
+          createdAt: taskData.createdAt,
+          recurrence: editingTask.recurrence,
+          active: true,
+          checklist: taskData.checklist
+        };
+        await storageService.saveScheduledTask(scheduledData);
+        if (currentUser.role === UserRole.ADMIN) {
+          await storageService.processScheduledTasks(currentUser);
+        }
+        setShowTaskModal(false);
+        setEditingTask(null);
+        setSelectedImages([]);
+        setPreviews([]);
+        setNewChecklistItemText('');
+        setActiveTab('SCHEDULED');
+      } else {
+        // Save as regular Task
+        await storageService.saveTask(taskData, selectedImages);
+        setShowTaskModal(false);
+        setEditingTask(null);
+        setSelectedImages([]);
+        setPreviews([]);
+        setNewChecklistItemText('');
+      }
     } catch (error) {
       console.error(error);
       setSaveError('Error al guardar. Inténtalo de nuevo.');
@@ -179,6 +173,51 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
     if (taskToDelete) {
       await storageService.deleteTask(taskToDelete.id);
       setTaskToDelete(null);
+    }
+  };
+
+  const handleSaveScheduledTask = async () => {
+    if (!editingScheduledTask?.title || !editingScheduledTask?.departmentId || !editingScheduledTask?.recurrence) {
+      setSaveError('Título, Departamento y Recurrencia son obligatorios');
+      return;
+    }
+
+    setIsSaving(true);
+    setSaveError(null);
+
+    try {
+      const department = departments.find(d => d.id === editingScheduledTask.departmentId);
+      
+      const taskData: Partial<ScheduledTask> = {
+        ...editingScheduledTask,
+        departmentName: department?.name || 'General',
+        priority: editingScheduledTask.priority || TaskPriority.MEDIUM,
+        type: TaskType.TASK,
+        createdBy: editingScheduledTask.createdBy || currentUser.name,
+        createdById: editingScheduledTask.createdById || currentUser.id,
+        createdAt: editingScheduledTask.createdAt || Date.now(),
+        active: editingScheduledTask.active !== undefined ? editingScheduledTask.active : true,
+      };
+
+      await storageService.saveScheduledTask(taskData);
+      if (currentUser.role === UserRole.ADMIN) {
+        await storageService.processScheduledTasks(currentUser);
+      }
+      setShowScheduledModal(false);
+      setEditingScheduledTask(null);
+      setNewChecklistItemText('');
+    } catch (error) {
+      console.error(error);
+      setSaveError('Error al guardar. Inténtalo de nuevo.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDeleteScheduledTask = async () => {
+    if (scheduledToDelete) {
+      await storageService.deleteScheduledTask(scheduledToDelete.id);
+      setScheduledToDelete(null);
     }
   };
 
@@ -246,8 +285,8 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
     setNewComment('');
   };
 
-  const handleToggleChecklistItem = useCallback(async (taskId: string, itemIndex: number, currentChecklist: TaskChecklistItem[]) => {
-    const updatedChecklist = [...currentChecklist];
+  const handleToggleChecklistItem = useCallback(async (task: Task, itemIndex: number) => {
+    const updatedChecklist = [...(task.checklist || [])];
     const item = updatedChecklist[itemIndex];
     item.isCompleted = !item.isCompleted;
     if (item.isCompleted) {
@@ -259,9 +298,14 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
     }
 
     const allCompleted = updatedChecklist.every(i => i.isCompleted);
-    const updateData: any = { id: taskId, checklist: updatedChecklist };
+    const updateData: any = { id: task.id, checklist: updatedChecklist };
     
     if (allCompleted && updatedChecklist.length > 0) {
+      if (task.recurrence && task.recurrence !== TaskRecurrence.NONE) {
+        // Recurring task completed: delete it so it "disappears" until the next one
+        await storageService.deleteTask(task.id);
+        return;
+      }
       updateData.status = TaskStatus.COMPLETED;
       updateData.completedBy = currentUser.name;
       updateData.completedAt = Date.now();
@@ -274,8 +318,13 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
     await storageService.saveTask({ id: taskId, status: TaskStatus.IN_PROGRESS });
   }, []);
 
-  const handleCompleteTask = useCallback(async (taskId: string) => {
-    await storageService.saveTask({ id: taskId, status: TaskStatus.COMPLETED, completedBy: currentUser.name, completedAt: Date.now() });
+  const handleCompleteTask = useCallback(async (task: Task) => {
+    if (task.recurrence && task.recurrence !== TaskRecurrence.NONE) {
+      // Recurring task completed: delete it so it "disappears" until the next one
+      await storageService.deleteTask(task.id);
+      return;
+    }
+    await storageService.saveTask({ id: task.id, status: TaskStatus.COMPLETED, completedBy: currentUser.name, completedAt: Date.now() });
   }, [currentUser.name]);
 
   const handleEditTask = useCallback((task: Task) => {
@@ -345,230 +394,55 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
     }
   }, []);
 
-  // --- Salones Handlers ---
-  const handleSaveRoom = async () => {
-    if (!editingRoom?.name) return;
-    try {
-      await storageService.saveRoom(editingRoom);
-      setShowRoomModal(false);
-      setEditingRoom(null);
-    } catch (error) {
-      console.error(error);
-      alert('Error al guardar el salón');
-    }
-  };
+  const ScheduledTaskCard = ({ task, onEdit, onDelete }: { task: ScheduledTask, onEdit: (t: ScheduledTask) => void, onDelete: (t: ScheduledTask) => void }) => (
+    <motion.div 
+      layout
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-6 shadow-xl border border-gray-100 dark:border-slate-800 relative overflow-hidden group"
+    >
+      <div className="flex justify-between items-start mb-4">
+        <div className="flex items-center gap-3">
+          <div className={`p-3 rounded-2xl ${task.priority === TaskPriority.HIGH ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400' : 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'}`}>
+            <Clock size={24} />
+          </div>
+          <div>
+            <h4 className="text-xl font-black text-gray-900 dark:text-white uppercase tracking-tight">{task.title}</h4>
+            <p className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-widest">{task.departmentName}</p>
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <button onClick={() => onEdit(task)} className="p-2 bg-gray-100 dark:bg-slate-800 rounded-xl text-gray-500 hover:text-blue-600 transition-colors"><Edit2 size={18} /></button>
+          <button onClick={() => onDelete(task)} className="p-2 bg-gray-100 dark:bg-slate-800 rounded-xl text-gray-500 hover:text-red-600 transition-colors"><Trash2 size={18} /></button>
+        </div>
+      </div>
+      
+      <div className="flex flex-wrap gap-2 mb-4">
+        <span className="px-3 py-1 bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400 rounded-full text-[10px] font-black uppercase tracking-widest">
+          {task.recurrence === TaskRecurrence.DAILY ? 'Diaria' : task.recurrence === TaskRecurrence.WEEKLY ? 'Semanal' : 'Mensual'}
+        </span>
+        <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${task.active ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400'}`}>
+          {task.active ? 'Activa' : 'Pausada'}
+        </span>
+      </div>
 
-  const handleFloorPlanUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files?.[0] && activeRoomId) {
-      setIsUploadingPlan(true);
-      try {
-        const url = await storageService.uploadFloorPlan(e.target.files[0]);
-        await storageService.saveRoom({ id: activeRoomId, floorPlanUrl: url });
-      } catch (error) {
-        console.error(error);
-        alert('Error al subir el plano');
-      } finally {
-        setIsUploadingPlan(false);
-      }
-    }
-  };
+      {task.description && (
+        <p className="text-sm font-bold text-gray-600 dark:text-slate-400 mb-4 line-clamp-2">{task.description}</p>
+      )}
 
-  const handleAddElement = async (type: RoomElement['type']) => {
-    if (!activeRoomId || !activeRoom) return;
-    const newElement: RoomElement = {
-      id: Date.now().toString(),
-      type,
-      x: 45,
-      y: 45,
-      width: type === 'WALL' ? 10 : type === 'DOOR' || type === 'WINDOW' ? 5 : undefined,
-      height: type === 'WALL' ? 1 : type === 'DOOR' || type === 'WINDOW' ? 5 : undefined,
-      text: type === 'TEXT' || type === 'AREA_LABEL' ? 'Nuevo Texto' : undefined,
-      fontSize: type === 'TEXT' || type === 'AREA_LABEL' ? 14 : undefined,
-      color: '#000000'
-    };
-    
-    const updatedElements = [...(activeRoom.elements || []), newElement];
-    await storageService.saveRoom({ id: activeRoomId, elements: updatedElements });
-  };
-
-  const handleElementDragStart = (e: React.MouseEvent, element: RoomElement) => {
-    if (!isDrawingMode) return;
-    e.preventDefault();
-    setEditingElement(element);
-    setDragStartElement({
-      x: e.clientX,
-      y: e.clientY,
-      elementX: element.x,
-      elementY: element.y
-    });
-  };
-
-  const handleElementResizeStart = (e: React.MouseEvent, element: RoomElement) => {
-    if (!isDrawingMode) return;
-    e.preventDefault();
-    e.stopPropagation();
-    setEditingElement(element);
-    setResizeStartElement({
-      x: e.clientX,
-      y: e.clientY,
-      width: element.width || 0,
-      height: element.height || 0
-    });
-  };
-
-  const handleAddTable = async () => {
-    if (!activeRoomId) return;
-    const newTable: Partial<Table> = {
-      roomId: activeRoomId,
-      number: (tables.length + 1).toString(),
-      capacity: 4,
-      status: 'AVAILABLE',
-      x: 40,
-      y: 40,
-      width: 15,
-      height: 15,
-      shape: 'RECTANGLE'
-    };
-    await storageService.saveTable(newTable);
-  };
-
-  const handleTableDragStart = (e: React.MouseEvent, table: Table) => {
-    if (!isEditMode) return;
-    e.preventDefault();
-    setEditingTable(table);
-    setDragStart({
-      x: e.clientX,
-      y: e.clientY,
-      tableX: table.x,
-      tableY: table.y
-    });
-  };
-
-  const handleTableResizeStart = (e: React.MouseEvent, table: Table) => {
-    if (!isEditMode) return;
-    e.preventDefault();
-    e.stopPropagation();
-    setEditingTable(table);
-    setResizeStart({
-      x: e.clientX,
-      y: e.clientY,
-      width: table.width,
-      height: table.height
-    });
-  };
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!mapContainerRef.current) return;
-    const rect = mapContainerRef.current.getBoundingClientRect();
-
-    if (isEditMode && editingTable) {
-      if (dragStart) {
-        const deltaX = ((e.clientX - dragStart.x) / rect.width) * 100;
-        const deltaY = ((e.clientY - dragStart.y) / rect.height) * 100;
-        
-        const newX = Math.max(0, Math.min(100 - editingTable.width, dragStart.tableX + deltaX));
-        const newY = Math.max(0, Math.min(100 - editingTable.height, dragStart.tableY + deltaY));
-        
-        setEditingTable({ ...editingTable, x: newX, y: newY });
-      }
-
-      if (resizeStart) {
-        const deltaX = ((e.clientX - resizeStart.x) / rect.width) * 100;
-        const deltaY = ((e.clientY - resizeStart.y) / rect.height) * 100;
-        
-        const newWidth = Math.max(5, Math.min(50, resizeStart.width + deltaX));
-        const newHeight = Math.max(5, Math.min(50, resizeStart.height + deltaY));
-        
-        setEditingTable({ ...editingTable, width: newWidth, height: newHeight });
-      }
-    }
-
-    if (isDrawingMode && editingElement) {
-      if (dragStartElement) {
-        const deltaX = ((e.clientX - dragStartElement.x) / rect.width) * 100;
-        const deltaY = ((e.clientY - dragStartElement.y) / rect.height) * 100;
-        
-        const newX = Math.max(0, Math.min(100 - (editingElement.width || 0), dragStartElement.elementX + deltaX));
-        const newY = Math.max(0, Math.min(100 - (editingElement.height || 0), dragStartElement.elementY + deltaY));
-        
-        setEditingElement({ ...editingElement, x: newX, y: newY });
-      }
-
-      if (resizeStartElement) {
-        const deltaX = ((e.clientX - resizeStartElement.x) / rect.width) * 100;
-        const deltaY = ((e.clientY - resizeStartElement.y) / rect.height) * 100;
-        
-        const newWidth = Math.max(1, Math.min(100, resizeStartElement.width + deltaX));
-        const newHeight = Math.max(1, Math.min(100, resizeStartElement.height + deltaY));
-        
-        setEditingElement({ ...editingElement, width: newWidth, height: newHeight });
-      }
-    }
-  };
-
-  const handleMouseUp = async () => {
-    if (editingTable && (dragStart || resizeStart)) {
-      await storageService.saveTable(editingTable);
-    }
-    
-    if (editingElement && (dragStartElement || resizeStartElement) && activeRoomId && activeRoom) {
-      const updatedElements = activeRoom.elements?.map((el: RoomElement) => el.id === editingElement.id ? editingElement : el) || [];
-      await storageService.saveRoom({ id: activeRoomId, elements: updatedElements });
-    }
-
-    setDragStart(null);
-    setResizeStart(null);
-    setEditingTable(null);
-    setDragStartElement(null);
-    setResizeStartElement(null);
-    setEditingElement(null);
-  };
-
-  const handleDeleteElement = async (elementId: string) => {
-    if (!activeRoomId || !activeRoom) return;
-    const updatedElements = activeRoom.elements?.filter(el => el.id !== elementId) || [];
-    await storageService.saveRoom({ id: activeRoomId, elements: updatedElements });
-  };
-
-  const handleElementTextChange = async (elementId: string, newText: string) => {
-    if (!activeRoomId || !activeRoom) return;
-    const updatedElements = activeRoom.elements?.map(el => 
-      el.id === elementId ? { ...el, text: newText } : el
-    ) || [];
-    await storageService.saveRoom({ id: activeRoomId, elements: updatedElements });
-  };
-
-  const handleSaveReservation = async () => {
-    if (!editingReservation?.clientName || !editingReservation?.tableId || !activeRoomId) {
-      alert('Nombre del cliente y mesa son obligatorios');
-      return;
-    }
-
-    try {
-      const table = tables.find(t => t.id === editingReservation.tableId);
-      const resData: Partial<Reservation> = {
-        ...editingReservation,
-        roomId: activeRoomId,
-        tableNumber: table?.number || '',
-        createdBy: currentUser.name,
-        status: editingReservation.status || 'PENDING',
-        startTime: editingReservation.startTime || Date.now(),
-      };
-
-      await storageService.saveReservation(resData);
-      setShowReservationModal(false);
-      setEditingReservation(null);
-    } catch (error) {
-      console.error(error);
-      alert('Error al guardar la reserva');
-    }
-  };
-
-  const handleDeleteReservation = async (id: string, tableId?: string) => {
-    if (window.confirm('¿Estás seguro de eliminar esta reserva?')) {
-      await storageService.deleteReservation(id, tableId);
-    }
-  };
+      <div className="flex justify-between items-center pt-4 border-t border-gray-50 dark:border-slate-800">
+        <div className="flex items-center gap-2 text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-widest">
+          <UserIcon size={12} />
+          <span>{task.createdBy}</span>
+        </div>
+        {task.lastGeneratedAt && (
+          <div className="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-widest">
+            Última: {new Date(task.lastGeneratedAt).toLocaleDateString()}
+          </div>
+        )}
+      </div>
+    </motion.div>
+  );
 
   // Helper to insert *bold* syntax in textarea
   const insertUrgentMarker = () => {
@@ -819,550 +693,6 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
     );
   };
 
-  const renderSalonesView = () => {
-    const activeRoom = rooms.find(r => r.id === activeRoomId);
-
-    return (
-      <div className="space-y-8">
-        {/* Room Selector & Management */}
-        <div className="flex flex-wrap items-center gap-4">
-          {rooms.map(room => (
-            <button
-              key={room.id}
-              onClick={() => setActiveRoomId(room.id)}
-              className={`px-6 py-3 rounded-2xl font-black uppercase tracking-widest text-xs transition-all flex items-center gap-2 ${
-                activeRoomId === room.id 
-                  ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200 dark:shadow-none' 
-                  : 'bg-white dark:bg-slate-900 text-gray-400 dark:text-slate-500 hover:bg-gray-50 dark:hover:bg-slate-800'
-              }`}
-            >
-              <LayoutGrid size={16} />
-              {room.name}
-            </button>
-          ))}
-          {canManageTasks && (
-            <button
-              onClick={() => {
-                setEditingRoom({});
-                setShowRoomModal(true);
-              }}
-              className="p-3 bg-white dark:bg-slate-900 text-gray-400 hover:text-indigo-600 rounded-2xl border-2 border-dashed border-gray-200 dark:border-slate-800 transition-all"
-              title="Añadir Salón"
-            >
-              <Plus size={20} />
-            </button>
-          )}
-        </div>
-
-        {/* Salon Map Visualizer */}
-        <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] shadow-xl border border-gray-100 dark:border-slate-800 p-6 overflow-hidden">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-            <div>
-              <div className="flex items-center gap-3">
-                <h3 className="text-2xl font-black text-gray-900 dark:text-white uppercase tracking-tight">
-                  {activeRoom?.name || 'Mapa del Salón'}
-                </h3>
-                {canManageTasks && (
-                  <button 
-                    onClick={() => {
-                      setEditingRoom(activeRoom || null);
-                      setShowRoomModal(true);
-                    }}
-                    className="p-1.5 text-gray-400 hover:text-indigo-600 transition-colors"
-                  >
-                    <Settings size={16} />
-                  </button>
-                )}
-              </div>
-              <p className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-widest">Vista en tiempo real de las mesas</p>
-            </div>
-            
-            <div className="flex flex-wrap gap-4 items-center">
-              {canManageTasks && (
-                <div className="flex bg-gray-100 dark:bg-slate-800 p-1 rounded-2xl">
-                  <button
-                    onClick={() => { setIsEditMode(false); setIsDrawingMode(false); }}
-                    className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${!isEditMode && !isDrawingMode ? 'bg-white dark:bg-slate-700 shadow-sm text-indigo-600' : 'text-gray-400'}`}
-                  >
-                    Ver
-                  </button>
-                  <button
-                    onClick={() => { setIsEditMode(true); setIsDrawingMode(false); }}
-                    className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isEditMode ? 'bg-white dark:bg-slate-700 shadow-sm text-indigo-600' : 'text-gray-400'}`}
-                  >
-                    Mesas
-                  </button>
-                  <button
-                    onClick={() => { setIsEditMode(false); setIsDrawingMode(true); }}
-                    className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isDrawingMode ? 'bg-white dark:bg-slate-700 shadow-sm text-indigo-600' : 'text-gray-400'}`}
-                  >
-                    Dibujar
-                  </button>
-                </div>
-              )}
-
-              {isEditMode && canManageTasks && (
-                <div className="flex gap-2">
-                  <button
-                    onClick={handleAddTable}
-                    className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl font-bold text-[10px] uppercase tracking-wider hover:bg-indigo-700 transition-all"
-                  >
-                    <Plus size={14} /> Mesa
-                  </button>
-                  <button
-                    onClick={() => floorPlanInputRef.current?.click()}
-                    disabled={isUploadingPlan}
-                    className="flex items-center gap-2 px-4 py-2 bg-slate-800 text-white rounded-xl font-bold text-[10px] uppercase tracking-wider hover:bg-slate-900 transition-all disabled:opacity-50"
-                  >
-                    {isUploadingPlan ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />} 
-                    Plano
-                  </button>
-                  <input 
-                    type="file" 
-                    ref={floorPlanInputRef} 
-                    onChange={handleFloorPlanUpload} 
-                    className="hidden" 
-                    accept="image/*,application/pdf" 
-                  />
-                </div>
-              )}
-
-              {isDrawingMode && canManageTasks && (
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => handleAddElement('WALL')}
-                    className="flex items-center gap-2 px-3 py-2 bg-slate-800 text-white rounded-xl font-bold text-[10px] uppercase tracking-wider hover:bg-slate-900 transition-all"
-                    title="Añadir Muro"
-                  >
-                    <Square size={14} /> Muro
-                  </button>
-                  <button
-                    onClick={() => handleAddElement('DOOR')}
-                    className="flex items-center gap-2 px-3 py-2 bg-slate-800 text-white rounded-xl font-bold text-[10px] uppercase tracking-wider hover:bg-slate-900 transition-all"
-                    title="Añadir Puerta"
-                  >
-                    <DoorOpen size={14} /> Puerta
-                  </button>
-                  <button
-                    onClick={() => handleAddElement('WINDOW')}
-                    className="flex items-center gap-2 px-3 py-2 bg-slate-800 text-white rounded-xl font-bold text-[10px] uppercase tracking-wider hover:bg-slate-900 transition-all"
-                    title="Añadir Ventana"
-                  >
-                    <Grid size={14} /> Ventana
-                  </button>
-                  <button
-                    onClick={() => handleAddElement('TEXT')}
-                    className="flex items-center gap-2 px-3 py-2 bg-slate-800 text-white rounded-xl font-bold text-[10px] uppercase tracking-wider hover:bg-slate-900 transition-all"
-                    title="Añadir Texto"
-                  >
-                    <Type size={14} /> Texto
-                  </button>
-                  <button
-                    onClick={() => handleAddElement('AREA_LABEL')}
-                    className="flex items-center gap-2 px-3 py-2 bg-slate-800 text-white rounded-xl font-bold text-[10px] uppercase tracking-wider hover:bg-slate-900 transition-all"
-                    title="Etiqueta de Área"
-                  >
-                    <Tag size={14} /> Área
-                  </button>
-                </div>
-              )}
-
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                  <span className="text-[10px] font-bold text-gray-500 uppercase">Libre</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-red-500"></div>
-                  <span className="text-[10px] font-bold text-gray-500 uppercase">Ocupada</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-blue-500"></div>
-                  <span className="text-[10px] font-bold text-gray-500 uppercase">Reservada</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* The Map Container */}
-          <div 
-            ref={mapContainerRef}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseUp}
-            className={`relative aspect-[16/9] bg-slate-50 dark:bg-slate-950 rounded-3xl border-2 border-gray-200 dark:border-slate-800 overflow-hidden shadow-inner ${isDrawingMode ? 'cursor-crosshair' : ''}`}
-          >
-             {/* Grid Background (Always visible in drawing mode) */}
-             {isDrawingMode && (
-               <div 
-                 className="absolute inset-0 pointer-events-none opacity-[0.1]" 
-                 style={{ 
-                   backgroundImage: 'linear-gradient(#000 1px, transparent 1px), linear-gradient(90deg, #000 1px, transparent 1px)', 
-                   backgroundSize: '20px 20px' 
-                 }} 
-               />
-             )}
-
-             {/* Floor Plan Background */}
-             {activeRoom?.floorPlanUrl ? (
-               activeRoom.floorPlanUrl.toLowerCase().includes('.pdf') ? (
-                 <iframe 
-                   src={`${activeRoom.floorPlanUrl}#toolbar=0&navpanes=0&scrollbar=0`} 
-                   className="absolute inset-0 w-full h-full border-none opacity-40 pointer-events-none"
-                   title="Floor Plan PDF"
-                 />
-               ) : (
-                 <img 
-                   src={activeRoom.floorPlanUrl} 
-                   alt="Floor Plan" 
-                   className="absolute inset-0 w-full h-full object-cover opacity-40 pointer-events-none"
-                   referrerPolicy="no-referrer"
-                 />
-               )
-             ) : (
-               <>
-                 {/* Modern Professional Background */}
-                 <div className="absolute inset-0 pointer-events-none bg-slate-50 dark:bg-slate-950">
-                                        <div 
-                      className="absolute inset-0 opacity-[0.2] dark:opacity-[0.1]" 
-                      style={{ 
-                        backgroundImage: 'radial-gradient(#94a3b8 1px, transparent 1px)', 
-                        backgroundSize: '32px 32px' 
-                      }} 
-                    />
-                 </div>
-
-                 {/* Blueprint Accents */}
-                    {/* Corner Markers */}
-                    <div className="absolute top-6 left-6 w-4 h-4 border-t-2 border-l-2 border-slate-300 dark:border-slate-700 rounded-tl-sm" />
-                    <div className="absolute top-6 right-6 w-4 h-4 border-t-2 border-r-2 border-slate-300 dark:border-slate-700 rounded-tr-sm" />
-                    <div className="absolute bottom-6 left-6 w-4 h-4 border-b-2 border-l-2 border-slate-300 dark:border-slate-700 rounded-bl-sm" />
-                    <div className="absolute bottom-6 right-6 w-4 h-4 border-b-2 border-r-2 border-slate-300 dark:border-slate-700 rounded-br-sm" />
-
-                 <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 via-transparent to-slate-500/5">
-                    {/* Subtle Labeling */}
-                    <div className="absolute top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm border border-slate-200 dark:border-slate-800 rounded-full shadow-sm">
-                      <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">Vista de Planta</span>
-                    </div>
-                 </div>
-               </>
-             )}
-
-              {/* Custom Floor Plan Elements */}
-              {activeRoom?.elements?.map((element) => (
-                <div
-                  key={element.id}
-                  onMouseDown={(e) => handleElementDragStart(e, element)}
-                  style={{
-                    position: 'absolute',
-                    left: `${element.x}%`,
-                    top: `${element.y}%`,
-                    width: `${element.width}px`,
-                    height: `${element.height}px`,
-                    cursor: isDrawingMode ? 'move' : 'default',
-                    zIndex: 5,
-                    transform: `rotate(${element.rotation || 0}deg)`,
-                  }}
-                  className={`group ${isDrawingMode ? 'hover:ring-2 hover:ring-indigo-500' : ''}`}
-                >
-                  {element.type === 'WALL' && (
-                    <div className="w-full h-full bg-black" />
-                  )}
-                  {element.type === 'DOOR' && (
-                    <div className="w-full h-full border-2 border-black rounded-tr-full relative overflow-hidden">
-                       <div className="absolute left-0 bottom-0 w-full h-[2px] bg-black" />
-                    </div>
-                  )}
-                  {element.type === 'WINDOW' && (
-                    <div className="w-full h-full border-y-2 border-black flex items-center">
-                       <div className="w-full h-[1px] bg-black/30" />
-                    </div>
-                  )}
-                  {element.type === 'TEXT' && (
-                    <input
-                      type="text"
-                      value={element.text || ''}
-                      onChange={(e) => handleElementTextChange(element.id, e.target.value)}
-                      className="w-full h-full bg-transparent border-none text-center font-bold text-black focus:outline-none text-sm"
-                      readOnly={!isDrawingMode}
-                    />
-                  )}
-                  {element.type === 'AREA_LABEL' && (
-                    <div className="w-full h-full flex items-center justify-center border border-dashed border-black/20 bg-white/40 rounded">
-                      <input
-                        type="text"
-                        value={element.text || ''}
-                        onChange={(e) => handleElementTextChange(element.id, e.target.value)}
-                        className="w-full bg-transparent border-none text-center font-black text-black uppercase tracking-widest focus:outline-none text-[10px]"
-                        readOnly={!isDrawingMode}
-                      />
-                    </div>
-                  )}
-
-                  {/* Element Controls (Resize & Delete) */}
-                  {isDrawingMode && (
-                    <>
-                      <div 
-                        onMouseDown={(e) => handleElementResizeStart(e, element)}
-                        className="absolute -right-1 -bottom-1 w-3 h-3 bg-indigo-600 rounded-full cursor-nwse-resize opacity-0 group-hover:opacity-100 transition-opacity z-10" 
-                      />
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteElement(element.id);
-                        }}
-                        className="absolute -top-6 left-1/2 -translate-x-1/2 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
-                      >
-                        <Trash2 size={12} />
-                      </button>
-                    </>
-                  )}
-                </div>
-              ))}
-
-              {/* Tables */}
-             {tables.length === 0 ? (
-               <div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center">
-                 <div className="w-20 h-20 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-4">
-                   <MapIcon size={40} className="text-slate-400" />
-                 </div>
-                 <h4 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight mb-2">Plano Vacío</h4>
-                 <p className="text-sm text-gray-500 dark:text-slate-400 max-w-xs mb-6">No hay mesas configuradas en este salón.</p>
-                 {activeRoomId === 'r-victoria' && (
-                   <button
-                     onClick={() => storageService.resetTables()}
-                     className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black uppercase tracking-widest text-xs shadow-lg shadow-indigo-200 dark:shadow-none transition-all hover:scale-105 active:scale-95 flex items-center gap-2"
-                   >
-                     <Zap size={16} />
-                     Cargar Diseño Victoria
-                   </button>
-                 )}
-               </div>
-             ) : tables.map(table => {
-               const tableReservations = reservations.filter(r => r.tableId === table.id && (r.status === 'PENDING' || r.status === 'ACTIVE'));
-               const currentRes = tableReservations[0];
-               const isBeingEdited = editingTable?.id === table.id;
-               const displayTable = isBeingEdited ? editingTable : table;
-
-               return (
-                 <motion.div 
-                   key={table.id}
-                   initial={{ opacity: 0, scale: 0.8 }}
-                   animate={{ 
-                     opacity: 1, 
-                     scale: 1,
-                     left: `${displayTable.x}%`,
-                     top: `${displayTable.y}%`,
-                     width: `${displayTable.width}%`,
-                     height: `${displayTable.height}%`,
-                   }}
-                   onMouseDown={(e) => handleTableDragStart(e, table)}
-                   onClick={() => {
-                     if (!isEditMode && canManageTasks) {
-                       setEditingReservation({ tableId: table.id, tableNumber: table.number });
-                       setShowReservationModal(true);
-                     }
-                   }}
-                   className={`absolute flex flex-col items-center justify-center transition-all duration-300 shadow-lg border-2 
-                     ${isEditMode ? 'cursor-move border-indigo-400 border-dashed' : 'cursor-pointer'}
-                     ${table.status === 'OCCUPIED' ? 'bg-red-500 border-red-600 text-white' : 
-                       table.status === 'RESERVED' ? 'bg-blue-500 border-blue-600 text-white' : 
-                       'bg-white dark:bg-slate-800 border-green-500 text-green-600 dark:text-green-400'}
-                     ${table.shape === 'CIRCLE' ? 'rounded-full' : 'rounded-2xl'}
-                   `}
-                 >
-                   <div className="flex flex-col items-center leading-none select-none">
-                     <span className="text-sm md:text-base font-black tracking-tighter">{table.number}</span>
-                     <span className="text-[8px] md:text-[10px] font-bold opacity-60 uppercase">{table.capacity}p</span>
-                   </div>
-                   
-                   {/* Status Indicator Dot */}
-                   {!isEditMode && (
-                     <div className={`absolute -top-1 -left-1 w-2.5 h-2.5 rounded-full border-2 border-white dark:border-slate-900
-                       ${table.status === 'OCCUPIED' ? 'bg-red-200' : 
-                         table.status === 'RESERVED' ? 'bg-blue-200' : 
-                         'bg-green-400'}
-                     `}></div>
-                   )}
-
-                   {/* Resize Handle */}
-                   {isEditMode && (
-                     <div 
-                       onMouseDown={(e) => handleTableResizeStart(e, table)}
-                       className="absolute bottom-0 right-0 w-4 h-4 cursor-nwse-resize flex items-center justify-center text-indigo-400"
-                     >
-                       <Maximize size={10} />
-                     </div>
-                   )}
-
-                   {/* Delete Button (Edit Mode) */}
-                   {isEditMode && (
-                     <button
-                       onClick={async (e) => {
-                         e.stopPropagation();
-                         if (window.confirm('¿Eliminar mesa?')) {
-                           await storageService.deleteTable(table.id);
-                         }
-                       }}
-                       className="absolute -top-2 -right-2 w-5 h-5 bg-red-600 text-white rounded-full flex items-center justify-center shadow-md hover:bg-red-700 transition-colors"
-                     >
-                       <X size={10} />
-                     </button>
-                   )}
-
-                   {/* Table Settings (Edit Mode) */}
-                   {isEditMode && (
-                     <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 flex gap-1 bg-white dark:bg-slate-800 p-1 rounded-lg shadow-lg border border-gray-100 dark:border-slate-700">
-                        <button 
-                          onClick={async (e) => {
-                            e.stopPropagation();
-                            const newShape = table.shape === 'RECTANGLE' ? 'CIRCLE' : table.shape === 'CIRCLE' ? 'SQUARE' : 'RECTANGLE';
-                            await storageService.saveTable({ ...table, shape: newShape });
-                          }}
-                          className="p-1 hover:bg-gray-100 dark:hover:bg-slate-700 rounded transition-colors text-gray-500"
-                        >
-                          {table.shape === 'CIRCLE' ? <Circle size={12} /> : table.shape === 'SQUARE' ? <Square size={12} /> : <Type size={12} />}
-                        </button>
-                        <button 
-                          onClick={async (e) => {
-                            e.stopPropagation();
-                            const num = prompt('Número de mesa:', table.number);
-                            if (num) await storageService.saveTable({ ...table, number: num });
-                          }}
-                          className="p-1 hover:bg-gray-100 dark:hover:bg-slate-700 rounded transition-colors text-gray-500"
-                        >
-                          <Hash size={12} />
-                        </button>
-                        <button 
-                          onClick={async (e) => {
-                            e.stopPropagation();
-                            const cap = prompt('Capacidad:', table.capacity.toString());
-                            if (cap) await storageService.saveTable({ ...table, capacity: parseInt(cap) });
-                          }}
-                          className="p-1 hover:bg-gray-100 dark:hover:bg-slate-700 rounded transition-colors text-gray-500"
-                        >
-                          <Users size={12} />
-                        </button>
-                     </div>
-                   )}
-
-                   {currentRes && !isEditMode && (
-                     <div className="absolute -top-1 -right-1 w-4 h-4 bg-yellow-400 rounded-full border-2 border-white dark:border-slate-900 flex items-center justify-center shadow-sm animate-bounce">
-                        <UserIcon size={8} className="text-yellow-900" />
-                     </div>
-                   )}
-                 </motion.div>
-               );
-             })}
-
-             {/* Entrance / Counter Indicators (only if no floor plan) */}
-             {!activeRoom?.floorPlanUrl && (
-               <>
-                 <div className="absolute bottom-0 left-1/2 -translate-x-1/2 px-8 py-1 bg-slate-200 dark:bg-slate-800 rounded-t-xl text-[8px] font-black text-slate-500 uppercase tracking-widest">Entrada Principal</div>
-                 <div className="absolute top-0 right-0 h-1/3 w-4 bg-slate-200 dark:bg-slate-800 rounded-l-xl flex items-center justify-center">
-                    <div className="rotate-90 text-[8px] font-black text-slate-500 uppercase tracking-widest">Barra</div>
-                 </div>
-               </>
-             )}
-          </div>
-        </div>
-
-        {/* Reservations List */}
-        <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] shadow-xl border border-gray-100 dark:border-slate-800 p-6">
-           <div className="flex justify-between items-center mb-6">
-              <h3 className="text-2xl font-black text-gray-900 dark:text-white uppercase tracking-tight">Reservas Hoy</h3>
-              <button 
-                onClick={() => {
-                  setEditingReservation({ startTime: Date.now() });
-                  setShowReservationModal(true);
-                }}
-                className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-xl font-bold text-xs uppercase tracking-wider hover:bg-red-700 transition-all active:scale-95"
-              >
-                <Plus size={16} /> Nueva Reserva
-              </button>
-           </div>
-
-           <div className="overflow-x-auto">
-              <table className="w-full text-left">
-                 <thead>
-                    <tr className="border-b border-gray-100 dark:border-slate-800">
-                       <th className="pb-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Cliente</th>
-                       <th className="pb-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Mesa</th>
-                       <th className="pb-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Personas</th>
-                       <th className="pb-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Hora</th>
-                       <th className="pb-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Estado</th>
-                       <th className="pb-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Acciones</th>
-                    </tr>
-                 </thead>
-                 <tbody className="divide-y divide-gray-50 dark:divide-slate-800/50">
-                    {reservations.length === 0 ? (
-                      <tr>
-                        <td colSpan={6} className="py-10 text-center text-gray-400 font-bold italic">No hay reservas registradas</td>
-                      </tr>
-                    ) : (
-                      reservations.map(res => (
-                        <tr key={res.id} className="group hover:bg-gray-50 dark:hover:bg-slate-800/30 transition-colors">
-                           <td className="py-4">
-                              <div className="flex flex-col">
-                                 <span className="font-bold text-gray-900 dark:text-white">{res.clientName}</span>
-                                 <span className="text-[10px] text-gray-500 flex items-center gap-1"><Phone size={10} /> {res.phoneNumber}</span>
-                              </div>
-                           </td>
-                           <td className="py-4">
-                              <span className="inline-flex items-center justify-center w-8 h-8 bg-gray-100 dark:bg-slate-800 rounded-lg font-black text-gray-700 dark:text-slate-300">
-                                 {res.tableNumber}
-                              </span>
-                           </td>
-                           <td className="py-4">
-                              <div className="flex flex-col">
-                                 <span className="font-bold text-gray-900 dark:text-white">{res.numPeople} personas</span>
-                                 <span className="text-[10px] text-gray-500">{res.numDiners} comensales</span>
-                              </div>
-                           </td>
-                           <td className="py-4">
-                              <span className="font-bold text-gray-700 dark:text-slate-300">
-                                 {new Date(res.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                              </span>
-                           </td>
-                           <td className="py-4">
-                              <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest
-                                ${res.status === 'PENDING' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' : 
-                                  res.status === 'ACTIVE' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 
-                                  res.status === 'COMPLETED' ? 'bg-gray-100 text-gray-500 dark:bg-slate-800 dark:text-slate-500' : 
-                                  'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'}
-                              `}>
-                                 {res.status === 'PENDING' ? 'Pendiente' : 
-                                  res.status === 'ACTIVE' ? 'En Mesa' : 
-                                  res.status === 'COMPLETED' ? 'Finalizada' : 'Cancelada'}
-                              </span>
-                           </td>
-                           <td className="py-4 text-right">
-                              <div className="flex justify-end gap-2">
-                                 <button 
-                                   onClick={() => { setEditingReservation(res); setShowReservationModal(true); }}
-                                   className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all"
-                                 >
-                                    <Edit2 size={16} />
-                                 </button>
-                                 <button 
-                                   onClick={() => handleDeleteReservation(res.id, res.tableId)}
-                                   className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
-                                 >
-                                    <Trash2 size={16} />
-                                 </button>
-                              </div>
-                           </td>
-                        </tr>
-                      ))
-                    )}
-                 </tbody>
-              </table>
-           </div>
-        </div>
-      </div>
-    );
-  };
-
   if (loading) return <div className="flex h-full items-center justify-center"><Loader2 size={40} className="animate-spin text-red-600" /></div>;
 
   return (
@@ -1374,25 +704,27 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
             <div className="flex flex-col">
               <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.3em] leading-none mb-1">Servicios</span>
               <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tighter leading-none drop-shadow-sm">
-                {activeTab === 'TASKS' ? 'Tareas' : 'Salones'} <span className="text-red-600 dark:text-red-500 italic">{activeTab === 'TASKS' ? 'Activas' : 'Reservas'}</span>
+                Tareas <span className="text-red-600 dark:text-red-500 italic">{activeTab === 'ACTIVE' ? 'Activas' : 'Programadas'}</span>
               </h2>
             </div>
-
-            {/* Tab Switcher */}
-            <div className="flex bg-gray-100 dark:bg-slate-800 rounded-xl p-1 ml-4">
-              <button
-                onClick={() => setActiveTab('TASKS')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-black text-[10px] uppercase tracking-widest transition-all ${activeTab === 'TASKS' ? 'bg-white dark:bg-slate-700 shadow-sm text-red-600' : 'text-gray-500 dark:text-gray-400'}`}
-              >
-                <ClipboardCheck size={14} /> Tareas
-              </button>
-              <button
-                onClick={() => setActiveTab('SALONES')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-black text-[10px] uppercase tracking-widest transition-all ${activeTab === 'SALONES' ? 'bg-white dark:bg-slate-700 shadow-sm text-red-600' : 'text-gray-500 dark:text-gray-400'}`}
-              >
-                <MapIcon size={14} /> Salones
-              </button>
-            </div>
+            
+            {/* Tab Switcher (Admin Only) */}
+            {currentUser.role === UserRole.ADMIN && (
+              <div className="flex bg-gray-100 dark:bg-slate-800 rounded-xl p-1 mx-4">
+                <button
+                  onClick={() => setActiveTab('ACTIVE')}
+                  className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'ACTIVE' ? 'bg-white dark:bg-slate-700 shadow-sm text-red-600' : 'text-gray-500 dark:text-gray-400'}`}
+                >
+                  Activas
+                </button>
+                <button
+                  onClick={() => setActiveTab('SCHEDULED')}
+                  className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'SCHEDULED' ? 'bg-white dark:bg-slate-700 shadow-sm text-red-600' : 'text-gray-500 dark:text-gray-400'}`}
+                >
+                  Programadas
+                </button>
+              </div>
+            )}
             
             {/* Mobile View Mode Toggle */}
             <div className="flex sm:hidden bg-gray-100 dark:bg-slate-800 rounded-xl p-1">
@@ -1442,15 +774,20 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
                 </button>
                 <button 
                   onClick={() => {
-                    setEditingTask({});
-                    setSelectedImages([]);
-                    setPreviews([]);
-                    setShowTaskModal(true);
+                    if (activeTab === 'SCHEDULED') {
+                      setEditingScheduledTask({ active: true, recurrence: TaskRecurrence.DAILY });
+                      setShowScheduledModal(true);
+                    } else {
+                      setEditingTask({});
+                      setSelectedImages([]);
+                      setPreviews([]);
+                      setShowTaskModal(true);
+                    }
                   }}
                   className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold uppercase tracking-wider rounded-full transition-all active:scale-95 shadow-lg shadow-red-600/20"
                 >
                   <Plus size={14} strokeWidth={3} />
-                  <span>Nueva Tarea</span>
+                  <span>{activeTab === 'SCHEDULED' ? 'Programar Tarea' : 'Nueva Tarea'}</span>
                 </button>
               </div>
             )}
@@ -1458,8 +795,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
         </div>
 
         {/* Filters and Week Navigation inside sticky header */}
-        {activeTab === 'TASKS' && (
-          <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-2">
             <div className="flex gap-2">
               <select 
                 value={statusFilter}
@@ -1513,48 +849,62 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
               </div>
             )}
           </div>
-        )}
       </div>
 
       <div className="p-4 md:p-6 space-y-10">
-        {activeTab === 'TASKS' ? (
-          <>
-            {/* SECTION: TASKS (HIGH IMPACT ACTION STYLE) */}
-            {viewMode === 'LIST' ? (
-              <div className="space-y-6">
-                {/* Week navigation removed from here as it is now in the sticky header */}
+        {/* SECTION: TASKS (HIGH IMPACT ACTION STYLE) */}
+        {activeTab === 'ACTIVE' ? (
+          viewMode === 'LIST' ? (
+            <div className="space-y-6">
+              {/* Week navigation removed from here as it is now in the sticky header */}
 
-                {listTasks.length === 0 ? (
-                  <div className="py-24 text-center bg-white dark:bg-slate-900 rounded-[2.5rem] border-4 border-dashed border-gray-200 dark:border-slate-800 shadow-inner">
-                    <ClipboardCheck size={80} className="mx-auto mb-6 text-gray-300 dark:text-slate-700" />
-                    <p className="text-3xl font-black text-gray-400 dark:text-slate-600 uppercase tracking-tighter">Sin Tareas Activas</p>
-                    <p className="text-gray-400 dark:text-slate-500 font-medium mt-2">¡Todo al día en esta semana!</p>
-                  </div>
-                ) : (
-                  listTasks.map(task => (
-                    <TaskCard 
-                      key={task.id}
-                      task={task}
-                      currentUser={currentUser}
-                      onToggleChecklist={handleToggleChecklistItem}
-                      onStart={handleStartTask}
-                      onComplete={handleCompleteTask}
-                      onEdit={handleEditTask}
-                      onDelete={handleDeleteTaskConfirm}
-                      onComment={handleCommentTask}
-                      onShare={handleShareTaskAction}
-                      onSharePdf={handleSharePdfAction}
-                      onViewImages={handleViewImagesAction}
-                    />
-                  ))
-                )}
+              {listTasks.length === 0 ? (
+                <div className="py-24 text-center bg-white dark:bg-slate-900 rounded-[2.5rem] border-4 border-dashed border-gray-200 dark:border-slate-800 shadow-inner">
+                  <ClipboardCheck size={80} className="mx-auto mb-6 text-gray-300 dark:text-slate-700" />
+                  <p className="text-3xl font-black text-gray-400 dark:text-slate-600 uppercase tracking-tighter">Sin Tareas Activas</p>
+                  <p className="text-gray-400 dark:text-slate-500 font-medium mt-2">¡Todo al día en esta semana!</p>
+                </div>
+              ) : (
+                listTasks.map(task => (
+                  <TaskCard 
+                    key={task.id}
+                    task={task}
+                    currentUser={currentUser}
+                    onToggleChecklist={handleToggleChecklistItem}
+                    onStart={handleStartTask}
+                    onComplete={handleCompleteTask}
+                    onEdit={handleEditTask}
+                    onDelete={handleDeleteTaskConfirm}
+                    onComment={handleCommentTask}
+                    onShare={handleShareTaskAction}
+                    onSharePdf={handleSharePdfAction}
+                    onViewImages={handleViewImagesAction}
+                  />
+                ))
+              )}
+            </div>
+          ) : (
+            renderCalendarView()
+          )
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {scheduledTasks.length === 0 ? (
+              <div className="col-span-full py-24 text-center bg-white dark:bg-slate-900 rounded-[2.5rem] border-4 border-dashed border-gray-200 dark:border-slate-800 shadow-inner">
+                <Clock size={80} className="mx-auto mb-6 text-gray-300 dark:text-slate-700" />
+                <p className="text-3xl font-black text-gray-400 dark:text-slate-600 uppercase tracking-tighter">Sin Tareas Programadas</p>
+                <p className="text-gray-400 dark:text-slate-500 font-medium mt-2">Programa tareas recurrentes para ahorrar tiempo.</p>
               </div>
             ) : (
-              renderCalendarView()
+              scheduledTasks.map(task => (
+                <ScheduledTaskCard 
+                  key={task.id}
+                  task={task}
+                  onEdit={(t) => { setEditingScheduledTask(t); setShowScheduledModal(true); }}
+                  onDelete={(t) => setScheduledToDelete(t)}
+                />
+              ))
             )}
-          </>
-        ) : (
-          renderSalonesView()
+          </div>
         )}
       </div>
 
@@ -1710,6 +1060,30 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
                       </div>
                    </div>
                 </div>
+
+                {/* Recurrence Field */}
+                {currentUser.role === UserRole.ADMIN && (
+                  <div>
+                     <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Recurrencia (Programar)</label>
+                     <div className="relative">
+                       <select 
+                         disabled={!canManageTasks}
+                         value={editingTask?.recurrence || TaskRecurrence.NONE}
+                         onChange={e => setEditingTask({ ...editingTask, recurrence: e.target.value as TaskRecurrence })}
+                         className="w-full pl-4 pr-10 py-4 font-bold bg-gray-50 dark:bg-slate-800/50 border-2 border-gray-200 dark:border-slate-700 rounded-2xl focus:border-red-500 outline-none appearance-none dark:text-white text-sm"
+                       >
+                         <option value={TaskRecurrence.NONE}>Ninguna (Tarea Única)</option>
+                         <option value={TaskRecurrence.DAILY}>Diaria</option>
+                         <option value={TaskRecurrence.WEEKLY}>Semanal</option>
+                         <option value={TaskRecurrence.MONTHLY}>Mensual</option>
+                       </select>
+                       <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={18} />
+                     </div>
+                     <p className="text-[10px] font-bold text-gray-400 dark:text-slate-500 mt-2 ml-1 italic">
+                       * Si seleccionas una recurrencia, la tarea se guardará como programada y se generará automáticamente.
+                     </p>
+                  </div>
+                )}
 
                 <div>
                    <div className="flex justify-between items-center mb-2">
@@ -1885,6 +1259,161 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
         </div>
       )}
 
+      {/* Scheduled Task Modal */}
+      {showScheduledModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in overflow-y-auto">
+          <div className="bg-white dark:bg-slate-950 rounded-[2.5rem] w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl border border-gray-100 dark:border-slate-800 relative">
+             {/* Modal Header */}
+             <div className="p-6 border-b border-gray-100 dark:border-slate-800 flex justify-between items-center bg-gray-50/50 dark:bg-slate-900/50 rounded-t-[2.5rem]">
+                <div className="flex items-center gap-3">
+                   <div className="p-3 bg-red-600 text-white rounded-2xl shadow-lg shadow-red-600/20">
+                      <Clock size={24} strokeWidth={3} />
+                   </div>
+                   <div>
+                      <h3 className="text-2xl font-black text-gray-900 dark:text-white uppercase tracking-tight">
+                        {editingScheduledTask?.id ? 'Editar Programación' : 'Programar Nueva Tarea'}
+                      </h3>
+                      <p className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-widest">Configura la recurrencia</p>
+                   </div>
+                </div>
+                <button onClick={() => setShowScheduledModal(false)} className="p-3 hover:bg-gray-200 dark:hover:bg-slate-800 rounded-2xl transition-colors text-gray-400">
+                   <X size={24} strokeWidth={3} />
+                </button>
+             </div>
+
+             {/* Modal Body */}
+             <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                <div>
+                   <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Título de la Tarea</label>
+                   <input 
+                     value={editingScheduledTask?.title || ''}
+                     onChange={e => setEditingScheduledTask({ ...editingScheduledTask, title: e.target.value })}
+                     className="w-full px-5 py-4 text-xl font-black bg-gray-50 dark:bg-slate-800/50 border-2 border-gray-200 dark:border-slate-700 rounded-2xl focus:border-red-500 focus:bg-white dark:focus:bg-slate-900 outline-none transition-all dark:text-white placeholder-gray-400"
+                     placeholder="¿QUÉ HAY QUE HACER?"
+                   />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                   <div>
+                      <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Departamento</label>
+                      <div className="relative">
+                        <select 
+                          value={editingScheduledTask?.departmentId || ''}
+                          onChange={e => setEditingScheduledTask({ ...editingScheduledTask, departmentId: e.target.value })}
+                          className="w-full pl-4 pr-10 py-4 font-bold bg-gray-50 dark:bg-slate-800/50 border-2 border-gray-200 dark:border-slate-700 rounded-2xl focus:border-red-500 outline-none appearance-none dark:text-white text-sm"
+                        >
+                          <option value="" disabled>Seleccionar</option>
+                          {departments.map(d => (
+                            <option key={d.id} value={d.id}>{d.name}</option>
+                          ))}
+                        </select>
+                        <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={18} />
+                      </div>
+                   </div>
+                   <div>
+                      <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Recurrencia</label>
+                      <div className="relative">
+                        <select 
+                          value={editingScheduledTask?.recurrence || TaskRecurrence.DAILY}
+                          onChange={e => setEditingScheduledTask({ ...editingScheduledTask, recurrence: e.target.value as TaskRecurrence })}
+                          className="w-full pl-4 pr-10 py-4 font-bold bg-gray-50 dark:bg-slate-800/50 border-2 border-gray-200 dark:border-slate-700 rounded-2xl focus:border-red-500 outline-none appearance-none dark:text-white text-sm"
+                        >
+                          <option value={TaskRecurrence.DAILY}>Diaria</option>
+                          <option value={TaskRecurrence.WEEKLY}>Semanal</option>
+                          <option value={TaskRecurrence.MONTHLY}>Mensual</option>
+                        </select>
+                        <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={18} />
+                      </div>
+                   </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                   <div>
+                      <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Prioridad</label>
+                      <div className="relative">
+                        <select 
+                          value={editingScheduledTask?.priority || TaskPriority.MEDIUM}
+                          onChange={e => setEditingScheduledTask({ ...editingScheduledTask, priority: e.target.value as TaskPriority })}
+                          className="w-full pl-4 pr-10 py-4 font-bold bg-gray-50 dark:bg-slate-800/50 border-2 border-gray-200 dark:border-slate-700 rounded-2xl focus:border-red-500 outline-none appearance-none dark:text-white text-sm"
+                        >
+                          <option value={TaskPriority.LOW}>Baja</option>
+                          <option value={TaskPriority.MEDIUM}>Normal</option>
+                          <option value={TaskPriority.HIGH}>Alta / Urgente</option>
+                        </select>
+                        <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={18} />
+                      </div>
+                   </div>
+                   <div>
+                      <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Estado</label>
+                      <div className="flex bg-gray-100 dark:bg-slate-800 rounded-2xl p-1">
+                        <button
+                          onClick={() => setEditingScheduledTask({ ...editingScheduledTask, active: true })}
+                          className={`flex-1 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${editingScheduledTask?.active ? 'bg-white dark:bg-slate-700 shadow-sm text-green-600' : 'text-gray-500'}`}
+                        >
+                          Activa
+                        </button>
+                        <button
+                          onClick={() => setEditingScheduledTask({ ...editingScheduledTask, active: false })}
+                          className={`flex-1 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${!editingScheduledTask?.active ? 'bg-white dark:bg-slate-700 shadow-sm text-red-600' : 'text-gray-500'}`}
+                        >
+                          Pausada
+                        </button>
+                      </div>
+                   </div>
+                </div>
+
+                <div>
+                   <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Descripción (Opcional)</label>
+                   <textarea 
+                     value={editingScheduledTask?.description || ''}
+                     onChange={e => setEditingScheduledTask({ ...editingScheduledTask, description: e.target.value })}
+                     className="w-full px-5 py-4 font-bold text-base bg-gray-50 dark:bg-slate-800/50 border-2 border-gray-200 dark:border-slate-700 rounded-2xl focus:border-red-500 focus:bg-white dark:focus:bg-slate-900 outline-none transition-all min-h-[120px] dark:text-white placeholder-gray-400 resize-none"
+                     placeholder="Instrucciones para las tareas generadas..."
+                   />
+                </div>
+
+                {saveError && (
+                  <div className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 p-4 rounded-2xl text-center font-bold text-sm border-2 border-red-100 dark:border-red-900/30 flex items-center justify-center gap-2">
+                    <AlertTriangle size={18} /> {saveError}
+                  </div>
+                )}
+             </div>
+
+             {/* Modal Footer */}
+             <div className="p-6 border-t border-gray-100 dark:border-slate-800 bg-gray-50 dark:bg-slate-900 flex gap-4 sticky bottom-0 z-10 rounded-b-[2.5rem]">
+                <button onClick={() => setShowScheduledModal(false)} className="flex-1 py-4 font-bold text-gray-500 dark:text-slate-400 hover:bg-gray-200 dark:hover:bg-slate-800 rounded-2xl transition-colors">
+                  Cancelar
+                </button>
+                <button 
+                  onClick={handleSaveScheduledTask} 
+                  disabled={isSaving}
+                  className="flex-[2] py-4 bg-red-600 hover:bg-red-700 text-white font-black uppercase tracking-wider rounded-2xl shadow-xl shadow-button-red active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-70"
+                >
+                  {isSaving ? <Loader2 className="animate-spin" strokeWidth={3} /> : <Save size={22} strokeWidth={3} />}
+                  {isSaving ? 'Guardando...' : 'GUARDAR PROGRAMACIÓN'}
+                </button>
+             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Scheduled Confirmation Modal */}
+      {scheduledToDelete && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="bg-white dark:bg-slate-800 rounded-[2.5rem] w-full max-w-sm p-8 text-center shadow-2xl border-2 border-gray-100 dark:border-slate-700">
+            <div className="w-20 h-20 bg-red-50 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-6 text-red-600 dark:text-red-500 shadow-inner">
+               <Trash2 size={40} />
+            </div>
+            <h3 className="text-2xl font-black text-gray-900 dark:text-white uppercase mb-2 tracking-tight">¿Eliminar Programación?</h3>
+            <p className="text-gray-500 dark:text-slate-400 mb-8 font-bold text-lg">Las tareas ya generadas no se eliminarán.</p>
+            <div className="flex gap-4">
+              <button onClick={() => setScheduledToDelete(null)} className="flex-1 py-4 font-bold text-gray-600 dark:text-slate-400 bg-gray-100 dark:bg-slate-700 rounded-2xl hover:bg-gray-200 transition-colors">Cancelar</button>
+              <button onClick={handleDeleteScheduledTask} className="flex-1 py-4 font-bold text-white bg-red-600 rounded-2xl hover:bg-red-700 shadow-lg shadow-button-red transition-all">ELIMINAR</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {viewingImages && (
         <ImageViewer 
           images={viewingImages.images}
@@ -1899,155 +1428,6 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
         url={shareData.url} 
         title={shareData.title} 
       />
-
-      {/* Reservation Modal */}
-      {showReservationModal && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-          <div className="bg-white dark:bg-slate-900 w-full max-w-lg rounded-[2.5rem] shadow-2xl overflow-hidden animate-slide-up border border-gray-200 dark:border-slate-800">
-            <div className="px-8 py-6 border-b border-gray-100 dark:border-slate-800 flex justify-between items-center">
-              <div>
-                <h3 className="text-2xl font-black text-gray-900 dark:text-white uppercase tracking-tight">
-                  {editingReservation?.id ? 'Editar Reserva' : 'Nueva Reserva'}
-                </h3>
-                <div className="flex items-center gap-2 mt-1">
-                  <p className="text-xs font-black text-red-600 uppercase tracking-widest">
-                    {rooms.find(r => r.id === activeRoomId)?.name || 'Salón'}
-                  </p>
-                  <span className="text-gray-300 dark:text-slate-700">•</span>
-                  <p className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-widest">
-                    {selectedTableId ? `Mesa ${tables.find(t => t.id === selectedTableId)?.number}` : 'Seleccione una mesa'}
-                  </p>
-                </div>
-              </div>
-              <button 
-                onClick={() => {
-                  setShowReservationModal(false);
-                  setEditingReservation(null);
-                  setSelectedTableId(null);
-                }} 
-                className="bg-gray-100 dark:bg-slate-800 p-2 rounded-full text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors"
-              >
-                <X size={24} />
-              </button>
-            </div>
-
-            <div className="p-8 space-y-6">
-              <div className="space-y-4">
-                <div className="relative group">
-                  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-red-500 transition-colors">
-                    <UserIcon size={18} />
-                  </div>
-                  <input
-                    type="text"
-                    placeholder="Nombre del Cliente"
-                    value={editingReservation?.clientName || ''}
-                    onChange={(e) => setEditingReservation(prev => ({ ...prev!, clientName: e.target.value }))}
-                    className="w-full pl-12 pr-4 py-4 bg-gray-50 dark:bg-slate-800 border-2 border-transparent focus:border-red-500 rounded-2xl outline-none font-bold text-gray-900 dark:text-white transition-all"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="relative group">
-                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-red-500 transition-colors">
-                      <Phone size={18} />
-                    </div>
-                    <input
-                      type="tel"
-                      placeholder="Teléfono"
-                      value={editingReservation?.phoneNumber || ''}
-                      onChange={(e) => setEditingReservation(prev => ({ ...prev!, phoneNumber: e.target.value }))}
-                      className="w-full pl-12 pr-4 py-4 bg-gray-50 dark:bg-slate-800 border-2 border-transparent focus:border-red-500 rounded-2xl outline-none font-bold text-gray-900 dark:text-white transition-all"
-                    />
-                  </div>
-                  <div className="relative group">
-                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-red-500 transition-colors">
-                      <Hash size={18} />
-                    </div>
-                    <input
-                      type="number"
-                      placeholder="Personas"
-                      value={editingReservation?.numPeople || ''}
-                      onChange={(e) => setEditingReservation(prev => ({ ...prev!, numPeople: parseInt(e.target.value) || 0 }))}
-                      className="w-full pl-12 pr-4 py-4 bg-gray-50 dark:bg-slate-800 border-2 border-transparent focus:border-red-500 rounded-2xl outline-none font-bold text-gray-900 dark:text-white transition-all"
-                    />
-                  </div>
-                </div>
-
-                <div className="relative group">
-                  <div className="absolute left-4 top-4 text-gray-400 group-focus-within:text-red-500 transition-colors">
-                    <ClipboardCheck size={18} />
-                  </div>
-                  <textarea
-                    placeholder="Notas adicionales..."
-                    value={editingReservation?.notes || ''}
-                    onChange={(e) => setEditingReservation(prev => ({ ...prev!, notes: e.target.value }))}
-                    rows={3}
-                    className="w-full pl-12 pr-4 py-4 bg-gray-50 dark:bg-slate-800 border-2 border-transparent focus:border-red-500 rounded-2xl outline-none font-bold text-gray-900 dark:text-white transition-all resize-none"
-                  />
-                </div>
-              </div>
-
-              <button
-                onClick={handleSaveReservation}
-                className="w-full py-5 bg-red-600 hover:bg-red-700 text-white font-black text-xl rounded-2xl shadow-xl shadow-red-500/20 transition-all transform hover:-translate-y-1 active:scale-95 uppercase tracking-wider"
-              >
-                {editingReservation?.id ? 'Actualizar Reserva' : 'Confirmar Reserva'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL: NEW / EDIT ROOM */}
-      {showRoomModal && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in">
-          <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col animate-slide-up border-2 border-gray-100 dark:border-slate-800">
-            <div className="px-8 py-6 border-b border-gray-100 dark:border-slate-800 flex justify-between items-center">
-              <h3 className="text-2xl font-black text-gray-900 dark:text-white uppercase tracking-tight">
-                {editingRoom?.id ? 'Editar Salón' : 'Nuevo Salón'}
-              </h3>
-              <button onClick={() => setShowRoomModal(false)} className="p-2 bg-gray-100 dark:bg-slate-800 rounded-full text-gray-500 hover:text-red-600 transition-colors">
-                <X size={24} />
-              </button>
-            </div>
-
-            <div className="p-8 space-y-6">
-              <div>
-                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Nombre del Salón</label>
-                <input 
-                  value={editingRoom?.name || ''}
-                  onChange={e => setEditingRoom({ ...editingRoom, name: e.target.value })}
-                  className="w-full px-5 py-4 text-xl font-black bg-gray-50 dark:bg-slate-800 border-2 border-gray-200 dark:border-slate-700 rounded-2xl focus:border-red-500 outline-none dark:text-white"
-                  placeholder="Ej: Gastro Bar"
-                  autoFocus
-                />
-              </div>
-
-              <div className="flex gap-4">
-                <button 
-                  onClick={handleSaveRoom}
-                  className="flex-1 py-4 bg-red-600 hover:bg-red-700 text-white rounded-2xl font-black uppercase tracking-widest text-sm shadow-lg shadow-red-200 dark:shadow-none transition-all active:scale-95"
-                >
-                  Guardar
-                </button>
-                {editingRoom?.id && (
-                  <button 
-                    onClick={async () => {
-                      if (window.confirm('¿Eliminar salón y todas sus mesas/reservas?')) {
-                        await storageService.deleteRoom(editingRoom.id!);
-                        setShowRoomModal(false);
-                      }
-                    }}
-                    className="p-4 bg-red-50 text-red-600 hover:bg-red-100 rounded-2xl transition-all"
-                  >
-                    <Trash2 size={20} />
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Floating Action Button for Mobile removed for cleaner UI */}
 

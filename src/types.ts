@@ -86,6 +86,13 @@ export enum TaskType {
   ANNOUNCEMENT = 'ANNOUNCEMENT',
 }
 
+export enum TaskRecurrence {
+  NONE = 'NONE',
+  DAILY = 'DAILY',
+  WEEKLY = 'WEEKLY',
+  MONTHLY = 'MONTHLY',
+}
+
 // New: Interface for comments within a task
 export interface TaskComment {
   id: string;
@@ -125,6 +132,25 @@ export interface Task {
   comments?: TaskComment[]; // New: Thread for discussions
   seenBy?: string[]; // New: Array of user IDs who have seen the latest update
   checklist?: TaskChecklistItem[]; // New: Interactive checklist for tasks
+  recurrence?: TaskRecurrence; // New: Recurrence for scheduled tasks
+}
+
+export interface ScheduledTask {
+  id: string;
+  title: string;
+  description?: string;
+  priority: TaskPriority;
+  location?: string;
+  departmentId: string;
+  departmentName: string;
+  createdBy: string;
+  createdById: string;
+  createdAt: number;
+  type: TaskType;
+  checklist?: TaskChecklistItem[];
+  recurrence: TaskRecurrence;
+  lastGeneratedAt?: number;
+  active: boolean;
 }
 
 // --- Notification System Types ---
@@ -168,56 +194,4 @@ export interface Document {
   fileType: string; // e.g., 'application/pdf'
   uploadedBy: string; // User's name
   createdAt: number; // Timestamp
-}
-
-// --- New Salones / Reservation Types ---
-export interface RoomElement {
-  id: string;
-  type: 'WALL' | 'TEXT' | 'DOOR' | 'WINDOW' | 'AREA_LABEL';
-  x: number;
-  y: number;
-  width?: number;
-  height?: number;
-  rotation?: number;
-  text?: string;
-  fontSize?: number;
-  color?: string;
-}
-
-export interface Room {
-  id: string;
-  name: string;
-  floorPlanUrl?: string; // Optional background image
-  elements?: RoomElement[]; // New: Custom floor plan elements
-  createdAt: number;
-}
-
-export interface Table {
-  id: string;
-  roomId: string; // Associated room
-  number: string;
-  capacity: number;
-  status: 'AVAILABLE' | 'OCCUPIED' | 'RESERVED';
-  x: number; // Percentage-based position for responsiveness
-  y: number; // Percentage-based position for responsiveness
-  width: number; // Percentage-based width
-  height: number; // Percentage-based height
-  shape: 'SQUARE' | 'RECTANGLE' | 'CIRCLE';
-}
-
-export interface Reservation {
-  id: string;
-  roomId: string; // Associated room
-  clientName: string;
-  phoneNumber: string;
-  numPeople: number; // "numero de personas en mesas"
-  numDiners: number; // "numero de comensales"
-  tableNumber: string;
-  tableId: string;
-  startTime: number;
-  endTime?: number;
-  status: 'PENDING' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
-  notes?: string;
-  createdAt: number;
-  createdBy: string;
 }

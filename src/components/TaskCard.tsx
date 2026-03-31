@@ -6,9 +6,9 @@ import { DeletionTimer } from './DeletionTimer';
 interface TaskCardProps {
   task: Task;
   currentUser: User;
-  onToggleChecklist: (taskId: string, index: number, checklist: TaskChecklistItem[]) => void;
+  onToggleChecklist: (task: Task, index: number) => void;
   onStart: (taskId: string) => void;
-  onComplete: (taskId: string) => void;
+  onComplete: (task: Task) => void;
   onEdit: (task: Task) => void;
   onDelete: (task: Task) => void;
   onComment: (taskId: string) => void;
@@ -192,7 +192,7 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
                   }`}
                 >
                   <button
-                    onClick={() => onToggleChecklist(task.id, index, task.checklist!)}
+                    onClick={() => onToggleChecklist(task, index)}
                     className={`mt-0.5 w-6 h-6 rounded-md flex items-center justify-center shrink-0 border-2 transition-colors ${
                       item.isCompleted 
                         ? 'bg-green-500 border-green-500 text-white' 
@@ -279,7 +279,7 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
                   </button>
                 )}
                 <button 
-                  onClick={() => onComplete(task.id)}
+                  onClick={() => onComplete(task)}
                   className="flex-1 sm:flex-none px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white text-[10px] sm:text-xs font-black uppercase tracking-wider rounded-xl shadow-lg shadow-green-200 dark:shadow-none transition-all active:scale-95 flex items-center justify-center gap-1.5"
                 >
                   <Check size={16} strokeWidth={4} /> Completar
@@ -287,7 +287,7 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
               </div>
             )}
             
-            {task.status === TaskStatus.COMPLETED && task.completedAt && (
+            {task.status === TaskStatus.COMPLETED && task.completedAt && !task.recurrence && (
               <DeletionTimer 
                 completedAt={task.completedAt} 
               />
