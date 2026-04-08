@@ -1,0 +1,191 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Application user",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "role": { "type": "string", "enum": ["ADMIN", "STAFF", "GUEST", "PROVIDER"] },
+        "pin": { "type": "string" },
+        "permissions": { "type": "array", "items": { "type": "string" } },
+        "pushToken": { "type": "string" },
+        "draftCart": { "type": "array" }
+      },
+      "required": ["id", "name", "role", "pin"]
+    },
+    "Department": {
+      "title": "Department",
+      "description": "Hotel department",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" }
+      },
+      "required": ["id", "name"]
+    },
+    "Product": {
+      "title": "Product",
+      "description": "Inventory product",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "category": { "type": "string" },
+        "quantity": { "type": "number" },
+        "unit": { "type": "string" },
+        "minThreshold": { "type": "number" },
+        "departmentId": { "type": "string" },
+        "departmentName": { "type": "string" },
+        "departmentIds": { "type": "array", "items": { "type": "string" } },
+        "departmentNames": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["id", "name", "quantity", "unit"]
+    },
+    "ReplenishmentRequest": {
+      "title": "ReplenishmentRequest",
+      "description": "Stock replenishment request",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "batchId": { "type": "string" },
+        "productId": { "type": "string" },
+        "productName": { "type": "string" },
+        "departmentId": { "type": "string" },
+        "departmentName": { "type": "string" },
+        "requestedBy": { "type": "string" },
+        "quantity": { "type": "number" },
+        "status": { "type": "string", "enum": ["PENDING", "COMPLETED"] },
+        "date": { "type": "string" },
+        "timestamp": { "type": "number" },
+        "unit": { "type": "string" }
+      },
+      "required": ["id", "productId", "productName", "quantity", "status"]
+    },
+    "Task": {
+      "title": "Task",
+      "description": "Hotel task or announcement",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "status": { "type": "string", "enum": ["PENDING", "IN_PROGRESS", "COMPLETED"] },
+        "priority": { "type": "string", "enum": ["LOW", "MEDIUM", "HIGH"] },
+        "location": { "type": "string" },
+        "departmentId": { "type": "string" },
+        "departmentName": { "type": "string" },
+        "createdBy": { "type": "string" },
+        "createdById": { "type": "string" },
+        "createdAt": { "type": "number" },
+        "startDate": { "type": "number" },
+        "dueDate": { "type": "number" },
+        "completedBy": { "type": "string" },
+        "completedAt": { "type": "number" },
+        "imageUrls": { "type": "array", "items": { "type": "string" } },
+        "type": { "type": "string", "enum": ["TASK", "ANNOUNCEMENT"] },
+        "comments": { "type": "array" },
+        "seenBy": { "type": "array", "items": { "type": "string" } },
+        "checklist": { "type": "array" },
+        "recurrence": { "type": "string", "enum": ["NONE", "DAILY", "WEEKLY", "MONTHLY"] }
+      },
+      "required": ["id", "title", "status", "priority", "departmentId", "createdAt", "type"]
+    },
+    "ScheduledTask": {
+      "title": "ScheduledTask",
+      "description": "Recurring task template",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "priority": { "type": "string", "enum": ["LOW", "MEDIUM", "HIGH"] },
+        "location": { "type": "string" },
+        "departmentId": { "type": "string" },
+        "departmentName": { "type": "string" },
+        "createdBy": { "type": "string" },
+        "createdById": { "type": "string" },
+        "createdAt": { "type": "number" },
+        "type": { "type": "string", "enum": ["TASK", "ANNOUNCEMENT"] },
+        "checklist": { "type": "array" },
+        "imageUrls": { "type": "array", "items": { "type": "string" } },
+        "recurrence": { "type": "string", "enum": ["NONE", "DAILY", "WEEKLY", "MONTHLY"] },
+        "lastGeneratedAt": { "type": "number" },
+        "active": { "type": "boolean" }
+      },
+      "required": ["id", "title", "priority", "departmentId", "createdAt", "type", "recurrence", "active"]
+    },
+    "AppNotification": {
+      "title": "AppNotification",
+      "description": "System notification",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "type": "string", "enum": ["LOW_STOCK", "NEW_ORDER", "NEW_TASK", "STOCK_RECEIVED"] },
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "icon": { "type": "string" },
+        "timestamp": { "type": "number" },
+        "readStatus": { "type": "boolean" },
+        "reviewedBy": { "type": "string" },
+        "reviewedAt": { "type": "number" },
+        "payload": { "type": "object" }
+      },
+      "required": ["id", "type", "title", "message", "timestamp", "readStatus"]
+    },
+    "Document": {
+      "title": "Document",
+      "description": "Uploaded document",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "url": { "type": "string" },
+        "category": { "type": "string" },
+        "fileType": { "type": "string" },
+        "uploadedBy": { "type": "string" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["id", "name", "url", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/hotel_victoria_users/{userId}": {
+      "schema": "User",
+      "description": "Users collection"
+    },
+    "/hotel_victoria_departments/{deptId}": {
+      "schema": "Department",
+      "description": "Departments collection"
+    },
+    "/hotel_victoria_products/{productId}": {
+      "schema": "Product",
+      "description": "Products collection"
+    },
+    "/hotel_victoria_requests/{reqId}": {
+      "schema": "ReplenishmentRequest",
+      "description": "Requests collection"
+    },
+    "/hotel_victoria_tasks/{taskId}": {
+      "schema": "Task",
+      "description": "Tasks collection"
+    },
+    "/hotel_victoria_scheduled_tasks/{taskId}": {
+      "schema": "ScheduledTask",
+      "description": "Scheduled tasks collection"
+    },
+    "/hotel_victoria_notifications/{notifId}": {
+      "schema": "AppNotification",
+      "description": "Notifications collection"
+    },
+    "/hotel_victoria_documents/{docId}": {
+      "schema": "Document",
+      "description": "Documents collection"
+    },
+    "/hotel_victoria_system/{docId}": {
+      "schema": "object",
+      "description": "System configuration"
+    }
+  }
+}

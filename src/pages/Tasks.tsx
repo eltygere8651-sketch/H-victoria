@@ -199,12 +199,14 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
         active: editingScheduledTask.active !== undefined ? editingScheduledTask.active : true,
       };
 
-      await storageService.saveScheduledTask(taskData);
+      await storageService.saveScheduledTask(taskData, selectedImages);
       if (currentUser.role === UserRole.ADMIN) {
         await storageService.processScheduledTasks(currentUser);
       }
       setShowScheduledModal(false);
       setEditingScheduledTask(null);
+      setSelectedImages([]);
+      setPreviews([]);
       setNewChecklistItemText('');
     } catch (error) {
       console.error(error);
@@ -351,17 +353,31 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
       text: newChecklistItemText.trim(),
       isCompleted: false,
     };
-    setEditingTask({
-      ...editingTask,
-      checklist: [...(editingTask?.checklist || []), newItem]
-    });
+    
+    if (showScheduledModal) {
+      setEditingScheduledTask({
+        ...editingScheduledTask,
+        checklist: [...(editingScheduledTask?.checklist || []), newItem]
+      } as ScheduledTask);
+    } else {
+      setEditingTask({
+        ...editingTask,
+        checklist: [...(editingTask?.checklist || []), newItem]
+      });
+    }
     setNewChecklistItemText('');
   };
 
   const handleRemoveChecklistItem = (index: number) => {
-    const updatedChecklist = [...(editingTask?.checklist || [])];
-    updatedChecklist.splice(index, 1);
-    setEditingTask({ ...editingTask, checklist: updatedChecklist });
+    if (showScheduledModal) {
+      const updatedChecklist = [...(editingScheduledTask?.checklist || [])];
+      updatedChecklist.splice(index, 1);
+      setEditingScheduledTask({ ...editingScheduledTask, checklist: updatedChecklist } as ScheduledTask);
+    } else {
+      const updatedChecklist = [...(editingTask?.checklist || [])];
+      updatedChecklist.splice(index, 1);
+      setEditingTask({ ...editingTask, checklist: updatedChecklist });
+    }
   };
 
   const handleShareTask = useCallback((task: Task) => {
@@ -394,7 +410,38 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
     }
   }, []);
 
-  const ScheduledTaskCard = ({ task, onEdit, onDelete }: { task: ScheduledTask, onEdit: (t: ScheduledTask) => void, onDelete: (t: ScheduledTask) => void }) => (
+  const handleTriggerScheduledTask = async (st: ScheduledTask) => {
+    setIsSaving(true);
+    try {
+      const now = Date.now();
+      const newTask: Partial<Task> = {
+        title: st.title + ' (Programada)',
+        description: st.description,
+        priority: st.priority,
+        location: st.location,
+        departmentId: st.departmentId,
+        departmentName: st.departmentName,
+        status: TaskStatus.PENDING,
+        type: st.type,
+        checklist: st.checklist,
+        createdBy: st.createdBy,
+        createdById: st.createdById,
+        createdAt: now,
+        recurrence: st.recurrence,
+        imageUrls: st.imageUrls,
+      };
+      await storageService.saveTask(newTask);
+      await storageService.saveScheduledTask({ ...st, lastGeneratedAt: now });
+      setActiveTab('ACTIVE');
+    } catch (error) {
+      console.error(error);
+      alert('Error al generar la tarea.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const ScheduledTaskCard = ({ task, onEdit, onDelete, onTrigger }: { task: ScheduledTask, onEdit: (t: ScheduledTask) => void, onDelete: (t: ScheduledTask) => void, onTrigger: (t: ScheduledTask) => void }) => (
     <motion.div 
       layout
       initial={{ opacity: 0, y: 20 }}
@@ -412,6 +459,13 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
           </div>
         </div>
         <div className="flex gap-2">
+          <button 
+            onClick={() => onTrigger(task)} 
+            className="p-2 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-xl hover:bg-red-200 transition-colors"
+            title="Generar ahora"
+          >
+            <Zap size={18} />
+          </button>
           <button onClick={() => onEdit(task)} className="p-2 bg-gray-100 dark:bg-slate-800 rounded-xl text-gray-500 hover:text-blue-600 transition-colors"><Edit2 size={18} /></button>
           <button onClick={() => onDelete(task)} className="p-2 bg-gray-100 dark:bg-slate-800 rounded-xl text-gray-500 hover:text-red-600 transition-colors"><Trash2 size={18} /></button>
         </div>
@@ -451,12 +505,16 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
     const textarea = descriptionInputRef.current;
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
-    const text = editingTask?.description || '';
+    const text = showScheduledModal ? (editingScheduledTask?.description || '') : (editingTask?.description || '');
     
     // If text is selected, wrap it. If not, insert markers and position cursor.
     if (start === end) {
       const newText = text.slice(0, start) + '**' + text.slice(end);
-      setEditingTask({ ...editingTask, description: newText });
+      if (showScheduledModal) {
+        setEditingScheduledTask({ ...editingScheduledTask, description: newText } as ScheduledTask);
+      } else {
+        setEditingTask({ ...editingTask, description: newText });
+      }
       setTimeout(() => {
         textarea.focus();
         textarea.setSelectionRange(start + 1, start + 1);
@@ -464,7 +522,11 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
     } else {
       const selection = text.slice(start, end);
       const newText = text.slice(0, start) + '*' + selection + '*' + text.slice(end);
-      setEditingTask({ ...editingTask, description: newText });
+      if (showScheduledModal) {
+        setEditingScheduledTask({ ...editingScheduledTask, description: newText } as ScheduledTask);
+      } else {
+        setEditingTask({ ...editingTask, description: newText });
+      }
       setTimeout(() => {
         textarea.focus();
         textarea.setSelectionRange(start + 1 + selection.length + 1, start + 1 + selection.length + 1);
@@ -776,6 +838,8 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
                   onClick={() => {
                     if (activeTab === 'SCHEDULED') {
                       setEditingScheduledTask({ active: true, recurrence: TaskRecurrence.DAILY });
+                      setSelectedImages([]);
+                      setPreviews([]);
                       setShowScheduledModal(true);
                     } else {
                       setEditingTask({});
@@ -899,8 +963,14 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
                 <ScheduledTaskCard 
                   key={task.id}
                   task={task}
-                  onEdit={(t) => { setEditingScheduledTask(t); setShowScheduledModal(true); }}
+                  onEdit={(t) => { 
+                    setEditingScheduledTask(t); 
+                    setSelectedImages([]);
+                    setPreviews([]);
+                    setShowScheduledModal(true); 
+                  }}
                   onDelete={(t) => setScheduledToDelete(t)}
+                  onTrigger={handleTriggerScheduledTask}
                 />
               ))
             )}
@@ -1363,13 +1433,112 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
                 </div>
 
                 <div>
-                   <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Descripción (Opcional)</label>
+                   <div className="flex justify-between items-center mb-2">
+                      <label className="block text-xs font-black text-gray-400 uppercase tracking-widest ml-1">Descripción (Opcional)</label>
+                      
+                      {/* Editor Toolbar */}
+                      <button 
+                        onClick={insertUrgentMarker}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-900/20 dark:hover:bg-red-900/40 dark:text-red-400 rounded-lg text-[10px] font-black uppercase tracking-wider transition-colors active:scale-95"
+                        type="button"
+                        title="Resaltar texto seleccionado como urgente"
+                      >
+                        <Flame size={12} fill="currentColor" />
+                        Resaltar Urgencia
+                      </button>
+                   </div>
+                   
                    <textarea 
+                     ref={descriptionInputRef}
                      value={editingScheduledTask?.description || ''}
                      onChange={e => setEditingScheduledTask({ ...editingScheduledTask, description: e.target.value })}
                      className="w-full px-5 py-4 font-bold text-base bg-gray-50 dark:bg-slate-800/50 border-2 border-gray-200 dark:border-slate-700 rounded-2xl focus:border-red-500 focus:bg-white dark:focus:bg-slate-900 outline-none transition-all min-h-[120px] dark:text-white placeholder-gray-400 resize-none"
                      placeholder="Instrucciones para las tareas generadas..."
                    />
+                   <p className="text-[10px] font-bold text-gray-400 dark:text-slate-500 mt-2 flex items-center gap-1.5 ml-1">
+                     <Info size={12} />
+                     <span>Tip: Usa <span className="text-red-500 font-mono bg-red-50 dark:bg-red-900/20 px-1 rounded">*asteriscos*</span> para marcar texto urgente.</span>
+                   </p>
+                </div>
+
+                {/* Checklist Input */}
+                <div>
+                   <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Lista de Tareas (Checklist)</label>
+                   
+                   {/* Existing Checklist Items */}
+                   {editingScheduledTask?.checklist && editingScheduledTask.checklist.length > 0 && (
+                     <div className="space-y-2 mb-3">
+                       {editingScheduledTask.checklist.map((item, index) => (
+                         <div key={item.id} className="flex items-center gap-2 bg-gray-50 dark:bg-slate-800/50 p-2 rounded-xl border border-gray-200 dark:border-slate-700">
+                           <div className="w-5 h-5 rounded border-2 border-gray-300 dark:border-slate-600 flex-shrink-0"></div>
+                           <span className="flex-1 text-sm font-bold text-gray-700 dark:text-slate-300">{item.text}</span>
+                           <button 
+                             onClick={() => handleRemoveChecklistItem(index)}
+                             className="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                           >
+                             <X size={16} strokeWidth={3} />
+                           </button>
+                         </div>
+                       ))}
+                     </div>
+                   )}
+
+                   {/* Add New Item */}
+                   <div className="flex gap-2">
+                     <input 
+                       value={newChecklistItemText}
+                       onChange={e => setNewChecklistItemText(e.target.value)}
+                       onKeyDown={e => e.key === 'Enter' && handleAddChecklistItem()}
+                       className="flex-1 px-4 py-3 font-bold text-sm bg-gray-50 dark:bg-slate-800/50 border-2 border-gray-200 dark:border-slate-700 rounded-xl focus:border-red-500 focus:bg-white dark:focus:bg-slate-900 outline-none transition-all dark:text-white placeholder-gray-400"
+                       placeholder="Añadir elemento a la lista..."
+                     />
+                     <button 
+                       onClick={handleAddChecklistItem}
+                       disabled={!newChecklistItemText.trim()}
+                       className="px-4 py-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-black uppercase tracking-wider rounded-xl disabled:opacity-50 transition-all active:scale-95"
+                     >
+                       Añadir
+                     </button>
+                   </div>
+                </div>
+
+                <div>
+                   <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Imágenes de Ejemplo</label>
+                   <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar">
+                      {/* BUTTON 1: CAMERA */}
+                      <button 
+                        onClick={() => cameraInputRef.current?.click()}
+                        className="w-24 h-24 rounded-2xl border-2 border-dashed border-gray-300 dark:border-slate-600 flex flex-col items-center justify-center text-gray-400 hover:text-red-500 hover:border-red-500 hover:bg-red-50 dark:hover:bg-slate-800 transition-all flex-shrink-0 group"
+                      >
+                        <Camera size={28} className="group-hover:scale-110 transition-transform"/>
+                        <span className="text-[10px] font-black mt-1 uppercase tracking-wide">FOTO</span>
+                      </button>
+
+                      {/* BUTTON 2: GALLERY */}
+                      <button 
+                        onClick={() => fileInputRef.current?.click()}
+                        className="w-24 h-24 rounded-2xl border-2 border-dashed border-gray-300 dark:border-slate-600 flex flex-col items-center justify-center text-gray-400 hover:text-blue-500 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-slate-800 transition-all flex-shrink-0 group"
+                      >
+                        <Image size={28} className="group-hover:scale-110 transition-transform"/>
+                        <span className="text-[10px] font-black mt-1 uppercase tracking-wide">GALERÍA</span>
+                      </button>
+                      
+                      {/* Existing Images (Edit Mode) */}
+                      {editingScheduledTask?.imageUrls?.map((url, i) => (
+                        <div key={`existing-${i}`} className="relative w-24 h-24 flex-shrink-0">
+                           <img src={url} className="w-full h-full object-cover rounded-2xl border-2 border-gray-200 dark:border-slate-700" />
+                           <span className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[9px] font-bold text-center py-1 rounded-b-[14px]">Guardada</span>
+                        </div>
+                      ))}
+
+                      {/* New Preview Images */}
+                      {previews.map((url, i) => (
+                        <div key={`new-${i}`} className="relative w-24 h-24 flex-shrink-0 group">
+                           <img src={url} className="w-full h-full object-cover rounded-2xl border-2 border-red-500 shadow-md" />
+                           <button onClick={() => removeImage(i)} className="absolute top-1 right-1 bg-red-600 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-md hover:scale-110"><X size={14} strokeWidth={3} /></button>
+                        </div>
+                      ))}
+                   </div>
                 </div>
 
                 {saveError && (

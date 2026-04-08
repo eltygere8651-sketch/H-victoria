@@ -148,6 +148,7 @@ export interface ScheduledTask {
   createdAt: number;
   type: TaskType;
   checklist?: TaskChecklistItem[];
+  imageUrls?: string[];
   recurrence: TaskRecurrence;
   lastGeneratedAt?: number;
   active: boolean;

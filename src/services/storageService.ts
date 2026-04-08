@@ -40,6 +40,38 @@ const INITIAL_PRODUCTS: Product[] = [
   { id: 'p6', name: 'Servilletas', category: 'Suministros', quantity: 100, unit: 'paquetes', minThreshold: 20, departmentId: 'd-restaurante', departmentName: 'Restaurante', departmentIds: ['d-restaurante'], departmentNames: ['Restaurante'] },
 ];
 
+const INITIAL_SCHEDULED_TASKS: ScheduledTask[] = [
+  {
+    id: 'st-bar-cierre',
+    title: 'Check list fin de jornada',
+    description: 'Guía visual y checklist para el cierre de la barra del bar. Asegúrese de que todo quede impecable según las fotos de referencia.',
+    priority: TaskPriority.HIGH,
+    location: 'Bar Principal',
+    departmentId: 'd-bar',
+    departmentName: 'Bar / Cafetería',
+    createdBy: 'Sistema',
+    createdById: 'system',
+    createdAt: Date.now(),
+    type: TaskType.TASK,
+    active: true,
+    recurrence: TaskRecurrence.DAILY,
+    imageUrls: [
+      'https://picsum.photos/seed/hotel-bar-clean/800/600',
+      'https://picsum.photos/seed/hotel-bar-bottles/800/600',
+      'https://picsum.photos/seed/hotel-bar-coffee/800/600'
+    ],
+    checklist: [
+      { id: 'c1', text: 'Limpiar y desinfectar la barra', isCompleted: false },
+      { id: 'c2', text: 'Reponer cámaras de bebidas', isCompleted: false },
+      { id: 'c3', text: 'Lavar y guardar cristalería', isCompleted: false },
+      { id: 'c4', text: 'Limpiar cafetera y molinillos', isCompleted: false },
+      { id: 'c5', text: 'Vaciar y limpiar cubetas de hielo', isCompleted: false },
+      { id: 'c6', text: 'Barrer y fregar zona tras barra', isCompleted: false },
+      { id: 'c7', text: 'Cierre de caja y entrega de llaves', isCompleted: false }
+    ]
+  }
+];
+
 enum OperationType {
   CREATE = 'create',
   UPDATE = 'update',
@@ -119,6 +151,15 @@ async function initFirestoreWithInitialData() {
           batch.set(docRef, { ...item, id: item.id || docRef.id });
         });
         await batch.commit();
+      }
+    }
+
+    for (const st of INITIAL_SCHEDULED_TASKS) {
+      // Avoid complex query to prevent index/permission issues during init
+      const docRef = db.collection(KEYS.SCHEDULED_TASKS).doc(st.id);
+      const doc = await docRef.get();
+      if (!doc.exists) {
+        await docRef.set(st);
       }
     }
 
@@ -215,7 +256,7 @@ export const saveDraftCart = async (userId: string, cart: CartItem[]) => {
   localStorage.setItem(KEYS.DRAFT_CART, JSON.stringify(cart));
   if (userId && userId !== 'guest' && !userId.startsWith('guest-')) {
     try {
-      await db.collection(KEYS.USERS).doc(userId).update({ draftCart: cart });
+      await db.collection(KEYS.USERS).doc(userId).set({ draftCart: cart }, { merge: true });
     } catch (e) {
       console.error("Error saving draft cart to cloud", e);
     }
@@ -417,14 +458,18 @@ export const subscribeToUsers = (callback: (users: User[]) => void) => {
 export const addUser = async (user: Omit<User, 'id'>) => await db.collection(KEYS.USERS).add(user);
 export const updateUser = async (user: User) => await db.collection(KEYS.USERS).doc(user.id).update({ ...user });
 export const deleteUser = async (id: string) => await db.collection(KEYS.USERS).doc(id).delete();
-export const savePushToken = async (userId: string, token: string) => await db.collection(KEYS.USERS).doc(userId).update({ pushToken: token });
+export const savePushToken = async (userId: string, token: string) => await db.collection(KEYS.USERS).doc(userId).set({ pushToken: token }, { merge: true });
 
 // --- NOTIFICATIONS ---
 export const subscribeToNotifications = (callback: (data: AppNotification[]) => void, unreadOnly = false) => {
-  let q: firebase.firestore.Query = db.collection(KEYS.NOTIFICATIONS).orderBy('timestamp', 'desc');
-  if (unreadOnly) q = q.where('readStatus', '==', false);
-  return q.onSnapshot(snapshot => {
-      callback(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as AppNotification)));
+  // To avoid composite index requirement, we fetch all and filter in memory if unreadOnly is true
+  // or we just fetch with order and filter in memory.
+  return db.collection(KEYS.NOTIFICATIONS).orderBy('timestamp', 'desc').onSnapshot(snapshot => {
+      let notifications = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as AppNotification));
+      if (unreadOnly) {
+        notifications = notifications.filter(n => n.readStatus === false);
+      }
+      callback(notifications);
   }, error => handleFirestoreError(error, OperationType.GET, KEYS.NOTIFICATIONS));
 };
 export const markNotificationAsRead = async (id: string, userId: string, userName: string) => await db.collection(KEYS.NOTIFICATIONS).doc(id).update({ readStatus: true, reviewedBy: userName, reviewedAt: Date.now() });
@@ -475,12 +520,26 @@ export const saveTask = async (task: Partial<Task>, newFiles: File[] = []) => {
 export const deleteTask = async (id: string) => await db.collection(KEYS.TASKS).doc(id).delete();
 export const cleanupCompletedTasks = async () => {
   const thirtyMinutesAgo = Date.now() - (30 * 60 * 1000);
-  const q = db.collection(KEYS.TASKS).where('status', '==', TaskStatus.COMPLETED).where('completedAt', '<', thirtyMinutesAgo);
-  const snapshot = await q.get();
-  if (!snapshot.empty) {
-    const batch = db.batch();
-    snapshot.docs.forEach(d => batch.delete(d.ref));
-    await batch.commit();
+  // To avoid composite index requirement, we query only by status and filter by time in memory
+  try {
+    const q = db.collection(KEYS.TASKS).where('status', '==', TaskStatus.COMPLETED);
+    const snapshot = await q.get();
+    if (!snapshot.empty) {
+      const batch = db.batch();
+      let deletedCount = 0;
+      snapshot.docs.forEach(d => {
+        const data = d.data();
+        if (data.completedAt && data.completedAt < thirtyMinutesAgo) {
+          batch.delete(d.ref);
+          deletedCount++;
+        }
+      });
+      if (deletedCount > 0) {
+        await batch.commit();
+      }
+    }
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, KEYS.TASKS);
   }
 };
 export const addCommentToTask = async (taskId: string, comment: Omit<TaskComment, 'id'>) => {
@@ -502,10 +561,23 @@ export const subscribeToScheduledTasks = (callback: (data: ScheduledTask[]) => v
   }, error => handleFirestoreError(error, OperationType.GET, KEYS.SCHEDULED_TASKS));
 };
 
-export const saveScheduledTask = async (task: Partial<ScheduledTask>) => {
+export const saveScheduledTask = async (task: Partial<ScheduledTask>, newFiles: File[] = []) => {
   const isNew = !task.id;
   const docRef = isNew ? db.collection(KEYS.SCHEDULED_TASKS).doc() : db.collection(KEYS.SCHEDULED_TASKS).doc(task.id!);
-  await docRef.set({ ...task, id: docRef.id, createdAt: task.createdAt || Date.now() }, { merge: true });
+  
+  let imageUrls = task.imageUrls || [];
+  
+  if (newFiles.length > 0) {
+    const uploadPromises = newFiles.map(async (file) => {
+      const fileRef = storage.ref().child(`scheduled_tasks/${docRef.id}/${Date.now()}_${file.name}`);
+      await fileRef.put(file);
+      return await fileRef.getDownloadURL();
+    });
+    const newUrls = await Promise.all(uploadPromises);
+    imageUrls = [...imageUrls, ...newUrls];
+  }
+  
+  await docRef.set({ ...task, id: docRef.id, imageUrls, createdAt: task.createdAt || Date.now() }, { merge: true });
 };
 
 export const deleteScheduledTask = async (id: string) => await db.collection(KEYS.SCHEDULED_TASKS).doc(id).delete();
@@ -513,46 +585,79 @@ export const deleteScheduledTask = async (id: string) => await db.collection(KEY
 export const processScheduledTasks = async (user: User) => {
   if (user.role !== UserRole.ADMIN) return;
 
-  const now = Date.now();
-  const snapshot = await db.collection(KEYS.SCHEDULED_TASKS).where('active', '==', true).get();
-  const scheduledTasks = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as ScheduledTask));
+  try {
+    const now = Date.now();
+    // Fetch all and filter in memory to avoid index/permission issues
+    const snapshot = await db.collection(KEYS.SCHEDULED_TASKS).get();
+    const scheduledTasks = snapshot.docs
+      .map(doc => ({ ...doc.data(), id: doc.id } as ScheduledTask))
+      .filter(st => st.active === true);
 
-  for (const st of scheduledTasks) {
-    let shouldGenerate = false;
-    const lastGen = st.lastGeneratedAt || 0;
-    const oneDay = 24 * 60 * 60 * 1000;
-    const oneWeek = 7 * oneDay;
-    const oneMonth = 30 * oneDay;
+    for (const st of scheduledTasks) {
+      let shouldGenerate = false;
+      const lastGen = st.lastGeneratedAt || 0;
+      const oneDay = 24 * 60 * 60 * 1000;
+      const oneWeek = 7 * oneDay;
+      const oneMonth = 30 * oneDay;
 
-    if (st.recurrence === TaskRecurrence.DAILY) {
-      if (now - lastGen >= oneDay) shouldGenerate = true;
-    } else if (st.recurrence === TaskRecurrence.WEEKLY) {
-      if (now - lastGen >= oneWeek) shouldGenerate = true;
-    } else if (st.recurrence === TaskRecurrence.MONTHLY) {
-      if (now - lastGen >= oneMonth) shouldGenerate = true;
+      if (st.recurrence === TaskRecurrence.DAILY) {
+        if (now - lastGen >= oneDay) shouldGenerate = true;
+      } else if (st.recurrence === TaskRecurrence.WEEKLY) {
+        if (now - lastGen >= oneWeek) shouldGenerate = true;
+      } else if (st.recurrence === TaskRecurrence.MONTHLY) {
+        if (now - lastGen >= oneMonth) shouldGenerate = true;
+      }
+
+      if (shouldGenerate) {
+        // Check if a task from this scheduled task was already generated today
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
+        const todayEnd = new Date();
+        todayEnd.setHours(23, 59, 59, 999);
+
+        try {
+          // To avoid composite index, we query by title and filter by date in memory
+          const existingTaskQuery = await db.collection(KEYS.TASKS)
+            .where('title', '==', st.title + ' (Programada)')
+            .get();
+
+          const alreadyGeneratedToday = existingTaskQuery.docs.some(d => {
+            const data = d.data();
+            return data.createdAt >= todayStart.getTime() && data.createdAt <= todayEnd.getTime();
+          });
+
+          if (!alreadyGeneratedToday) {
+            // Create the actual task
+            const newTask: Partial<Task> = {
+              title: st.title + ' (Programada)',
+              description: st.description,
+              priority: st.priority,
+              location: st.location,
+              departmentId: st.departmentId,
+              departmentName: st.departmentName,
+              status: TaskStatus.PENDING,
+              type: st.type,
+              checklist: st.checklist,
+              createdBy: st.createdBy,
+              createdById: st.createdById,
+              createdAt: now,
+              recurrence: st.recurrence,
+              imageUrls: st.imageUrls,
+            };
+
+            await saveTask(newTask);
+            await db.collection(KEYS.SCHEDULED_TASKS).doc(st.id).update({ lastGeneratedAt: now });
+          } else {
+            // Just update the lastGeneratedAt to avoid re-checking today
+            await db.collection(KEYS.SCHEDULED_TASKS).doc(st.id).update({ lastGeneratedAt: now });
+          }
+        } catch (error) {
+          handleFirestoreError(error, OperationType.GET, KEYS.TASKS);
+        }
+      }
     }
-
-    if (shouldGenerate) {
-      // Create the actual task
-      const newTask: Partial<Task> = {
-        title: st.title + ' (Programada)',
-        description: st.description,
-        priority: st.priority,
-        location: st.location,
-        departmentId: st.departmentId,
-        departmentName: st.departmentName,
-        status: TaskStatus.PENDING,
-        type: st.type,
-        checklist: st.checklist,
-        createdBy: st.createdBy,
-        createdById: st.createdById,
-        createdAt: now,
-        recurrence: st.recurrence,
-      };
-
-      await saveTask(newTask);
-      await db.collection(KEYS.SCHEDULED_TASKS).doc(st.id).update({ lastGeneratedAt: now });
-    }
+  } catch (error) {
+    handleFirestoreError(error, OperationType.GET, KEYS.SCHEDULED_TASKS);
   }
 };
 
