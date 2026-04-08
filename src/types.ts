@@ -128,30 +128,12 @@ export interface Task {
   completedBy?: string;
   completedAt?: number;
   imageUrls?: string[]; // New: Store Firebase Storage URLs for images
+  imagesTitle?: string; // New: Title for the images section
   type: TaskType; // New: Differentiates between task and announcement
   comments?: TaskComment[]; // New: Thread for discussions
   seenBy?: string[]; // New: Array of user IDs who have seen the latest update
   checklist?: TaskChecklistItem[]; // New: Interactive checklist for tasks
   recurrence?: TaskRecurrence; // New: Recurrence for scheduled tasks
-}
-
-export interface ScheduledTask {
-  id: string;
-  title: string;
-  description?: string;
-  priority: TaskPriority;
-  location?: string;
-  departmentId: string;
-  departmentName: string;
-  createdBy: string;
-  createdById: string;
-  createdAt: number;
-  type: TaskType;
-  checklist?: TaskChecklistItem[];
-  imageUrls?: string[];
-  recurrence: TaskRecurrence;
-  lastGeneratedAt?: number;
-  active: boolean;
 }
 
 // --- Notification System Types ---

@@ -1,7 +1,8 @@
 import React from 'react';
-import { Task, User, TaskStatus, TaskPriority, TaskChecklistItem, UserRole } from '../types';
-import { AlertTriangle, Edit2, Trash2, Share2, FileText, MessagesSquare, Check, Clock, Calendar } from 'lucide-react';
+import { Task, User, TaskStatus, TaskPriority, TaskChecklistItem, UserRole, TaskRecurrence } from '../types';
+import { AlertTriangle, Edit2, Trash2, Share2, FileText, MessagesSquare, Check, Clock, Calendar, RotateCcw } from 'lucide-react';
 import { DeletionTimer } from './DeletionTimer';
+import { DailyResetTimer } from './DailyResetTimer';
 
 interface TaskCardProps {
   task: Task;
@@ -96,6 +97,12 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
             <span className="px-4 py-2 rounded-xl bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-300 text-xs font-black uppercase tracking-wider border border-gray-200 dark:border-slate-700">
               {task.departmentName}
             </span>
+            {task.recurrence === TaskRecurrence.DAILY && (
+              <span className="px-4 py-2 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 text-xs font-black uppercase tracking-wider border border-indigo-100 dark:border-indigo-900/30 flex items-center gap-1.5">
+                <RotateCcw size={14} />
+                Diaria (4h)
+              </span>
+            )}
           </div>
           
           <div className="flex items-center gap-2 self-end md:self-auto">
@@ -223,19 +230,32 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
 
         {/* Images */}
         {task.imageUrls && task.imageUrls.length > 0 && (
-          <div 
-            className="flex gap-3 mb-6 overflow-x-auto pb-2 no-scrollbar touch-pan-x snap-x snap-mandatory"
-            style={{ WebkitOverflowScrolling: 'touch' }}
-          >
-            {task.imageUrls.map((url, i) => (
-              <button 
-                key={i} 
-                onClick={() => onViewImages(task.imageUrls!, i)} 
-                className="relative w-28 h-28 rounded-2xl border-2 border-gray-100 dark:border-slate-700 overflow-hidden flex-shrink-0 hover:border-red-500 transition-colors shadow-md snap-start"
-              >
-                <img src={url} className="w-full h-full object-cover" loading="lazy" referrerPolicy="no-referrer" />
-              </button>
-            ))}
+          <div className="mb-6">
+            {task.imagesTitle && (
+              <div className="flex items-center gap-2 mb-3 ml-1">
+                <div className="w-1 h-4 bg-red-500 rounded-full"></div>
+                <span className="text-xs font-black text-gray-400 dark:text-slate-500 uppercase tracking-widest italic">
+                  {task.imagesTitle}
+                </span>
+              </div>
+            )}
+            <div 
+              className="flex gap-4 overflow-x-auto pb-2 no-scrollbar touch-pan-x snap-x snap-mandatory"
+              style={{ WebkitOverflowScrolling: 'touch' }}
+            >
+              {task.imageUrls.map((url, i) => (
+                <button 
+                  key={i} 
+                  onClick={() => onViewImages(task.imageUrls!, i)} 
+                  className="relative w-32 h-32 md:w-40 md:h-40 rounded-[1.5rem] border-2 border-gray-100 dark:border-slate-800 overflow-hidden flex-shrink-0 hover:border-red-500 hover:scale-[1.02] transition-all shadow-lg snap-start group/img"
+                >
+                  <img src={url} className="w-full h-full object-cover group-hover/img:scale-110 transition-transform duration-500" loading="lazy" referrerPolicy="no-referrer" />
+                  <div className="absolute inset-0 bg-black/0 group-hover/img:bg-black/20 transition-colors flex items-center justify-center">
+                    <FileText size={24} className="text-white opacity-0 group-hover/img:opacity-100 transition-opacity" />
+                  </div>
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
@@ -287,10 +307,12 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
               </div>
             )}
             
-            {task.status === TaskStatus.COMPLETED && task.completedAt && !task.recurrence && (
-              <DeletionTimer 
-                completedAt={task.completedAt} 
-              />
+            {task.status === TaskStatus.COMPLETED && task.completedAt && (
+              task.recurrence === TaskRecurrence.DAILY ? (
+                <DailyResetTimer completedAt={task.completedAt} />
+              ) : !task.recurrence || task.recurrence === TaskRecurrence.NONE ? (
+                <DeletionTimer completedAt={task.completedAt} />
+              ) : null
             )}
           </div>
         </div>

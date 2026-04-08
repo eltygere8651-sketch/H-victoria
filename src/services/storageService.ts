@@ -1,7 +1,17 @@
-import { Product, User, ReplenishmentRequest, UserRole, Department, CartItem, AppNotification, NotificationType, NotificationPayload, OrderBatch, Task, TaskStatus, TaskPriority, TaskType, TaskComment, Document, ScheduledTask, TaskRecurrence } from '../types';
+import { Product, User, ReplenishmentRequest, UserRole, Department, CartItem, AppNotification, NotificationType, NotificationPayload, OrderBatch, Task, TaskStatus, TaskPriority, TaskType, TaskComment, Document, TaskRecurrence } from '../types';
 import { db, auth, storage } from '../firebaseConfig';
 import firebase from 'firebase/compat/app';
 import { fileToBase64 } from '../utils/imageCompressor';
+
+const sanitizeData = (data: any) => {
+  const sanitized = { ...data };
+  Object.keys(sanitized).forEach(key => {
+    if (sanitized[key] === undefined) {
+      delete sanitized[key];
+    }
+  });
+  return sanitized;
+};
 
 const KEYS = {
   USERS: 'hotel_victoria_users',
@@ -13,7 +23,6 @@ const KEYS = {
   LAST_VIEW: 'hotel_victoria_last_view',
   NOTIFICATIONS: 'hotel_victoria_notifications',
   TASKS: 'hotel_victoria_tasks',
-  SCHEDULED_TASKS: 'hotel_victoria_scheduled_tasks',
   DOCUMENTS: 'hotel_victoria_documents',
   SYSTEM: 'hotel_victoria_system',
 };
@@ -38,38 +47,6 @@ const INITIAL_PRODUCTS: Product[] = [
   { id: 'p4', name: 'Harina de Trigo', category: 'Despensa', quantity: 15, unit: 'kg', minThreshold: 5, departmentId: 'd-restaurante', departmentName: 'Restaurante', departmentIds: ['d-restaurante'], departmentNames: ['Restaurante'] },
   { id: 'p5', name: 'Aceite de Oliva', category: 'Cocina', quantity: 10, unit: 'litros', minThreshold: 4, departmentId: 'd-restaurante', departmentName: 'Restaurante', departmentIds: ['d-restaurante'], departmentNames: ['Restaurante'] },
   { id: 'p6', name: 'Servilletas', category: 'Suministros', quantity: 100, unit: 'paquetes', minThreshold: 20, departmentId: 'd-restaurante', departmentName: 'Restaurante', departmentIds: ['d-restaurante'], departmentNames: ['Restaurante'] },
-];
-
-const INITIAL_SCHEDULED_TASKS: ScheduledTask[] = [
-  {
-    id: 'st-bar-cierre',
-    title: 'Check list fin de jornada',
-    description: 'Guía visual y checklist para el cierre de la barra del bar. Asegúrese de que todo quede impecable según las fotos de referencia.',
-    priority: TaskPriority.HIGH,
-    location: 'Bar Principal',
-    departmentId: 'd-bar',
-    departmentName: 'Bar / Cafetería',
-    createdBy: 'Sistema',
-    createdById: 'system',
-    createdAt: Date.now(),
-    type: TaskType.TASK,
-    active: true,
-    recurrence: TaskRecurrence.DAILY,
-    imageUrls: [
-      'https://picsum.photos/seed/hotel-bar-clean/800/600',
-      'https://picsum.photos/seed/hotel-bar-bottles/800/600',
-      'https://picsum.photos/seed/hotel-bar-coffee/800/600'
-    ],
-    checklist: [
-      { id: 'c1', text: 'Limpiar y desinfectar la barra', isCompleted: false },
-      { id: 'c2', text: 'Reponer cámaras de bebidas', isCompleted: false },
-      { id: 'c3', text: 'Lavar y guardar cristalería', isCompleted: false },
-      { id: 'c4', text: 'Limpiar cafetera y molinillos', isCompleted: false },
-      { id: 'c5', text: 'Vaciar y limpiar cubetas de hielo', isCompleted: false },
-      { id: 'c6', text: 'Barrer y fregar zona tras barra', isCompleted: false },
-      { id: 'c7', text: 'Cierre de caja y entrega de llaves', isCompleted: false }
-    ]
-  }
 ];
 
 enum OperationType {
@@ -151,15 +128,6 @@ async function initFirestoreWithInitialData() {
           batch.set(docRef, { ...item, id: item.id || docRef.id });
         });
         await batch.commit();
-      }
-    }
-
-    for (const st of INITIAL_SCHEDULED_TASKS) {
-      // Avoid complex query to prevent index/permission issues during init
-      const docRef = db.collection(KEYS.SCHEDULED_TASKS).doc(st.id);
-      const doc = await docRef.get();
-      if (!doc.exists) {
-        await docRef.set(st);
       }
     }
 
@@ -491,7 +459,7 @@ export const saveTask = async (task: Partial<Task>, newFiles: File[] = []) => {
   const isNew = !task.id;
   const docRef = isNew ? db.collection(KEYS.TASKS).doc() : db.collection(KEYS.TASKS).doc(task.id!);
   
-  let taskData: any = { ...task, id: docRef.id };
+  let taskData: any = sanitizeData({ ...task, id: docRef.id });
 
   if (newFiles.length > 0) {
       const base64Promises = newFiles.map(file => fileToBase64(file));
@@ -518,8 +486,37 @@ export const saveTask = async (task: Partial<Task>, newFiles: File[] = []) => {
   }
 };
 export const deleteTask = async (id: string) => await db.collection(KEYS.TASKS).doc(id).delete();
+
+export const resetDailyTask = async (taskId: string) => {
+  const taskRef = db.collection(KEYS.TASKS).doc(taskId);
+  const doc = await taskRef.get();
+  if (!doc.exists) return;
+  
+  const data = doc.data() as Task;
+  const resetChecklist = (data.checklist || []).map(item => ({
+    ...item,
+    isCompleted: false,
+    completedBy: undefined,
+    completedAt: undefined
+  }));
+
+  await taskRef.update({
+    status: TaskStatus.PENDING,
+    checklist: resetChecklist,
+    completedBy: firebase.firestore.FieldValue.delete(),
+    completedAt: firebase.firestore.FieldValue.delete(),
+    comments: firebase.firestore.FieldValue.arrayUnion({
+      id: Date.now().toString(),
+      userId: 'system',
+      userName: 'Sistema',
+      message: 'Tarea diaria reiniciada automáticamente para el siguiente turno.',
+      timestamp: Date.now()
+    })
+  });
+};
+
 export const cleanupCompletedTasks = async () => {
-  const thirtyMinutesAgo = Date.now() - (30 * 60 * 1000);
+  const twelveHoursAgo = Date.now() - (12 * 60 * 60 * 1000);
   // To avoid composite index requirement, we query only by status and filter by time in memory
   try {
     const q = db.collection(KEYS.TASKS).where('status', '==', TaskStatus.COMPLETED);
@@ -528,8 +525,9 @@ export const cleanupCompletedTasks = async () => {
       const batch = db.batch();
       let deletedCount = 0;
       snapshot.docs.forEach(d => {
-        const data = d.data();
-        if (data.completedAt && data.completedAt < thirtyMinutesAgo) {
+        const data = d.data() as Task;
+        // EXCLUDE DAILY TASKS FROM DELETION
+        if (data.recurrence !== TaskRecurrence.DAILY && data.completedAt && data.completedAt < twelveHoursAgo) {
           batch.delete(d.ref);
           deletedCount++;
         }
@@ -552,113 +550,6 @@ export const markTaskAsSeen = async (taskId: string, userId: string) => {
 export const getTaskById = async (taskId: string): Promise<Task | null> => {
   const doc = await db.collection(KEYS.TASKS).doc(taskId).get();
   return doc.exists ? { ...doc.data(), id: doc.id } as Task : null;
-};
-
-// --- SCHEDULED TASKS ---
-export const subscribeToScheduledTasks = (callback: (data: ScheduledTask[]) => void) => {
-  return db.collection(KEYS.SCHEDULED_TASKS).orderBy('createdAt', 'desc').onSnapshot(snapshot => {
-    callback(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as ScheduledTask)));
-  }, error => handleFirestoreError(error, OperationType.GET, KEYS.SCHEDULED_TASKS));
-};
-
-export const saveScheduledTask = async (task: Partial<ScheduledTask>, newFiles: File[] = []) => {
-  const isNew = !task.id;
-  const docRef = isNew ? db.collection(KEYS.SCHEDULED_TASKS).doc() : db.collection(KEYS.SCHEDULED_TASKS).doc(task.id!);
-  
-  let imageUrls = task.imageUrls || [];
-  
-  if (newFiles.length > 0) {
-    const uploadPromises = newFiles.map(async (file) => {
-      const fileRef = storage.ref().child(`scheduled_tasks/${docRef.id}/${Date.now()}_${file.name}`);
-      await fileRef.put(file);
-      return await fileRef.getDownloadURL();
-    });
-    const newUrls = await Promise.all(uploadPromises);
-    imageUrls = [...imageUrls, ...newUrls];
-  }
-  
-  await docRef.set({ ...task, id: docRef.id, imageUrls, createdAt: task.createdAt || Date.now() }, { merge: true });
-};
-
-export const deleteScheduledTask = async (id: string) => await db.collection(KEYS.SCHEDULED_TASKS).doc(id).delete();
-
-export const processScheduledTasks = async (user: User) => {
-  if (user.role !== UserRole.ADMIN) return;
-
-  try {
-    const now = Date.now();
-    // Fetch all and filter in memory to avoid index/permission issues
-    const snapshot = await db.collection(KEYS.SCHEDULED_TASKS).get();
-    const scheduledTasks = snapshot.docs
-      .map(doc => ({ ...doc.data(), id: doc.id } as ScheduledTask))
-      .filter(st => st.active === true);
-
-    for (const st of scheduledTasks) {
-      let shouldGenerate = false;
-      const lastGen = st.lastGeneratedAt || 0;
-      const oneDay = 24 * 60 * 60 * 1000;
-      const oneWeek = 7 * oneDay;
-      const oneMonth = 30 * oneDay;
-
-      if (st.recurrence === TaskRecurrence.DAILY) {
-        if (now - lastGen >= oneDay) shouldGenerate = true;
-      } else if (st.recurrence === TaskRecurrence.WEEKLY) {
-        if (now - lastGen >= oneWeek) shouldGenerate = true;
-      } else if (st.recurrence === TaskRecurrence.MONTHLY) {
-        if (now - lastGen >= oneMonth) shouldGenerate = true;
-      }
-
-      if (shouldGenerate) {
-        // Check if a task from this scheduled task was already generated today
-        const todayStart = new Date();
-        todayStart.setHours(0, 0, 0, 0);
-        const todayEnd = new Date();
-        todayEnd.setHours(23, 59, 59, 999);
-
-        try {
-          // To avoid composite index, we query by title and filter by date in memory
-          const existingTaskQuery = await db.collection(KEYS.TASKS)
-            .where('title', '==', st.title + ' (Programada)')
-            .get();
-
-          const alreadyGeneratedToday = existingTaskQuery.docs.some(d => {
-            const data = d.data();
-            return data.createdAt >= todayStart.getTime() && data.createdAt <= todayEnd.getTime();
-          });
-
-          if (!alreadyGeneratedToday) {
-            // Create the actual task
-            const newTask: Partial<Task> = {
-              title: st.title + ' (Programada)',
-              description: st.description,
-              priority: st.priority,
-              location: st.location,
-              departmentId: st.departmentId,
-              departmentName: st.departmentName,
-              status: TaskStatus.PENDING,
-              type: st.type,
-              checklist: st.checklist,
-              createdBy: st.createdBy,
-              createdById: st.createdById,
-              createdAt: now,
-              recurrence: st.recurrence,
-              imageUrls: st.imageUrls,
-            };
-
-            await saveTask(newTask);
-            await db.collection(KEYS.SCHEDULED_TASKS).doc(st.id).update({ lastGeneratedAt: now });
-          } else {
-            // Just update the lastGeneratedAt to avoid re-checking today
-            await db.collection(KEYS.SCHEDULED_TASKS).doc(st.id).update({ lastGeneratedAt: now });
-          }
-        } catch (error) {
-          handleFirestoreError(error, OperationType.GET, KEYS.TASKS);
-        }
-      }
-    }
-  } catch (error) {
-    handleFirestoreError(error, OperationType.GET, KEYS.SCHEDULED_TASKS);
-  }
 };
 
 export const deleteAllNotifications = async () => {

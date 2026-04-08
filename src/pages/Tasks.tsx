@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
-import { Task, User, Department, TaskStatus, TaskPriority, UserRole, TaskType, TaskComment, TaskChecklistItem, TaskRecurrence, ScheduledTask } from '../types';
+import { Task, User, Department, TaskStatus, TaskPriority, UserRole, TaskType, TaskComment, TaskChecklistItem, TaskRecurrence } from '../types';
 import * as storageService from '../services/storageService';
 import { ClipboardCheck, Plus, X, Save, Loader2, Edit2, Trash2, ChevronDown, MessagesSquare, Check, Camera, AlertTriangle, Share2, Send, Image, Info, Flame, Bold, Calendar, Clock, List, FileText, Zap, Users, Phone, Hash, ChevronRight, User as UserIcon } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -17,21 +17,17 @@ interface TasksProps {
 
 const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
   const [allTasks, setAllTasks] = useState<Task[]>([]);
-  const [scheduledTasks, setScheduledTasks] = useState<ScheduledTask[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   
   const [statusFilter, setStatusFilter] = useState<TaskStatus | 'ALL'>('ALL');
-  const [activeTab, setActiveTab] = useState<'ACTIVE' | 'SCHEDULED'>('ACTIVE');
+  const [activeTab, setActiveTab] = useState<'ACTIVE' | 'DAILY'>('ACTIVE');
   
   const [showTaskModal, setShowTaskModal] = useState(false);
-  const [showScheduledModal, setShowScheduledModal] = useState(false);
   const [editingTask, setEditingTask] = useState<Partial<Task> | null>(null);
-  const [editingScheduledTask, setEditingScheduledTask] = useState<Partial<ScheduledTask> | null>(null);
   const [taskToDelete, setTaskToDelete] = useState<Task | null>(null);
-  const [scheduledToDelete, setScheduledToDelete] = useState<ScheduledTask | null>(null);
   
   const [isCompressing, setIsCompressing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -89,16 +85,10 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
       setAllTasks(tasks);
       setLoading(false);
     });
-    const unsubscribeScheduled = storageService.subscribeToScheduledTasks(setScheduledTasks);
     const unsubscribeDepartments = storageService.subscribeToDepartments(setDepartments);
-
-    if (currentUser.role === UserRole.ADMIN) {
-      storageService.processScheduledTasks(currentUser);
-    }
 
     return () => {
       unsubscribeTasks();
-      unsubscribeScheduled();
       unsubscribeDepartments();
     };
   }, []);
@@ -126,41 +116,13 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
         createdAt: editingTask.createdAt || Date.now(),
       };
 
-      if (editingTask.recurrence && editingTask.recurrence !== TaskRecurrence.NONE) {
-        // Save as ScheduledTask
-        const scheduledData: Partial<ScheduledTask> = {
-          title: taskData.title,
-          description: taskData.description,
-          departmentId: taskData.departmentId,
-          departmentName: taskData.departmentName,
-          priority: taskData.priority,
-          type: taskData.type,
-          createdBy: taskData.createdBy,
-          createdById: taskData.createdById,
-          createdAt: taskData.createdAt,
-          recurrence: editingTask.recurrence,
-          active: true,
-          checklist: taskData.checklist
-        };
-        await storageService.saveScheduledTask(scheduledData);
-        if (currentUser.role === UserRole.ADMIN) {
-          await storageService.processScheduledTasks(currentUser);
-        }
-        setShowTaskModal(false);
-        setEditingTask(null);
-        setSelectedImages([]);
-        setPreviews([]);
-        setNewChecklistItemText('');
-        setActiveTab('SCHEDULED');
-      } else {
-        // Save as regular Task
-        await storageService.saveTask(taskData, selectedImages);
-        setShowTaskModal(false);
-        setEditingTask(null);
-        setSelectedImages([]);
-        setPreviews([]);
-        setNewChecklistItemText('');
-      }
+      // Save as regular Task
+      await storageService.saveTask(taskData, selectedImages);
+      setShowTaskModal(false);
+      setEditingTask(null);
+      setSelectedImages([]);
+      setPreviews([]);
+      setNewChecklistItemText('');
     } catch (error) {
       console.error(error);
       setSaveError('Error al guardar. Inténtalo de nuevo.');
@@ -176,59 +138,13 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
     }
   };
 
-  const handleSaveScheduledTask = async () => {
-    if (!editingScheduledTask?.title || !editingScheduledTask?.departmentId || !editingScheduledTask?.recurrence) {
-      setSaveError('Título, Departamento y Recurrencia son obligatorios');
-      return;
-    }
-
-    setIsSaving(true);
-    setSaveError(null);
-
-    try {
-      const department = departments.find(d => d.id === editingScheduledTask.departmentId);
-      
-      const taskData: Partial<ScheduledTask> = {
-        ...editingScheduledTask,
-        departmentName: department?.name || 'General',
-        priority: editingScheduledTask.priority || TaskPriority.MEDIUM,
-        type: TaskType.TASK,
-        createdBy: editingScheduledTask.createdBy || currentUser.name,
-        createdById: editingScheduledTask.createdById || currentUser.id,
-        createdAt: editingScheduledTask.createdAt || Date.now(),
-        active: editingScheduledTask.active !== undefined ? editingScheduledTask.active : true,
-      };
-
-      await storageService.saveScheduledTask(taskData, selectedImages);
-      if (currentUser.role === UserRole.ADMIN) {
-        await storageService.processScheduledTasks(currentUser);
-      }
-      setShowScheduledModal(false);
-      setEditingScheduledTask(null);
-      setSelectedImages([]);
-      setPreviews([]);
-      setNewChecklistItemText('');
-    } catch (error) {
-      console.error(error);
-      setSaveError('Error al guardar. Inténtalo de nuevo.');
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleDeleteScheduledTask = async () => {
-    if (scheduledToDelete) {
-      await storageService.deleteScheduledTask(scheduledToDelete.id);
-      setScheduledToDelete(null);
-    }
-  };
-
   // Auto-deletion logic for completed tasks after 12 hours
   useEffect(() => {
     const DELETION_WINDOW_MS = 12 * 60 * 60 * 1000;
     const interval = setInterval(() => {
       const now = Date.now();
       const tasksToDelete = allTasks.filter(task => 
+        task.recurrence !== TaskRecurrence.DAILY && // EXCLUDE DAILY
         task.status === TaskStatus.COMPLETED && 
         task.completedAt && 
         (now - task.completedAt) > DELETION_WINDOW_MS
@@ -236,6 +152,26 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
 
       tasksToDelete.forEach(task => {
         storageService.deleteTask(task.id);
+      });
+    }, 60000); // Check every minute
+
+    return () => clearInterval(interval);
+  }, [allTasks]);
+
+  // Reset logic for daily tasks after 4 hours of completion
+  useEffect(() => {
+    const RESET_WINDOW_MS = 4 * 60 * 60 * 1000;
+    const interval = setInterval(() => {
+      const now = Date.now();
+      const tasksToReset = allTasks.filter(task => 
+        task.recurrence === TaskRecurrence.DAILY &&
+        task.status === TaskStatus.COMPLETED && 
+        task.completedAt && 
+        (now - task.completedAt) > RESET_WINDOW_MS
+      );
+
+      tasksToReset.forEach(task => {
+        storageService.resetDailyTask(task.id);
       });
     }, 60000); // Check every minute
 
@@ -303,8 +239,8 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
     const updateData: any = { id: task.id, checklist: updatedChecklist };
     
     if (allCompleted && updatedChecklist.length > 0) {
-      if (task.recurrence && task.recurrence !== TaskRecurrence.NONE) {
-        // Recurring task completed: delete it so it "disappears" until the next one
+      if (task.recurrence && task.recurrence !== TaskRecurrence.NONE && task.recurrence !== TaskRecurrence.DAILY) {
+        // Recurring task completed (Weekly/Monthly): delete it so it "disappears" until the next one
         await storageService.deleteTask(task.id);
         return;
       }
@@ -321,8 +257,8 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
   }, []);
 
   const handleCompleteTask = useCallback(async (task: Task) => {
-    if (task.recurrence && task.recurrence !== TaskRecurrence.NONE) {
-      // Recurring task completed: delete it so it "disappears" until the next one
+    if (task.recurrence && task.recurrence !== TaskRecurrence.NONE && task.recurrence !== TaskRecurrence.DAILY) {
+      // Recurring task completed (Weekly/Monthly): delete it so it "disappears" until the next one
       await storageService.deleteTask(task.id);
       return;
     }
@@ -354,30 +290,17 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
       isCompleted: false,
     };
     
-    if (showScheduledModal) {
-      setEditingScheduledTask({
-        ...editingScheduledTask,
-        checklist: [...(editingScheduledTask?.checklist || []), newItem]
-      } as ScheduledTask);
-    } else {
-      setEditingTask({
-        ...editingTask,
-        checklist: [...(editingTask?.checklist || []), newItem]
-      });
-    }
+    setEditingTask({
+      ...editingTask,
+      checklist: [...(editingTask?.checklist || []), newItem]
+    });
     setNewChecklistItemText('');
   };
 
   const handleRemoveChecklistItem = (index: number) => {
-    if (showScheduledModal) {
-      const updatedChecklist = [...(editingScheduledTask?.checklist || [])];
-      updatedChecklist.splice(index, 1);
-      setEditingScheduledTask({ ...editingScheduledTask, checklist: updatedChecklist } as ScheduledTask);
-    } else {
-      const updatedChecklist = [...(editingTask?.checklist || [])];
-      updatedChecklist.splice(index, 1);
-      setEditingTask({ ...editingTask, checklist: updatedChecklist });
-    }
+    const updatedChecklist = [...(editingTask?.checklist || [])];
+    updatedChecklist.splice(index, 1);
+    setEditingTask({ ...editingTask, checklist: updatedChecklist });
   };
 
   const handleShareTask = useCallback((task: Task) => {
@@ -410,94 +333,6 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
     }
   }, []);
 
-  const handleTriggerScheduledTask = async (st: ScheduledTask) => {
-    setIsSaving(true);
-    try {
-      const now = Date.now();
-      const newTask: Partial<Task> = {
-        title: st.title + ' (Programada)',
-        description: st.description,
-        priority: st.priority,
-        location: st.location,
-        departmentId: st.departmentId,
-        departmentName: st.departmentName,
-        status: TaskStatus.PENDING,
-        type: st.type,
-        checklist: st.checklist,
-        createdBy: st.createdBy,
-        createdById: st.createdById,
-        createdAt: now,
-        recurrence: st.recurrence,
-        imageUrls: st.imageUrls,
-      };
-      await storageService.saveTask(newTask);
-      await storageService.saveScheduledTask({ ...st, lastGeneratedAt: now });
-      setActiveTab('ACTIVE');
-    } catch (error) {
-      console.error(error);
-      alert('Error al generar la tarea.');
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const ScheduledTaskCard = ({ task, onEdit, onDelete, onTrigger }: { task: ScheduledTask, onEdit: (t: ScheduledTask) => void, onDelete: (t: ScheduledTask) => void, onTrigger: (t: ScheduledTask) => void }) => (
-    <motion.div 
-      layout
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-6 shadow-xl border border-gray-100 dark:border-slate-800 relative overflow-hidden group"
-    >
-      <div className="flex justify-between items-start mb-4">
-        <div className="flex items-center gap-3">
-          <div className={`p-3 rounded-2xl ${task.priority === TaskPriority.HIGH ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400' : 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'}`}>
-            <Clock size={24} />
-          </div>
-          <div>
-            <h4 className="text-xl font-black text-gray-900 dark:text-white uppercase tracking-tight">{task.title}</h4>
-            <p className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-widest">{task.departmentName}</p>
-          </div>
-        </div>
-        <div className="flex gap-2">
-          <button 
-            onClick={() => onTrigger(task)} 
-            className="p-2 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-xl hover:bg-red-200 transition-colors"
-            title="Generar ahora"
-          >
-            <Zap size={18} />
-          </button>
-          <button onClick={() => onEdit(task)} className="p-2 bg-gray-100 dark:bg-slate-800 rounded-xl text-gray-500 hover:text-blue-600 transition-colors"><Edit2 size={18} /></button>
-          <button onClick={() => onDelete(task)} className="p-2 bg-gray-100 dark:bg-slate-800 rounded-xl text-gray-500 hover:text-red-600 transition-colors"><Trash2 size={18} /></button>
-        </div>
-      </div>
-      
-      <div className="flex flex-wrap gap-2 mb-4">
-        <span className="px-3 py-1 bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400 rounded-full text-[10px] font-black uppercase tracking-widest">
-          {task.recurrence === TaskRecurrence.DAILY ? 'Diaria' : task.recurrence === TaskRecurrence.WEEKLY ? 'Semanal' : 'Mensual'}
-        </span>
-        <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${task.active ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400'}`}>
-          {task.active ? 'Activa' : 'Pausada'}
-        </span>
-      </div>
-
-      {task.description && (
-        <p className="text-sm font-bold text-gray-600 dark:text-slate-400 mb-4 line-clamp-2">{task.description}</p>
-      )}
-
-      <div className="flex justify-between items-center pt-4 border-t border-gray-50 dark:border-slate-800">
-        <div className="flex items-center gap-2 text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-widest">
-          <UserIcon size={12} />
-          <span>{task.createdBy}</span>
-        </div>
-        {task.lastGeneratedAt && (
-          <div className="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-widest">
-            Última: {new Date(task.lastGeneratedAt).toLocaleDateString()}
-          </div>
-        )}
-      </div>
-    </motion.div>
-  );
-
   // Helper to insert *bold* syntax in textarea
   const insertUrgentMarker = () => {
     if (!descriptionInputRef.current) return;
@@ -505,16 +340,12 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
     const textarea = descriptionInputRef.current;
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
-    const text = showScheduledModal ? (editingScheduledTask?.description || '') : (editingTask?.description || '');
+    const text = editingTask?.description || '';
     
     // If text is selected, wrap it. If not, insert markers and position cursor.
     if (start === end) {
       const newText = text.slice(0, start) + '**' + text.slice(end);
-      if (showScheduledModal) {
-        setEditingScheduledTask({ ...editingScheduledTask, description: newText } as ScheduledTask);
-      } else {
-        setEditingTask({ ...editingTask, description: newText });
-      }
+      setEditingTask({ ...editingTask, description: newText });
       setTimeout(() => {
         textarea.focus();
         textarea.setSelectionRange(start + 1, start + 1);
@@ -522,11 +353,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
     } else {
       const selection = text.slice(start, end);
       const newText = text.slice(0, start) + '*' + selection + '*' + text.slice(end);
-      if (showScheduledModal) {
-        setEditingScheduledTask({ ...editingScheduledTask, description: newText } as ScheduledTask);
-      } else {
-        setEditingTask({ ...editingTask, description: newText });
-      }
+      setEditingTask({ ...editingTask, description: newText });
       setTimeout(() => {
         textarea.focus();
         textarea.setSelectionRange(start + 1 + selection.length + 1, start + 1 + selection.length + 1);
@@ -537,6 +364,14 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
   const filteredTasks = allTasks.filter(task => {
     const statusMatch = statusFilter === 'ALL' || task.status === statusFilter;
     const deptMatch = departmentFilter === 'ALL' || task.departmentId === departmentFilter;
+    
+    // Tab filtering
+    if (activeTab === 'DAILY') {
+      return statusMatch && deptMatch && task.recurrence === TaskRecurrence.DAILY;
+    } else if (activeTab === 'ACTIVE') {
+      return statusMatch && deptMatch && task.recurrence !== TaskRecurrence.DAILY;
+    }
+    
     return statusMatch && deptMatch;
   }).sort((a, b) => {
     // 1. Completed tasks go to the bottom
@@ -766,27 +601,24 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
             <div className="flex flex-col">
               <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.3em] leading-none mb-1">Servicios</span>
               <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tighter leading-none drop-shadow-sm">
-                Tareas <span className="text-red-600 dark:text-red-500 italic">{activeTab === 'ACTIVE' ? 'Activas' : 'Programadas'}</span>
+                Tareas <span className="text-red-600 dark:text-red-500 italic">{activeTab === 'ACTIVE' ? 'Activas' : activeTab === 'DAILY' ? 'Diarias' : 'Programadas'}</span>
               </h2>
             </div>
             
-            {/* Tab Switcher (Admin Only) */}
-            {currentUser.role === UserRole.ADMIN && (
-              <div className="flex bg-gray-100 dark:bg-slate-800 rounded-xl p-1 mx-4">
-                <button
-                  onClick={() => setActiveTab('ACTIVE')}
-                  className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'ACTIVE' ? 'bg-white dark:bg-slate-700 shadow-sm text-red-600' : 'text-gray-500 dark:text-gray-400'}`}
-                >
-                  Activas
-                </button>
-                <button
-                  onClick={() => setActiveTab('SCHEDULED')}
-                  className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'SCHEDULED' ? 'bg-white dark:bg-slate-700 shadow-sm text-red-600' : 'text-gray-500 dark:text-gray-400'}`}
-                >
-                  Programadas
-                </button>
-              </div>
-            )}
+            <div className="flex bg-gray-100 dark:bg-slate-800 rounded-xl p-1 mx-4">
+              <button
+                onClick={() => setActiveTab('ACTIVE')}
+                className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'ACTIVE' ? 'bg-white dark:bg-slate-700 shadow-sm text-red-600' : 'text-gray-500 dark:text-gray-400'}`}
+              >
+                Activas
+              </button>
+              <button
+                onClick={() => setActiveTab('DAILY')}
+                className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'DAILY' ? 'bg-white dark:bg-slate-700 shadow-sm text-red-600' : 'text-gray-500 dark:text-gray-400'}`}
+              >
+                Diarias
+              </button>
+            </div>
             
             {/* Mobile View Mode Toggle */}
             <div className="flex sm:hidden bg-gray-100 dark:bg-slate-800 rounded-xl p-1">
@@ -836,22 +668,15 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
                 </button>
                 <button 
                   onClick={() => {
-                    if (activeTab === 'SCHEDULED') {
-                      setEditingScheduledTask({ active: true, recurrence: TaskRecurrence.DAILY });
-                      setSelectedImages([]);
-                      setPreviews([]);
-                      setShowScheduledModal(true);
-                    } else {
-                      setEditingTask({});
-                      setSelectedImages([]);
-                      setPreviews([]);
-                      setShowTaskModal(true);
-                    }
+                    setEditingTask({});
+                    setSelectedImages([]);
+                    setPreviews([]);
+                    setShowTaskModal(true);
                   }}
                   className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold uppercase tracking-wider rounded-full transition-all active:scale-95 shadow-lg shadow-red-600/20"
                 >
                   <Plus size={14} strokeWidth={3} />
-                  <span>{activeTab === 'SCHEDULED' ? 'Programar Tarea' : 'Nueva Tarea'}</span>
+                  <span>Nueva Tarea</span>
                 </button>
               </div>
             )}
@@ -917,64 +742,39 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
 
       <div className="p-4 md:p-6 space-y-10">
         {/* SECTION: TASKS (HIGH IMPACT ACTION STYLE) */}
-        {activeTab === 'ACTIVE' ? (
-          viewMode === 'LIST' ? (
-            <div className="space-y-6">
-              {/* Week navigation removed from here as it is now in the sticky header */}
-
-              {listTasks.length === 0 ? (
-                <div className="py-24 text-center bg-white dark:bg-slate-900 rounded-[2.5rem] border-4 border-dashed border-gray-200 dark:border-slate-800 shadow-inner">
-                  <ClipboardCheck size={80} className="mx-auto mb-6 text-gray-300 dark:text-slate-700" />
-                  <p className="text-3xl font-black text-gray-400 dark:text-slate-600 uppercase tracking-tighter">Sin Tareas Activas</p>
-                  <p className="text-gray-400 dark:text-slate-500 font-medium mt-2">¡Todo al día en esta semana!</p>
-                </div>
-              ) : (
-                listTasks.map(task => (
-                  <TaskCard 
-                    key={task.id}
-                    task={task}
-                    currentUser={currentUser}
-                    onToggleChecklist={handleToggleChecklistItem}
-                    onStart={handleStartTask}
-                    onComplete={handleCompleteTask}
-                    onEdit={handleEditTask}
-                    onDelete={handleDeleteTaskConfirm}
-                    onComment={handleCommentTask}
-                    onShare={handleShareTaskAction}
-                    onSharePdf={handleSharePdfAction}
-                    onViewImages={handleViewImagesAction}
-                  />
-                ))
-              )}
-            </div>
-          ) : (
-            renderCalendarView()
-          )
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {scheduledTasks.length === 0 ? (
-              <div className="col-span-full py-24 text-center bg-white dark:bg-slate-900 rounded-[2.5rem] border-4 border-dashed border-gray-200 dark:border-slate-800 shadow-inner">
-                <Clock size={80} className="mx-auto mb-6 text-gray-300 dark:text-slate-700" />
-                <p className="text-3xl font-black text-gray-400 dark:text-slate-600 uppercase tracking-tighter">Sin Tareas Programadas</p>
-                <p className="text-gray-400 dark:text-slate-500 font-medium mt-2">Programa tareas recurrentes para ahorrar tiempo.</p>
+        {viewMode === 'LIST' ? (
+          <div className="space-y-6">
+            {listTasks.length === 0 ? (
+              <div className="py-24 text-center bg-white dark:bg-slate-900 rounded-[2.5rem] border-4 border-dashed border-gray-200 dark:border-slate-800 shadow-inner">
+                <ClipboardCheck size={80} className="mx-auto mb-6 text-gray-300 dark:text-slate-700" />
+                <p className="text-3xl font-black text-gray-400 dark:text-slate-600 uppercase tracking-tighter">
+                  {activeTab === 'ACTIVE' ? 'Sin Tareas Activas' : 'Sin Tareas Diarias'}
+                </p>
+                <p className="text-gray-400 dark:text-slate-500 font-medium mt-2">
+                  {activeTab === 'ACTIVE' ? '¡Todo al día en esta semana!' : 'No hay rutinas diarias configuradas.'}
+                </p>
               </div>
             ) : (
-              scheduledTasks.map(task => (
-                <ScheduledTaskCard 
+              listTasks.map(task => (
+                <TaskCard 
                   key={task.id}
                   task={task}
-                  onEdit={(t) => { 
-                    setEditingScheduledTask(t); 
-                    setSelectedImages([]);
-                    setPreviews([]);
-                    setShowScheduledModal(true); 
-                  }}
-                  onDelete={(t) => setScheduledToDelete(t)}
-                  onTrigger={handleTriggerScheduledTask}
+                  currentUser={currentUser}
+                  onToggleChecklist={handleToggleChecklistItem}
+                  onStart={handleStartTask}
+                  onComplete={handleCompleteTask}
+                  onEdit={handleEditTask}
+                  onDelete={handleDeleteTaskConfirm}
+                  onComment={handleCommentTask}
+                  onShare={handleShareTaskAction}
+                  onSharePdf={handleSharePdfAction}
+                  onViewImages={handleViewImagesAction}
                 />
               ))
             )}
           </div>
+        ) : (
+          renderCalendarView()
         )}
       </div>
 
@@ -1143,14 +943,12 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
                          className="w-full pl-4 pr-10 py-4 font-bold bg-gray-50 dark:bg-slate-800/50 border-2 border-gray-200 dark:border-slate-700 rounded-2xl focus:border-red-500 outline-none appearance-none dark:text-white text-sm"
                        >
                          <option value={TaskRecurrence.NONE}>Ninguna (Tarea Única)</option>
-                         <option value={TaskRecurrence.DAILY}>Diaria</option>
-                         <option value={TaskRecurrence.WEEKLY}>Semanal</option>
-                         <option value={TaskRecurrence.MONTHLY}>Mensual</option>
-                       </select>
+                         <option value={TaskRecurrence.DAILY}>Diaria (Permanente con reinicio cada 4h)</option>
+                        </select>
                        <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={18} />
                      </div>
                      <p className="text-[10px] font-bold text-gray-400 dark:text-slate-500 mt-2 ml-1 italic">
-                       * Si seleccionas una recurrencia, la tarea se guardará como programada y se generará automáticamente.
+                       * Las tareas diarias son permanentes y se reinician automáticamente 4 horas después de completarse.
                      </p>
                   </div>
                 )}
@@ -1224,6 +1022,17 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
                        Añadir
                      </button>
                    </div>
+                </div>
+
+                <div>
+                   <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Título para las Imágenes (Opcional)</label>
+                   <input 
+                     disabled={!canManageTasks}
+                     value={editingTask?.imagesTitle || ''}
+                     onChange={e => setEditingTask({ ...editingTask, imagesTitle: e.target.value })}
+                     className="w-full px-5 py-3 font-bold bg-gray-50 dark:bg-slate-800/50 border-2 border-gray-200 dark:border-slate-700 rounded-2xl focus:border-red-500 outline-none transition-all dark:text-white placeholder-gray-400 text-sm"
+                     placeholder="Ej: Así es como debe quedar..."
+                   />
                 </div>
 
                 <div>
@@ -1324,260 +1133,6 @@ const Tasks: React.FC<TasksProps> = ({ currentUser }) => {
             <div className="flex gap-4">
               <button onClick={() => setTaskToDelete(null)} className="flex-1 py-4 font-bold text-gray-600 dark:text-slate-400 bg-gray-100 dark:bg-slate-700 rounded-2xl hover:bg-gray-200 transition-colors">Cancelar</button>
               <button onClick={handleDeleteTask} className="flex-1 py-4 font-bold text-white bg-red-600 rounded-2xl hover:bg-red-700 shadow-lg shadow-button-red transition-all">ELIMINAR</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Scheduled Task Modal */}
-      {showScheduledModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in overflow-y-auto">
-          <div className="bg-white dark:bg-slate-950 rounded-[2.5rem] w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl border border-gray-100 dark:border-slate-800 relative">
-             {/* Modal Header */}
-             <div className="p-6 border-b border-gray-100 dark:border-slate-800 flex justify-between items-center bg-gray-50/50 dark:bg-slate-900/50 rounded-t-[2.5rem]">
-                <div className="flex items-center gap-3">
-                   <div className="p-3 bg-red-600 text-white rounded-2xl shadow-lg shadow-red-600/20">
-                      <Clock size={24} strokeWidth={3} />
-                   </div>
-                   <div>
-                      <h3 className="text-2xl font-black text-gray-900 dark:text-white uppercase tracking-tight">
-                        {editingScheduledTask?.id ? 'Editar Programación' : 'Programar Nueva Tarea'}
-                      </h3>
-                      <p className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-widest">Configura la recurrencia</p>
-                   </div>
-                </div>
-                <button onClick={() => setShowScheduledModal(false)} className="p-3 hover:bg-gray-200 dark:hover:bg-slate-800 rounded-2xl transition-colors text-gray-400">
-                   <X size={24} strokeWidth={3} />
-                </button>
-             </div>
-
-             {/* Modal Body */}
-             <div className="flex-1 overflow-y-auto p-6 space-y-6">
-                <div>
-                   <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Título de la Tarea</label>
-                   <input 
-                     value={editingScheduledTask?.title || ''}
-                     onChange={e => setEditingScheduledTask({ ...editingScheduledTask, title: e.target.value })}
-                     className="w-full px-5 py-4 text-xl font-black bg-gray-50 dark:bg-slate-800/50 border-2 border-gray-200 dark:border-slate-700 rounded-2xl focus:border-red-500 focus:bg-white dark:focus:bg-slate-900 outline-none transition-all dark:text-white placeholder-gray-400"
-                     placeholder="¿QUÉ HAY QUE HACER?"
-                   />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                   <div>
-                      <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Departamento</label>
-                      <div className="relative">
-                        <select 
-                          value={editingScheduledTask?.departmentId || ''}
-                          onChange={e => setEditingScheduledTask({ ...editingScheduledTask, departmentId: e.target.value })}
-                          className="w-full pl-4 pr-10 py-4 font-bold bg-gray-50 dark:bg-slate-800/50 border-2 border-gray-200 dark:border-slate-700 rounded-2xl focus:border-red-500 outline-none appearance-none dark:text-white text-sm"
-                        >
-                          <option value="" disabled>Seleccionar</option>
-                          {departments.map(d => (
-                            <option key={d.id} value={d.id}>{d.name}</option>
-                          ))}
-                        </select>
-                        <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={18} />
-                      </div>
-                   </div>
-                   <div>
-                      <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Recurrencia</label>
-                      <div className="relative">
-                        <select 
-                          value={editingScheduledTask?.recurrence || TaskRecurrence.DAILY}
-                          onChange={e => setEditingScheduledTask({ ...editingScheduledTask, recurrence: e.target.value as TaskRecurrence })}
-                          className="w-full pl-4 pr-10 py-4 font-bold bg-gray-50 dark:bg-slate-800/50 border-2 border-gray-200 dark:border-slate-700 rounded-2xl focus:border-red-500 outline-none appearance-none dark:text-white text-sm"
-                        >
-                          <option value={TaskRecurrence.DAILY}>Diaria</option>
-                          <option value={TaskRecurrence.WEEKLY}>Semanal</option>
-                          <option value={TaskRecurrence.MONTHLY}>Mensual</option>
-                        </select>
-                        <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={18} />
-                      </div>
-                   </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                   <div>
-                      <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Prioridad</label>
-                      <div className="relative">
-                        <select 
-                          value={editingScheduledTask?.priority || TaskPriority.MEDIUM}
-                          onChange={e => setEditingScheduledTask({ ...editingScheduledTask, priority: e.target.value as TaskPriority })}
-                          className="w-full pl-4 pr-10 py-4 font-bold bg-gray-50 dark:bg-slate-800/50 border-2 border-gray-200 dark:border-slate-700 rounded-2xl focus:border-red-500 outline-none appearance-none dark:text-white text-sm"
-                        >
-                          <option value={TaskPriority.LOW}>Baja</option>
-                          <option value={TaskPriority.MEDIUM}>Normal</option>
-                          <option value={TaskPriority.HIGH}>Alta / Urgente</option>
-                        </select>
-                        <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={18} />
-                      </div>
-                   </div>
-                   <div>
-                      <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Estado</label>
-                      <div className="flex bg-gray-100 dark:bg-slate-800 rounded-2xl p-1">
-                        <button
-                          onClick={() => setEditingScheduledTask({ ...editingScheduledTask, active: true })}
-                          className={`flex-1 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${editingScheduledTask?.active ? 'bg-white dark:bg-slate-700 shadow-sm text-green-600' : 'text-gray-500'}`}
-                        >
-                          Activa
-                        </button>
-                        <button
-                          onClick={() => setEditingScheduledTask({ ...editingScheduledTask, active: false })}
-                          className={`flex-1 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${!editingScheduledTask?.active ? 'bg-white dark:bg-slate-700 shadow-sm text-red-600' : 'text-gray-500'}`}
-                        >
-                          Pausada
-                        </button>
-                      </div>
-                   </div>
-                </div>
-
-                <div>
-                   <div className="flex justify-between items-center mb-2">
-                      <label className="block text-xs font-black text-gray-400 uppercase tracking-widest ml-1">Descripción (Opcional)</label>
-                      
-                      {/* Editor Toolbar */}
-                      <button 
-                        onClick={insertUrgentMarker}
-                        className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-900/20 dark:hover:bg-red-900/40 dark:text-red-400 rounded-lg text-[10px] font-black uppercase tracking-wider transition-colors active:scale-95"
-                        type="button"
-                        title="Resaltar texto seleccionado como urgente"
-                      >
-                        <Flame size={12} fill="currentColor" />
-                        Resaltar Urgencia
-                      </button>
-                   </div>
-                   
-                   <textarea 
-                     ref={descriptionInputRef}
-                     value={editingScheduledTask?.description || ''}
-                     onChange={e => setEditingScheduledTask({ ...editingScheduledTask, description: e.target.value })}
-                     className="w-full px-5 py-4 font-bold text-base bg-gray-50 dark:bg-slate-800/50 border-2 border-gray-200 dark:border-slate-700 rounded-2xl focus:border-red-500 focus:bg-white dark:focus:bg-slate-900 outline-none transition-all min-h-[120px] dark:text-white placeholder-gray-400 resize-none"
-                     placeholder="Instrucciones para las tareas generadas..."
-                   />
-                   <p className="text-[10px] font-bold text-gray-400 dark:text-slate-500 mt-2 flex items-center gap-1.5 ml-1">
-                     <Info size={12} />
-                     <span>Tip: Usa <span className="text-red-500 font-mono bg-red-50 dark:bg-red-900/20 px-1 rounded">*asteriscos*</span> para marcar texto urgente.</span>
-                   </p>
-                </div>
-
-                {/* Checklist Input */}
-                <div>
-                   <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Lista de Tareas (Checklist)</label>
-                   
-                   {/* Existing Checklist Items */}
-                   {editingScheduledTask?.checklist && editingScheduledTask.checklist.length > 0 && (
-                     <div className="space-y-2 mb-3">
-                       {editingScheduledTask.checklist.map((item, index) => (
-                         <div key={item.id} className="flex items-center gap-2 bg-gray-50 dark:bg-slate-800/50 p-2 rounded-xl border border-gray-200 dark:border-slate-700">
-                           <div className="w-5 h-5 rounded border-2 border-gray-300 dark:border-slate-600 flex-shrink-0"></div>
-                           <span className="flex-1 text-sm font-bold text-gray-700 dark:text-slate-300">{item.text}</span>
-                           <button 
-                             onClick={() => handleRemoveChecklistItem(index)}
-                             className="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-                           >
-                             <X size={16} strokeWidth={3} />
-                           </button>
-                         </div>
-                       ))}
-                     </div>
-                   )}
-
-                   {/* Add New Item */}
-                   <div className="flex gap-2">
-                     <input 
-                       value={newChecklistItemText}
-                       onChange={e => setNewChecklistItemText(e.target.value)}
-                       onKeyDown={e => e.key === 'Enter' && handleAddChecklistItem()}
-                       className="flex-1 px-4 py-3 font-bold text-sm bg-gray-50 dark:bg-slate-800/50 border-2 border-gray-200 dark:border-slate-700 rounded-xl focus:border-red-500 focus:bg-white dark:focus:bg-slate-900 outline-none transition-all dark:text-white placeholder-gray-400"
-                       placeholder="Añadir elemento a la lista..."
-                     />
-                     <button 
-                       onClick={handleAddChecklistItem}
-                       disabled={!newChecklistItemText.trim()}
-                       className="px-4 py-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-black uppercase tracking-wider rounded-xl disabled:opacity-50 transition-all active:scale-95"
-                     >
-                       Añadir
-                     </button>
-                   </div>
-                </div>
-
-                <div>
-                   <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Imágenes de Ejemplo</label>
-                   <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar">
-                      {/* BUTTON 1: CAMERA */}
-                      <button 
-                        onClick={() => cameraInputRef.current?.click()}
-                        className="w-24 h-24 rounded-2xl border-2 border-dashed border-gray-300 dark:border-slate-600 flex flex-col items-center justify-center text-gray-400 hover:text-red-500 hover:border-red-500 hover:bg-red-50 dark:hover:bg-slate-800 transition-all flex-shrink-0 group"
-                      >
-                        <Camera size={28} className="group-hover:scale-110 transition-transform"/>
-                        <span className="text-[10px] font-black mt-1 uppercase tracking-wide">FOTO</span>
-                      </button>
-
-                      {/* BUTTON 2: GALLERY */}
-                      <button 
-                        onClick={() => fileInputRef.current?.click()}
-                        className="w-24 h-24 rounded-2xl border-2 border-dashed border-gray-300 dark:border-slate-600 flex flex-col items-center justify-center text-gray-400 hover:text-blue-500 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-slate-800 transition-all flex-shrink-0 group"
-                      >
-                        <Image size={28} className="group-hover:scale-110 transition-transform"/>
-                        <span className="text-[10px] font-black mt-1 uppercase tracking-wide">GALERÍA</span>
-                      </button>
-                      
-                      {/* Existing Images (Edit Mode) */}
-                      {editingScheduledTask?.imageUrls?.map((url, i) => (
-                        <div key={`existing-${i}`} className="relative w-24 h-24 flex-shrink-0">
-                           <img src={url} className="w-full h-full object-cover rounded-2xl border-2 border-gray-200 dark:border-slate-700" />
-                           <span className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[9px] font-bold text-center py-1 rounded-b-[14px]">Guardada</span>
-                        </div>
-                      ))}
-
-                      {/* New Preview Images */}
-                      {previews.map((url, i) => (
-                        <div key={`new-${i}`} className="relative w-24 h-24 flex-shrink-0 group">
-                           <img src={url} className="w-full h-full object-cover rounded-2xl border-2 border-red-500 shadow-md" />
-                           <button onClick={() => removeImage(i)} className="absolute top-1 right-1 bg-red-600 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-md hover:scale-110"><X size={14} strokeWidth={3} /></button>
-                        </div>
-                      ))}
-                   </div>
-                </div>
-
-                {saveError && (
-                  <div className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 p-4 rounded-2xl text-center font-bold text-sm border-2 border-red-100 dark:border-red-900/30 flex items-center justify-center gap-2">
-                    <AlertTriangle size={18} /> {saveError}
-                  </div>
-                )}
-             </div>
-
-             {/* Modal Footer */}
-             <div className="p-6 border-t border-gray-100 dark:border-slate-800 bg-gray-50 dark:bg-slate-900 flex gap-4 sticky bottom-0 z-10 rounded-b-[2.5rem]">
-                <button onClick={() => setShowScheduledModal(false)} className="flex-1 py-4 font-bold text-gray-500 dark:text-slate-400 hover:bg-gray-200 dark:hover:bg-slate-800 rounded-2xl transition-colors">
-                  Cancelar
-                </button>
-                <button 
-                  onClick={handleSaveScheduledTask} 
-                  disabled={isSaving}
-                  className="flex-[2] py-4 bg-red-600 hover:bg-red-700 text-white font-black uppercase tracking-wider rounded-2xl shadow-xl shadow-button-red active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-70"
-                >
-                  {isSaving ? <Loader2 className="animate-spin" strokeWidth={3} /> : <Save size={22} strokeWidth={3} />}
-                  {isSaving ? 'Guardando...' : 'GUARDAR PROGRAMACIÓN'}
-                </button>
-             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Delete Scheduled Confirmation Modal */}
-      {scheduledToDelete && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in">
-          <div className="bg-white dark:bg-slate-800 rounded-[2.5rem] w-full max-w-sm p-8 text-center shadow-2xl border-2 border-gray-100 dark:border-slate-700">
-            <div className="w-20 h-20 bg-red-50 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-6 text-red-600 dark:text-red-500 shadow-inner">
-               <Trash2 size={40} />
-            </div>
-            <h3 className="text-2xl font-black text-gray-900 dark:text-white uppercase mb-2 tracking-tight">¿Eliminar Programación?</h3>
-            <p className="text-gray-500 dark:text-slate-400 mb-8 font-bold text-lg">Las tareas ya generadas no se eliminarán.</p>
-            <div className="flex gap-4">
-              <button onClick={() => setScheduledToDelete(null)} className="flex-1 py-4 font-bold text-gray-600 dark:text-slate-400 bg-gray-100 dark:bg-slate-700 rounded-2xl hover:bg-gray-200 transition-colors">Cancelar</button>
-              <button onClick={handleDeleteScheduledTask} className="flex-1 py-4 font-bold text-white bg-red-600 rounded-2xl hover:bg-red-700 shadow-lg shadow-button-red transition-all">ELIMINAR</button>
             </div>
           </div>
         </div>
