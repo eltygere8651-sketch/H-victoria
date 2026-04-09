@@ -7,6 +7,8 @@ import { Logo } from './Logo';
 import { ImageViewer } from './ImageViewer';
 import { ShareModal } from './ShareModal';
 import { DeletionTimer } from './DeletionTimer';
+import { DailyResetTimer } from './DailyResetTimer';
+import { TaskRecurrence } from '../types';
 
 interface PublicTaskViewerProps {
   taskId: string;
@@ -38,6 +40,21 @@ export const PublicTaskViewer: React.FC<PublicTaskViewerProps> = ({ taskId }) =>
 
     return () => unsubscribe();
   }, [taskId]);
+
+  // Reset logic for daily tasks
+  useEffect(() => {
+    const RESET_WINDOW_MS = 4 * 60 * 60 * 1000; // 4 Hours
+    const interval = setInterval(() => {
+      if (!task || task.recurrence !== TaskRecurrence.DAILY || task.status !== TaskStatus.COMPLETED || !task.completedAt) return;
+      
+      const now = Date.now();
+      if ((now - task.completedAt) >= RESET_WINDOW_MS) {
+        storageService.resetDailyTask(task.id).catch(err => console.error('Error resetting task in public viewer:', err));
+      }
+    }, 10000); // Check every 10 seconds
+
+    return () => clearInterval(interval);
+  }, [task]);
 
   const handleToggleChecklistItem = useCallback(async (itemIndex: number) => {
     if (!task || !task.checklist || isUpdating) return;
@@ -397,9 +414,11 @@ export const PublicTaskViewer: React.FC<PublicTaskViewerProps> = ({ taskId }) =>
 
               {task.status === TaskStatus.COMPLETED && task.completedAt && (
                 <div className="pt-4 flex justify-center">
-                  <DeletionTimer 
-                    completedAt={task.completedAt} 
-                  />
+                  {task.recurrence === TaskRecurrence.DAILY ? (
+                    <DailyResetTimer completedAt={task.completedAt} />
+                  ) : (
+                    <DeletionTimer completedAt={task.completedAt} />
+                  )}
                 </div>
               )}
 

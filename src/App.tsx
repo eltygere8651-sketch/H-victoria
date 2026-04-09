@@ -304,7 +304,7 @@ const App: React.FC = () => {
     );
   }
 
-  if (sharedTaskId) return <PublicTaskViewer taskId={sharedTaskId} />;
+  if (sharedTaskId && !user) return <PublicTaskViewer taskId={sharedTaskId} />;
   if (!user) return <Login onLogin={handleLogin} />;
 
   return (
@@ -328,7 +328,7 @@ const App: React.FC = () => {
         {view === 'inventory' && user.role === UserRole.ADMIN && <Inventory currentUser={user} />}
         {view === 'replenish' && user.role !== UserRole.GUEST && user.role !== UserRole.PROVIDER && <Replenishment currentUser={user} cart={cart} setCart={setCart} showMobileCart={showMobileCart} setShowMobileCart={setShowMobileCart} />}
         {view === 'admin' && user.role === UserRole.ADMIN && <Admin currentUser={user} unreadNotificationsCount={unreadAdminNotifications.length} initialTab={initialAdminTab} />}
-        {view === 'tasks' && <Tasks currentUser={user} />}
+        {view === 'tasks' && <Tasks currentUser={user} initialTaskId={sharedTaskId} />}
         {(view as any) === 'provider' && <ProviderDelivery currentUser={user} />}
       </MainLayout>
 

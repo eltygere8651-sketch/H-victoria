@@ -493,12 +493,13 @@ export const resetDailyTask = async (taskId: string) => {
   if (!doc.exists) return;
   
   const data = doc.data() as Task;
-  const resetChecklist = (data.checklist || []).map(item => ({
-    ...item,
-    isCompleted: false,
-    completedBy: undefined,
-    completedAt: undefined
-  }));
+  const resetChecklist = (data.checklist || []).map(item => {
+    const { completedBy, completedAt, ...rest } = item;
+    return {
+      ...rest,
+      isCompleted: false
+    };
+  });
 
   await taskRef.update({
     status: TaskStatus.PENDING,

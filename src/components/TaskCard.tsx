@@ -1,6 +1,6 @@
 import React from 'react';
 import { Task, User, TaskStatus, TaskPriority, TaskChecklistItem, UserRole, TaskRecurrence } from '../types';
-import { AlertTriangle, Edit2, Trash2, Share2, FileText, MessagesSquare, Check, Clock, Calendar, RotateCcw } from 'lucide-react';
+import { AlertTriangle, Edit2, Trash2, Share2, FileText, MessagesSquare, Check, Clock, Calendar, RotateCcw, Camera } from 'lucide-react';
 import { DeletionTimer } from './DeletionTimer';
 import { DailyResetTimer } from './DailyResetTimer';
 
@@ -232,11 +232,13 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
         {task.imageUrls && task.imageUrls.length > 0 && (
           <div className="mb-6">
             {task.imagesTitle && (
-              <div className="flex items-center gap-2 mb-3 ml-1">
-                <div className="w-1 h-4 bg-red-500 rounded-full"></div>
-                <span className="text-xs font-black text-gray-400 dark:text-slate-500 uppercase tracking-widest italic">
-                  {task.imagesTitle}
-                </span>
+              <div className="flex items-center mb-4 ml-1">
+                <div className="flex items-center gap-2 bg-red-600 dark:bg-red-500 px-4 py-1.5 rounded-full shadow-[0_4px_15px_rgba(220,38,38,0.4)] transform -rotate-1">
+                  <Camera size={14} className="text-white" />
+                  <span className="text-[11px] font-black text-white uppercase tracking-tighter">
+                    {task.imagesTitle}
+                  </span>
+                </div>
               </div>
             )}
             <div 
