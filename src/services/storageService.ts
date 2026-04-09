@@ -1,5 +1,6 @@
 import { Product, User, ReplenishmentRequest, UserRole, Department, CartItem, AppNotification, NotificationType, NotificationPayload, OrderBatch, Task, TaskStatus, TaskPriority, TaskType, TaskComment, Document, TaskRecurrence } from '../types';
 import { db, auth, storage } from '../firebaseConfig';
+export { auth, db, storage };
 import firebase from 'firebase/compat/app';
 import { fileToBase64 } from '../utils/imageCompressor';
 
@@ -126,6 +127,17 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
   }
 }
 
+export const loginWithGoogle = async () => {
+  const provider = new firebase.auth.GoogleAuthProvider();
+  try {
+    const result = await auth.signInWithPopup(provider);
+    return result.user;
+  } catch (error) {
+    console.error("Error during Google login:", error);
+    throw error;
+  }
+};
+
 async function initFirestoreWithInitialData() {
   console.log("Iniciando sincronización de datos base...");
 
@@ -133,8 +145,14 @@ async function initFirestoreWithInitialData() {
     const initRef = db.collection(KEYS.SYSTEM).doc('initialization');
     const initDoc = await initRef.get();
 
-    if (initDoc.exists && initDoc.data()?.isInitialized) {
-      console.log("La base de datos ya fue inicializada previamente. Omitiendo sincronización para no perder datos del usuario.");
+    // Double check: if the flag exists OR if there are already users, don't re-initialize
+    const userSnapshot = await db.collection(KEYS.USERS).limit(1).get();
+    
+    if ((initDoc.exists && initDoc.data()?.isInitialized) || !userSnapshot.empty) {
+      console.log("La base de datos ya contiene datos o fue inicializada. Omitiendo para proteger la integridad de los datos.");
+      if (!initDoc.exists) {
+        await initRef.set({ isInitialized: true, timestamp: Date.now(), reason: 'auto-detected-existing-data' });
+      }
       return;
     }
 
@@ -279,7 +297,7 @@ export const subscribeToDepartments = (callback: (data: Department[]) => void) =
 };
 export const saveDepartment = async (department: Partial<Department>) => {
   const docRef = department.id ? db.collection(KEYS.DEPARTMENTS).doc(department.id) : db.collection(KEYS.DEPARTMENTS).doc();
-  await docRef.set({ ...department, id: docRef.id }, { merge: true });
+  await docRef.set(sanitizeData({ ...department, id: docRef.id }), { merge: true });
 };
 export const deleteDepartment = async (id: string) => await db.collection(KEYS.DEPARTMENTS).doc(id).delete();
 
@@ -291,7 +309,7 @@ export const subscribeToProducts = (callback: (data: Product[]) => void) => {
 };
 export const saveProduct = async (product: Partial<Product>) => {
   const docRef = product.id ? db.collection(KEYS.PRODUCTS).doc(product.id) : db.collection(KEYS.PRODUCTS).doc();
-  await docRef.set({ ...product, id: docRef.id }, { merge: true });
+  await docRef.set(sanitizeData({ ...product, id: docRef.id }), { merge: true });
 };
 export const deleteProduct = async (id: string) => await db.collection(KEYS.PRODUCTS).doc(id).delete();
 
@@ -449,8 +467,11 @@ export const subscribeToUsers = (callback: (users: User[]) => void) => {
         callback(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as User)));
     }, error => handleFirestoreError(error, OperationType.GET, KEYS.USERS));
 };
-export const addUser = async (user: Omit<User, 'id'>) => await db.collection(KEYS.USERS).add(user);
-export const updateUser = async (user: User) => await db.collection(KEYS.USERS).doc(user.id).update({ ...user });
+export const addUser = async (user: Omit<User, 'id'>) => await db.collection(KEYS.USERS).add(sanitizeData(user));
+export const updateUser = async (user: User) => {
+  const { id, ...data } = user;
+  await db.collection(KEYS.USERS).doc(id).update(sanitizeData(data));
+};
 export const deleteUser = async (id: string) => await db.collection(KEYS.USERS).doc(id).delete();
 export const savePushToken = async (userId: string, token: string) => await db.collection(KEYS.USERS).doc(userId).set({ pushToken: token }, { merge: true });
 
@@ -614,7 +635,7 @@ export const subscribeToDocuments = (callback: (data: Document[]) => void) => {
     callback(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Document)));
   }, error => handleFirestoreError(error, OperationType.GET, KEYS.DOCUMENTS));
 };
-export const saveDocument = async (document: Omit<Document, 'id'>) => await db.collection(KEYS.DOCUMENTS).add(document);
+export const saveDocument = async (document: Omit<Document, 'id'>) => await db.collection(KEYS.DOCUMENTS).add(sanitizeData(document));
 export const deleteDocument = async (doc: Document) => {
   try { await storage.refFromURL(doc.url).delete(); } catch(e) {}
   await db.collection(KEYS.DOCUMENTS).doc(doc.id).delete();

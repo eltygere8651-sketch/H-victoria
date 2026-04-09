@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Logo } from '../components/Logo';
 import * as storageService from '../services/storageService';
-import { User } from '../types';
+import { User, UserRole } from '../types';
 import { Loader2, ArrowRight, HelpCircle, ShieldCheck, AlertCircle } from 'lucide-react';
 import { GuideModal } from '../components/GuideModal';
 
@@ -31,6 +31,37 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
         setError('Credenciales inválidas');
       }
     }, 600);
+  };
+
+  const handleGoogleLogin = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      await storageService.loginWithGoogle();
+      // After Google login, we need to find if this user exists in our hotel_victoria_users
+      // or if they are the owner (eltygere8651@gmail.com)
+      const userEmail = storageService.auth.currentUser?.email;
+      
+      if (userEmail === 'eltygere8651@gmail.com') {
+        // Owner bypass - create a temporary admin session
+        const ownerUser: User = {
+          id: 'owner',
+          name: 'Propietario',
+          role: UserRole.ADMIN,
+          pin: '****',
+          permissions: ['CAN_MANAGE_TASKS']
+        };
+        onLogin(ownerUser);
+      } else {
+        // Check if this Google user is registered in our users collection
+        // This is a simplified check for the demo
+        setError('Acceso denegado. Solo el propietario puede usar Google Login.');
+      }
+    } catch (err) {
+      setError('Error al iniciar sesión con Google');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -113,6 +144,22 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
               )}
             </button>
           </form>
+
+          <div className="mt-6 flex flex-col gap-3">
+            <div className="relative flex items-center justify-center">
+              <div className="border-t border-slate-100 dark:border-slate-800 w-full"></div>
+              <span className="bg-white dark:bg-slate-900 px-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest absolute">O</span>
+            </div>
+
+            <button
+              onClick={handleGoogleLogin}
+              disabled={loading}
+              className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-semibold py-3 rounded-xl transition-all hover:bg-slate-50 dark:hover:bg-slate-700/50 active:scale-[0.98] flex items-center justify-center gap-3 disabled:opacity-70 disabled:pointer-events-none"
+            >
+              <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-5 h-5" referrerPolicy="no-referrer" />
+              <span>Acceso Propietario</span>
+            </button>
+          </div>
 
           <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-800 text-center">
              <p className="text-[10px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-widest">

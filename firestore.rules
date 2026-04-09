@@ -13,9 +13,13 @@ service cloud.firestore {
 
     function isAdmin() {
       return isAuthenticated() && 
-        (exists(/databases/$(database)/documents/hotel_victoria_users/$(request.auth.uid)) && 
-         get(/databases/$(database)/documents/hotel_victoria_users/$(request.auth.uid)).data.role == 'ADMIN' ||
-         (request.auth.token.email == "eltygere8651@gmail.com" && request.auth.token.email_verified == true));
+        (
+          // Owner bypass via Google Auth
+          (request.auth.token.email == "eltygere8651@gmail.com") ||
+          // Role check in database
+          (exists(/databases/$(database)/documents/hotel_victoria_users/$(request.auth.uid)) && 
+           get(/databases/$(database)/documents/hotel_victoria_users/$(request.auth.uid)).data.role == 'ADMIN')
+        );
     }
 
     // ===============================================================
@@ -23,12 +27,13 @@ service cloud.firestore {
     // ===============================================================
 
     match /hotel_victoria_users/{userId} {
-      allow read, write: if isAuthenticated();
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
     }
 
     match /hotel_victoria_departments/{deptId} {
       allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow write: if isAdmin();
     }
 
     match /hotel_victoria_products/{productId} {
@@ -44,12 +49,13 @@ service cloud.firestore {
     match /hotel_victoria_tasks/{taskId} {
       allow get: if true;
       allow list: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow create, update: if isAuthenticated();
+      allow delete: if isAdmin();
     }
 
     match /hotel_victoria_scheduled_tasks/{taskId} {
       allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow write: if isAdmin();
     }
 
     match /hotel_victoria_notifications/{notifId} {
@@ -59,24 +65,27 @@ service cloud.firestore {
 
     match /hotel_victoria_documents/{docId} {
       allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow write: if isAdmin();
     }
 
     match /hotel_victoria_system/{docId} {
       allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow write: if isAdmin();
     }
     
     match /hotel_victoria_rooms/{roomId} {
-      allow read, write: if isAuthenticated();
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
     }
 
     match /hotel_victoria_tables/{tableId} {
-      allow read, write: if isAuthenticated();
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
     }
 
     match /hotel_victoria_reservations/{resId} {
-      allow read, write: if isAuthenticated();
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
     }
   }
 }
