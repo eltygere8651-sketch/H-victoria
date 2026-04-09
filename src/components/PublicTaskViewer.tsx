@@ -24,19 +24,23 @@ export const PublicTaskViewer: React.FC<PublicTaskViewerProps> = ({ taskId }) =>
   const [showShareModal, setShowShareModal] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = db.collection('tasks').doc(taskId).onSnapshot((doc) => {
-      if (doc.exists) {
-        setTask({ ...doc.data(), id: doc.id } as Task);
-        setError('');
-      } else {
-        setError('La tarea no existe o ha sido eliminada.');
+    const unsubscribe = storageService.subscribeToTask(
+      taskId, 
+      (taskData) => {
+        if (taskData) {
+          setTask(taskData);
+          setError('');
+        } else {
+          setError('La tarea no existe o ha sido eliminada.');
+        }
+        setLoading(false);
+      },
+      (err) => {
+        console.error("Error loading shared task:", err);
+        setError('Error al cargar la información. Es posible que no tengas permisos o el enlace haya expirado.');
+        setLoading(false);
       }
-      setLoading(false);
-    }, (err) => {
-      console.error("Error loading shared task:", err);
-      setError('Error al cargar la información. Es posible que no tengas permisos.');
-      setLoading(false);
-    });
+    );
 
     return () => unsubscribe();
   }, [taskId]);

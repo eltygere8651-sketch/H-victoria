@@ -77,27 +77,53 @@ interface FirestoreErrorInfo {
   }
 }
 
+// Helper to safely stringify objects that might have circular references
+const safeStringify = (obj: any) => {
+  const cache = new Set();
+  return JSON.stringify(obj, (key, value) => {
+    if (typeof value === 'object' && value !== null) {
+      if (cache.has(value)) {
+        return '[Circular]';
+      }
+      cache.add(value);
+    }
+    return value;
+  });
+};
+
 function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
-  const errInfo: FirestoreErrorInfo = {
-    error: error instanceof Error ? error.message : String(error),
+  // Ensure we only have primitives in the error info to avoid circular structure errors
+  const safeError = error instanceof Error ? error.message : String(error);
+  
+  const errInfo = {
+    error: safeError,
+    operationType: String(operationType),
+    path: path ? String(path) : null,
     authInfo: {
-      userId: auth.currentUser?.uid || 'no-user',
-      email: auth.currentUser?.email,
-      emailVerified: auth.currentUser?.emailVerified,
-      isAnonymous: auth.currentUser?.isAnonymous,
-      tenantId: auth.currentUser?.tenantId,
-      providerInfo: auth.currentUser?.providerData.filter(p => !!p).map(provider => ({
-        providerId: provider!.providerId,
-        displayName: provider!.displayName || '',
-        email: provider!.email || '',
-        photoUrl: provider!.photoURL || ''
-      })) || []
-    },
-    operationType,
-    path
+      userId: String(auth.currentUser?.uid || 'no-user'),
+      email: auth.currentUser?.email ? String(auth.currentUser.email) : null,
+      emailVerified: Boolean(auth.currentUser?.emailVerified),
+      isAnonymous: Boolean(auth.currentUser?.isAnonymous),
+      tenantId: auth.currentUser?.tenantId ? String(auth.currentUser.tenantId) : null,
+      providerInfo: auth.currentUser?.providerData ? auth.currentUser.providerData.filter(p => !!p).map(p => ({
+        providerId: String(p!.providerId || ''),
+        displayName: String(p!.displayName || ''),
+        email: String(p!.email || ''),
+        photoUrl: String(p!.photoURL || '')
+      })) : []
+    }
+  };
+
+  try {
+    const jsonString = JSON.stringify(errInfo);
+    console.error('Firestore Error: ', jsonString);
+    throw new Error(jsonString);
+  } catch (e) {
+    // Fallback if JSON.stringify still fails for some reason
+    const fallbackMsg = `Firestore Error in ${operationType} at ${path}: ${safeError}`;
+    console.error(fallbackMsg);
+    throw new Error(fallbackMsg);
   }
-  console.error('Firestore Error: ', JSON.stringify(errInfo));
-  throw new Error(JSON.stringify(errInfo));
 }
 
 async function initFirestoreWithInitialData() {
@@ -213,7 +239,7 @@ export const ensureAnonymousAuth = async () => {
   });
 };
 
-export const saveSession = (user: User) => localStorage.setItem(KEYS.CURRENT_SESSION, JSON.stringify(user));
+export const saveSession = (user: User) => localStorage.setItem(KEYS.CURRENT_SESSION, safeStringify(user));
 export const getSession = (): User | null => JSON.parse(localStorage.getItem(KEYS.CURRENT_SESSION) || 'null');
 export const clearSession = () => localStorage.removeItem(KEYS.CURRENT_SESSION);
 export const saveLastView = (view: string) => localStorage.setItem(KEYS.LAST_VIEW, view);
@@ -221,7 +247,7 @@ export const getLastView = (): string | null => localStorage.getItem(KEYS.LAST_V
 
 // --- CART ---
 export const saveDraftCart = async (userId: string, cart: CartItem[]) => {
-  localStorage.setItem(KEYS.DRAFT_CART, JSON.stringify(cart));
+  localStorage.setItem(KEYS.DRAFT_CART, safeStringify(cart));
   if (userId && userId !== 'guest' && !userId.startsWith('guest-')) {
     try {
       await db.collection(KEYS.USERS).doc(userId).set({ draftCart: cart }, { merge: true });
@@ -548,6 +574,22 @@ export const addCommentToTask = async (taskId: string, comment: Omit<TaskComment
 export const markTaskAsSeen = async (taskId: string, userId: string) => {
   await db.collection(KEYS.TASKS).doc(taskId).update({ seenBy: firebase.firestore.FieldValue.arrayUnion(userId) });
 };
+export const subscribeToTask = (taskId: string, callback: (task: Task | null) => void, onError?: (error: any) => void) => {
+  return db.collection(KEYS.TASKS).doc(taskId).onSnapshot(doc => {
+    if (doc.exists) {
+      callback({ ...doc.data(), id: doc.id } as Task);
+    } else {
+      callback(null);
+    }
+  }, error => {
+    if (onError) {
+      onError(error);
+    } else {
+      handleFirestoreError(error, OperationType.GET, `${KEYS.TASKS}/${taskId}`);
+    }
+  });
+};
+
 export const getTaskById = async (taskId: string): Promise<Task | null> => {
   const doc = await db.collection(KEYS.TASKS).doc(taskId).get();
   return doc.exists ? { ...doc.data(), id: doc.id } as Task : null;

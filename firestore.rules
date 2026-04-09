@@ -42,7 +42,8 @@ service cloud.firestore {
     }
 
     match /hotel_victoria_tasks/{taskId} {
-      allow read: if isAuthenticated();
+      allow get: if true;
+      allow list: if isAuthenticated();
       allow write: if isAuthenticated();
     }
 
