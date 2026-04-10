@@ -16,7 +16,7 @@ service cloud.firestore {
         (
           // Owner bypass via Google Auth
           (request.auth.token.email == "eltygere8651@gmail.com") ||
-          // Role check in database
+          // Check if there's a user document with this UID and role ADMIN
           (exists(/databases/$(database)/documents/hotel_victoria_users/$(request.auth.uid)) && 
            get(/databases/$(database)/documents/hotel_victoria_users/$(request.auth.uid)).data.role == 'ADMIN')
         );

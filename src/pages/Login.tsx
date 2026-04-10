@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import { Logo } from '../components/Logo';
 import * as storageService from '../services/storageService';
 import { User, UserRole } from '../types';
-import { Loader2, ArrowRight, HelpCircle, ShieldCheck, AlertCircle } from 'lucide-react';
+import { Loader2, ArrowRight, HelpCircle, ShieldCheck, AlertCircle, Smartphone } from 'lucide-react';
 import { GuideModal } from '../components/GuideModal';
+import { PWAInstallPrompt } from '../components/PWAInstallPrompt';
 
 interface LoginProps {
   onLogin: (user: User) => void;
@@ -15,6 +16,26 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
+  const [showInstallPrompt, setShowInstallPrompt] = useState(false);
+
+  // Check for existing Google session on mount
+  React.useEffect(() => {
+    const checkExistingAuth = async () => {
+      const currentUser = storageService.auth.currentUser;
+      if (currentUser && currentUser.email === 'eltygere8651@gmail.com' && !storageService.getSession()) {
+        console.log("Auto-logging in owner...");
+        const ownerUser: User = {
+          id: 'owner',
+          name: 'Propietario',
+          role: UserRole.ADMIN,
+          pin: '****',
+          permissions: ['CAN_MANAGE_TASKS']
+        };
+        onLogin(ownerUser);
+      }
+    };
+    checkExistingAuth();
+  }, [onLogin]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,10 +58,10 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     setLoading(true);
     setError('');
     try {
-      await storageService.loginWithGoogle();
-      // After Google login, we need to find if this user exists in our hotel_victoria_users
-      // or if they are the owner (eltygere8651@gmail.com)
-      const userEmail = storageService.auth.currentUser?.email;
+      const googleUser = await storageService.loginWithGoogle();
+      const userEmail = googleUser?.email;
+      
+      console.log("Google Login Success, Email:", userEmail);
       
       if (userEmail === 'eltygere8651@gmail.com') {
         // Owner bypass - create a temporary admin session
@@ -49,16 +70,53 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
           name: 'Propietario',
           role: UserRole.ADMIN,
           pin: '****',
+          email: 'eltygere8651@gmail.com',
           permissions: ['CAN_MANAGE_TASKS']
         };
         onLogin(ownerUser);
-      } else {
+      } else if (userEmail) {
         // Check if this Google user is registered in our users collection
-        // This is a simplified check for the demo
-        setError('Acceso denegado. Solo el propietario puede usar Google Login.');
+        const registeredUser = await storageService.getUserByEmail(userEmail);
+        
+        if (registeredUser) {
+          // If the user is found by email but the document ID is not their Google UID,
+          // we should link them so Firestore rules can identify them by UID.
+          if (registeredUser.id !== googleUser.uid) {
+            console.log("Linking Google UID to user document...");
+            const { id, ...userData } = registeredUser;
+            // Create/Update document with UID as ID
+            await storageService.db.collection('hotel_victoria_users').doc(googleUser.uid).set({
+              ...userData,
+              email: userEmail // Ensure email is set
+            }, { merge: true });
+            
+            // Optionally delete the old document if it was auto-generated
+            if (id.length < 20) { // Simple check to see if it's an auto-id vs UID
+               // For safety in this demo, we'll keep both or just use the new one
+            }
+            
+            registeredUser.id = googleUser.uid;
+          }
+          onLogin(registeredUser);
+        } else {
+          // Sign out if not authorized
+          await storageService.logoutGoogle();
+          setError(`Acceso denegado para ${userEmail}. Este correo no está autorizado en el sistema.`);
+        }
+      } else {
+        setError('No se pudo obtener el correo electrónico de la cuenta de Google.');
       }
-    } catch (err) {
-      setError('Error al iniciar sesión con Google');
+    } catch (err: any) {
+      console.error("Google Login Error:", err);
+      if (err.code === 'auth/popup-blocked') {
+        setError('El navegador bloqueó la ventana emergente. Por favor, permite las ventanas emergentes para este sitio.');
+      } else if (err.code === 'auth/cancelled-popup-request' || err.code === 'auth/popup-closed-by-user') {
+        setError('');
+      } else if (err.code === 'auth/network-request-failed') {
+        setError('Error de red. Verifica tu conexión a internet.');
+      } else {
+        setError(`Error al iniciar sesión: ${err.message || 'Inténtalo de nuevo.'}`);
+      }
     } finally {
       setLoading(false);
     }
@@ -170,6 +228,16 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
       </div>
 
       <GuideModal isOpen={showGuide} onClose={() => setShowGuide(false)} />
+      <PWAInstallPrompt isOpen={showInstallPrompt} onClose={() => setShowInstallPrompt(false)} />
+
+      {/* Floating Guide Button */}
+      <button 
+        onClick={() => setShowGuide(true)}
+        className="fixed bottom-6 right-6 z-[60] bg-slate-900 dark:bg-white text-white dark:text-slate-900 p-4 rounded-2xl shadow-2xl shadow-black/20 flex items-center gap-3 font-black text-xs uppercase tracking-widest active:scale-95 transition-all hover:pr-6 group"
+      >
+        <HelpCircle size={20} className="group-hover:rotate-12 transition-transform" />
+        <span className="max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-500 whitespace-nowrap">Guía & App</span>
+      </button>
     </div>
   );
 };
