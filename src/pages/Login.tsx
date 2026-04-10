@@ -54,74 +54,6 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     }, 600);
   };
 
-  const handleGoogleLogin = async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const googleUser = await storageService.loginWithGoogle();
-      const userEmail = googleUser?.email;
-      
-      console.log("Google Login Success, Email:", userEmail);
-      
-      if (userEmail === 'eltygere8651@gmail.com') {
-        // Owner bypass - create a temporary admin session
-        const ownerUser: User = {
-          id: 'owner',
-          name: 'Propietario',
-          role: UserRole.ADMIN,
-          pin: '****',
-          email: 'eltygere8651@gmail.com',
-          permissions: ['CAN_MANAGE_TASKS']
-        };
-        onLogin(ownerUser);
-      } else if (userEmail) {
-        // Check if this Google user is registered in our users collection
-        const registeredUser = await storageService.getUserByEmail(userEmail);
-        
-        if (registeredUser) {
-          // If the user is found by email but the document ID is not their Google UID,
-          // we should link them so Firestore rules can identify them by UID.
-          if (registeredUser.id !== googleUser.uid) {
-            console.log("Linking Google UID to user document...");
-            const { id, ...userData } = registeredUser;
-            // Create/Update document with UID as ID
-            await storageService.db.collection('hotel_victoria_users').doc(googleUser.uid).set({
-              ...userData,
-              email: userEmail // Ensure email is set
-            }, { merge: true });
-            
-            // Optionally delete the old document if it was auto-generated
-            if (id.length < 20) { // Simple check to see if it's an auto-id vs UID
-               // For safety in this demo, we'll keep both or just use the new one
-            }
-            
-            registeredUser.id = googleUser.uid;
-          }
-          onLogin(registeredUser);
-        } else {
-          // Sign out if not authorized
-          await storageService.logoutGoogle();
-          setError(`Acceso denegado para ${userEmail}. Este correo no está autorizado en el sistema.`);
-        }
-      } else {
-        setError('No se pudo obtener el correo electrónico de la cuenta de Google.');
-      }
-    } catch (err: any) {
-      console.error("Google Login Error:", err);
-      if (err.code === 'auth/popup-blocked') {
-        setError('El navegador bloqueó la ventana emergente. Por favor, permite las ventanas emergentes para este sitio.');
-      } else if (err.code === 'auth/cancelled-popup-request' || err.code === 'auth/popup-closed-by-user') {
-        setError('');
-      } else if (err.code === 'auth/network-request-failed') {
-        setError('Error de red. Verifica tu conexión a internet.');
-      } else {
-        setError(`Error al iniciar sesión: ${err.message || 'Inténtalo de nuevo.'}`);
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
     <div className="min-h-[100dvh] bg-slate-50 dark:bg-[#060812] flex flex-col items-center justify-center p-4 font-sans relative overflow-hidden transition-colors duration-700">
       {/* Background Decor */}
@@ -202,22 +134,6 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
               )}
             </button>
           </form>
-
-          <div className="mt-6 flex flex-col gap-3">
-            <div className="relative flex items-center justify-center">
-              <div className="border-t border-slate-100 dark:border-slate-800 w-full"></div>
-              <span className="bg-white dark:bg-slate-900 px-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest absolute">O</span>
-            </div>
-
-            <button
-              onClick={handleGoogleLogin}
-              disabled={loading}
-              className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-semibold py-3 rounded-xl transition-all hover:bg-slate-50 dark:hover:bg-slate-700/50 active:scale-[0.98] flex items-center justify-center gap-3 disabled:opacity-70 disabled:pointer-events-none"
-            >
-              <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-5 h-5" referrerPolicy="no-referrer" />
-              <span>Acceso Propietario</span>
-            </button>
-          </div>
 
           <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-800 text-center">
              <p className="text-[10px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-widest">

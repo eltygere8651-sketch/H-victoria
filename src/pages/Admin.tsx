@@ -27,7 +27,7 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
-  const [newUser, setNewUser] = useState({ name: '', role: UserRole.STAFF, pin: '', email: '', permissions: [] as ('CAN_MANAGE_TASKS')[] });
+  const [newUser, setNewUser] = useState({ name: '', role: UserRole.STAFF, pin: '', permissions: [] as ('CAN_MANAGE_TASKS')[] });
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<OrderBatch | null>(null);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
@@ -107,15 +107,13 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
   const handleAddUser = (e: React.FormEvent) => {
     e.preventDefault();
     if (newUser.name && newUser.pin) {
-      const email = newUser.email ? newUser.email.trim().toLowerCase() : undefined;
       storageService.addUser({
         name: newUser.name,
         role: newUser.role,
         pin: newUser.pin,
-        email: email,
         permissions: newUser.role === UserRole.STAFF ? newUser.permissions : undefined
       });
-      setNewUser({ name: '', role: UserRole.STAFF, pin: '', email: '', permissions: [] });
+      setNewUser({ name: '', role: UserRole.STAFF, pin: '', permissions: [] });
     }
   };
 
@@ -124,10 +122,6 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
       const userToUpdate = { ...editingUser };
       if (userToUpdate.role === UserRole.ADMIN) {
         userToUpdate.permissions = [];
-      }
-      // Ensure email is trimmed and handled correctly
-      if (userToUpdate.email) {
-        userToUpdate.email = userToUpdate.email.trim().toLowerCase();
       }
       storageService.updateUser(userToUpdate);
       setEditingUser(null);
@@ -234,10 +228,9 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
                 </div>
               </div>
               <form onSubmit={handleAddUser} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <input type="text" placeholder="Nombre" value={newUser.name} onChange={e => setNewUser({...newUser, name: e.target.value})} className="p-3 border-2 border-gray-200 dark:border-slate-700 rounded-xl bg-gray-100 dark:bg-slate-800/60 dark:text-white outline-none focus:border-red-500 focus:ring-2 focus:ring-red-200 dark:focus:ring-red-500/50 shadow-sm" required />
                   <input type="text" placeholder="PIN" value={newUser.pin} onChange={e => setNewUser({...newUser, pin: e.target.value})} className="p-3 border-2 border-gray-200 dark:border-slate-700 rounded-xl bg-gray-100 dark:bg-slate-800/60 dark:text-white outline-none focus:border-red-500 focus:ring-2 focus:ring-red-200 dark:focus:ring-red-500/50 shadow-sm" required />
-                  <input type="email" placeholder="Email (Opcional para Google Login)" value={newUser.email} onChange={e => setNewUser({...newUser, email: e.target.value})} className="p-3 border-2 border-gray-200 dark:border-slate-700 rounded-xl bg-gray-100 dark:bg-slate-800/60 dark:text-white outline-none focus:border-red-500 focus:ring-2 focus:ring-red-200 dark:focus:ring-red-500/50 shadow-sm" />
                   <select value={newUser.role} onChange={e => setNewUser({...newUser, role: e.target.value as UserRole})} className="p-3 border-2 border-gray-200 dark:border-slate-700 rounded-xl bg-gray-100 dark:bg-slate-800/60 dark:text-white outline-none focus:border-red-500 focus:ring-2 focus:ring-red-200 dark:focus:ring-red-500/50 shadow-sm appearance-none">
                     <option value={UserRole.STAFF}>Personal</option><option value={UserRole.ADMIN}>Admin</option>
                   </select>
@@ -379,7 +372,6 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
             <div className="space-y-4">
               <input type="text" placeholder="Nombre" value={editingUser.name} onChange={e => setEditingUser({...editingUser, name: e.target.value})} className="w-full p-3 border-2 border-gray-200 dark:border-slate-700/50 rounded-xl bg-gray-100 dark:bg-slate-800/60 dark:text-white outline-none focus:border-red-500 focus:ring-2 focus:ring-red-200 dark:focus:ring-red-500/50 shadow-sm" required />
               <input type="text" placeholder="PIN" value={editingUser.pin} onChange={e => setEditingUser({...editingUser, pin: e.target.value})} className="w-full p-3 border-2 border-gray-200 dark:border-slate-700/50 rounded-xl bg-gray-100 dark:bg-slate-800/60 dark:text-white outline-none focus:border-red-500 focus:ring-2 focus:ring-red-200 dark:focus:ring-red-500/50 shadow-sm" required />
-              <input type="email" placeholder="Email (Google Login)" value={editingUser.email || ''} onChange={e => setEditingUser({...editingUser, email: e.target.value})} className="w-full p-3 border-2 border-gray-200 dark:border-slate-700/50 rounded-xl bg-gray-100 dark:bg-slate-800/60 dark:text-white outline-none focus:border-red-500 focus:ring-2 focus:ring-red-200 dark:focus:ring-red-500/50 shadow-sm" />
               <select value={editingUser.role} onChange={e => setEditingUser({...editingUser, role: e.target.value as UserRole})} className="w-full p-3 border-2 border-gray-200 dark:border-slate-700/50 rounded-xl bg-gray-100 dark:bg-slate-800/60 dark:text-white outline-none focus:border-red-500 focus:ring-2 focus:ring-red-200 dark:focus:ring-red-500/50 shadow-sm appearance-none">
                 <option value={UserRole.STAFF}>Personal</option><option value={UserRole.ADMIN}>Admin</option>
               </select>

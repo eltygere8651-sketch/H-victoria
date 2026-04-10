@@ -127,36 +127,7 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
   }
 }
 
-export const loginWithGoogle = async () => {
-  try {
-    const provider = new firebase.auth.GoogleAuthProvider();
-    provider.setCustomParameters({ prompt: 'select_account' });
-    const result = await auth.signInWithPopup(provider);
-    return result.user;
-  } catch (error: any) {
-    console.error("Error during Google login:", error);
-    // If popup is blocked, we could try redirect, but it's risky in iframe
-    throw error;
-  }
-};
-
-export const logoutGoogle = async () => {
-  await auth.signOut();
-};
-
 export const getCurrentUser = () => auth.currentUser;
-
-export const getUserByEmail = async (email: string) => {
-  try {
-    const snapshot = await db.collection(KEYS.USERS).where('email', '==', email).limit(1).get();
-    if (snapshot.empty) return null;
-    const doc = snapshot.docs[0];
-    return { ...doc.data(), id: doc.id } as User;
-  } catch (error) {
-    console.error("Error fetching user by email:", error);
-    return null;
-  }
-};
 
 async function initFirestoreWithInitialData() {
   console.log("Iniciando sincronización de datos base...");
