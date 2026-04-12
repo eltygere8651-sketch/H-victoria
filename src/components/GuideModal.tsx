@@ -55,11 +55,11 @@ export const GuideModal: React.FC<GuideModalProps> = ({ isOpen, onClose }) => {
             <div className="flex items-center gap-3 mb-3 sm:mb-4">
                <Logo size="sm" />
                <h2 className="text-xl sm:text-2xl font-black tracking-tighter uppercase italic">
-                 Hub <span className="text-red-500">Intelligence</span>
+                 Hub
                </h2>
             </div>
             <p className="text-slate-400 font-medium text-xs sm:text-sm leading-relaxed">
-              Ecosistema de inteligencia operativa diseñado para la optimización de flujos logísticos, control de activos y trazabilidad de procesos críticos.
+              Centraliza y eleva cada operación en una plataforma única, con visibilidad en tiempo real, para ofrecer una experiencia superior en cada detalle.
             </p>
           </div>
         </div>
