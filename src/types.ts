@@ -143,6 +143,7 @@ export enum NotificationType {
   NEW_ORDER = 'NEW_ORDER',
   NEW_TASK = 'NEW_TASK',
   STOCK_RECEIVED = 'STOCK_RECEIVED',
+  DAILY_TASK_ALERT = 'DAILY_TASK_ALERT',
 }
 
 export interface NotificationPayload {
@@ -154,6 +155,8 @@ export interface NotificationPayload {
   taskId?: string; // For new task notifications
   taskTitle?: string;
   itemCount?: number;
+  shift?: string; // For daily task alerts
+  count?: number; // For generic counts
 }
 
 export interface AppNotification {

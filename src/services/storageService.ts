@@ -528,12 +528,24 @@ export const saveTask = async (task: Partial<Task>, newFiles: File[] = []) => {
 };
 export const deleteTask = async (id: string) => await db.collection(KEYS.TASKS).doc(id).delete();
 
+// --- SHIFT HELPERS ---
+const getCurrentShift = () => {
+  const hour = new Date().getHours();
+  if (hour >= 7 && hour < 16) return 'Mañana';
+  if (hour >= 16 && hour < 24) return 'Tarde';
+  return 'Noche';
+};
+
 export const resetDailyTask = async (taskId: string) => {
   const taskRef = db.collection(KEYS.TASKS).doc(taskId);
   const doc = await taskRef.get();
   if (!doc.exists) return;
   
   const data = doc.data() as Task;
+  const isCompleted = data.status === TaskStatus.COMPLETED;
+  const shift = getCurrentShift();
+  const dept = data.departmentName || 'Sin departamento';
+
   const resetChecklist = (data.checklist || []).map(item => {
     const { completedBy, completedAt, ...rest } = item;
     return {
@@ -542,7 +554,7 @@ export const resetDailyTask = async (taskId: string) => {
     };
   });
 
-  await taskRef.update({
+  const updateData: any = {
     status: TaskStatus.PENDING,
     checklist: resetChecklist,
     completedBy: firebase.firestore.FieldValue.delete(),
@@ -551,10 +563,52 @@ export const resetDailyTask = async (taskId: string) => {
       id: Date.now().toString(),
       userId: 'system',
       userName: 'Sistema',
-      message: 'Tarea diaria reiniciada automáticamente para el siguiente turno.',
+      message: isCompleted 
+        ? `Tarea diaria reiniciada para el siguiente turno (${shift}).`
+        : `ALERTA: El turno de ${shift} NO completó esta tarea (${dept}). Reiniciada para el siguiente turno.`,
       timestamp: Date.now()
     })
-  });
+  };
+
+  await taskRef.update(updateData);
+};
+
+export const checkPendingDailyTasksAndNotify = async () => {
+  try {
+    // 1. Check if we already sent an alert in the last 55 minutes
+    const oneHourAgo = Date.now() - (55 * 60 * 1000);
+    const recentNotifs = await db.collection(KEYS.NOTIFICATIONS)
+      .where('title', '==', 'Tareas Diarias Pendientes')
+      .where('timestamp', '>', oneHourAgo)
+      .limit(1)
+      .get();
+    
+    if (!recentNotifs.empty) return;
+
+    // 2. Check for pending daily tasks
+    const q = db.collection(KEYS.TASKS)
+      .where('recurrence', '==', TaskRecurrence.DAILY)
+      .where('status', '!=', TaskStatus.COMPLETED);
+    
+    const snapshot = await q.get();
+    if (snapshot.empty) return;
+
+    const pendingTasks = snapshot.docs.map(d => d.data() as Task);
+    const shift = getCurrentShift();
+
+    // 3. Create a single notification
+    await db.collection(KEYS.NOTIFICATIONS).add({
+      type: NotificationType.DAILY_TASK_ALERT,
+      title: 'Tareas Diarias Pendientes',
+      message: `Atención: Hay ${pendingTasks.length} tareas diarias sin completar en el turno de ${shift}.`,
+      icon: 'AlertTriangle',
+      timestamp: Date.now(),
+      readStatus: false,
+      payload: { count: pendingTasks.length, shift }
+    });
+  } catch (error) {
+    console.error("Error checking pending daily tasks:", error);
+  }
 };
 
 export const cleanupCompletedTasks = async () => {

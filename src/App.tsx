@@ -209,7 +209,7 @@ const App: React.FC = () => {
     const unsubNotifs = storageService.subscribeToNotifications((notifications) => {
       const relevantNotifications = user.role === UserRole.ADMIN 
         ? notifications 
-        : notifications.filter(n => n.type === NotificationType.NEW_TASK);
+        : notifications.filter(n => n.type === NotificationType.NEW_TASK || n.type === NotificationType.DAILY_TASK_ALERT);
 
       const unread = relevantNotifications.filter(n => !n.readStatus);
       
@@ -234,8 +234,18 @@ const App: React.FC = () => {
     const unsubTasks = storageService.subscribeToTasks((tasks) => {
       setHasUnreadTasks(tasks.some(task => !task.seenBy?.includes(user.id)));
     });
+
+    // Hourly check for pending daily tasks
+    const checkDailyTasks = () => {
+      if (user.role === UserRole.ADMIN || user.role === UserRole.STAFF) {
+        storageService.checkPendingDailyTasksAndNotify();
+      }
+    };
+
+    checkDailyTasks(); // Initial check
+    const dailyTaskInterval = setInterval(checkDailyTasks, 15 * 60 * 1000); // Check every 15 mins
     
-    return () => { unsubNotifs(); unsubTasks(); };
+    return () => { unsubNotifs(); unsubTasks(); clearInterval(dailyTaskInterval); };
   }, [user, isInitializing]);
 
   const handleLogin = (u: User) => { setUser(u); storageService.saveSession(u); };
@@ -268,7 +278,7 @@ const App: React.FC = () => {
   };
 
   const handleToastNavigation = (notif: AppNotification) => {
-    if (notif.type === NotificationType.NEW_TASK) {
+    if (notif.type === NotificationType.NEW_TASK || notif.type === NotificationType.DAILY_TASK_ALERT) {
       setView('tasks');
     } else if (user?.role === UserRole.ADMIN) { 
       setInitialAdminTab('reports'); 
