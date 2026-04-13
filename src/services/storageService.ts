@@ -575,25 +575,32 @@ export const resetDailyTask = async (taskId: string) => {
 
 export const checkPendingDailyTasksAndNotify = async () => {
   try {
-    // 1. Check if we already sent an alert in the last 55 minutes
-    const oneHourAgo = Date.now() - (55 * 60 * 1000);
-    const recentNotifs = await db.collection(KEYS.NOTIFICATIONS)
-      .where('title', '==', 'Tareas Diarias Pendientes')
-      .where('timestamp', '>', oneHourAgo)
-      .limit(1)
-      .get();
+    // 1. Check if we already sent an alert in the last 55 minutes using a metadata document
+    // This avoids complex queries on the notifications collection that require composite indexes
+    const systemRef = db.collection(KEYS.SYSTEM).doc('alerts');
+    const systemDoc = await systemRef.get();
+    const now = Date.now();
+    const oneHourAgo = now - (55 * 60 * 1000);
     
-    if (!recentNotifs.empty) return;
+    if (systemDoc.exists) {
+      const lastAlert = systemDoc.data()?.lastDailyTaskAlert || 0;
+      if (lastAlert > oneHourAgo) return;
+    }
 
     // 2. Check for pending daily tasks
+    // We query only by recurrence to avoid requiring a composite index for != status
     const q = db.collection(KEYS.TASKS)
-      .where('recurrence', '==', TaskRecurrence.DAILY)
-      .where('status', '!=', TaskStatus.COMPLETED);
+      .where('recurrence', '==', TaskRecurrence.DAILY);
     
     const snapshot = await q.get();
     if (snapshot.empty) return;
 
-    const pendingTasks = snapshot.docs.map(d => d.data() as Task);
+    // Filter in memory for tasks that are NOT completed
+    const pendingTasks = snapshot.docs
+      .map(d => d.data() as Task)
+      .filter(task => task.status !== TaskStatus.COMPLETED);
+    
+    if (pendingTasks.length === 0) return;
     const shift = getCurrentShift();
 
     // 3. Create a single notification
@@ -602,10 +609,14 @@ export const checkPendingDailyTasksAndNotify = async () => {
       title: 'Tareas Diarias Pendientes',
       message: `Atención: Hay ${pendingTasks.length} tareas diarias sin completar en el turno de ${shift}.`,
       icon: 'AlertTriangle',
-      timestamp: Date.now(),
+      timestamp: now,
       readStatus: false,
       payload: { count: pendingTasks.length, shift }
     });
+
+    // 4. Update the last alert timestamp
+    await systemRef.set({ lastDailyTaskAlert: now }, { merge: true });
+    
   } catch (error) {
     console.error("Error checking pending daily tasks:", error);
   }

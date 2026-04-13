@@ -5,9 +5,10 @@ import { Logo } from './Logo';
 interface GuideModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onStartTraining?: () => void;
 }
 
-export const GuideModal: React.FC<GuideModalProps> = ({ isOpen, onClose }) => {
+export const GuideModal: React.FC<GuideModalProps> = ({ isOpen, onClose, onStartTraining }) => {
   if (!isOpen) return null;
 
   const features = [
@@ -99,7 +100,16 @@ export const GuideModal: React.FC<GuideModalProps> = ({ isOpen, onClose }) => {
         </div>
 
         {/* Footer - Fixed */}
-        <div className="p-6 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
+        <div className="p-6 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 space-y-3">
+          {onStartTraining && (
+            <button 
+              onClick={onStartTraining}
+              className="w-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-black py-4 rounded-2xl transition-all active:scale-[0.98] text-sm uppercase tracking-widest flex items-center justify-center gap-2"
+            >
+              <ArrowRight size={18} className="text-red-600" />
+              Formación Profesional
+            </button>
+          )}
           <button 
             onClick={onClose}
             className="w-full bg-red-600 hover:bg-red-700 text-white font-black py-4 rounded-2xl shadow-lg shadow-red-600/20 transition-all active:scale-[0.98] text-sm uppercase tracking-widest"

@@ -15,6 +15,7 @@ import { GuideModal } from './components/GuideModal';
 import { MainLayout } from './components/MainLayout';
 
 import ProviderDelivery from './pages/ProviderDelivery';
+import Training from './pages/Training';
 
 const App: React.FC = () => {
   const [isInitializing, setIsInitializing] = useState(true);
@@ -26,10 +27,10 @@ const App: React.FC = () => {
   const [shareData, setShareData] = useState({ url: '', title: '' });
   const [showGuideModal, setShowGuideModal] = useState(false);
 
-  const [view, setView] = useState<'inventory' | 'replenish' | 'admin' | 'tasks'>(() => {
+  const [view, setView] = useState<'inventory' | 'replenish' | 'admin' | 'tasks' | 'training'>(() => {
     const lastView = storageService.getLastView();
     const sessionUser = storageService.getSession();
-    let defaultView: 'inventory' | 'replenish' | 'tasks' = 'replenish';
+    let defaultView: 'inventory' | 'replenish' | 'tasks' | 'training' = 'replenish';
     if (sessionUser?.role === UserRole.ADMIN) defaultView = 'inventory';
     if (sessionUser?.role === UserRole.GUEST) defaultView = 'tasks';
     if (lastView) return lastView as any;
@@ -339,10 +340,18 @@ const App: React.FC = () => {
         {view === 'replenish' && user.role !== UserRole.GUEST && user.role !== UserRole.PROVIDER && <Replenishment currentUser={user} cart={cart} setCart={setCart} showMobileCart={showMobileCart} setShowMobileCart={setShowMobileCart} />}
         {view === 'admin' && user.role === UserRole.ADMIN && <Admin currentUser={user} unreadNotificationsCount={unreadAdminNotifications.length} initialTab={initialAdminTab} />}
         {view === 'tasks' && <Tasks currentUser={user} initialTaskId={sharedTaskId} />}
+        {view === 'training' && <Training onBack={() => setView('tasks')} />}
         {(view as any) === 'provider' && <ProviderDelivery currentUser={user} />}
       </MainLayout>
 
-      <GuideModal isOpen={showGuideModal} onClose={() => setShowGuideModal(false)} />
+      <GuideModal 
+        isOpen={showGuideModal} 
+        onClose={() => setShowGuideModal(false)} 
+        onStartTraining={() => {
+          setShowGuideModal(false);
+          setView('training');
+        }}
+      />
       <ShareModal isOpen={showShareModal} onClose={() => setShowShareModal(false)} url={shareData.url} title={shareData.title} />
 
       <div className="fixed inset-0 flex flex-col items-end px-4 py-6 pt-safe pointer-events-none z-[9999] gap-4">
