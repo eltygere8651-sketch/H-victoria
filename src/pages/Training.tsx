@@ -24,7 +24,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
-import { generateSlideExplanation, generateSpeech } from '../services/geminiService';
+import { generateSlideExplanation } from '../services/geminiService';
 
 const slides = [
   {
@@ -132,7 +132,6 @@ export const Training: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
   const [isExporting, setIsExporting] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
-  const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
   const [aiExplanations, setAiExplanations] = useState<Record<number, string>>({});
   const [useSmartAI, setUseSmartAI] = useState(true);
   
@@ -140,8 +139,7 @@ export const Training: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
   
   const presentationRef = useRef<HTMLDivElement>(null);
   const exportRef = useRef<HTMLDivElement>(null);
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const audioSourceRef = useRef<AudioBufferSourceNode | null>(null);
+  const speechRef = useRef<SpeechSynthesisUtterance | null>(null);
 
   const nextSlide = () => setCurrentSlide((prev) => (prev + 1) % slides.length);
   const prevSlide = () => setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length);
@@ -155,29 +153,18 @@ export const Training: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
 
   // Speech Logic
   const stopSpeech = useCallback(() => {
-    if (audioSourceRef.current) {
-      audioSourceRef.current.stop();
-      audioSourceRef.current = null;
-    }
+    window.speechSynthesis.cancel();
     setIsSpeaking(false);
   }, []);
 
   const playSpeech = useCallback(async () => {
     stopSpeech();
     
-    // Initialize and resume AudioContext immediately on user gesture
-    if (!audioContextRef.current) {
-      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
-    }
-    const audioContext = audioContextRef.current;
-    if (audioContext.state === 'suspended') {
-      await audioContext.resume();
-    }
-
     const slide = slides[currentSlide];
     let textToRead = "";
 
     if (useSmartAI) {
+      // Check if we already have the AI explanation
       if (aiExplanations[currentSlide]) {
         textToRead = aiExplanations[currentSlide];
       } else {
@@ -189,62 +176,38 @@ export const Training: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
           slide.points
         );
         setIsGeneratingAI(false);
+        
         if (aiText) {
           setAiExplanations(prev => ({ ...prev, [currentSlide]: aiText }));
           textToRead = aiText;
+        } else {
+          // Fallback to standard speech if AI fails
+          textToRead = `${slide.title}. ${slide.subtitle}. ${slide.speech}`;
         }
       }
-    }
-
-    if (!textToRead) {
+    } else {
       textToRead = `${slide.title}. ${slide.subtitle}. ${slide.speech}`;
     }
 
-    setIsGeneratingAudio(true);
-    const base64Audio = await generateSpeech(textToRead);
-    setIsGeneratingAudio(false);
+    if (!textToRead) return;
 
-    if (!base64Audio) {
-      console.error("No audio data received from Gemini TTS. Check if GEMINI_API_KEY is set in Vercel environment variables.");
-      return;
-    }
-
-    try {
-      const binaryString = window.atob(base64Audio);
-      const len = binaryString.length;
-      // Ensure we have an even number of bytes for Int16Array
-      const alignedLen = len - (len % 2);
-      const bytes = new Uint8Array(alignedLen);
-      for (let i = 0; i < alignedLen; i++) {
-        bytes[i] = binaryString.charCodeAt(i);
-      }
-
-      // Gemini TTS returns 24kHz PCM (16-bit)
-      const audioData = new Int16Array(bytes.buffer);
-      const floatData = new Float32Array(audioData.length);
-      for (let i = 0; i < audioData.length; i++) {
-        floatData[i] = audioData[i] / 32768.0;
-      }
-
-      const audioBuffer = audioContext.createBuffer(1, floatData.length, 24000);
-      audioBuffer.getChannelData(0).set(floatData);
-
-      const source = audioContext.createBufferSource();
-      source.buffer = audioBuffer;
-      source.connect(audioContext.destination);
-      
-      source.onended = () => {
-        setIsSpeaking(false);
-        audioSourceRef.current = null;
-      };
-
-      audioSourceRef.current = source;
-      source.start();
-      setIsSpeaking(true);
-    } catch (error) {
-      console.error("Error playing audio:", error);
-      setIsSpeaking(false);
-    }
+    const utterance = new SpeechSynthesisUtterance(textToRead);
+    
+    // Try to find a professional Spanish voice
+    const voices = window.speechSynthesis.getVoices();
+    const spanishVoice = voices.find(v => v.lang.startsWith('es') && (v.name.includes('Google') || v.name.includes('Premium'))) 
+                       || voices.find(v => v.lang.startsWith('es'));
+    
+    if (spanishVoice) utterance.voice = spanishVoice;
+    utterance.rate = 0.95; // Slightly slower for clarity
+    utterance.pitch = 1;
+    
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = () => setIsSpeaking(false);
+    
+    speechRef.current = utterance;
+    window.speechSynthesis.speak(utterance);
+    setIsSpeaking(true);
   }, [currentSlide, stopSpeech, useSmartAI, aiExplanations]);
 
   const toggleSpeech = () => {
@@ -428,14 +391,14 @@ export const Training: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
             {/* Voice Control Button */}
             <button
               onClick={toggleSpeech}
-              disabled={isGeneratingAI || isGeneratingAudio}
+              disabled={isGeneratingAI}
               className={`w-12 h-12 flex items-center justify-center transition-all active:scale-90 ${
                 isSpeaking ? 'text-red-600 animate-pulse' : 
-                (isGeneratingAI || isGeneratingAudio) ? 'text-slate-300' : 'text-slate-400 hover:text-red-600'
+                isGeneratingAI ? 'text-slate-300' : 'text-slate-400 hover:text-red-600'
               }`}
-              title={isSpeaking ? "Detener voz" : (isGeneratingAI || isGeneratingAudio) ? "Procesando audio..." : "Escuchar formación"}
+              title={isSpeaking ? "Detener voz" : isGeneratingAI ? "Generando explicación IA..." : "Escuchar formación"}
             >
-              {(isGeneratingAI || isGeneratingAudio) ? <Loader2 size={24} className="animate-spin" /> : 
+              {isGeneratingAI ? <Loader2 size={24} className="animate-spin" /> : 
                isSpeaking ? <Volume2 size={24} /> : <Play size={24} />}
             </button>
 

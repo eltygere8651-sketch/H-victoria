@@ -1,4 +1,4 @@
-import { GoogleGenAI, Modality } from "@google/genai";
+import { GoogleGenAI } from "@google/genai";
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
 
@@ -45,33 +45,5 @@ export const generateSlideExplanation = async (slideTitle: string, slideSubtitle
   } catch (error) {
     console.error("Error generating AI explanation:", error);
     return "";
-  }
-};
-
-export const generateSpeech = async (text: string) => {
-  try {
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash-preview-tts",
-      contents: [{ 
-        parts: [{ 
-          text: `Actúa como un locutor profesional de España con acento castellano nativo. Lee el siguiente texto de formación para el Hotel Victoria de forma pausada, elegante y muy humana, asegurando una pronunciación perfecta de España: ${text}` 
-        }] 
-      }],
-      config: {
-        responseModalities: [Modality.AUDIO],
-        speechConfig: {
-          voiceConfig: {
-            // 'Kore' is versatile, but we'll emphasize the accent in the prompt
-            prebuiltVoiceConfig: { voiceName: 'Kore' },
-          },
-        },
-      },
-    });
-
-    const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-    return base64Audio || null;
-  } catch (error) {
-    console.error("Error generating speech with Gemini TTS:", error);
-    return null;
   }
 };
