@@ -52,12 +52,16 @@ export const generateSpeech = async (text: string) => {
   try {
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash-preview-tts",
-      contents: [{ parts: [{ text: `Lee este texto de formación profesional con un tono cercano, humano, pausado y motivador: ${text}` }] }],
+      contents: [{ 
+        parts: [{ 
+          text: `Actúa como un locutor profesional de España con acento castellano nativo. Lee el siguiente texto de formación para el Hotel Victoria de forma pausada, elegante y muy humana, asegurando una pronunciación perfecta de España: ${text}` 
+        }] 
+      }],
       config: {
         responseModalities: [Modality.AUDIO],
         speechConfig: {
           voiceConfig: {
-            // 'Kore' is generally a very professional and clear voice
+            // 'Kore' is versatile, but we'll emphasize the accent in the prompt
             prebuiltVoiceConfig: { voiceName: 'Kore' },
           },
         },

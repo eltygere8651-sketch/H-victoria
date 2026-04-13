@@ -132,6 +132,7 @@ export const Training: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
   const [isExporting, setIsExporting] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
+  const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
   const [aiExplanations, setAiExplanations] = useState<Record<number, string>>({});
   const [useSmartAI, setUseSmartAI] = useState(true);
   
@@ -164,21 +165,30 @@ export const Training: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
   const playSpeech = useCallback(async () => {
     stopSpeech();
     
+    // Initialize and resume AudioContext immediately on user gesture
+    if (!audioContextRef.current) {
+      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+    }
+    const audioContext = audioContextRef.current;
+    if (audioContext.state === 'suspended') {
+      await audioContext.resume();
+    }
+
     const slide = slides[currentSlide];
     let textToRead = "";
 
-    setIsGeneratingAI(true);
-    
     if (useSmartAI) {
       if (aiExplanations[currentSlide]) {
         textToRead = aiExplanations[currentSlide];
       } else {
+        setIsGeneratingAI(true);
         const aiText = await generateSlideExplanation(
           slide.title,
           slide.subtitle,
           slide.content,
           slide.points
         );
+        setIsGeneratingAI(false);
         if (aiText) {
           setAiExplanations(prev => ({ ...prev, [currentSlide]: aiText }));
           textToRead = aiText;
@@ -190,24 +200,22 @@ export const Training: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
       textToRead = `${slide.title}. ${slide.subtitle}. ${slide.speech}`;
     }
 
+    setIsGeneratingAudio(true);
     const base64Audio = await generateSpeech(textToRead);
-    setIsGeneratingAI(false);
+    setIsGeneratingAudio(false);
 
-    if (!base64Audio) return;
+    if (!base64Audio) {
+      console.error("No audio data received from Gemini TTS. Check if GEMINI_API_KEY is set in Vercel environment variables.");
+      return;
+    }
 
     try {
-      if (!audioContextRef.current) {
-        audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
-      }
-      
-      const audioContext = audioContextRef.current;
-      if (audioContext.state === 'suspended') {
-        await audioContext.resume();
-      }
       const binaryString = window.atob(base64Audio);
       const len = binaryString.length;
-      const bytes = new Uint8Array(len);
-      for (let i = 0; i < len; i++) {
+      // Ensure we have an even number of bytes for Int16Array
+      const alignedLen = len - (len % 2);
+      const bytes = new Uint8Array(alignedLen);
+      for (let i = 0; i < alignedLen; i++) {
         bytes[i] = binaryString.charCodeAt(i);
       }
 
@@ -420,14 +428,14 @@ export const Training: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
             {/* Voice Control Button */}
             <button
               onClick={toggleSpeech}
-              disabled={isGeneratingAI}
+              disabled={isGeneratingAI || isGeneratingAudio}
               className={`w-12 h-12 flex items-center justify-center transition-all active:scale-90 ${
                 isSpeaking ? 'text-red-600 animate-pulse' : 
-                isGeneratingAI ? 'text-slate-300' : 'text-slate-400 hover:text-red-600'
+                (isGeneratingAI || isGeneratingAudio) ? 'text-slate-300' : 'text-slate-400 hover:text-red-600'
               }`}
-              title={isSpeaking ? "Detener voz" : isGeneratingAI ? "Generando explicación IA..." : "Escuchar formación"}
+              title={isSpeaking ? "Detener voz" : (isGeneratingAI || isGeneratingAudio) ? "Procesando audio..." : "Escuchar formación"}
             >
-              {isGeneratingAI ? <Loader2 size={24} className="animate-spin" /> : 
+              {(isGeneratingAI || isGeneratingAudio) ? <Loader2 size={24} className="animate-spin" /> : 
                isSpeaking ? <Volume2 size={24} /> : <Play size={24} />}
             </button>
 
