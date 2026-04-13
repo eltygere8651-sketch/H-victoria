@@ -7,7 +7,7 @@ import Tasks from './pages/Tasks';
 import { PublicTaskViewer } from './components/PublicTaskViewer';
 import * as storageService from './services/storageService';
 import { Logo } from './components/Logo';
-import { User, UserRole, AppNotification, CartItem, NotificationType } from './types';
+import { User, UserRole, AppNotification, CartItem, NotificationType, TaskRecurrence, TaskStatus } from './types';
 import { NotificationToast } from './components/NotificationToast';
 import { initializePushNotifications } from './services/pushNotificationService';
 import { ShareModal } from './components/ShareModal';
@@ -63,6 +63,7 @@ const App: React.FC = () => {
   const [isCartLoaded, setIsCartLoaded] = useState(false);
   const [showMobileCart, setShowMobileCart] = useState(false);
   const [hasUnreadTasks, setHasUnreadTasks] = useState(false);
+  const [hasPendingDailyTasks, setHasPendingDailyTasks] = useState(false);
   
   const displayedToastIds = useRef<Set<string>>(new Set());
   const cleanupPerformed = useRef(false);
@@ -234,6 +235,7 @@ const App: React.FC = () => {
     
     const unsubTasks = storageService.subscribeToTasks((tasks) => {
       setHasUnreadTasks(tasks.some(task => !task.seenBy?.includes(user.id)));
+      setHasPendingDailyTasks(tasks.some(task => task.recurrence === TaskRecurrence.DAILY && task.status !== TaskStatus.COMPLETED));
     });
 
     // Hourly check for pending daily tasks
@@ -334,6 +336,7 @@ const App: React.FC = () => {
         isInstalled={isInstalled} isIOS={isIOS} isAndroid={isAndroid}
         setShowIOSPrompt={setShowIOSPrompt} setShowAndroidPrompt={setShowAndroidPrompt}
         hasUnreadTasks={hasUnreadTasks}
+        hasPendingDailyTasks={hasPendingDailyTasks}
         unreadAdminNotificationsCount={unreadAdminNotifications.length}
       >
         {view === 'inventory' && user.role === UserRole.ADMIN && <Inventory currentUser={user} />}

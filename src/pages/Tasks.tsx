@@ -431,6 +431,9 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
   currentWeekEnd.setHours(23, 59, 59, 999);
 
   const listTasks = filteredTasks.filter(t => {
+    // Daily tasks should always be visible in the DAILY tab regardless of the week filter
+    if (activeTab === 'DAILY') return true;
+    
     // Assign each task to exactly one week based on its most relevant date
     const taskDate = t.startDate ? new Date(t.startDate) : t.dueDate ? new Date(t.dueDate) : new Date(t.createdAt);
     return taskDate >= currentWeekStart && taskDate <= currentWeekEnd;
@@ -651,6 +654,8 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
             
             // Find tasks for this day
             const dayTasks = filteredTasks.filter(t => {
+              if (activeTab === 'DAILY') return true; // Show daily routines on every day in the calendar
+              
               if (t.startDate && t.dueDate) {
                 const start = new Date(t.startDate);
                 start.setHours(0, 0, 0, 0);
@@ -715,9 +720,30 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
               </button>
               <button
                 onClick={() => setActiveTab('DAILY')}
-                className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'DAILY' ? 'bg-white dark:bg-slate-700 shadow-sm text-red-600' : 'text-gray-500 dark:text-gray-400'}`}
+                className={`relative px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all overflow-hidden group ${
+                  activeTab === 'DAILY' 
+                    ? 'bg-gradient-to-r from-red-600 to-orange-600 shadow-lg shadow-red-600/30 text-white' 
+                    : 'text-gray-500 dark:text-gray-400 hover:bg-white/50 dark:hover:bg-slate-700/50'
+                }`}
               >
-                Diarias
+                <div className="relative z-10 flex items-center gap-1.5">
+                  <span>Diarias</span>
+                  {allTasks.some(t => t.recurrence === TaskRecurrence.DAILY && t.status !== TaskStatus.COMPLETED) && (
+                    <motion.div
+                      animate={{ scale: [1, 1.2, 1] }}
+                      transition={{ repeat: Infinity, duration: 1.5 }}
+                      className={`flex items-center justify-center w-4 h-4 rounded-full ${activeTab === 'DAILY' ? 'bg-white text-red-600' : 'bg-red-600 text-white shadow-lg shadow-red-600/40'}`}
+                    >
+                      <AlertTriangle size={10} fill="currentColor" strokeWidth={3} />
+                    </motion.div>
+                  )}
+                </div>
+                {activeTab === 'DAILY' && (
+                  <motion.div 
+                    layoutId="daily-glow"
+                    className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000"
+                  />
+                )}
               </button>
             </div>
             
@@ -854,6 +880,14 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
                 <p className="text-gray-400 dark:text-slate-500 font-medium mt-2">
                   {activeTab === 'ACTIVE' ? '¡Todo al día en esta semana!' : 'No hay rutinas diarias configuradas.'}
                 </p>
+                {(statusFilter !== 'ALL' || departmentFilter !== 'ALL') && (
+                  <button 
+                    onClick={() => { setStatusFilter('ALL'); setDepartmentFilter('ALL'); }}
+                    className="mt-6 px-6 py-2 bg-red-600 text-white rounded-full font-bold uppercase text-xs tracking-widest hover:bg-red-700 transition-colors shadow-lg shadow-red-600/20"
+                  >
+                    Limpiar Filtros
+                  </button>
+                )}
               </div>
             ) : (
               listTasks.map(task => (
