@@ -112,18 +112,18 @@ const slides = [
     speech: "Finalmente, el panel de administración le otorga el control total. Gestione usuarios mediante PIN, configure departamentos y acceda a reportes detallados para tomar decisiones basadas en datos reales."
   },
   {
-    title: "Gracias por su atención",
-    subtitle: "Cierre de la Formación",
-    content: "Concluimos este recorrido por Hub. Confiamos en que esta plataforma será el motor que impulse la excelencia operativa de su equipo.",
+    title: "Liderando el Futuro de la Hospitalidad",
+    subtitle: "Excelencia, Innovación y Resultados",
+    content: "Hub no es solo una plataforma; es el catalizador de una nueva era operativa. Juntos, transformamos la complejidad en precisión y el esfuerzo en resultados excepcionales.",
     icon: Sparkles,
-    color: "bg-red-600",
+    color: "bg-slate-950",
     points: [
-      "Plataforma intuitiva y de alto rendimiento",
-      "Soporte y asistencia continua",
-      "Optimización de la experiencia del huésped",
-      "Cualquier duda, consulte con Bienve"
+      "Cultura de alto rendimiento y precisión",
+      "Decisiones estratégicas basadas en datos",
+      "Soporte técnico y mejora continua",
+      "Compromiso absoluto con el huésped"
     ],
-    speech: "Muchas gracias por asistir a esta breve formación. Esperamos que Hub se convierta en una herramienta indispensable para su día a día. Si le ha quedado cualquier inquietud o duda sobre el uso o las funcionalidades del sistema, Bienve estará encantado de asistirle personalmente para asegurar que aproveche al máximo esta tecnología. ¡Muchas gracias y éxito en su jornada!"
+    speech: "Hemos concluido este recorrido estratégico. Hub representa nuestro compromiso con la vanguardia tecnológica y la excelencia en el servicio. Esta herramienta ha sido diseñada para empoderarles, eliminando la fricción operativa y permitiéndoles brillar en lo que mejor saben hacer: crear experiencias memorables para nuestros huéspedes. Agradecemos profundamente su asistencia y su disposición para adoptar este nuevo estándar. Recuerden que el soporte técnico está siempre a su disposición para cualquier consulta. ¡Muchas gracias y éxito en esta nueva etapa operativa!"
   }
 ];
 

@@ -5,7 +5,10 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
 export const generateSlideExplanation = async (slideTitle: string, slideSubtitle: string, slideContent: string, slidePoints: string[]) => {
   try {
     const isFirstSlide = slideTitle.toLowerCase().includes("ecosistema");
-    const isLastSlide = slideTitle.toLowerCase().includes("gracias") || slideTitle.toLowerCase().includes("atención");
+    const isLastSlide = slideTitle.toLowerCase().includes("gracias") || 
+                       slideTitle.toLowerCase().includes("atención") || 
+                       slideTitle.toLowerCase().includes("futuro") ||
+                       slideTitle.toLowerCase().includes("excelencia");
     
     const prompt = `
       Eres un Senior Operations Consultant especializado en hospitalidad de lujo. 
@@ -22,7 +25,7 @@ export const generateSlideExplanation = async (slideTitle: string, slideSubtitle
       2. TONO EJECUTIVO: Usa un lenguaje sofisticado pero accesible. Evita muletillas. Sé inspirador y autoritario.
       3. CONTEXTO: 
          - ${isFirstSlide ? 'Saluda al "equipo del Hotel Victoria" al inicio.' : 'NO menciones al "equipo del Hotel Victoria" a menos que sea el final.'}
-         - ${isLastSlide ? 'Menciona que si tienen cualquier duda o inquietud sobre el sistema, Bienve está a su entera disposición para asistirles personalmente. Agradece la asistencia a la formación.' : ''}
+         - ${isLastSlide ? 'Agradece la asistencia a la formación y anima al equipo a utilizar la plataforma para alcanzar nuevos niveles de eficiencia. Menciona que el soporte técnico está disponible para cualquier consulta.' : ''}
       4. FLUIDEZ: El texto será leído por una voz sintética. Usa frases con buen ritmo y pausas naturales.
       5. DURACIÓN: Aproximadamente 50-70 segundos de lectura (120-160 palabras).
       6. ESTRUCTURA: 
