@@ -110,6 +110,20 @@ const slides = [
       "Limpieza automática de datos antiguos"
     ],
     speech: "Finalmente, el panel de administración le otorga el control total. Gestione usuarios mediante PIN, configure departamentos y acceda a reportes detallados para tomar decisiones basadas en datos reales."
+  },
+  {
+    title: "Gracias por su atención",
+    subtitle: "Cierre de la Formación",
+    content: "Concluimos este recorrido por Hub. Confiamos en que esta plataforma será el motor que impulse la excelencia operativa de su equipo.",
+    icon: Sparkles,
+    color: "bg-red-600",
+    points: [
+      "Plataforma intuitiva y de alto rendimiento",
+      "Soporte y asistencia continua",
+      "Optimización de la experiencia del huésped",
+      "Cualquier duda, consulte con Bienve"
+    ],
+    speech: "Muchas gracias por asistir a esta breve formación. Esperamos que Hub se convierta en una herramienta indispensable para su día a día. Si le ha quedado cualquier inquietud o duda sobre el uso o las funcionalidades del sistema, Bienve estará encantado de asistirle personalmente para asegurar que aproveche al máximo esta tecnología. ¡Muchas gracias y éxito en su jornada!"
   }
 ];
 
