@@ -134,12 +134,21 @@ const App: React.FC = () => {
     localStorage.setItem('hub_sound_enabled', JSON.stringify(soundEnabled));
   }, [soundEnabled]);
 
+  const audioContextRef = useRef<AudioContext | null>(null);
+
   const playNotificationSound = () => {
     if (!soundEnabled) return;
     try {
-      const AudioCtor = window.AudioContext || (window as any).webkitAudioContext;
-      if (!AudioCtor) return;
-      const ctx = new AudioCtor();
+      if (!audioContextRef.current) {
+        const AudioCtor = window.AudioContext || (window as any).webkitAudioContext;
+        if (!AudioCtor) return;
+        audioContextRef.current = new AudioCtor();
+      }
+      
+      const ctx = audioContextRef.current;
+      if (ctx.state === 'suspended') {
+        ctx.resume();
+      }
       
       const playBeep = (timeOffset: number, freq: number) => {
         const osc = ctx.createOscillator();
@@ -168,10 +177,6 @@ const App: React.FC = () => {
       playBeep(1.0, 2500);
       playBeep(1.5, 3000);
       playBeep(2.0, 2500);
-      
-      setTimeout(() => {
-        if (ctx.state !== 'closed') ctx.close();
-      }, 3000);
     } catch (error) {
       console.error('Error playing notification sound:', error);
     }

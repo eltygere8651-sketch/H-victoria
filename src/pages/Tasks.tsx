@@ -395,49 +395,56 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
     }
   };
 
-  const filteredTasks = allTasks.filter(task => {
-    const statusMatch = statusFilter === 'ALL' || task.status === statusFilter;
-    const deptMatch = departmentFilter === 'ALL' || task.departmentId === departmentFilter;
-    
-    // Tab filtering
-    if (activeTab === 'DAILY') {
-      return statusMatch && deptMatch && task.recurrence === TaskRecurrence.DAILY;
-    } else if (activeTab === 'ACTIVE') {
-      return statusMatch && deptMatch && task.recurrence !== TaskRecurrence.DAILY;
-    }
-    
-    return statusMatch && deptMatch;
-  }).sort((a, b) => {
-    // 1. Completed tasks go to the bottom
-    if (a.status !== TaskStatus.COMPLETED && b.status === TaskStatus.COMPLETED) return -1;
-    if (a.status === TaskStatus.COMPLETED && b.status !== TaskStatus.COMPLETED) return 1;
+  const filteredTasks = useMemo(() => {
+    return allTasks.filter(task => {
+      const statusMatch = statusFilter === 'ALL' || task.status === statusFilter;
+      const deptMatch = departmentFilter === 'ALL' || task.departmentId === departmentFilter;
+      
+      // Tab filtering
+      if (activeTab === 'DAILY') {
+        return statusMatch && deptMatch && task.recurrence === TaskRecurrence.DAILY;
+      } else if (activeTab === 'ACTIVE') {
+        return statusMatch && deptMatch && task.recurrence !== TaskRecurrence.DAILY;
+      }
+      
+      return statusMatch && deptMatch;
+    }).sort((a, b) => {
+      // 1. Completed tasks go to the bottom
+      if (a.status !== TaskStatus.COMPLETED && b.status === TaskStatus.COMPLETED) return -1;
+      if (a.status === TaskStatus.COMPLETED && b.status !== TaskStatus.COMPLETED) return 1;
 
-    // 2. Sort by dueDate (ascending) if available
-    if (a.dueDate && b.dueDate) return a.dueDate - b.dueDate;
-    if (a.dueDate && !b.dueDate) return -1;
-    if (!a.dueDate && b.dueDate) return 1;
+      // 2. Sort by dueDate (ascending) if available
+      if (a.dueDate && b.dueDate) return a.dueDate - b.dueDate;
+      if (a.dueDate && !b.dueDate) return -1;
+      if (!a.dueDate && b.dueDate) return 1;
 
-    // 3. Sort by startDate (ascending) if available
-    if (a.startDate && b.startDate) return a.startDate - b.startDate;
-    if (a.startDate && !b.startDate) return -1;
-    if (!a.startDate && b.startDate) return 1;
+      // 3. Sort by startDate (ascending) if available
+      if (a.startDate && b.startDate) return a.startDate - b.startDate;
+      if (a.startDate && !b.startDate) return -1;
+      if (!a.startDate && b.startDate) return 1;
 
-    // 4. Fallback to createdAt (descending - newest first)
-    return b.createdAt - a.createdAt;
-  });
+      // 4. Fallback to createdAt (descending - newest first)
+      return b.createdAt - a.createdAt;
+    });
+  }, [allTasks, statusFilter, departmentFilter, activeTab]);
 
-  const currentWeekEnd = new Date(currentWeekStart);
-  currentWeekEnd.setDate(currentWeekEnd.getDate() + 6);
-  currentWeekEnd.setHours(23, 59, 59, 999);
+  const currentWeekEnd = useMemo(() => {
+    const end = new Date(currentWeekStart);
+    end.setDate(end.getDate() + 6);
+    end.setHours(23, 59, 59, 999);
+    return end;
+  }, [currentWeekStart]);
 
-  const listTasks = filteredTasks.filter(t => {
-    // Daily tasks should always be visible in the DAILY tab regardless of the week filter
-    if (activeTab === 'DAILY') return true;
-    
-    // Assign each task to exactly one week based on its most relevant date
-    const taskDate = t.startDate ? new Date(t.startDate) : t.dueDate ? new Date(t.dueDate) : new Date(t.createdAt);
-    return taskDate >= currentWeekStart && taskDate <= currentWeekEnd;
-  });
+  const listTasks = useMemo(() => {
+    return filteredTasks.filter(t => {
+      // Daily tasks should always be visible in the DAILY tab regardless of the week filter
+      if (activeTab === 'DAILY') return true;
+      
+      // Assign each task to exactly one week based on its most relevant date
+      const taskDate = t.startDate ? new Date(t.startDate) : t.dueDate ? new Date(t.dueDate) : new Date(t.createdAt);
+      return taskDate >= currentWeekStart && taskDate <= currentWeekEnd;
+    });
+  }, [filteredTasks, activeTab, currentWeekStart, currentWeekEnd]);
 
   const generateRandomHospitalityTask = async (recurrence: TaskRecurrence = TaskRecurrence.NONE) => {
     const categories = [

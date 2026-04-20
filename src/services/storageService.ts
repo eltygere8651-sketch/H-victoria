@@ -496,6 +496,13 @@ export const subscribeToTasks = (callback: (data: Task[]) => void) => {
         callback(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Task)));
     }, error => handleFirestoreError(error, OperationType.GET, KEYS.TASKS));
 };
+// --- IMAGES ---
+export const uploadImage = async (file: File, folder: string = 'tasks'): Promise<string> => {
+  const path = `${folder}/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
+  const snapshot = await storage.ref().child(path).put(file, { contentType: file.type || 'image/jpeg' });
+  return await snapshot.ref.getDownloadURL();
+};
+
 export const saveTask = async (task: Partial<Task>, newFiles: File[] = []) => {
   const isNew = !task.id;
   const docRef = isNew ? db.collection(KEYS.TASKS).doc() : db.collection(KEYS.TASKS).doc(task.id!);
@@ -503,9 +510,10 @@ export const saveTask = async (task: Partial<Task>, newFiles: File[] = []) => {
   let taskData: any = sanitizeData({ ...task, id: docRef.id });
 
   if (newFiles.length > 0) {
-      const base64Promises = newFiles.map(file => fileToBase64(file));
-      const newImageUrls = await Promise.all(base64Promises);
-      const finalImageUrls = [...(task.imageUrls || []), ...newImageUrls];
+      const uploadPromises = newFiles.map(file => uploadImage(file, 'tasks'));
+      const newImageUrls = await Promise.all(uploadPromises);
+      const existingUrls = Array.isArray(task.imageUrls) ? task.imageUrls : [];
+      const finalImageUrls = [...existingUrls, ...newImageUrls];
       taskData.imageUrls = finalImageUrls;
   } else if (task.imageUrls !== undefined) {
       taskData.imageUrls = task.imageUrls.length > 0 ? task.imageUrls : firebase.firestore.FieldValue.delete();

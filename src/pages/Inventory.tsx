@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { Product, UserRole, User, Department, OrderBatch } from '../types';
 import * as storageService from '../services/storageService';
 import { Search, Plus, AlertTriangle, Edit2, Trash2, X, Save, Loader2, ListTree, ChevronDown, RefreshCw, Sparkles, Wand2, PackagePlus, ArrowRight, CheckCircle2, FileText, Share2 } from 'lucide-react';
@@ -153,13 +153,15 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser }) => {
     setDeptToDelete(null);
   };
 
-  const filteredProducts = products.filter(p => {
-    const pDeptIds = p.departmentIds || (p.departmentId ? [p.departmentId] : []);
-    const matchesDept = selectedDepartmentFilter === 'all' || pDeptIds.includes(selectedDepartmentFilter);
-    const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          p.category.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesDept && matchesSearch;
-  });
+  const filteredProducts = useMemo(() => {
+    return products.filter(p => {
+      const pDeptIds = p.departmentIds || (p.departmentId ? [p.departmentId] : []);
+      const matchesDept = selectedDepartmentFilter === 'all' || pDeptIds.includes(selectedDepartmentFilter);
+      const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                            p.category.toLowerCase().includes(searchTerm.toLowerCase());
+      return matchesDept && matchesSearch;
+    });
+  }, [products, selectedDepartmentFilter, searchTerm]);
 
   const handleAddReceiveItem = () => {
     if (!selectedProductToReceive) return;

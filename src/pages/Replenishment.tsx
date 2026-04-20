@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Product, User, CartItem, Department, OrderBatch, UserRole, ReplenishmentRequest } from '../types';
 import * as storageService from '../services/storageService';
 import { Search, ShoppingCart, Plus, Minus, Trash2, CheckCircle2, X, ArrowRight, Package, ChevronUp, AlertTriangle, Siren, Loader2, ChevronDown, ListTree, Filter, Zap, Share2, Sparkles } from 'lucide-react';
@@ -90,12 +90,20 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCar
     setQtyError('');
   };
 
-  const playAlarm = () => {
-    // FIX: Rename local var to AudioCtor to avoid shadowing global AudioContext type
-    const AudioCtor = window.AudioContext || (window as any).webkitAudioContext;
-    if (!AudioCtor) return;
+  const audioContextRef = useRef<AudioContext | null>(null);
 
-    const ctx = new AudioCtor();
+  const playAlarm = () => {
+    if (!audioContextRef.current) {
+      const AudioCtor = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioCtor) return;
+      audioContextRef.current = new AudioCtor();
+    }
+
+    const ctx = audioContextRef.current;
+    if (ctx.state === 'suspended') {
+      ctx.resume();
+    }
+    
     const t = ctx.currentTime;
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
@@ -113,13 +121,6 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCar
     
     osc.start(t);
     osc.stop(t + 0.5);
-
-    // CRITICAL FIX: Close the AudioContext to prevent memory leaks and "max contexts reached" error
-    setTimeout(() => {
-        if (ctx.state !== 'closed') {
-            ctx.close().catch(e => console.error("Error closing AudioContext", e));
-        }
-    }, 1000);
   };
 
   const quickAddToCart = (product: Product) => {
@@ -271,13 +272,15 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCar
     setSelectedDepartmentNameForOrder(departments.length > 0 ? departments[0].name : '');
   };
 
-  const filteredProducts = products.filter(p => {
-    const pDeptIds = p.departmentIds || (p.departmentId ? [p.departmentId] : []);
-    return p.quantity > 0 && 
-      pDeptIds.includes(selectedDepartmentForOrder) &&
-      (p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-      p.category.toLowerCase().includes(searchTerm.toLowerCase()));
-  });
+  const filteredProducts = useMemo(() => {
+    return products.filter(p => {
+      const pDeptIds = p.departmentIds || (p.departmentId ? [p.departmentId] : []);
+      return p.quantity > 0 && 
+        pDeptIds.includes(selectedDepartmentForOrder) &&
+        (p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+        p.category.toLowerCase().includes(searchTerm.toLowerCase()));
+    });
+  }, [products, selectedDepartmentForOrder, searchTerm]);
 
   const isOrderButtonDisabled = cart.length === 0 || !selectedDepartmentForOrder || isProcessing;
 
