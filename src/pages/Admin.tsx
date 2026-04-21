@@ -39,9 +39,18 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
   const [showClearNotificationsConfirm, setShowClearNotificationsConfirm] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
 
+  const isSuperAdmin = storageService.auth.currentUser?.email === storageService.SUPER_ADMIN_EMAIL;
+
   useEffect(() => {
     setActiveTab(initialTab);
   }, [initialTab]);
+
+  useEffect(() => {
+    // If not super admin and on users tab, move to requests
+    if (!isSuperAdmin && activeTab === 'users') {
+      setActiveTab('requests');
+    }
+  }, [isSuperAdmin, activeTab]);
 
   useEffect(() => {
     const unsubOrders = storageService.subscribeToBatches(setOrders);
@@ -118,8 +127,17 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
   };
 
   const handleUpdateUser = () => {
-    if (editingUser && editingUser.name && editingUser.pin) {
+    if (editingUser && editingUser.name) {
       const userToUpdate = { ...editingUser };
+      
+      // If pin is empty, it means we don't want to change it. 
+      // But we need to make sure we don't overwrite the existing hash with empty string.
+      if (!userToUpdate.pin) {
+        // Find the original user to get current PIN
+        const original = users.find(u => u.id === editingUser.id);
+        if (original) userToUpdate.pin = original.pin;
+      }
+
       if (userToUpdate.role === UserRole.ADMIN) {
         userToUpdate.permissions = [];
       }
@@ -176,7 +194,9 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
                 </span>
             )}
           </button>
-          <button onClick={() => setActiveTab('users')} className={`flex-1 min-w-[120px] py-4 text-sm font-extrabold border-b-2 transition-colors duration-200 ${activeTab === 'users' ? 'border-red-600 text-red-600 dark:text-red-400 dark:border-red-400 bg-red-50 dark:bg-red-900/10 shadow-inner' : 'border-transparent text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800/50'}`}>Usuarios</button>
+          {isSuperAdmin && (
+            <button onClick={() => setActiveTab('users')} className={`flex-1 min-w-[120px] py-4 text-sm font-extrabold border-b-2 transition-colors duration-200 ${activeTab === 'users' ? 'border-red-600 text-red-600 dark:text-red-400 dark:border-red-400 bg-red-50 dark:bg-red-900/10 shadow-inner' : 'border-transparent text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800/50'}`}>Usuarios</button>
+          )}
         </div>
       </div>
 
@@ -230,7 +250,7 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
               <form onSubmit={handleAddUser} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <input type="text" placeholder="Nombre" value={newUser.name} onChange={e => setNewUser({...newUser, name: e.target.value})} className="p-3 border-2 border-gray-200 dark:border-slate-700 rounded-xl bg-gray-100 dark:bg-slate-800/60 dark:text-white outline-none focus:border-red-500 focus:ring-2 focus:ring-red-200 dark:focus:ring-red-500/50 shadow-sm" required />
-                  <input type="text" placeholder="PIN" value={newUser.pin} onChange={e => setNewUser({...newUser, pin: e.target.value})} className="p-3 border-2 border-gray-200 dark:border-slate-700 rounded-xl bg-gray-100 dark:bg-slate-800/60 dark:text-white outline-none focus:border-red-500 focus:ring-2 focus:ring-red-200 dark:focus:ring-red-500/50 shadow-sm" required />
+                  <input type="password" placeholder="PIN" value={newUser.pin} onChange={e => setNewUser({...newUser, pin: e.target.value})} className="p-3 border-2 border-gray-200 dark:border-slate-700 rounded-xl bg-gray-100 dark:bg-slate-800/60 dark:text-white outline-none focus:border-red-500 focus:ring-2 focus:ring-red-200 dark:focus:ring-red-500/50 shadow-sm" required />
                   <select value={newUser.role} onChange={e => setNewUser({...newUser, role: e.target.value as UserRole})} className="p-3 border-2 border-gray-200 dark:border-slate-700 rounded-xl bg-gray-100 dark:bg-slate-800/60 dark:text-white outline-none focus:border-red-500 focus:ring-2 focus:ring-red-200 dark:focus:ring-red-500/50 shadow-sm appearance-none">
                     <option value={UserRole.STAFF}>Personal</option><option value={UserRole.ADMIN}>Admin</option>
                   </select>
@@ -261,7 +281,7 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
                 <div key={u.id} className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-gray-100 dark:border-slate-800 flex items-center justify-between hover:shadow-lg transition-shadow group">
                   <div className="flex items-center gap-3">
                     <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg shadow-sm ${u.role === UserRole.ADMIN ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400' : 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300'}`}>{u.name.charAt(0)}</div>
-                    <div><h4 className="font-bold text-gray-900 dark:text-white">{u.name}</h4><p className="text-xs text-gray-500 dark:text-slate-400">{u.role} • PIN: {u.pin}</p></div>
+                    <div><h4 className="font-bold text-gray-900 dark:text-white">{u.name}</h4><p className="text-xs text-gray-500 dark:text-slate-400">{u.role} • PIN: ••••••••</p></div>
                   </div>
                   <div className="flex items-center gap-2">
                     <button onClick={() => setEditingUser(u)} className="p-2 text-blue-600 bg-blue-50 dark:bg-blue-900/20 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30 active:scale-95 transition-colors shadow-sm"><Edit2 size={18} /></button>
@@ -371,7 +391,7 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
             <div className="flex justify-between items-center mb-4"><h3 className="font-bold text-xl text-gray-900 dark:text-white">Editar Usuario</h3><button onClick={() => setEditingUser(null)} className="text-gray-400 hover:text-gray-600"><X /></button></div>
             <div className="space-y-4">
               <input type="text" placeholder="Nombre" value={editingUser.name} onChange={e => setEditingUser({...editingUser, name: e.target.value})} className="w-full p-3 border-2 border-gray-200 dark:border-slate-700/50 rounded-xl bg-gray-100 dark:bg-slate-800/60 dark:text-white outline-none focus:border-red-500 focus:ring-2 focus:ring-red-200 dark:focus:ring-red-500/50 shadow-sm" required />
-              <input type="text" placeholder="PIN" value={editingUser.pin} onChange={e => setEditingUser({...editingUser, pin: e.target.value})} className="w-full p-3 border-2 border-gray-200 dark:border-slate-700/50 rounded-xl bg-gray-100 dark:bg-slate-800/60 dark:text-white outline-none focus:border-red-500 focus:ring-2 focus:ring-red-200 dark:focus:ring-red-500/50 shadow-sm" required />
+              <input type="password" placeholder="PIN (dejar igual para no cambiar)" value={editingUser.pin.length === 64 ? '' : editingUser.pin} onChange={e => setEditingUser({...editingUser, pin: e.target.value})} className="w-full p-3 border-2 border-gray-200 dark:border-slate-700/50 rounded-xl bg-gray-100 dark:bg-slate-800/60 dark:text-white outline-none focus:border-red-500 focus:ring-2 focus:ring-red-200 dark:focus:ring-red-500/50 shadow-sm" />
               <select value={editingUser.role} onChange={e => setEditingUser({...editingUser, role: e.target.value as UserRole})} className="w-full p-3 border-2 border-gray-200 dark:border-slate-700/50 rounded-xl bg-gray-100 dark:bg-slate-800/60 dark:text-white outline-none focus:border-red-500 focus:ring-2 focus:ring-red-200 dark:focus:ring-red-500/50 shadow-sm appearance-none">
                 <option value={UserRole.STAFF}>Personal</option><option value={UserRole.ADMIN}>Admin</option>
               </select>

@@ -4,6 +4,8 @@ export { auth, db, storage };
 import firebase from 'firebase/compat/app';
 import { fileToBase64 } from '../utils/imageCompressor';
 
+export const SUPER_ADMIN_EMAIL = 'eltygere8651@gmail.com';
+
 const sanitizeData = (data: any) => {
   const sanitized = { ...data };
   Object.keys(sanitized).forEach(key => {
@@ -187,12 +189,24 @@ async function initFirestoreWithInitialData() {
 
 // --- AUTH HELPERS ---
 
+// Simple hashing for PINs using SHA-256
+async function hashPin(pin: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(pin);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 export const login = async (name: string, pin: string): Promise<User | null> => {
-  const q = db.collection(KEYS.USERS).where("pin", "==", pin);
-  const querySnapshot = await q.get();
+  const hashedPin = await hashPin(pin);
   
-  if (!querySnapshot.empty) {
-    const match = querySnapshot.docs.find(doc => {
+  // Try to find user with hashed PIN
+  const qHashed = db.collection(KEYS.USERS).where("pin", "==", hashedPin);
+  const querySnapshotHashed = await qHashed.get();
+  
+  if (!querySnapshotHashed.empty) {
+    const match = querySnapshotHashed.docs.find(doc => {
       const userData = doc.data();
       return userData.name.toLowerCase() === name.toLowerCase();
     });
@@ -203,6 +217,23 @@ export const login = async (name: string, pin: string): Promise<User | null> => 
       return user;
     }
   }
+
+  // Fallback: Check if user exists with raw PIN (for migration)
+  const qRaw = db.collection(KEYS.USERS).where("name", "==", name);
+  const querySnapshotRaw = await qRaw.get();
+
+  if (!querySnapshotRaw.empty) {
+    const doc = querySnapshotRaw.docs[0];
+    const userData = doc.data();
+    if (userData.pin === pin) {
+      // User found with raw PIN, migrate them to hashed PIN
+      await doc.ref.update({ pin: hashedPin });
+      const user = { ...userData, id: doc.id, pin: hashedPin } as User;
+      saveSession(user);
+      return user;
+    }
+  }
+
   return null;
 };
 
@@ -256,6 +287,17 @@ export const getSession = (): User | null => JSON.parse(localStorage.getItem(KEY
 export const clearSession = () => localStorage.removeItem(KEYS.CURRENT_SESSION);
 export const saveLastView = (view: string) => localStorage.setItem(KEYS.LAST_VIEW, view);
 export const getLastView = (): string | null => localStorage.getItem(KEYS.LAST_VIEW);
+
+export const signInWithGoogle = async () => {
+    const provider = new firebase.auth.GoogleAuthProvider();
+    try {
+        const result = await auth.signInWithPopup(provider);
+        return result.user;
+    } catch (error) {
+        console.error("Error signing in with Google", error);
+        throw error;
+    }
+};
 
 // --- CART ---
 export const saveDraftCart = async (userId: string, cart: CartItem[]) => {
@@ -461,8 +503,17 @@ export const subscribeToUsers = (callback: (users: User[]) => void) => {
         callback(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as User)));
     }, error => handleFirestoreError(error, OperationType.GET, KEYS.USERS));
 };
-export const addUser = async (user: Omit<User, 'id'>) => await db.collection(KEYS.USERS).add(sanitizeData(user));
+export const addUser = async (user: Omit<User, 'id'>) => {
+  if (user.pin) {
+    user.pin = await hashPin(user.pin);
+  }
+  return await db.collection(KEYS.USERS).add(sanitizeData(user));
+};
 export const updateUser = async (user: User) => {
+  // If pin is changed (not a 64 char hash), we hash it
+  if (user.pin && user.pin.length !== 64) {
+    user.pin = await hashPin(user.pin);
+  }
   const { id, ...data } = user;
   await db.collection(KEYS.USERS).doc(id).update(sanitizeData(data));
 };
