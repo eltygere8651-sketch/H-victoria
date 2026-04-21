@@ -21,23 +21,24 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const [showGuide, setShowGuide] = useState(false);
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
 
-  // Check for existing Google session on mount
+  // Check for existing Google session with listener
   React.useEffect(() => {
-    const checkExistingAuth = async () => {
-      const currentUser = storageService.auth.currentUser;
-      if (currentUser && currentUser.email === 'eltygere8651@gmail.com' && !storageService.getSession()) {
-        console.log("Auto-logging in owner...");
+    const unsubscribe = storageService.auth.onAuthStateChanged((currentUser) => {
+      if (currentUser && currentUser.email === storageService.SUPER_ADMIN_EMAIL && !storageService.getSession()) {
+        console.log("Auto-logging in owner via Auth listener...");
         const ownerUser: User = {
-          id: 'owner',
-          name: 'Propietario',
+          id: currentUser.uid,
+          name: currentUser.displayName || 'Propietario',
           role: UserRole.ADMIN,
           pin: '****',
-          permissions: ['CAN_MANAGE_TASKS']
+          permissions: ['CAN_MANAGE_TASKS'],
+          email: currentUser.email || undefined
         };
+        storageService.saveSession(ownerUser);
         onLogin(ownerUser);
       }
-    };
-    checkExistingAuth();
+    });
+    return () => unsubscribe();
   }, [onLogin]);
 
   const handleLogin = async (e: React.FormEvent) => {

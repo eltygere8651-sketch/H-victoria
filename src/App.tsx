@@ -257,7 +257,7 @@ const App: React.FC = () => {
   }, [user, isInitializing]);
 
   const handleLogin = (u: User) => { setUser(u); storageService.saveSession(u); };
-  const handleLogout = () => { storageService.clearSession(); setUser(null); };
+  const handleLogout = async () => { await storageService.clearSession(); setUser(null); };
   const handleSharePublicAccess = () => {
     const url = new URL(window.location.origin);
     url.searchParams.set('public', 'true');

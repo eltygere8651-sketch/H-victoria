@@ -284,7 +284,14 @@ export const ensureAnonymousAuth = async () => {
 
 export const saveSession = (user: User) => localStorage.setItem(KEYS.CURRENT_SESSION, safeStringify(user));
 export const getSession = (): User | null => JSON.parse(localStorage.getItem(KEYS.CURRENT_SESSION) || 'null');
-export const clearSession = () => localStorage.removeItem(KEYS.CURRENT_SESSION);
+export const clearSession = async () => {
+    localStorage.removeItem(KEYS.CURRENT_SESSION);
+    try {
+        await auth.signOut();
+    } catch (e) {
+        console.error("Error signing out", e);
+    }
+};
 export const saveLastView = (view: string) => localStorage.setItem(KEYS.LAST_VIEW, view);
 export const getLastView = (): string | null => localStorage.getItem(KEYS.LAST_VIEW);
 
