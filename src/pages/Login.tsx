@@ -17,6 +17,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [unauthorizedDomain, setUnauthorizedDomain] = useState<string | null>(null);
+  const [providerDisabled, setProviderDisabled] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
 
@@ -60,6 +61,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     setGoogleLoading(true);
     setError('');
     setUnauthorizedDomain(null);
+    setProviderDisabled(false);
     try {
       const user = await storageService.signInWithGoogle();
       if (user && user.email === storageService.SUPER_ADMIN_EMAIL) {
@@ -83,6 +85,9 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
       } else if (err.code === 'auth/unauthorized-domain') {
         setUnauthorizedDomain(window.location.hostname);
         setError('Configuración de Firebase incompleta: este dominio no está autorizado.');
+      } else if (err.code === 'auth/operation-not-allowed') {
+        setProviderDisabled(true);
+        setError('Google Sign-In no está habilitado en tu proyecto de Firebase.');
       } else {
         setError('Error al iniciar con Google: ' + err.message);
       }
@@ -182,6 +187,26 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                        IR A CONFIGURACIÓN FIREBASE
                      </a>
                      <p className="text-[9px] text-slate-500 italic">Pega el dominio en la sección "Authorized domains" dentro de la pestaña "Settings" de Authentication.</p>
+                   </div>
+                 )}
+
+                 {providerDisabled && (
+                   <div className="mt-2 p-3 bg-white dark:bg-slate-900 rounded-lg text-[11px] text-left border border-amber-200 dark:border-amber-800 space-y-2 w-full shadow-sm">
+                     <p className="font-bold text-amber-700 dark:text-amber-300 mb-1 uppercase tracking-tighter">Acción Necesaria (Activar Google):</p>
+                     <p>El método de inicio de sesión con Google está desactivado en tu consola.</p>
+                     <a 
+                       href={`https://console.firebase.google.com/project/bm-contigo-a8ca6/authentication/providers`}
+                       target="_blank"
+                       rel="noopener noreferrer"
+                       className="block text-center py-2 bg-amber-600 text-white rounded font-bold hover:bg-amber-700 transition-colors"
+                     >
+                       HABILITAR GOOGLE EN FIREBASE
+                     </a>
+                     <div className="text-[9px] text-slate-500 space-y-1">
+                       <p>1. Pulsa el botón de arriba.</p>
+                       <p>2. Haz clic en "Add new provider".</p>
+                       <p>3. Selecciona "Google" y pulsa "Enable" (y guarda).</p>
+                     </div>
                    </div>
                  )}
               </div>
