@@ -21,6 +21,8 @@ export const generatePdfFromReactComponent = async (component: React.ReactElemen
     container.style.zIndex = '-9999';
     container.style.width = `${A4_WIDTH_PX}px`;
     container.style.backgroundColor = '#ffffff'; 
+    container.style.margin = '0';
+    container.style.padding = '0';
     
     document.body.appendChild(container);
     const root = ReactDOM.createRoot(container);
@@ -47,7 +49,7 @@ export const generatePdfFromReactComponent = async (component: React.ReactElemen
         const options = {
           margin: 0,
           filename: finalName,
-          image: { type: 'jpeg', quality: 0.98 },
+          image: { type: 'jpeg', quality: 1.0 },
           enableLinks: false, 
           html2canvas: { 
             scale: 2,
@@ -56,7 +58,9 @@ export const generatePdfFromReactComponent = async (component: React.ReactElemen
             windowWidth: A4_WIDTH_PX, 
             scrollY: 0,
             scrollX: 0,
-            letterRendering: true,
+            x: 0,
+            y: 0,
+            letterRendering: false,
           },
           jsPDF: { 
             unit: 'px', 
@@ -108,6 +112,8 @@ export const sharePdfFromReactComponent = async (component: React.ReactElement, 
     container.style.zIndex = '-9999';
     container.style.width = `${A4_WIDTH_PX}px`;
     container.style.backgroundColor = '#ffffff'; 
+    container.style.margin = '0';
+    container.style.padding = '0';
     
     document.body.appendChild(container);
     const root = ReactDOM.createRoot(container);
@@ -134,7 +140,7 @@ export const sharePdfFromReactComponent = async (component: React.ReactElement, 
         const options = {
           margin: 0,
           filename: finalName,
-          image: { type: 'jpeg', quality: 0.98 },
+          image: { type: 'jpeg', quality: 1.0 },
           enableLinks: false, 
           html2canvas: { 
             scale: 2,
@@ -143,7 +149,9 @@ export const sharePdfFromReactComponent = async (component: React.ReactElement, 
             windowWidth: A4_WIDTH_PX, 
             scrollY: 0,
             scrollX: 0,
-            letterRendering: true,
+            x: 0,
+            y: 0,
+            letterRendering: false,
           },
           jsPDF: { 
             unit: 'px', 

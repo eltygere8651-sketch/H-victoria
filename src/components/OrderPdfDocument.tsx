@@ -29,17 +29,19 @@ export const OrderPdfDocument: React.FC<OrderPdfDocumentProps> = ({ order, previ
     padding: '20px',
     display: 'flex',
     flexDirection: 'column',
+    backgroundColor: 'white'
   } : {
     ...baseStyles,
     width: A4_WIDTH,
-    height: A4_HEIGHT,
+    minHeight: A4_HEIGHT,
     padding: PADDING,
     margin: '0',
     position: 'relative',
-    overflow: 'hidden',
     display: 'flex',
     flexDirection: 'column',
-    justifyContent: 'space-between'
+    justifyContent: 'space-between',
+    backgroundColor: 'white',
+    boxSizing: 'border-box'
   };
 
   return (
