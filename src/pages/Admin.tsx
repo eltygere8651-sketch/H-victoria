@@ -238,6 +238,32 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
 
         {activeTab === 'users' && (
           <div>
+            {isSuperAdmin && (
+              <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 bg-blue-600 rounded-xl text-white shadow-lg shadow-blue-600/30">
+                    <Share2 size={24} />
+                  </div>
+                  <div>
+                    <h3 className="font-black text-slate-900 dark:text-white leading-none">Enlace de Registro</h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Comparte este enlace para que nuevos empleados se registren.</p>
+                  </div>
+                </div>
+                <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
+                  <button 
+                    onClick={() => {
+                      const url = new URL(window.location.origin);
+                      url.searchParams.set('register', 'true');
+                      navigator.clipboard.writeText(url.toString());
+                      alert('Enlace de registro copiado al portapapeles. ¡Ya puedes enviarlo!');
+                    }}
+                    className="w-full sm:w-auto px-6 py-3 bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 font-bold rounded-xl border-2 border-blue-200 dark:border-blue-800 hover:bg-blue-600 hover:text-white dark:hover:bg-blue-600 dark:hover:text-white transition-all active:scale-95 shadow-sm"
+                  >
+                    Copiar Enlace
+                  </button>
+                </div>
+              </div>
+            )}
             <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-md border border-gray-100 dark:border-slate-800 mb-6">
               <div className="flex items-center gap-2 mb-4">
                 <div className="flex flex-col">

@@ -28,7 +28,8 @@ service cloud.firestore {
 
     match /hotel_victoria_users/{userId} {
       allow read: if isAuthenticated();
-      allow write: if isAdmin();
+      allow create: if isAuthenticated() && request.resource.data.role == 'STAFF';
+      allow update, delete: if isAdmin();
     }
 
     match /hotel_victoria_departments/{deptId} {
