@@ -130,27 +130,27 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
         {/* Form Section */}
         <div className="p-8 pt-2">
           <form onSubmit={handleLogin} className="space-y-5">
-            <div className="space-y-1.5">
-              <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider ml-1">Usuario</label>
+            <div className="space-y-1.5 group">
+              <label className="block text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.2em] ml-1 group-focus-within:text-red-500 transition-colors">Usuario único</label>
               <input
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:bg-white dark:focus:bg-slate-900 focus:border-red-500 focus:ring-2 focus:ring-red-500/20 outline-none transition-all"
-                placeholder="Ingresa tu usuario"
+                className="w-full px-5 py-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:bg-white dark:focus:bg-slate-900 focus:border-red-600 focus:ring-4 focus:ring-red-600/10 outline-none transition-all font-bold"
+                placeholder="Nombre de usuario"
                 required
                 disabled={loading}
               />
             </div>
             
-            <div className="space-y-1.5">
-              <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider ml-1">PIN</label>
+            <div className="space-y-1.5 group">
+              <label className="block text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.2em] ml-1 group-focus-within:text-red-500 transition-colors">Contraseña Personal</label>
               <input
                 type="password"
                 value={pin}
                 onChange={(e) => setPin(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:bg-white dark:focus:bg-slate-900 focus:border-red-500 focus:ring-2 focus:ring-red-500/20 outline-none transition-all tracking-widest"
-                placeholder="••••"
+                className="w-full px-5 py-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:bg-white dark:focus:bg-slate-900 focus:border-red-600 focus:ring-4 focus:ring-red-600/10 outline-none transition-all tracking-[0.5em] font-black"
+                placeholder="••••••••"
                 required
                 disabled={loading}
               />

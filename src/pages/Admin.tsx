@@ -416,11 +416,20 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
           <div className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-md p-6 shadow-pop-in animate-pop-in">
             <div className="flex justify-between items-center mb-4"><h3 className="font-bold text-xl text-gray-900 dark:text-white">Editar Usuario</h3><button onClick={() => setEditingUser(null)} className="text-gray-400 hover:text-gray-600"><X /></button></div>
             <div className="space-y-4">
-              <input type="text" placeholder="Nombre" value={editingUser.name} onChange={e => setEditingUser({...editingUser, name: e.target.value})} className="w-full p-3 border-2 border-gray-200 dark:border-slate-700/50 rounded-xl bg-gray-100 dark:bg-slate-800/60 dark:text-white outline-none focus:border-red-500 focus:ring-2 focus:ring-red-200 dark:focus:ring-red-500/50 shadow-sm" required />
-              <input type="password" placeholder="PIN (dejar igual para no cambiar)" value={editingUser.pin.length === 64 ? '' : editingUser.pin} onChange={e => setEditingUser({...editingUser, pin: e.target.value})} className="w-full p-3 border-2 border-gray-200 dark:border-slate-700/50 rounded-xl bg-gray-100 dark:bg-slate-800/60 dark:text-white outline-none focus:border-red-500 focus:ring-2 focus:ring-red-200 dark:focus:ring-red-500/50 shadow-sm" />
-              <select value={editingUser.role} onChange={e => setEditingUser({...editingUser, role: e.target.value as UserRole})} className="w-full p-3 border-2 border-gray-200 dark:border-slate-700/50 rounded-xl bg-gray-100 dark:bg-slate-800/60 dark:text-white outline-none focus:border-red-500 focus:ring-2 focus:ring-red-200 dark:focus:ring-red-500/50 shadow-sm appearance-none">
-                <option value={UserRole.STAFF}>Personal</option><option value={UserRole.ADMIN}>Admin</option>
-              </select>
+              <div className="space-y-1">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Nombre de Usuario</label>
+                <input type="text" placeholder="Usuario" value={editingUser.name} onChange={e => setEditingUser({...editingUser, name: e.target.value})} className="w-full p-3 border-2 border-slate-200 dark:border-slate-700/50 rounded-xl bg-slate-50 dark:bg-slate-800/60 dark:text-white outline-none focus:border-red-600 focus:ring-4 focus:ring-red-600/10 shadow-sm font-bold" required />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Contraseña Nueva</label>
+                <input type="password" placeholder="•••••••• (dejar vacío para no cambiar)" value={editingUser.pin.length === 64 ? '' : editingUser.pin} onChange={e => setEditingUser({...editingUser, pin: e.target.value})} className="w-full p-3 border-2 border-slate-200 dark:border-slate-700/50 rounded-xl bg-slate-50 dark:bg-slate-800/60 dark:text-white outline-none focus:border-red-600 focus:ring-4 focus:ring-red-600/10 shadow-sm" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Rol del Sistema</label>
+                <select value={editingUser.role} onChange={e => setEditingUser({...editingUser, role: e.target.value as UserRole})} className="w-full p-3 border-2 border-slate-200 dark:border-slate-700/50 rounded-xl bg-slate-50 dark:bg-slate-800/60 dark:text-white outline-none focus:border-red-600 focus:ring-4 focus:ring-red-600/10 shadow-sm appearance-none font-bold">
+                  <option value={UserRole.STAFF}>Personal</option><option value={UserRole.ADMIN}>Admin</option>
+                </select>
+              </div>
               {editingUser.role === UserRole.STAFF && (
                 <div className="pt-2">
                     <label className="flex items-center gap-3 p-3 border-2 border-transparent rounded-xl bg-gray-100 dark:bg-slate-800/60 cursor-pointer">
