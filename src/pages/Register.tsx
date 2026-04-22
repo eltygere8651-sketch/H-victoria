@@ -90,8 +90,8 @@ const Register: React.FC = () => {
               <Logo size="xl" />
             </div>
             <div className="space-y-1">
-                <h1 className="text-3xl font-black tracking-tighter text-white uppercase italic">Registro Institucional</h1>
-                <p className="text-slate-500 text-xs font-bold tracking-[0.3em] uppercase">Security Management System</p>
+                <h1 className="text-3xl font-black tracking-tighter text-white uppercase italic">Crear mi Acceso</h1>
+                <p className="text-slate-500 text-xs font-bold tracking-[0.2em] uppercase">Hub: Hotel Victoria Intelligence</p>
             </div>
         </div>
 
