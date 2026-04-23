@@ -34,16 +34,17 @@ export const PWAInstallPrompt: React.FC<PWAInstallPromptProps> = ({ isOpen, onCl
             Lleva el control de tu hotel a todas partes con nuestra aplicación nativa.
           </p>
 
-          <div className="bg-slate-50 dark:bg-slate-800/50 p-6 rounded-[2rem] border border-slate-100 dark:border-slate-700/50 mb-8">
-            <div className="bg-white p-4 rounded-2xl shadow-inner inline-block mb-4">
+          <div className="bg-slate-50 dark:bg-slate-800/50 p-8 rounded-[2.5rem] border border-slate-100 dark:border-slate-700/50 mb-8 relative overflow-hidden group">
+            <div className="absolute inset-0 bg-gradient-to-br from-red-500/5 to-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+            <div className="relative z-10 bg-white p-6 rounded-[2rem] shadow-2xl inline-block mb-4 ring-8 ring-white/50">
               <img 
-                src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(appUrl)}&margin=10&color=dc2626`} 
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(appUrl)}&margin=10&color=dc2626`} 
                 alt="QR Code" 
-                className="w-40 h-40"
+                className="w-48 h-48 sm:w-56 sm:h-56"
               />
             </div>
-            <div className="flex items-center justify-center gap-2 text-red-600 dark:text-red-400 font-black text-xs uppercase tracking-widest">
-              <QrCode size={16} /> Escanea para descargar
+            <div className="relative z-10 flex items-center justify-center gap-2 text-red-600 dark:text-red-400 font-extrabold text-sm uppercase tracking-[0.2em]">
+              <QrCode size={18} /> Escaneo de Alta Precisión
             </div>
           </div>
 

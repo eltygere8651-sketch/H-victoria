@@ -4,36 +4,30 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
 
 export const generateSlideExplanation = async (slideTitle: string, slideSubtitle: string, slideContent: string, slidePoints: string[]) => {
   try {
-    const isFirstSlide = slideTitle.toLowerCase().includes("ecosistema");
-    const isLastSlide = slideTitle.toLowerCase().includes("gracias") || 
-                       slideTitle.toLowerCase().includes("atención") || 
-                       slideTitle.toLowerCase().includes("futuro") ||
-                       slideTitle.toLowerCase().includes("excelencia");
+    const isFirstSlide = slideTitle.toLowerCase().includes("herramienta");
+    const isLastSlide = slideTitle.toLowerCase().includes("equipo") || 
+                       slideTitle.toLowerCase().includes("bienvenido");
     
     const prompt = `
-      Eres un Senior Operations Consultant especializado en hospitalidad de lujo. 
-      Tu misión es realizar un análisis estratégico de alto nivel para una diapositiva de la plataforma "Hub".
+      Eres un compañero experto en el uso de la aplicación "Hub". Tu objetivo es enseñar a otro compañero a usar la aplicación de la forma más sencilla posible, sin palabras técnicas complicadas.
       
-      DATOS DE LA DIAPOSITIVA:
+      DATOS DE LO QUE TIENES QUE EXPLICAR:
       - Título: ${slideTitle}
       - Subtítulo: ${slideSubtitle}
-      - Concepto: ${slideContent}
-      - Funcionalidades: ${slidePoints.join(', ')}
+      - Qué es: ${slideContent}
+      - Qué hace: ${slidePoints.join(', ')}
       
-      DIRECTRICES ESTRATÉGICAS:
-      1. RAZONAMIENTO PROFUNDO: No describas las funciones, explica el IMPACTO. ¿Cómo reduce esto el error humano? ¿Cómo optimiza el tiempo del personal para que puedan centrarse en el huésped? ¿Cómo protege la rentabilidad del hotel?
-      2. TONO EJECUTIVO: Usa un lenguaje sofisticado pero accesible. Evita muletillas. Sé inspirador y autoritario.
-      3. CONTEXTO: 
-         - ${isFirstSlide ? 'Saluda al "equipo del Hotel Victoria" al inicio.' : 'NO menciones al "equipo del Hotel Victoria" a menos que sea el final.'}
-         - ${isLastSlide ? 'Agradece la asistencia a la formación y anima al equipo a utilizar la plataforma para alcanzar nuevos niveles de eficiencia. Menciona que el soporte técnico está disponible para cualquier consulta.' : ''}
-      4. FLUIDEZ: El texto será leído por una voz sintética. Usa frases con buen ritmo y pausas naturales.
-      5. DURACIÓN: Aproximadamente 50-70 segundos de lectura (120-160 palabras).
-      6. ESTRUCTURA: 
-         - Gancho estratégico (por qué este tema importa hoy).
-         - Análisis de valor (el "por qué" detrás de las funciones).
-         - Visión de futuro (cómo esto transforma el día a día).
+      REGLAS PARA TU DISCURSO:
+      1. HABLA CLARO Y SIMPLE: Usa un lenguaje que cualquiera entienda. Evita palabras como "estratégico", "optimización", "ecosistema" o "trazabilidad". 
+      2. VE AL GRANO: Explica para qué sirve esto en el día a día. ¿Cómo le va a ahorrar tiempo al empleado? ¿Cómo le quita el estrés de usar papel?
+      3. TONO CERCANO: Habla como si estuvieras tomándote un café con un compañero. Sé amable, directo y práctico.
+      4. CONTEXTO: 
+         - ${isFirstSlide ? 'Saluda al equipo y diles que Hub les va a hacer la vida más fácil.' : ''}
+         - ${isLastSlide ? 'Diles que ya están listos y que, si tienen dudas, pregunten a cualquiera del equipo.' : ''}
+      5. DURACIÓN: Aproximadamente 40-50 segundos de lectura. No te enrolles.
+      6. PASO A PASO: Di cosas como "Pulsa aquí", "Mira esto", "Así de fácil".
 
-      IMPORTANTE: Responde ÚNICAMENTE con el texto de la locución.
+      IMPORTANTE: Responde ÚNICAMENTE con el texto que debe decir la voz. No pongas títulos ni introducciones.
     `;
 
     const response = await ai.models.generateContent({

@@ -12,9 +12,10 @@ import { TaskRecurrence } from '../types';
 
 interface PublicTaskViewerProps {
   taskId: string;
+  setShowGuideModal: (show: boolean) => void;
 }
 
-export const PublicTaskViewer: React.FC<PublicTaskViewerProps> = ({ taskId }) => {
+export const PublicTaskViewer: React.FC<PublicTaskViewerProps> = ({ taskId, setShowGuideModal }) => {
   const [task, setTask] = useState<Task | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -164,7 +165,9 @@ export const PublicTaskViewer: React.FC<PublicTaskViewerProps> = ({ taskId }) =>
   if (loading) {
     return (
       <div className="min-h-screen w-full bg-gray-50 dark:bg-slate-950 flex flex-col items-center justify-center p-4">
-        <Logo size="lg" className="animate-pulse mb-6" />
+        <div className="cursor-pointer active:scale-95 transition-transform" onClick={() => setShowGuideModal(true)}>
+          <Logo size="lg" className="animate-pulse mb-6" />
+        </div>
         <Loader2 size={32} className="animate-spin text-red-600" />
         <p className="mt-4 text-gray-500 font-medium">Cargando tarea compartida...</p>
       </div>
@@ -191,7 +194,7 @@ export const PublicTaskViewer: React.FC<PublicTaskViewerProps> = ({ taskId }) =>
       <div className="flex flex-col">
         <header className="bg-white dark:bg-slate-900 border-b border-gray-100 dark:border-slate-800 sticky top-0 z-20 px-4 py-3 shadow-sm">
           <div className="max-w-3xl mx-auto flex justify-between items-center">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 cursor-pointer active:scale-95 transition-transform" onClick={() => setShowGuideModal(true)}>
               <Logo size="sm" />
               <span className="font-extrabold text-xl text-gray-900 dark:text-white">Hub</span>
             </div>

@@ -1,7 +1,9 @@
 import React from 'react';
 import { Logo } from './Logo';
-import { Download, Share2, Sun, Moon, LogOut, ClipboardCheck, ClipboardList, LayoutGrid, ShieldCheck, ShoppingCart, X, Volume2, VolumeX } from 'lucide-react';
+import { Download, Share2, Sun, Moon, LogOut, ClipboardCheck, ClipboardList, LayoutGrid, ShieldCheck, ShoppingCart, X, Volume2, VolumeX, Pause, Play, Sparkles } from 'lucide-react';
 import { User, UserRole, CartItem } from '../types';
+import { useSpeech } from '../context/SpeechContext';
+import { motion, AnimatePresence } from 'motion/react';
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -98,9 +100,62 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
   unreadAdminNotificationsCount
 }) => {
   const hasCartItems = cart.length > 0;
+  const { isSpeaking, stopSpeech, togglePause, isPaused, narratorTitle, narratorSubtitle } = useSpeech();
 
   return (
     <div className={`min-h-[100dvh] w-full flex flex-col font-sans transition-colors duration-500 antialiased ${darkMode ? 'dark' : ''} bg-premium relative`}>
+      {/* Global Narrator HUD - PERSISTENT CROSS-TABS */}
+      <AnimatePresence>
+        {isSpeaking && (
+          <motion.div 
+            initial={{ y: 100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 100, opacity: 0 }}
+            className="fixed bottom-24 left-4 right-4 sm:left-auto sm:right-8 sm:w-96 z-[100] pointer-events-none"
+          >
+            <div className="bg-slate-900/95 backdrop-blur-2xl border border-white/10 rounded-[2rem] p-5 shadow-2xl flex items-center gap-4 pointer-events-auto">
+               <div className="relative shrink-0">
+                  <div className="w-12 h-12 rounded-2xl bg-red-600 flex items-center justify-center text-white shadow-lg shadow-red-600/30">
+                    <Sparkles size={20} className="animate-pulse" />
+                  </div>
+                  {/* Visualizer bars */}
+                  <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 flex items-end gap-0.5 h-3">
+                    {[1,2,3].map(i => (
+                      <motion.div 
+                        key={i}
+                        animate={{ height: [4, 8, 4] }}
+                        transition={{ duration: 0.5, repeat: Infinity, delay: i * 0.1 }}
+                        className="w-1 bg-white rounded-full"
+                      />
+                    ))}
+                  </div>
+               </div>
+               
+               <div className="flex-1 min-w-0">
+                  <div className="text-[8px] font-black text-red-500 uppercase tracking-[0.3em] mb-1 leading-none">Formativo activo</div>
+                  <div className="text-sm font-bold text-white truncate leading-tight">{narratorTitle || 'Explicación IA'}</div>
+                  <div className="text-[10px] text-slate-400 truncate opacity-60">{narratorSubtitle || 'Guía de uso'}</div>
+               </div>
+
+               <div className="flex items-center gap-2">
+                 <button 
+                   onClick={togglePause}
+                   className="w-10 h-10 rounded-xl bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors"
+                 >
+                   {isPaused ? <Play size={16} fill="white" /> : <Pause size={16} fill="white" />}
+                 </button>
+                 <button 
+                   onClick={stopSpeech}
+                   className="w-10 h-10 rounded-xl bg-red-600 hover:bg-red-700 text-white flex items-center justify-center transition-colors"
+                 >
+                   <X size={16} strokeWidth={3} />
+                 </button>
+               </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* HEADER GLOBAL FIJO */}
       <header 
         className="fixed top-0 left-0 right-0 h-[var(--header-h)] bg-white/80 dark:bg-slate-900/90 backdrop-blur-2xl shadow-sm z-50 border-b border-slate-200 dark:border-white/5 flex items-center px-4 pb-2"

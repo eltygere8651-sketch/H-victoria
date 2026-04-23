@@ -196,6 +196,21 @@ const App: React.FC = () => {
     const isAndroidDevice = /Android/i.test(navigator.userAgent);
     setIsAndroid(isAndroidDevice);
     
+    // Keyboard shortcut for Guide (v)
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      // Ignore if user is typing in any input or textarea
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+        return;
+      }
+
+      // We want ONLY the 'v' key, without modifiers (ctrl, meta, etc)
+      if (e.key.toLowerCase() === 'v' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        setShowGuideModal(prev => !prev);
+      }
+    };
+    document.addEventListener('keydown', handleGlobalKeyDown);
+    
     // Automatically show Android prompt if not installed and hasn't seen it
     if (isAndroidDevice && !window.matchMedia('(display-mode: standalone)').matches && localStorage.getItem('hasSeenAndroidPrompt') !== 'true') {
       // Small delay to not interrupt initial render
@@ -209,6 +224,7 @@ const App: React.FC = () => {
     return () => {
       window.removeEventListener('beforeinstallprompt', beforeInstallHandler);
       window.removeEventListener('appinstalled', appInstalledHandler);
+      document.removeEventListener('keydown', handleGlobalKeyDown);
     };
   }, []);
 
@@ -304,7 +320,7 @@ const App: React.FC = () => {
     displayedToastIds.current.delete(id);
   };
 
-  // --- SPLASH SCREEN (Pantalla de Carga) ---
+  // --- MAIN RENDER LOGIC ---
   if (isInitializing) {
     return (
       <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-slate-50 dark:bg-[#060812] transition-colors duration-500 overflow-hidden">
@@ -326,12 +342,16 @@ const App: React.FC = () => {
     );
   }
 
-  if (sharedTaskId && !user) return <PublicTaskViewer taskId={sharedTaskId} />;
-  if (isRegistering && !user) return <Register />;
-  if (!user) return <Login onLogin={handleLogin} />;
-
-  return (
-    <>
+  // Determine core content based on auth state
+  let mainContent;
+  if (sharedTaskId && !user) {
+    mainContent = <PublicTaskViewer taskId={sharedTaskId} setShowGuideModal={setShowGuideModal} />;
+  } else if (isRegistering && !user) {
+    mainContent = <Register setShowGuideModal={setShowGuideModal} />;
+  } else if (!user) {
+    mainContent = <Login onLogin={handleLogin} setShowGuideModal={setShowGuideModal} />;
+  } else {
+    mainContent = (
       <MainLayout
         user={user} view={view} setView={setView} cart={cart}
         darkMode={darkMode} setDarkMode={setDarkMode}
@@ -353,16 +373,33 @@ const App: React.FC = () => {
         {view === 'replenish' && user.role !== UserRole.GUEST && user.role !== UserRole.PROVIDER && <Replenishment currentUser={user} cart={cart} setCart={setCart} showMobileCart={showMobileCart} setShowMobileCart={setShowMobileCart} />}
         {view === 'admin' && user.role === UserRole.ADMIN && <Admin currentUser={user} unreadNotificationsCount={unreadAdminNotifications.length} initialTab={initialAdminTab} />}
         {view === 'tasks' && <Tasks currentUser={user} initialTaskId={sharedTaskId} />}
-        {view === 'training' && <Training onBack={() => setView('tasks')} />}
+        {view === 'training' && (
+          <Training 
+            onBack={() => setView('tasks')} 
+            currentUser={user}
+            cart={cart}
+            setCart={setCart}
+            showMobileCart={showMobileCart}
+            setShowMobileCart={setShowMobileCart}
+          />
+        )}
         {(view as any) === 'provider' && <ProviderDelivery currentUser={user} />}
       </MainLayout>
+    );
+  }
+
+  return (
+    <>
+      <div className={`transition-opacity duration-500 ${showGuideModal ? 'opacity-20 pointer-events-none' : 'opacity-100'}`}>
+        {mainContent}
+      </div>
 
       <GuideModal 
         isOpen={showGuideModal} 
         onClose={() => setShowGuideModal(false)} 
         onStartTraining={() => {
           setShowGuideModal(false);
-          setView('training');
+          if (user) setView('training');
         }}
       />
       <ShareModal isOpen={showShareModal} onClose={() => setShowShareModal(false)} url={shareData.url} title={shareData.title} />

@@ -8,9 +8,10 @@ import { PWAInstallPrompt } from '../components/PWAInstallPrompt';
 
 interface LoginProps {
   onLogin: (user: User) => void;
+  setShowGuideModal: (show: boolean) => void;
 }
 
-const Login: React.FC<LoginProps> = ({ onLogin }) => {
+const Login: React.FC<LoginProps> = ({ onLogin, setShowGuideModal }) => {
   const [username, setUsername] = useState('');
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
@@ -18,7 +19,6 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [unauthorizedDomain, setUnauthorizedDomain] = useState<string | null>(null);
   const [providerDisabled, setProviderDisabled] = useState(false);
-  const [showGuide, setShowGuide] = useState(false);
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
 
   // Check for existing Google session with listener
@@ -108,7 +108,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
         {/* Header Section */}
         <div className="pt-10 pb-6 px-8 flex flex-col items-center justify-center relative">
           <button 
-            onClick={() => setShowGuide(true)}
+            onClick={() => setShowGuideModal(true)}
             className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 bg-slate-100 dark:bg-slate-800/50 p-2 rounded-full transition-all active:scale-95"
             type="button"
             title="Ayuda"
@@ -117,7 +117,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
           </button>
           
           <div className="flex flex-col items-center">
-            <div className="mb-6">
+            <div className="mb-6 cursor-pointer active:scale-95 transition-transform" onClick={() => setShowGuideModal(true)}>
               <Logo size="lg" />
             </div>
             <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white mb-2">Bienvenido a Hub</h1>
@@ -267,12 +267,11 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
         </div>
       </div>
 
-      <GuideModal isOpen={showGuide} onClose={() => setShowGuide(false)} />
       <PWAInstallPrompt isOpen={showInstallPrompt} onClose={() => setShowInstallPrompt(false)} />
 
       {/* Floating Guide Button */}
       <button 
-        onClick={() => setShowGuide(true)}
+        onClick={() => setShowGuideModal(true)}
         className="fixed bottom-6 right-6 z-[60] bg-slate-900 dark:bg-white text-white dark:text-slate-900 p-4 rounded-2xl shadow-2xl shadow-black/20 flex items-center gap-3 font-black text-xs uppercase tracking-widest active:scale-95 transition-all hover:pr-6 group"
       >
         <HelpCircle size={20} className="group-hover:rotate-12 transition-transform" />

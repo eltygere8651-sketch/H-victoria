@@ -4,7 +4,11 @@ import * as storageService from '../services/storageService';
 import { UserRole } from '../types';
 import { Loader2, ArrowRight, CheckCircle2, ShieldCheck, AlertCircle, Lock, User as UserIcon, Eye, EyeOff, KeyRound } from 'lucide-react';
 
-const Register: React.FC = () => {
+interface RegisterProps {
+  setShowGuideModal: (show: boolean) => void;
+}
+
+const Register: React.FC<RegisterProps> = ({ setShowGuideModal }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -86,7 +90,10 @@ const Register: React.FC = () => {
         
         {/* Minimalist Professional Logo Section */}
         <div className="flex flex-col items-center text-center space-y-4">
-            <div className="p-4 bg-white/5 rounded-3xl backdrop-blur-md border border-white/10 shadow-2xl hover:scale-105 transition-transform duration-500 cursor-pointer group">
+            <div 
+              className="p-4 bg-white/5 rounded-3xl backdrop-blur-md border border-white/10 shadow-2xl hover:scale-105 transition-transform duration-500 cursor-pointer group active:scale-95"
+              onClick={() => setShowGuideModal(true)}
+            >
               <Logo size="xl" />
             </div>
             <div className="space-y-1">

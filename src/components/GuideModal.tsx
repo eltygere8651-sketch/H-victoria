@@ -81,20 +81,20 @@ export const GuideModal: React.FC<GuideModalProps> = ({ isOpen, onClose, onStart
             ))}
           </div>
 
-          {/* QR Section - Compact & Professional */}
-          <div className="bg-slate-50 dark:bg-slate-800/40 rounded-[2rem] p-4 sm:p-5 border border-slate-100 dark:border-slate-700/50 flex items-center gap-4 sm:gap-6">
-             <div className="flex-1">
-                <h5 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight mb-1">Acceso Móvil</h5>
-                <p className="text-[9px] sm:text-[10px] text-slate-500 dark:text-slate-400 font-medium leading-tight">
-                  Escanee para sincronizar su terminal y operar con rendimiento nativo.
-                </p>
-             </div>
-             <div className="shrink-0 bg-white p-2 rounded-xl shadow-sm border border-slate-100">
+          {/* QR Section - Enhanced visibility */}
+          <div className="bg-slate-50 dark:bg-slate-800/40 rounded-[2.5rem] p-6 border border-slate-100 dark:border-slate-700/50 flex flex-col items-center text-center gap-4">
+             <div className="bg-white p-4 rounded-[2rem] shadow-xl border border-slate-100 ring-4 ring-slate-50 dark:ring-slate-800/10 transition-transform hover:rotate-3">
                 <img 
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${encodeURIComponent(window.location.origin)}&margin=2&color=dc2626`} 
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(window.location.origin)}&margin=10&color=dc2626`} 
                   alt="QR" 
-                  className="w-12 h-12 sm:w-14 sm:h-14"
+                  className="w-32 h-32 sm:w-40 sm:h-40"
                 />
+             </div>
+             <div>
+                <h5 className="text-sm sm:text-base font-black text-slate-900 dark:text-white uppercase tracking-tight mb-1">Descarga Hub en tu Móvil</h5>
+                <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 font-medium leading-relaxed max-w-[200px]">
+                  Escanea con tu cámara para instalar la aplicación y recibir notificaciones críticas.
+                </p>
              </div>
           </div>
         </div>
