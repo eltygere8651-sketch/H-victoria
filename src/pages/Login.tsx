@@ -107,15 +107,6 @@ const Login: React.FC<LoginProps> = ({ onLogin, setShowGuideModal }) => {
         
         {/* Header Section */}
         <div className="pt-10 pb-6 px-8 flex flex-col items-center justify-center relative">
-          <button 
-            onClick={() => setShowGuideModal(true)}
-            className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 bg-slate-100 dark:bg-slate-800/50 p-2 rounded-full transition-all active:scale-95"
-            type="button"
-            title="Ayuda"
-          >
-            <HelpCircle size={20} />
-          </button>
-          
           <div className="flex flex-col items-center">
             <div className="mb-6 cursor-pointer active:scale-95 transition-transform" onClick={() => setShowGuideModal(true)}>
               <Logo size="lg" />
@@ -268,15 +259,6 @@ const Login: React.FC<LoginProps> = ({ onLogin, setShowGuideModal }) => {
       </div>
 
       <PWAInstallPrompt isOpen={showInstallPrompt} onClose={() => setShowInstallPrompt(false)} />
-
-      {/* Floating Guide Button */}
-      <button 
-        onClick={() => setShowGuideModal(true)}
-        className="fixed bottom-6 right-6 z-[60] bg-slate-900 dark:bg-white text-white dark:text-slate-900 p-4 rounded-2xl shadow-2xl shadow-black/20 flex items-center gap-3 font-black text-xs uppercase tracking-widest active:scale-95 transition-all hover:pr-6 group"
-      >
-        <HelpCircle size={20} className="group-hover:rotate-12 transition-transform" />
-        <span className="max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-500 whitespace-nowrap">Guía & App</span>
-      </button>
     </div>
   );
 };
