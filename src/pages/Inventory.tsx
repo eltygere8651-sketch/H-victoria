@@ -127,7 +127,7 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser }) => {
       departmentName: primaryDept?.name || 'Desconocido',
       departmentIds: deptIds,
       departmentNames: deptNames
-    });
+    }, currentUser.name);
     setShowEditProductModal(false);
     setEditProductForm({});
     setLoading(false);
@@ -190,7 +190,8 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser }) => {
         quantityToAdd: item.quantityToAdd,
         unit: item.product.unit || 'unidades'
       })),
-      currentUser.name
+      currentUser.name,
+      'ADMIN'
     );
     
     if (result && result.success && result.batchId) {
@@ -198,14 +199,14 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser }) => {
         batchId: result.batchId,
         date: new Date().toLocaleString(),
         departmentId: 'INGRESO',
-        departmentName: 'Ingreso de Proveedor',
+        departmentName: 'Ingreso de Mercancía',
         requestedBy: currentUser.name,
         items: receiveItems.map(item => ({
           id: '',
           productId: item.product.id,
           productName: item.product.name,
           departmentId: 'INGRESO',
-          departmentName: 'Ingreso de Proveedor',
+          departmentName: 'Ingreso de Mercancía',
           requestedBy: currentUser.name,
           quantity: item.quantityToAdd,
           status: 'COMPLETED',
@@ -213,9 +214,9 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser }) => {
           unit: item.product.unit || 'unidades'
         }))
       };
-      const filename = `Albaran_de_Entrega_${result.batchId}_Ingreso_de_Proveedor.pdf`;
-      const text = 'Aquí tienes el albarán de entrega en formato PDF.';
-      sharePdfFromReactComponent(<OrderPdfDocument order={orderBatch} preview={false} />, filename, `Albarán de Entrega #${result.batchId}`, text).catch(console.error);
+      const filename = `Albaran_Ingreso_${result.batchId}.pdf`;
+      const text = 'Aquí tienes el albarán de ingreso de mercancía en formato PDF.';
+      sharePdfFromReactComponent(<OrderPdfDocument order={orderBatch} preview={false} />, filename, `Ingreso de Mercancía #${result.batchId}`, text).catch(console.error);
     }
     
     setReceiveItems([]);
@@ -327,7 +328,7 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser }) => {
             </div>
             <div className="flex gap-2">
               <button onClick={() => { setEditProductForm(product); setShowEditProductModal(true); }} className="p-3 text-blue-600 bg-blue-50 dark:bg-blue-900/20 rounded-xl active:scale-90"><Edit2 size={18} /></button>
-              <button onClick={() => { storageService.deleteProduct(product.id); }} className="p-3 text-red-600 bg-red-50 dark:bg-red-900/20 rounded-xl active:scale-90"><Trash2 size={18} /></button>
+              <button onClick={() => { storageService.deleteProduct(product.id, currentUser.name); }} className="p-3 text-red-600 bg-red-50 dark:bg-red-900/20 rounded-xl active:scale-90"><Trash2 size={18} /></button>
             </div>
           </div>
         ))}
@@ -384,7 +385,14 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser }) => {
               </div>
               <div>
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Stock</label>
-                <input type="number" className="w-full p-4 border-2 rounded-2xl bg-slate-50 dark:bg-slate-950 font-bold" value={editProductForm.quantity || 0} onChange={e => setEditProductForm({...editProductForm, quantity: Number(e.target.value)})} />
+                <input 
+                  type="number" 
+                  className="w-full p-4 border-2 rounded-2xl bg-slate-100 dark:bg-slate-800 font-bold opacity-50 cursor-not-allowed" 
+                  value={editProductForm.quantity || 0} 
+                  disabled
+                  title="El stock se gestiona mediante Ingreso de Mercancía"
+                />
+                <p className="text-[9px] font-bold text-blue-600 dark:text-blue-400 mt-1 uppercase tracking-tighter">Gestionar vía Ingreso 📦</p>
               </div>
               <div>
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Alerta</label>
@@ -407,7 +415,7 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser }) => {
             <p className="text-slate-500 dark:text-slate-400 mb-6">Esta acción no se puede deshacer.</p>
             <div className="flex gap-3">
               <button onClick={() => setProductToDelete(null)} className="flex-1 py-3 font-bold bg-slate-100 dark:bg-slate-700 rounded-xl text-slate-600 dark:text-slate-300">Cancelar</button>
-              <button onClick={() => { storageService.deleteProduct(productToDelete.id); setProductToDelete(null); }} className="flex-1 py-3 font-bold bg-red-600 text-white rounded-xl shadow-lg shadow-red-600/30">Eliminar</button>
+              <button onClick={() => { storageService.deleteProduct(productToDelete.id, currentUser.name); setProductToDelete(null); }} className="flex-1 py-3 font-bold bg-red-600 text-white rounded-xl shadow-lg shadow-red-600/30">Eliminar</button>
             </div>
           </div>
         </div>

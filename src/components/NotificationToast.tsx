@@ -10,7 +10,7 @@ interface NotificationToastProps {
   timeout?: number;
 }
 
-export const NotificationToast: React.FC<NotificationToastProps> = ({ notification, onDismiss, onReadAndNavigate, timeout = 5000 }) => {
+export const NotificationToast: React.FC<NotificationToastProps> = ({ notification, onDismiss, onReadAndNavigate, timeout = 2000 }) => {
   const [isVisible, setIsVisible] = useState(true);
 
   useEffect(() => {

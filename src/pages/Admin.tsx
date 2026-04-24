@@ -191,29 +191,25 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
 
   // Consolidated Activity Timeline
   const activityTimeline = (() => {
-    const timelineItems = [
-      ...orders.map(o => ({
-        id: o.batchId,
-        type: 'order' as const,
-        title: `Albarán #${o.batchId}`,
-        message: `${o.requestedBy} solicitó ${o.items.length} productos para ${o.departmentName}`,
-        timestamp: new Date(o.date).getTime(),
-        icon: Package,
-        color: 'text-blue-600 bg-blue-50 dark:bg-blue-900/20',
-        read: true // Orders are always "read" as they are history
-      })),
-      ...notifications
-        .map(n => ({
-          id: n.id,
-          type: 'notification' as const,
-          title: n.title,
-          message: n.message,
-          timestamp: n.timestamp,
-          icon: Activity,
-          color: n.readStatus ? 'text-slate-400 bg-slate-50 dark:bg-slate-800/50' : 'text-red-600 bg-red-50 dark:bg-red-900/20',
-          read: n.readStatus
-        }))
-    ];
+    const timelineItems = notifications
+      .map(n => ({
+        id: n.id,
+        type: 'notification' as const,
+        title: n.title,
+        message: n.message,
+        timestamp: n.timestamp,
+        icon: n.icon === 'AlertTriangle' ? ShieldAlert : 
+              (n.icon === 'PackagePlus' ? Package : 
+              (n.icon === 'ShieldAlert' ? ShieldAlert :
+              (n.icon === 'Trash2' ? Trash2 : 
+              (n.icon === 'Plus' ? Zap : Activity)))),
+        color: n.readStatus 
+          ? 'text-slate-400 bg-slate-50 dark:bg-slate-800/50' 
+          : (n.icon === 'ShieldAlert' 
+              ? 'text-amber-600 bg-amber-50 dark:bg-amber-900/20' 
+              : 'text-red-600 bg-red-50 dark:bg-red-900/20'),
+        read: n.readStatus
+      }));
 
     return timelineItems
       .sort((a, b) => b.timestamp - a.timestamp)

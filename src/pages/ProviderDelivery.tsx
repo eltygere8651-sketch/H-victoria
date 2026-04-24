@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Product, User, OrderBatch } from '../types';
 import * as storageService from '../services/storageService';
-import { Search, Plus, Trash2, ArrowRight, CheckCircle2, Loader2, PackagePlus, LogOut } from 'lucide-react';
+import { Search, Plus, Trash2, ArrowRight, CheckCircle2, Loader2, PackagePlus, LogOut, FileText } from 'lucide-react';
+import { sharePdfFromReactComponent } from '../utils/pdfGenerator';
+import { OrderPdfDocument } from '../components/OrderPdfDocument';
 
 interface ProviderDeliveryProps {
   currentUser: User;
@@ -16,6 +18,7 @@ const ProviderDelivery: React.FC<ProviderDeliveryProps> = ({ currentUser }) => {
   const [loading, setLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [providerName, setProviderName] = useState('');
+  const [lastBatch, setLastBatch] = useState<OrderBatch | null>(null);
 
   useEffect(() => {
     const unsubscribe = storageService.subscribeToProducts((data) => {
@@ -52,14 +55,42 @@ const ProviderDelivery: React.FC<ProviderDeliveryProps> = ({ currentUser }) => {
         quantityToAdd: item.quantityToAdd,
         unit: item.product.unit || 'unidades'
       })),
-      finalName
+      finalName,
+      'PROVIDER'
     );
+    
+    if (result && result.success && result.batchId) {
+      const batch: OrderBatch = {
+        batchId: result.batchId,
+        date: new Date().toLocaleString(),
+        departmentId: 'INGRESO',
+        departmentName: `Proveedor: ${providerName.trim()}`,
+        requestedBy: finalName,
+        items: receiveItems.map(item => ({
+          id: '',
+          productId: item.product.id,
+          productName: item.product.name,
+          departmentId: 'INGRESO',
+          departmentName: `Proveedor: ${providerName.trim()}`,
+          requestedBy: finalName,
+          quantity: item.quantityToAdd,
+          status: 'COMPLETED',
+          date: new Date().toLocaleString(),
+          unit: item.product.unit || 'unidades'
+        }))
+      };
+      
+      setLastBatch(batch);
+      const filename = `Albaran_Proveedor_${result.batchId}.pdf`;
+      const text = `Aquí tienes el albarán de entrega del proveedor ${providerName.trim()}.`;
+      sharePdfFromReactComponent(<OrderPdfDocument order={batch} preview={false} />, filename, `Albarán Proveedor #${result.batchId}`, text).catch(console.error);
+    }
     
     setReceiveItems([]);
     setProviderName('');
     setLoading(false);
     setSuccessMessage(`¡Ingreso #${result?.batchId} registrado correctamente!`);
-    setTimeout(() => setSuccessMessage(''), 5000);
+    setTimeout(() => setSuccessMessage(''), 8000);
   };
 
   const handleLogout = () => {

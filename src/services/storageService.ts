@@ -350,11 +350,40 @@ export const subscribeToProducts = (callback: (data: Product[]) => void) => {
         callback(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Product)));
     }, error => handleFirestoreError(error, OperationType.GET, KEYS.PRODUCTS));
 };
-export const saveProduct = async (product: Partial<Product>) => {
+export const saveProduct = async (product: Partial<Product>, userName: string = 'Administrador') => {
+  const isNew = !product.id;
   const docRef = product.id ? db.collection(KEYS.PRODUCTS).doc(product.id) : db.collection(KEYS.PRODUCTS).doc();
-  await docRef.set(sanitizeData({ ...product, id: docRef.id }), { merge: true });
+  const id = docRef.id;
+  await docRef.set(sanitizeData({ ...product, id }), { merge: true });
+
+  if (isNew) {
+    await db.collection(KEYS.NOTIFICATIONS).add({
+      type: NotificationType.INVENTORY_ADJUSTMENT,
+      title: 'Nuevo Producto Creado',
+      message: `El producto "${product.name}" ha sido añadido al inventario por ${userName}.`,
+      icon: 'Plus',
+      timestamp: Date.now(),
+      readStatus: false,
+      payload: { productId: id, productName: product.name }
+    });
+  }
 };
-export const deleteProduct = async (id: string) => await db.collection(KEYS.PRODUCTS).doc(id).delete();
+export const deleteProduct = async (id: string, userName: string = 'Administrador') => {
+  const productDoc = await db.collection(KEYS.PRODUCTS).doc(id).get();
+  const productName = productDoc.exists ? productDoc.data()?.name : 'Desconocido';
+  
+  await db.collection(KEYS.PRODUCTS).doc(id).delete();
+
+  await db.collection(KEYS.NOTIFICATIONS).add({
+    type: NotificationType.INVENTORY_ADJUSTMENT,
+    title: 'Producto Eliminado',
+    message: `El producto "${productName}" ha sido eliminado del inventario por ${userName}.`,
+    icon: 'Trash2',
+    timestamp: Date.now(),
+    readStatus: false,
+    payload: { productId: id, productName: productName }
+  });
+};
 
 // Removed cleanAndBoostStock to prevent accidental data loss
 
@@ -441,9 +470,9 @@ export const submitOrderBatch = async (cart: CartItem[], departmentId: string, d
   return { success: true, lowStockItems, batchId };
 };
 
-export const receiveStockBatch = async (items: { productId: string; productName: string; quantityToAdd: number; unit: string }[], userName: string) => {
+export const receiveStockBatch = async (items: { productId: string; productName: string; quantityToAdd: number; unit: string }[], userName: string, sourceType: 'PROVIDER' | 'ADMIN' = 'PROVIDER') => {
   const batch = db.batch();
-  const batchId = 'ING-' + Date.now().toString().slice(-6);
+  const batchId = (sourceType === 'ADMIN' ? 'ADM-' : 'ING-') + Date.now().toString().slice(-6);
   
   for (const item of items) {
     const productRef = db.collection(KEYS.PRODUCTS).doc(item.productId);
@@ -458,7 +487,7 @@ export const receiveStockBatch = async (items: { productId: string; productName:
       productId: item.productId, 
       productName: item.productName,
       departmentId: 'INGRESO', 
-      departmentName: 'Ingreso de Proveedor', 
+      departmentName: sourceType === 'ADMIN' ? 'Ingreso de Mercancía' : 'Ingreso de Proveedor', 
       requestedBy: userName,
       quantity: item.quantityToAdd, 
       status: 'COMPLETED',
@@ -472,12 +501,14 @@ export const receiveStockBatch = async (items: { productId: string; productName:
   const notifRef = db.collection(KEYS.NOTIFICATIONS).doc();
   batch.set(notifRef, {
     type: NotificationType.STOCK_RECEIVED,
-    title: 'Ingreso de Mercancía',
-    message: `Se ha registrado el ingreso de ${items.length} producto(s) por ${userName}.`,
-    icon: 'PackagePlus',
+    title: sourceType === 'ADMIN' ? 'Ingreso de Mercancía' : 'Ingreso de Proveedor',
+    message: sourceType === 'ADMIN' 
+      ? `Se ha registrado el ingreso de ${items.length} producto(s) por el Administrador.`
+      : `Se ha registrado el ingreso de ${items.length} producto(s) por el proveedor / repartidor.`,
+    icon: sourceType === 'ADMIN' ? 'ShieldAlert' : 'PackagePlus',
     timestamp: Date.now(),
     readStatus: false,
-    payload: { itemCount: items.length, orderBatchId: batchId }
+    payload: { itemCount: items.length, orderBatchId: batchId, sourceType }
   });
 
   await batch.commit();
