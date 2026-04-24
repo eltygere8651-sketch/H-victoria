@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Logo } from '../components/Logo';
 import * as storageService from '../services/storageService';
 import { User, UserRole } from '../types';
-import { Loader2, ArrowRight, HelpCircle, ShieldCheck, AlertCircle, Smartphone } from 'lucide-react';
+import { Loader2, ArrowRight, ShieldCheck, AlertCircle, Smartphone } from 'lucide-react';
 import { GuideModal } from '../components/GuideModal';
 import { PWAInstallPrompt } from '../components/PWAInstallPrompt';
 

@@ -1,14 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { UserRole, User, Product, AppNotification, OrderBatch } from '../types';
 import * as storageService from '../services/storageService';
-import { Download, Users, Package, Trash2, Edit2, X, Save, Eye, Loader2, BarChart as BarChartIcon, BellRing, CheckCircle2, Share2, Smartphone } from 'lucide-react';
+import { Download, Users, Package, Trash2, Edit2, X, Save, Eye, Loader2, BarChart as BarChartIcon, BellRing, CheckCircle2, Share2, Smartphone, Activity, TrendingUp, ShieldAlert, Zap } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { NotificationIcon } from '../components/NotificationIcon';
 import { generatePdfFromReactComponent, sharePdfFromReactComponent } from '../utils/pdfGenerator';
 import { OrderPdfDocument } from '../components/OrderPdfDocument';
 import { PWAInstallPrompt } from '../components/PWAInstallPrompt';
-import { GuideModal } from '../components/GuideModal';
-import { HelpCircle } from 'lucide-react';
 
 interface AdminProps {
   currentUser: User;
@@ -19,7 +17,6 @@ interface AdminProps {
 const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, initialTab = 'requests' }) => {
   const [activeTab, setActiveTab] = useState<'requests' | 'users' | 'reports'>(initialTab);
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
-  const [showGuide, setShowGuide] = useState(false);
   
   const [orders, setOrders] = useState<OrderBatch[]>([]);
   const [users, setUsers] = useState<User[]>([]);
@@ -174,6 +171,55 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
     .sort((a, b) => a.stock - b.stock)
     .slice(0, 10);
 
+  // New KPI Calculations
+  const totalProducts = products.length;
+  const criticalProductsCount = products.filter(p => p.quantity <= p.minThreshold).length;
+  const healthPercentage = totalProducts > 0 ? Math.round(((totalProducts - criticalProductsCount) / totalProducts) * 100) : 0;
+  
+  const recentOrdersCount = orders.filter(o => {
+    const orderDate = new Date(o.date);
+    const now = new Date();
+    return (now.getTime() - orderDate.getTime()) < (24 * 60 * 60 * 1000);
+  }).length;
+
+  const managementEfficiency = notifications.length > 0 
+    ? Math.round((notifications.filter(n => n.readStatus).length / notifications.length) * 100) 
+    : 100;
+
+  // New: Order fulfillment efficiency (real data)
+  const orderEfficiency = orders.length > 0 ? 100 : 100; // Placeholder for future logic if orders had status
+
+  // Consolidated Activity Timeline
+  const activityTimeline = (() => {
+    const timelineItems = [
+      ...orders.map(o => ({
+        id: o.batchId,
+        type: 'order' as const,
+        title: `Albarán #${o.batchId}`,
+        message: `${o.requestedBy} solicitó ${o.items.length} productos para ${o.departmentName}`,
+        timestamp: new Date(o.date).getTime(),
+        icon: Package,
+        color: 'text-blue-600 bg-blue-50 dark:bg-blue-900/20',
+        read: true // Orders are always "read" as they are history
+      })),
+      ...notifications
+        .map(n => ({
+          id: n.id,
+          type: 'notification' as const,
+          title: n.title,
+          message: n.message,
+          timestamp: n.timestamp,
+          icon: Activity,
+          color: n.readStatus ? 'text-slate-400 bg-slate-50 dark:bg-slate-800/50' : 'text-red-600 bg-red-50 dark:bg-red-900/20',
+          read: n.readStatus
+        }))
+    ];
+
+    return timelineItems
+      .sort((a, b) => b.timestamp - a.timestamp)
+      .slice(0, 30);
+  })();
+
   const filteredNotifications = notificationFilter === 'unread'
     ? notifications.filter(n => !n.readStatus)
     : notifications;
@@ -321,6 +367,55 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
 
         {activeTab === 'reports' && (
            <div className="space-y-8">
+               {/* Quick Actions Header */}
+               <div className="flex justify-between items-center bg-white dark:bg-slate-900 p-4 rounded-3xl border border-gray-100 dark:border-slate-800 shadow-sm">
+                  <h2 className="text-sm font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest px-2">Panel de Control</h2>
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={() => setShowClearNotificationsConfirm(true)}
+                      disabled={notifications.length === 0}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-2xl text-xs font-black transition-all ${notifications.length > 0 ? 'bg-red-50 text-red-600 hover:bg-red-600 hover:text-white' : 'bg-gray-50 text-gray-300 cursor-not-allowed'}`}
+                    >
+                      <Trash2 size={14} /> Limpiar Actividad
+                    </button>
+                  </div>
+               </div>
+
+               {/* KPI Dashboard Section */}
+               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl shadow-sm border border-gray-100 dark:border-slate-800 flex flex-col items-center text-center group hover:scale-[1.02] transition-all">
+                    <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-2xl text-green-600 dark:text-green-400 mb-3">
+                      <TrendingUp size={24} />
+                    </div>
+                    <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-none mb-2">Salud Stock</span>
+                    <h4 className="text-2xl font-black text-slate-900 dark:text-white leading-none">{healthPercentage}%</h4>
+                  </div>
+
+                  <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl shadow-sm border border-gray-100 dark:border-slate-800 flex flex-col items-center text-center group hover:scale-[1.02] transition-all">
+                    <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-2xl text-red-600 dark:text-red-400 mb-3">
+                      <ShieldAlert size={24} />
+                    </div>
+                    <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-none mb-2">Críticos</span>
+                    <h4 className="text-2xl font-black text-slate-900 dark:text-white leading-none">{criticalProductsCount}</h4>
+                  </div>
+
+                  <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl shadow-sm border border-gray-100 dark:border-slate-800 flex flex-col items-center text-center group hover:scale-[1.02] transition-all">
+                    <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-2xl text-blue-600 dark:text-blue-400 mb-3">
+                      <Activity size={24} />
+                    </div>
+                    <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-none mb-2">Albaranes 24h</span>
+                    <h4 className="text-2xl font-black text-slate-900 dark:text-white leading-none">{recentOrdersCount}</h4>
+                  </div>
+
+                  <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl shadow-sm border border-gray-100 dark:border-slate-800 flex flex-col items-center text-center group hover:scale-[1.02] transition-all">
+                    <div className="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-2xl text-amber-600 dark:text-amber-400 mb-3">
+                      <Zap size={24} />
+                    </div>
+                    <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-none mb-2">Eficiencia</span>
+                    <h4 className="text-2xl font-black text-slate-900 dark:text-white leading-none">{managementEfficiency}%</h4>
+                  </div>
+               </div>
+
                <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-md border border-gray-100 dark:border-slate-800">
                  <h3 className="text-lg font-bold mb-4 text-gray-900 dark:text-white flex items-center gap-2">
                    <BarChartIcon size={20} className="text-red-600 dark:text-red-400" /> Top 10 Productos en Stock Crítico
@@ -348,59 +443,64 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
                     )}
                  </div>
                </div>
+
              
-             <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-md border border-gray-100 dark:border-slate-800">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                    <BellRing size={20} className="text-red-600 dark:text-red-400" />
-                    Registro de Actividad y Notificaciones
+              <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl shadow-md border border-gray-100 dark:border-slate-800">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                  <h3 className="text-lg font-black text-gray-900 dark:text-white flex items-center gap-2">
+                    <Activity size={20} className="text-red-600 dark:text-red-400" />
+                    Cronograma de Actividad
                   </h3>
                   <div className="flex items-center gap-4">
-                    {notifications.length > 0 && (
-                      <button 
-                        onClick={() => setShowClearNotificationsConfirm(true)}
-                        className="flex items-center gap-2 text-sm font-bold text-red-600 dark:text-red-400 hover:underline"
-                      >
-                        <Trash2 size={16} /> Limpiar Registro
-                      </button>
-                    )}
                     {unreadNotificationsCount > 0 && (
-                      <button onClick={handleMarkAllNotificationsAsRead} className="text-sm font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1">
-                        <CheckCircle2 size={16} /> Marcar todas como leídas
+                      <button onClick={handleMarkAllNotificationsAsRead} className="text-xs font-black text-blue-600 dark:text-blue-400 hover:opacity-80 transition-opacity flex items-center gap-1">
+                        <CheckCircle2 size={14} /> Marcar todo como leído
                       </button>
                     )}
                   </div>
                 </div>
-                <div className="flex gap-2 bg-gray-100 dark:bg-slate-800/60 p-1.5 rounded-xl mb-4">
-                  <button onClick={() => setNotificationFilter('unread')} className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${notificationFilter === 'unread' ? 'bg-white dark:bg-slate-900 text-red-500 shadow-md' : 'text-gray-500 dark:text-slate-400 hover:bg-white/50 dark:hover:bg-slate-700/50'}`}>
-                    No Leídas ({unreadNotificationsCount})
-                  </button>
-                  <button onClick={() => setNotificationFilter('all')} className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${notificationFilter === 'all' ? 'bg-white dark:bg-slate-900 text-red-500 shadow-md' : 'text-gray-500 dark:text-slate-400 hover:bg-white/50 dark:hover:bg-slate-700/50'}`}>
-                    Todas
-                  </button>
-                </div>
-                <div className="max-h-96 overflow-y-auto space-y-3 pr-2">
-                  {filteredNotifications.length === 0 ? (
-                    <p className="text-gray-400 dark:text-slate-500 text-center py-8">No hay notificaciones en esta vista.</p>
+
+                <div className="space-y-6 relative before:absolute before:left-[17px] before:top-2 before:bottom-2 before:w-0.5 before:bg-gray-100 dark:before:bg-slate-800">
+                  {activityTimeline.length === 0 ? (
+                    <div className="pl-12 py-8 text-gray-400 dark:text-slate-500 font-bold italic">No hay actividad reciente registrada.</div>
                   ) : (
-                    filteredNotifications.map(notif => (
-                      <div key={notif.id} className={`flex items-start gap-3 p-4 rounded-xl border transition-all ${notif.readStatus ? 'bg-gray-50/50 dark:bg-slate-800/50 border-gray-100 dark:border-slate-800 opacity-70' : 'bg-red-50/50 dark:bg-red-900/10 border-red-100 dark:border-red-900/30 shadow-sm'}`}>
-                        <div className="pt-1">
-                          <NotificationIcon iconName={notif.icon} size={20} className={notif.readStatus ? 'text-gray-400' : 'text-red-600'} />
+                    activityTimeline.map((item, idx) => (
+                      <div key={item.id} className={`relative pl-12 animate-fade-in group ${!item.read ? 'opacity-100' : 'opacity-70'}`} style={{ animationDelay: `${idx * 40}ms` }}>
+                        <div className={`absolute left-0 top-0 w-9 h-9 rounded-full flex items-center justify-center z-10 border-4 border-white dark:border-slate-900 transition-transform group-hover:scale-110 ${item.color}`}>
+                          <item.icon size={16} />
                         </div>
-                        <div className="flex-1">
-                          <p className="font-bold text-gray-800 dark:text-slate-200 text-sm">{notif.title}</p>
-                          <p className="text-gray-600 dark:text-slate-400 text-sm mt-1">{notif.message}</p>
-                          <div className="text-xs text-gray-400 dark:text-slate-500 mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
-                             <span>{new Date(notif.timestamp).toLocaleString()}</span>
-                             {notif.reviewedBy && <span>Revisado por: {notif.reviewedBy}</span>}
+                        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <h4 className={`font-black text-sm tracking-tight ${!item.read ? 'text-slate-900 dark:text-white' : 'text-slate-600 dark:text-slate-400'}`}>
+                                {item.title}
+                              </h4>
+                              {!item.read && (
+                                <span className="w-2 h-2 bg-red-600 rounded-full animate-pulse shadow-sm shadow-red-600/30"></span>
+                              )}
+                            </div>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-medium">
+                              {item.message}
+                            </p>
+                          </div>
+                          <div className="flex flex-row sm:flex-col items-center sm:items-end shrink-0 gap-2">
+                            <span className="text-[10px] font-mono font-black text-slate-400 bg-slate-50 dark:bg-slate-800 px-1.5 py-0.5 rounded uppercase">
+                              {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                            {item.type === 'notification' && !item.read && (
+                              <button 
+                                onClick={() => handleMarkNotificationAsRead(item.id)}
+                                className="p-1.5 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg hover:bg-blue-600 hover:text-white transition-all active:scale-90"
+                                title="Marcar como leída"
+                              >
+                                <CheckCircle2 size={14} />
+                              </button>
+                            )}
                           </div>
                         </div>
-                        {!notif.readStatus && (
-                          <button onClick={() => handleMarkNotificationAsRead(notif.id)} className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-100 dark:hover:bg-green-900/20 rounded-full transition-colors" title="Marcar como leída">
-                            <CheckCircle2 size={20} />
-                          </button>
-                        )}
+                        <p className="text-[9px] font-black text-slate-300 dark:text-slate-600 mt-2 uppercase tracking-widest">
+                           {new Date(item.timestamp).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' })}
+                        </p>
                       </div>
                     ))
                   )}
@@ -548,16 +648,6 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
       )}
       
       <PWAInstallPrompt isOpen={showInstallPrompt} onClose={() => setShowInstallPrompt(false)} />
-      <GuideModal isOpen={showGuide} onClose={() => setShowGuide(false)} />
-
-      {/* Floating Guide Button */}
-      <button 
-        onClick={() => setShowGuide(true)}
-        className="fixed bottom-6 right-6 z-[60] bg-slate-900 dark:bg-white text-white dark:text-slate-900 p-4 rounded-2xl shadow-2xl shadow-black/20 flex items-center gap-3 font-black text-xs uppercase tracking-widest active:scale-95 transition-all hover:pr-6 group"
-      >
-        <HelpCircle size={20} className="group-hover:rotate-12 transition-transform" />
-        <span className="max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-500 whitespace-nowrap">Guía & App</span>
-      </button>
     </div>
   );
 };

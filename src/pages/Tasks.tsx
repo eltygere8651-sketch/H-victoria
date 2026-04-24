@@ -946,15 +946,44 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
               
               {/* Comments List */}
               <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-gray-50 dark:bg-slate-950/50">
-                 {activeTaskForComments.comments?.map(comment => (
-                   <div key={comment.id} className={`p-4 rounded-2xl shadow-sm ${comment.userId === currentUser.id ? 'bg-blue-600 text-white ml-auto rounded-tr-sm' : 'bg-white dark:bg-slate-800 mr-auto rounded-tl-sm border border-gray-100 dark:border-slate-700'}`}>
-                      <p className={`text-[10px] font-black mb-1 flex justify-between gap-4 uppercase tracking-wider ${comment.userId === currentUser.id ? 'text-blue-200' : 'text-gray-400 dark:text-slate-500'}`}>
-                        <span>{comment.userName}</span>
-                        <span>{new Date(comment.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
-                      </p>
-                      <p className={`text-base font-bold ${comment.userId === currentUser.id ? 'text-white' : 'text-gray-800 dark:text-slate-200'}`}>{comment.message}</p>
-                   </div>
-                 ))}
+                 {activeTaskForComments.comments?.map(comment => {
+                   const isSystem = comment.userId === 'system';
+                   const isMe = comment.userId === currentUser.id;
+
+                   return (
+                    <div 
+                      key={comment.id} 
+                      className={`p-4 rounded-2xl shadow-sm transition-all ${
+                        isMe 
+                          ? 'bg-blue-600 text-white ml-auto rounded-tr-sm max-w-[85%]' 
+                          : isSystem
+                            ? 'bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800/50 w-full flex items-start gap-3 relative overflow-hidden'
+                            : 'bg-white dark:bg-slate-800 mr-auto rounded-tl-sm border border-gray-100 dark:border-slate-700 max-w-[85%]'
+                      }`}
+                    >
+                      {isSystem && (
+                        <>
+                          <div className="absolute top-0 right-0 p-1 opacity-10">
+                            <Flame size={40} className="text-red-600" />
+                          </div>
+                          <AlertTriangle size={20} className="text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
+                        </>
+                      )}
+                      
+                      <div className="flex-1">
+                        <p className={`text-[10px] font-black mb-1 flex justify-between gap-4 uppercase tracking-widest ${
+                          isMe ? 'text-blue-200' : isSystem ? 'text-red-600 dark:text-red-400' : 'text-gray-400 dark:text-slate-500'
+                        }`}>
+                          <span>{isSystem ? 'SISTEMA / REPORTE' : comment.userName}</span>
+                          <span>{new Date(comment.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                        </p>
+                        <p className={`text-base font-bold ${isMe ? 'text-white' : isSystem ? 'text-red-900 dark:text-red-100' : 'text-gray-800 dark:text-slate-200'}`}>
+                          {comment.message}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                 })}
                  
                  {(!activeTaskForComments.comments || activeTaskForComments.comments.length === 0) && (
                    <div className="flex flex-col items-center justify-center h-full text-center py-10 opacity-50">

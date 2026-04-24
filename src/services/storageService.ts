@@ -669,16 +669,23 @@ export const checkPendingDailyTasksAndNotify = async () => {
     if (pendingTasks.length === 0) return;
     const shift = getCurrentShift();
 
-    // 3. Create a single notification
-    await db.collection(KEYS.NOTIFICATIONS).add({
-      type: NotificationType.DAILY_TASK_ALERT,
-      title: 'Tareas Diarias Pendientes',
-      message: `Atención: Hay ${pendingTasks.length} tareas diarias sin completar en el turno de ${shift}.`,
-      icon: 'AlertTriangle',
-      timestamp: now,
-      readStatus: false,
-      payload: { count: pendingTasks.length, shift }
-    });
+    // 3. Move the report: instead of a global notification, add a comment to each pending task
+    const batch = db.batch();
+    for (const task of pendingTasks) {
+      const taskRef = db.collection(KEYS.TASKS).doc(task.id);
+      batch.update(taskRef, {
+        comments: firebase.firestore.FieldValue.arrayUnion({
+          id: Date.now().toString() + Math.random().toString(36).substr(2, 5),
+          userId: 'system',
+          userName: 'Sistema',
+          message: `⚠️ REPORTE PENDIENTE: Esta tarea diaria sigue sin completarse en el turno de ${shift}.`,
+          timestamp: now
+        }),
+        // Reset seenBy so all users see the new "report" in the task card
+        seenBy: []
+      });
+    }
+    await batch.commit();
 
     // 4. Update the last alert timestamp
     await systemRef.set({ lastDailyTaskAlert: now }, { merge: true });
