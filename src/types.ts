@@ -183,3 +183,31 @@ export interface Document {
   uploadedBy: string; // User's name
   createdAt: number; // Timestamp
 }
+
+export enum AuditAction {
+  USER_CREATE = 'USER_CREATE',
+  USER_DELETE = 'USER_DELETE',
+  USER_UPDATE = 'USER_UPDATE',
+  PRODUCT_CREATE = 'PRODUCT_CREATE',
+  PRODUCT_UPDATE = 'PRODUCT_UPDATE',
+  PRODUCT_DELETE = 'PRODUCT_DELETE',
+  ORDER_CREATED = 'ORDER_CREATED',
+  STOCK_RECEIVED = 'STOCK_RECEIVED',
+  TASK_CREATE = 'TASK_CREATE',
+  TASK_UPDATE = 'TASK_UPDATE',
+  TASK_DELETE = 'TASK_DELETE',
+  TASK_COMPLETED = 'TASK_COMPLETED',
+  DOCUMENT_UPLOAD = 'DOCUMENT_UPLOAD',
+  DOCUMENT_DELETE = 'DOCUMENT_DELETE',
+  LOGS_CLEARED = 'LOGS_CLEARED'
+}
+
+export interface AuditLog {
+  id: string;
+  action: AuditAction;
+  details: string;
+  userName: string;
+  userId: string;
+  timestamp: number;
+  metadata?: any;
+}

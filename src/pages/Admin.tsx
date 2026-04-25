@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { UserRole, User, Product, AppNotification, OrderBatch } from '../types';
+import { AuditLog, UserRole, User, Product, AppNotification, OrderBatch, AuditAction } from '../types';
 import * as storageService from '../services/storageService';
-import { Download, Users, Package, Trash2, Edit2, X, Save, Eye, Loader2, BarChart as BarChartIcon, BellRing, CheckCircle2, Share2, Smartphone, Activity, TrendingUp, ShieldAlert, Zap } from 'lucide-react';
+import * as auditService from '../services/auditService';
+import { Download, Users, Package, Trash2, Edit2, X, Save, Eye, Loader2, BarChart as BarChartIcon, BellRing, CheckCircle2, Share2, Smartphone, Activity, TrendingUp, ShieldAlert, Zap, History, Search, Filter } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { NotificationIcon } from '../components/NotificationIcon';
 import { generatePdfFromReactComponent, sharePdfFromReactComponent } from '../utils/pdfGenerator';
@@ -11,17 +12,18 @@ import { PWAInstallPrompt } from '../components/PWAInstallPrompt';
 interface AdminProps {
   currentUser: User;
   unreadNotificationsCount: number;
-  initialTab?: 'requests' | 'users' | 'reports';
+  initialTab?: 'requests' | 'users' | 'reports' | 'audit';
 }
 
 const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, initialTab = 'requests' }) => {
-  const [activeTab, setActiveTab] = useState<'requests' | 'users' | 'reports'>(initialTab);
+  const [activeTab, setActiveTab] = useState<'requests' | 'users' | 'reports' | 'audit'>(initialTab);
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
   
   const [orders, setOrders] = useState<OrderBatch[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
   const [newUser, setNewUser] = useState({ name: '', role: UserRole.STAFF, pin: '', permissions: [] as ('CAN_MANAGE_TASKS')[] });
@@ -32,9 +34,11 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
 
   const [notificationFilter, setNotificationFilter] = useState<'all' | 'unread'>('unread');
+  const [auditSearch, setAuditSearch] = useState('');
 
   // New states for clearing history
   const [showClearNotificationsConfirm, setShowClearNotificationsConfirm] = useState(false);
+  const [showClearAuditConfirm, setShowClearAuditConfirm] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
 
   const isSuperAdmin = storageService.auth.currentUser?.email === storageService.SUPER_ADMIN_EMAIL;
@@ -58,12 +62,14 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
       setIsLoading(false);
     });
     const unsubNotifications = storageService.subscribeToNotifications(setNotifications, false);
+    const unsubAudit = auditService.subscribeToAuditLogs(setAuditLogs);
     
     return () => {
         unsubOrders();
         unsubUsers();
         unsubProducts();
         unsubNotifications();
+        unsubAudit();
     };
   }, []);
 
@@ -171,6 +177,18 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
     setShowClearNotificationsConfirm(false);
   };
 
+  const handleClearAuditLogs = async () => {
+    setIsClearing(true);
+    try {
+      await auditService.clearAuditLogs(currentUser.id, currentUser.name);
+      setShowClearAuditConfirm(false);
+    } catch (e) {
+      alert('Error al vaciar los logs');
+    } finally {
+      setIsClearing(false);
+    }
+  };
+
   const lowStockData = products
     .filter(p => p.quantity <= p.minThreshold * 2)
     .map(p => ({ name: p.name, stock: p.quantity, min: p.minThreshold }))
@@ -245,6 +263,7 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
           {isSuperAdmin && (
             <button onClick={() => setActiveTab('users')} className={`flex-1 min-w-[120px] py-4 text-sm font-extrabold border-b-2 transition-colors duration-200 ${activeTab === 'users' ? 'border-red-600 text-red-600 dark:text-red-400 dark:border-red-400 bg-red-50 dark:bg-red-900/10 shadow-inner' : 'border-transparent text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800/50'}`}>Usuarios</button>
           )}
+          <button onClick={() => setActiveTab('audit')} className={`flex-1 min-w-[120px] py-4 text-sm font-extrabold border-b-2 transition-colors duration-200 ${activeTab === 'audit' ? 'border-red-600 text-red-600 dark:text-red-400 dark:border-red-400 bg-red-50 dark:bg-red-900/10 shadow-inner' : 'border-transparent text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800/50'}`}>Auditoría</button>
         </div>
       </div>
 
@@ -510,6 +529,108 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
               </div>
             </div>
         )}
+
+        {activeTab === 'audit' && (
+          <div className="space-y-4 animate-fade-in">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-6 rounded-3xl border border-gray-100 dark:border-slate-800 shadow-sm">
+              <div className="flex flex-col">
+                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.3em] leading-none mb-1">Registro del Sistema</span>
+                <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tighter leading-none">
+                  Logs de <span className="text-red-600 dark:text-red-500 italic">Auditoría</span>
+                </h2>
+              </div>
+              
+              <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+                <div className="relative w-full sm:w-64">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                  <input 
+                    type="text" 
+                    placeholder="Buscar en logs..." 
+                    value={auditSearch}
+                    onChange={(e) => setAuditSearch(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800 border-2 border-transparent focus:border-red-500 dark:focus:border-red-500 rounded-2xl outline-none text-sm font-bold transition-all dark:text-white"
+                  />
+                </div>
+                {isSuperAdmin && (
+                  <button 
+                    onClick={() => setShowClearAuditConfirm(true)}
+                    className="w-full sm:w-auto px-6 py-2.5 bg-red-600 text-white font-black text-xs rounded-2xl shadow-lg shadow-red-600/20 hover:bg-red-700 active:scale-95 transition-all flex items-center justify-center gap-2"
+                  >
+                    <Trash2 size={16} /> Vaciar Logs
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-md border border-gray-100 dark:border-slate-800 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50 dark:bg-slate-800/50 border-b dark:border-slate-800">
+                      <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Fecha / Hora</th>
+                      <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Usuario</th>
+                      <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Acción</th>
+                      <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Detalles</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y dark:divide-slate-800">
+                    {auditLogs
+                      .filter(log => 
+                        log.details.toLowerCase().includes(auditSearch.toLowerCase()) || 
+                        log.userName.toLowerCase().includes(auditSearch.toLowerCase()) ||
+                        log.action.toLowerCase().includes(auditSearch.toLowerCase())
+                      )
+                      .map((log) => (
+                      <tr key={log.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                        <td className="p-4">
+                          <div className="flex flex-col">
+                            <span className="text-xs font-black text-slate-900 dark:text-white">
+                              {new Date(log.timestamp).toLocaleDateString()}
+                            </span>
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
+                              {new Date(log.timestamp).toLocaleTimeString()}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="p-4">
+                          <div className="flex items-center gap-2">
+                            <div className="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-[10px] font-black text-slate-500 uppercase">
+                              {log.userName.charAt(0)}
+                            </div>
+                            <span className="text-sm font-bold text-slate-700 dark:text-slate-300">{log.userName}</span>
+                          </div>
+                        </td>
+                        <td className="p-4">
+                          <span className={`text-[10px] font-black px-2 py-1 rounded-lg uppercase tracking-wider ${
+                            log.action.includes('CREATE') ? 'bg-green-100 text-green-600 dark:bg-green-900/20 dark:text-green-400' :
+                            log.action.includes('DELETE') ? 'bg-red-100 text-red-600 dark:bg-red-900/20 dark:text-red-400' :
+                            log.action.includes('UPDATE') ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400' :
+                            'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+                          }`}>
+                            {log.action.replace(/_/g, ' ')}
+                          </span>
+                        </td>
+                        <td className="p-4">
+                          <p className="text-sm font-medium text-slate-600 dark:text-slate-400 line-clamp-1 group-hover:line-clamp-none transition-all cursor-default">
+                            {log.details}
+                          </p>
+                        </td>
+                      </tr>
+                    ))}
+                    {auditLogs.length === 0 && (
+                      <tr>
+                        <td colSpan={4} className="p-20 text-center text-slate-400">
+                          <History size={48} className="mx-auto mb-4 opacity-10" />
+                          <p className="font-bold">No hay registros de auditoría disponibles.</p>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Editing User Modal */}
@@ -580,6 +701,22 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
               <button onClick={() => setShowClearNotificationsConfirm(false)} disabled={isClearing} className="flex-1 py-3 font-bold text-gray-600 dark:text-slate-400 bg-gray-100 dark:bg-slate-700/50 rounded-xl hover:bg-gray-200 dark:hover:bg-slate-700 active:scale-[0.98]">Cancelar</button>
               <button onClick={handleClearAllNotifications} disabled={isClearing} className="flex-1 py-3 font-bold text-white bg-red-600 rounded-xl hover:bg-red-700 shadow-lg shadow-button-red active:scale-[0.98] flex items-center justify-center gap-2">
                 {isClearing ? <Loader2 className="animate-spin" /> : 'Sí, Limpiar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showClearAuditConfirm && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white dark:bg-slate-800 rounded-3xl w-full max-w-sm shadow-pop-in p-6 animate-pop-in border border-gray-100 dark:border-slate-700/50 text-center">
+            <div className="w-16 h-16 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-4 text-red-600 dark:text-red-500 shadow-md"><Trash2 size={32} /></div>
+            <h3 className="text-xl font-black text-gray-900 dark:text-white mb-2">¿Vaciar Auditoría?</h3>
+            <p className="text-gray-500 dark:text-slate-400 mb-6 font-medium">Esta acción es irreversible y eliminará todos los registros históricos del sistema. Solo el Super Admin tiene este nivel de acceso.</p>
+            <div className="flex gap-3">
+              <button onClick={() => setShowClearAuditConfirm(false)} disabled={isClearing} className="flex-1 py-3 font-bold text-gray-600 dark:text-slate-400 bg-gray-100 dark:bg-slate-700/50 rounded-xl hover:bg-gray-200 dark:hover:bg-slate-700 active:scale-[0.98]">Cancelar</button>
+              <button onClick={handleClearAuditLogs} disabled={isClearing} className="flex-1 py-3 font-bold text-white bg-red-600 rounded-xl hover:bg-red-700 shadow-lg shadow-button-red active:scale-[0.98] flex items-center justify-center gap-2">
+                {isClearing ? <Loader2 className="animate-spin" size={18} /> : 'Confirmar Vaciado'}
               </button>
             </div>
           </div>

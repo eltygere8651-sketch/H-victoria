@@ -148,6 +148,21 @@
         "createdAt": { "type": "number" }
       },
       "required": ["id", "name", "url", "createdAt"]
+    },
+    "AuditLog": {
+      "title": "AuditLog",
+      "description": "System audit log",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "action": { "type": "string" },
+        "details": { "type": "string" },
+        "userName": { "type": "string" },
+        "userId": { "type": "string" },
+        "timestamp": { "type": "number" },
+        "metadata": { "type": "object" }
+      },
+      "required": ["id", "action", "details", "userName", "userId", "timestamp"]
     }
   },
   "firestore": {
@@ -182,6 +197,10 @@
     "/hotel_victoria_documents/{docId}": {
       "schema": "Document",
       "description": "Documents collection"
+    },
+    "/hotel_victoria_audit_logs/{logId}": {
+      "schema": "AuditLog",
+      "description": "Audit logs collection"
     },
     "/hotel_victoria_system/{docId}": {
       "schema": "object",

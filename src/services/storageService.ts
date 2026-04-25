@@ -1,12 +1,13 @@
-import { Product, User, ReplenishmentRequest, UserRole, Department, CartItem, AppNotification, NotificationType, NotificationPayload, OrderBatch, Task, TaskStatus, TaskPriority, TaskType, TaskComment, Document, TaskRecurrence } from '../types';
+import { Product, User, ReplenishmentRequest, UserRole, Department, CartItem, AppNotification, NotificationType, NotificationPayload, OrderBatch, Task, TaskStatus, TaskPriority, TaskType, TaskComment, Document, TaskRecurrence, AuditAction } from '../types';
 import { db, auth, storage } from '../firebaseConfig';
 export { auth, db, storage };
 import firebase from 'firebase/compat/app';
 import { fileToBase64 } from '../utils/imageCompressor';
+import * as auditService from './auditService';
 
 export const SUPER_ADMIN_EMAIL = 'eltygere8651@gmail.com';
 
-const sanitizeData = (data: any) => {
+export const sanitizeData = (data: any) => {
   const sanitized = { ...data };
   Object.keys(sanitized).forEach(key => {
     if (sanitized[key] === undefined) {
@@ -95,38 +96,10 @@ const safeStringify = (obj: any) => {
 };
 
 function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
-  // Ensure we only have primitives in the error info to avoid circular structure errors
   const safeError = error instanceof Error ? error.message : String(error);
-  
-  const errInfo = {
-    error: safeError,
-    operationType: String(operationType),
-    path: path ? String(path) : null,
-    authInfo: {
-      userId: String(auth.currentUser?.uid || 'no-user'),
-      email: auth.currentUser?.email ? String(auth.currentUser.email) : null,
-      emailVerified: Boolean(auth.currentUser?.emailVerified),
-      isAnonymous: Boolean(auth.currentUser?.isAnonymous),
-      tenantId: auth.currentUser?.tenantId ? String(auth.currentUser.tenantId) : null,
-      providerInfo: auth.currentUser?.providerData ? auth.currentUser.providerData.filter(p => !!p).map(p => ({
-        providerId: String(p!.providerId || ''),
-        displayName: String(p!.displayName || ''),
-        email: String(p!.email || ''),
-        photoUrl: String(p!.photoURL || '')
-      })) : []
-    }
-  };
-
-  try {
-    const jsonString = JSON.stringify(errInfo);
-    console.error('Firestore Error: ', jsonString);
-    throw new Error(jsonString);
-  } catch (e) {
-    // Fallback if JSON.stringify still fails for some reason
-    const fallbackMsg = `Firestore Error in ${operationType} at ${path}: ${safeError}`;
-    console.error(fallbackMsg);
-    throw new Error(fallbackMsg);
-  }
+  const fallbackMsg = `Firestore Error in ${operationType} at ${path}: ${safeError}`;
+  console.error(fallbackMsg);
+  throw new Error(fallbackMsg);
 }
 
 export const getCurrentUser = () => auth.currentUser;
@@ -249,37 +222,7 @@ const retry = async <T>(fn: () => Promise<T>, retries = 3, delayMs = 1000): Prom
 };
 
 export const ensureAnonymousAuth = async () => {
-  if (auth.currentUser) {
     await initFirestoreWithInitialData();
-    return;
-  }
-  return new Promise<void>((resolve) => {
-    const unsubscribe = auth.onAuthStateChanged(async (user) => {
-      try {
-        if (user) {
-          await initFirestoreWithInitialData();
-          unsubscribe();
-          resolve();
-        } else {
-          try {
-            await retry(() => auth.signInAnonymously());
-            // Do not resolve or unsubscribe here, let the onAuthStateChanged listener handle the new user
-          } catch (error: any) {
-             console.error("Auth error", error);
-             if (error.code === 'auth/operation-not-allowed') {
-               alert("Error crítico: La autenticación anónima no está habilitada en Firebase. Por favor, habilítala en la consola de Firebase (Authentication > Sign-in method > Anonymous).");
-             }
-             unsubscribe();
-             resolve();
-          }
-        }
-      } catch (error) {
-        console.error("Error in onAuthStateChanged:", error);
-        unsubscribe();
-        resolve();
-      }
-    });
-  });
 };
 
 export const saveSession = (user: User) => localStorage.setItem(KEYS.CURRENT_SESSION, safeStringify(user));
@@ -356,6 +299,13 @@ export const saveProduct = async (product: Partial<Product>, userName: string = 
   const id = docRef.id;
   await docRef.set(sanitizeData({ ...product, id }), { merge: true });
 
+  await auditService.logAction(
+    isNew ? AuditAction.PRODUCT_CREATE : AuditAction.PRODUCT_UPDATE,
+    `${isNew ? 'Creado' : 'Actualizado'} producto: ${product.name}`,
+    { id: auth.currentUser?.uid || 'admin', name: userName },
+    { productId: id, productName: product.name }
+  );
+
   if (isNew) {
     await db.collection(KEYS.NOTIFICATIONS).add({
       type: NotificationType.INVENTORY_ADJUSTMENT,
@@ -373,6 +323,13 @@ export const deleteProduct = async (id: string, userName: string = 'Administrado
   const productName = productDoc.exists ? productDoc.data()?.name : 'Desconocido';
   
   await db.collection(KEYS.PRODUCTS).doc(id).delete();
+
+  await auditService.logAction(
+    AuditAction.PRODUCT_DELETE,
+    `Eliminado producto: ${productName}`,
+    { id: auth.currentUser?.uid || 'admin', name: userName },
+    { productId: id, productName: productName }
+  );
 
   await db.collection(KEYS.NOTIFICATIONS).add({
     type: NotificationType.INVENTORY_ADJUSTMENT,
@@ -467,6 +424,14 @@ export const submitOrderBatch = async (cart: CartItem[], departmentId: string, d
   });
 
   await batch.commit();
+
+  await auditService.logAction(
+    AuditAction.ORDER_CREATED,
+    `Pedido realizado por ${user.name} para ${departmentName} (${cart.length} productos)`,
+    user,
+    { batchId, departmentId, departmentName, itemsCount: cart.length }
+  );
+
   return { success: true, lowStockItems, batchId };
 };
 
@@ -512,6 +477,14 @@ export const receiveStockBatch = async (items: { productId: string; productName:
   });
 
   await batch.commit();
+
+  await auditService.logAction(
+    AuditAction.STOCK_RECEIVED,
+    `Ingreso de stock (${items.length} productos) por ${userName} (${sourceType})`,
+    { id: auth.currentUser?.uid || 'admin', name: userName },
+    { batchId, itemsCount: items.length, sourceType }
+  );
+
   return { success: true, batchId };
 };
 
@@ -545,7 +518,16 @@ export const addUser = async (user: Omit<User, 'id'>) => {
   if (user.pin) {
     user.pin = await hashPin(user.pin);
   }
-  return await db.collection(KEYS.USERS).add(sanitizeData(user));
+  const result = await db.collection(KEYS.USERS).add(sanitizeData(user));
+  
+  await auditService.logAction(
+    AuditAction.USER_CREATE,
+    `Usuario creado: ${user.name} (${user.role})`,
+    { id: auth.currentUser?.uid || 'admin', name: 'Administrador' },
+    { userId: result.id, userName: user.name, userRole: user.role }
+  );
+
+  return result;
 };
 export const updateUser = async (user: User) => {
   // If pin is changed (not a 64 char hash), we hash it
@@ -554,8 +536,28 @@ export const updateUser = async (user: User) => {
   }
   const { id, ...data } = user;
   await db.collection(KEYS.USERS).doc(id).update(sanitizeData(data));
+
+  await auditService.logAction(
+    AuditAction.USER_UPDATE,
+    `Usuario actualizado: ${user.name} (${user.role})`,
+    { id: auth.currentUser?.uid || 'admin', name: 'Administrador' },
+    { userId: user.id, userName: user.name, userRole: user.role }
+  );
 };
-export const deleteUser = async (id: string) => await db.collection(KEYS.USERS).doc(id).delete();
+
+export const deleteUser = async (id: string) => {
+  const userDoc = await db.collection(KEYS.USERS).doc(id).get();
+  const userName = userDoc.exists ? userDoc.data()?.name : 'Desconocido';
+
+  await db.collection(KEYS.USERS).doc(id).delete();
+
+  await auditService.logAction(
+    AuditAction.USER_DELETE,
+    `Usuario eliminado: ${userName}`,
+    { id: auth.currentUser?.uid || 'admin', name: 'Administrador' },
+    { userId: id, userName }
+  );
+};
 export const savePushToken = async (userId: string, token: string) => await db.collection(KEYS.USERS).doc(userId).set({ pushToken: token }, { merge: true });
 
 // --- NOTIFICATIONS ---
@@ -610,6 +612,16 @@ export const saveTask = async (task: Partial<Task>, newFiles: File[] = []) => {
   
   await docRef.set(taskData, { merge: true });
 
+  const finalTask = isNew ? taskData : { ...(await docRef.get()).data(), ...taskData };
+  const action = isNew ? AuditAction.TASK_CREATE : (task.status === TaskStatus.COMPLETED ? AuditAction.TASK_COMPLETED : AuditAction.TASK_UPDATE);
+
+  await auditService.logAction(
+    action,
+    `${isNew ? 'Creada' : (action === AuditAction.TASK_COMPLETED ? 'Completada' : 'Actualizada')} tarea: ${finalTask.title}`,
+    { id: task.createdById || auth.currentUser?.uid || 'admin', name: task.createdBy || auth.currentUser?.displayName || 'Sistema' },
+    { taskId: docRef.id, taskTitle: finalTask.title }
+  );
+
   if (isNew) {
      // Notify about new task
      await db.collection(KEYS.NOTIFICATIONS).add({
@@ -623,7 +635,20 @@ export const saveTask = async (task: Partial<Task>, newFiles: File[] = []) => {
      });
   }
 };
-export const deleteTask = async (id: string) => await db.collection(KEYS.TASKS).doc(id).delete();
+
+export const deleteTask = async (id: string) => {
+  const taskDoc = await db.collection(KEYS.TASKS).doc(id).get();
+  const taskTitle = taskDoc.exists ? taskDoc.data()?.title : 'Desconocida';
+
+  await db.collection(KEYS.TASKS).doc(id).delete();
+
+  await auditService.logAction(
+    AuditAction.TASK_DELETE,
+    `Tarea eliminada: ${taskTitle}`,
+    { id: auth.currentUser?.uid || 'admin', name: 'Administrador' },
+    { taskId: id, taskTitle }
+  );
+};
 
 // --- SHIFT HELPERS ---
 const getCurrentShift = () => {
@@ -668,6 +693,13 @@ export const resetDailyTask = async (taskId: string) => {
   };
 
   await taskRef.update(updateData);
+
+  await auditService.logAction(
+    AuditAction.TASK_UPDATE,
+    `Tarea diaria reiniciada: ${data.title} (Turno: ${shift})`,
+    { id: 'system', name: 'Sistema' },
+    { taskId, taskTitle: data.title, shift }
+  );
 };
 
 export const checkPendingDailyTasksAndNotify = async () => {
@@ -798,8 +830,26 @@ export const subscribeToDocuments = (callback: (data: Document[]) => void) => {
     callback(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Document)));
   }, error => handleFirestoreError(error, OperationType.GET, KEYS.DOCUMENTS));
 };
-export const saveDocument = async (document: Omit<Document, 'id'>) => await db.collection(KEYS.DOCUMENTS).add(sanitizeData(document));
+export const saveDocument = async (document: Omit<Document, 'id'>) => {
+  const result = await db.collection(KEYS.DOCUMENTS).add(sanitizeData(document));
+  
+  await auditService.logAction(
+    AuditAction.DOCUMENT_UPLOAD,
+    `Documento subido: ${document.name} (${document.category})`,
+    { id: auth.currentUser?.uid || 'admin', name: document.uploadedBy },
+    { documentId: result.id, documentName: document.name }
+  );
+
+  return result;
+};
 export const deleteDocument = async (doc: Document) => {
   try { await storage.refFromURL(doc.url).delete(); } catch(e) {}
   await db.collection(KEYS.DOCUMENTS).doc(doc.id).delete();
+
+  await auditService.logAction(
+    AuditAction.DOCUMENT_DELETE,
+    `Documento eliminado: ${doc.name}`,
+    { id: auth.currentUser?.uid || 'admin', name: auth.currentUser?.displayName || 'Administrador' },
+    { documentId: doc.id, documentName: doc.name }
+  );
 };
