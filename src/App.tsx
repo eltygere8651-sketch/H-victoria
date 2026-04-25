@@ -44,10 +44,29 @@ const App: React.FC = () => {
     return saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches);
   });
 
-  const [soundEnabled, setSoundEnabled] = useState(() => {
-    const saved = localStorage.getItem('hub_sound_enabled');
-    return saved ? JSON.parse(saved) : true;
+  const [notificationVolume, setNotificationVolume] = useState(() => {
+    const saved = localStorage.getItem('hub_notification_volume');
+    return saved ? Number(saved) : 0.3;
   });
+
+  const [soundType, setSoundType] = useState(() => {
+    const saved = localStorage.getItem('hub_sound_type');
+    return saved || 'Default';
+  });
+
+  // Synchronize refs with state immediately to avoid stale closures in subscriptions
+  const volumeRef = useRef(notificationVolume);
+  const soundTypeRef = useRef(soundType);
+  volumeRef.current = notificationVolume;
+  soundTypeRef.current = soundType;
+
+  useEffect(() => {
+    localStorage.setItem('hub_notification_volume', notificationVolume.toString());
+  }, [notificationVolume]);
+
+  useEffect(() => {
+    localStorage.setItem('hub_sound_type', soundType);
+  }, [soundType]);
 
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isInstalled, setIsInstalled] = useState(false);
@@ -135,13 +154,16 @@ const App: React.FC = () => {
   }, [darkMode]);
 
   useEffect(() => {
-    localStorage.setItem('hub_sound_enabled', JSON.stringify(soundEnabled));
-  }, [soundEnabled]);
+    localStorage.setItem('hub_notification_volume', notificationVolume.toString());
+  }, [notificationVolume]);
 
   const audioContextRef = useRef<AudioContext | null>(null);
 
   const playNotificationSound = () => {
-    if (!soundEnabled) return;
+    const currentVol = volumeRef.current;
+    if (currentVol <= 0) return;
+    const currentType = soundTypeRef.current;
+    
     try {
       if (!audioContextRef.current) {
         const AudioCtor = window.AudioContext || (window as any).webkitAudioContext;
@@ -154,35 +176,113 @@ const App: React.FC = () => {
         ctx.resume();
       }
       
-      const playBeep = (timeOffset: number, freq: number) => {
+      const playBeep = (timeOffset: number, freq: number, duration = 0.3, type: OscillatorType = 'sine') => {
         const osc = ctx.createOscillator();
         const gainNode = ctx.createGain();
         
-        osc.type = 'square';
-        osc.frequency.value = freq;
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, ctx.currentTime + timeOffset);
         
         const startTime = ctx.currentTime + timeOffset;
+        const volumeValue = currentVol * currentVol; 
         
+        const attack = 0.02;
+        const release = 0.05;
+
         gainNode.gain.setValueAtTime(0, startTime);
-        gainNode.gain.linearRampToValueAtTime(0.3, startTime + 0.05);
-        gainNode.gain.linearRampToValueAtTime(0.3, startTime + 0.25);
-        gainNode.gain.linearRampToValueAtTime(0, startTime + 0.35);
+        gainNode.gain.linearRampToValueAtTime(volumeValue, startTime + attack);
+        gainNode.gain.linearRampToValueAtTime(volumeValue, startTime + duration - release);
+        gainNode.gain.linearRampToValueAtTime(0, startTime + duration);
         
         osc.connect(gainNode);
         gainNode.connect(ctx.destination);
         
         osc.start(startTime);
-        osc.stop(startTime + 0.4);
+        osc.stop(startTime + duration + 0.1);
       };
 
-      // 5 pitidos más largos y espaciados
-      playBeep(0, 2500);
-      playBeep(0.5, 3000);
-      playBeep(1.0, 2500);
-      playBeep(1.5, 3000);
-      playBeep(2.0, 2500);
+      const type = currentType.toLowerCase();
+      // Global behavior: 3 repetitions of the selected tone
+      const playTonePattern = (offset: number) => {
+        if (type === 'modern') {
+          playBeep(offset, 784, 0.08, 'sine'); // G5
+          playBeep(offset + 0.1, 1046, 0.12, 'sine'); // C6
+        } else if (type === 'crystal') {
+          playBeep(offset, 1568, 0.05, 'triangle'); // G6
+          playBeep(offset + 0.06, 1760, 0.05, 'triangle'); // A6
+          playBeep(offset + 0.12, 1975, 0.08, 'triangle'); // B6
+        } else if (type === 'retro') {
+          playBeep(offset, 523, 0.1, 'square'); // C5
+          playBeep(offset + 0.12, 784, 0.15, 'square'); // G5
+        } else {
+          // Default Basic
+          playBeep(offset, 2500, 0.15, 'square');
+        }
+      };
+
+      // Play 3 times as requested by user
+      playTonePattern(0);
+      playTonePattern(0.6);
+      playTonePattern(1.2);
     } catch (error) {
       console.error('Error playing notification sound:', error);
+    }
+  };
+
+  const playTestSound = (typeOverride?: string) => {
+    const currentVol = volumeRef.current;
+    if (currentVol <= 0) return;
+    const currentType = typeOverride || soundTypeRef.current;
+    
+    try {
+      if (!audioContextRef.current) {
+        const AudioCtor = window.AudioContext || (window as any).webkitAudioContext;
+        if (!AudioCtor) return;
+        audioContextRef.current = new AudioCtor();
+      }
+      const ctx = audioContextRef.current;
+      if (ctx.state === 'suspended') ctx.resume();
+
+      const playQuick = (freq: number, dur: number, type: OscillatorType, offset: number = 0) => {
+        const osc = ctx.createOscillator();
+        const gainNode = ctx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, ctx.currentTime + offset);
+        const startTime = ctx.currentTime + offset;
+        const volumeValue = currentVol * currentVol; 
+        
+        const attack = Math.min(0.05, dur * 0.2);
+        const release = Math.min(0.1, dur * 0.3);
+
+        gainNode.gain.setValueAtTime(0, startTime);
+        gainNode.gain.linearRampToValueAtTime(volumeValue, startTime + attack);
+        gainNode.gain.linearRampToValueAtTime(volumeValue, startTime + dur - release);
+        gainNode.gain.linearRampToValueAtTime(0, startTime + dur);
+        
+        osc.connect(gainNode);
+        gainNode.connect(ctx.destination);
+        osc.start(startTime);
+        osc.stop(startTime + dur + 0.05);
+      };
+
+      const type = currentType.toLowerCase();
+      const playTonePattern = (offset: number) => {
+        if (type === 'modern') {
+          playQuick(1046, 0.15, 'sine', offset);
+        } else if (type === 'crystal') {
+          playQuick(1975, 0.1, 'triangle', offset);
+        } else if (type === 'retro') {
+          playQuick(784, 0.15, 'square', offset);
+        } else {
+          playQuick(2500, 0.2, 'square', offset);
+        }
+      };
+
+      playTonePattern(0);
+      playTonePattern(0.6);
+      playTonePattern(1.2);
+    } catch (e) {
+      console.error(e);
     }
   };
 
@@ -249,7 +349,17 @@ const App: React.FC = () => {
         if (newToasts.length > 0) {
           setToasts(prev => [...prev, ...newToasts]);
           newToasts.forEach(n => displayedToastIds.current.add(n.id));
-          playNotificationSound();
+          
+          // Only play notification sound if it's not a notification about the current user's action
+          // This avoids double sound when ordering or updating stock
+          const isOwnAction = newToasts.some(n => 
+            n.message.includes(user.name) || 
+            (n.payload?.orderBatchId && localStorage.getItem('last_processed_batch') === n.payload.orderBatchId)
+          );
+          
+          if (!isOwnAction) {
+            playNotificationSound();
+          }
         }
       }
       
@@ -355,7 +465,10 @@ const App: React.FC = () => {
       <MainLayout
         user={user} view={view} setView={setView} cart={cart}
         darkMode={darkMode} setDarkMode={setDarkMode}
-        soundEnabled={soundEnabled} setSoundEnabled={setSoundEnabled}
+        soundEnabled={notificationVolume > 0} setSoundEnabled={(enabled) => setNotificationVolume(enabled ? 0.3 : 0)}
+        notificationVolume={notificationVolume} setNotificationVolume={setNotificationVolume}
+        soundType={soundType} setSoundType={setSoundType}
+        playTestSound={playTestSound}
         handleLogout={handleLogout}
         handleSharePublicAccess={handleSharePublicAccess}
         setShowGuideModal={setShowGuideModal}
@@ -370,7 +483,7 @@ const App: React.FC = () => {
         unreadAdminNotificationsCount={unreadAdminNotifications.length}
       >
         {view === 'inventory' && user.role === UserRole.ADMIN && <Inventory currentUser={user} />}
-        {view === 'replenish' && user.role !== UserRole.GUEST && user.role !== UserRole.PROVIDER && <Replenishment currentUser={user} cart={cart} setCart={setCart} showMobileCart={showMobileCart} setShowMobileCart={setShowMobileCart} />}
+        {view === 'replenish' && user.role !== UserRole.GUEST && user.role !== UserRole.PROVIDER && <Replenishment currentUser={user} cart={cart} setCart={setCart} showMobileCart={showMobileCart} setShowMobileCart={setShowMobileCart} notificationVolume={notificationVolume} soundType={soundType} />}
         {view === 'admin' && user.role === UserRole.ADMIN && <Admin currentUser={user} unreadNotificationsCount={unreadAdminNotifications.length} initialTab={initialAdminTab} />}
         {view === 'tasks' && <Tasks currentUser={user} initialTaskId={sharedTaskId} />}
         {view === 'training' && (
@@ -381,6 +494,8 @@ const App: React.FC = () => {
             setCart={setCart}
             showMobileCart={showMobileCart}
             setShowMobileCart={setShowMobileCart}
+            notificationVolume={notificationVolume}
+            soundType={soundType}
           />
         )}
         {(view as any) === 'provider' && <ProviderDelivery currentUser={user} />}

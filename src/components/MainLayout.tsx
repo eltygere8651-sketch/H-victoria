@@ -15,6 +15,11 @@ interface MainLayoutProps {
   setDarkMode: (value: boolean) => void;
   soundEnabled: boolean;
   setSoundEnabled: (value: boolean) => void;
+  notificationVolume: number;
+  setNotificationVolume: (value: number) => void;
+  soundType: string;
+  setSoundType: (value: string) => void;
+  playTestSound: (typeOverride?: string) => void;
   handleLogout: () => void;
   handleSharePublicAccess: () => void;
   setShowGuideModal: (value: boolean) => void;
@@ -82,6 +87,11 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
   setDarkMode,
   soundEnabled,
   setSoundEnabled,
+  notificationVolume,
+  setNotificationVolume,
+  soundType,
+  setSoundType,
+  playTestSound,
   handleLogout,
   handleSharePublicAccess,
   setShowGuideModal,
@@ -194,9 +204,45 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
                 </button>
               </div>
             )}
-            <button onClick={() => setSoundEnabled(!soundEnabled)} className={`btn-header-action h-10 w-10 ${soundEnabled ? 'text-blue-500 dark:text-blue-400' : 'text-gray-400 dark:text-slate-500'}`} title={soundEnabled ? 'Silenciar notificaciones' : 'Activar sonido de notificaciones'}>
-              {soundEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
-            </button>
+            {/* Volume and Tone Control */}
+            <div className="flex items-center gap-1.5 px-2 py-1 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-white/5 shadow-sm group relative">
+              <button 
+                onClick={() => setSoundEnabled(!soundEnabled)} 
+                className={`flex items-center justify-center h-8 w-8 rounded-xl transition-colors ${soundEnabled ? 'text-blue-500 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20' : 'text-gray-400 dark:text-slate-500 bg-transparent'}`} 
+                title={soundEnabled ? 'Silenciar' : 'Activar sonido'}
+              >
+                {soundEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
+              </button>
+              
+              <div className="flex flex-col max-w-0 group-hover:max-w-[120px] transition-all duration-500 overflow-hidden px-0 group-hover:px-1 space-y-1">
+                <input 
+                  type="range" 
+                  min="0" 
+                  max="1" 
+                  step="0.05" 
+                  value={notificationVolume} 
+                  onChange={(e) => setNotificationVolume(Number(e.target.value))}
+                  onMouseUp={() => playTestSound()}
+                  onTouchEnd={() => playTestSound()}
+                  className="w-24 h-1 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                />
+                <select 
+                  value={soundType}
+                  onChange={(e) => {
+                    const newType = e.target.value;
+                    setSoundType(newType);
+                    playTestSound(newType);
+                  }}
+                  className="text-[10px] font-bold bg-transparent text-slate-500 dark:text-slate-400 focus:outline-none cursor-pointer"
+                >
+                  <option value="Default">Básico</option>
+                  <option value="Modern">Moderno</option>
+                  <option value="Crystal">Cristal</option>
+                  <option value="Retro">Retro</option>
+                </select>
+              </div>
+            </div>
+
             <button onClick={() => setDarkMode(!darkMode)} className="btn-header-action h-10 w-10 text-amber-500 dark:text-yellow-400"><Sun size={18} /></button>
             <button onClick={handleLogout} className="btn-header-action h-10 w-10 text-red-500 dark:text-red-400"><LogOut size={18} /></button>
           </div>

@@ -7,9 +7,11 @@ import { OrderPdfDocument } from '../components/OrderPdfDocument';
 
 interface InventoryProps {
   currentUser: User;
+  notificationVolume?: number;
+  soundType?: string;
 }
 
-const Inventory: React.FC<InventoryProps> = ({ currentUser }) => {
+const Inventory: React.FC<InventoryProps> = ({ currentUser, notificationVolume = 0.3, soundType = 'Default' }) => {
   const [products, setProducts] = useState<Product[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
@@ -104,6 +106,69 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser }) => {
     };
   }, []);
 
+  const audioContextRef = React.useRef<AudioContext | null>(null);
+
+  const playFeedbackSound = (alertType: 'success' | 'info' = 'info') => {
+    if (notificationVolume <= 0) return;
+    try {
+      if (!audioContextRef.current) {
+        const AudioCtor = window.AudioContext || (window as any).webkitAudioContext;
+        if (!AudioCtor) return;
+        audioContextRef.current = new AudioCtor();
+      }
+      const ctx = audioContextRef.current;
+      if (ctx.state === 'suspended') ctx.resume();
+
+      const t = ctx.currentTime;
+      const vol = notificationVolume * notificationVolume;
+
+      const playBeep = (timeOffset: number, freq: number, duration: number, type: OscillatorType) => {
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.type = type;
+        o.frequency.setValueAtTime(freq, t + timeOffset);
+        const start = t + timeOffset;
+        g.gain.setValueAtTime(0, start);
+        g.gain.linearRampToValueAtTime(vol, start + 0.05);
+        g.gain.linearRampToValueAtTime(vol, start + duration - 0.05);
+        g.gain.linearRampToValueAtTime(0, start + duration);
+        o.connect(g);
+        g.connect(ctx.destination);
+        o.start(start);
+        o.stop(start + duration + 0.05);
+      };
+
+      const type = soundType.toLowerCase();
+      const playTonePattern = (offset: number) => {
+        if (type === 'modern') {
+          playBeep(offset, 784, 0.1, 'sine');
+          playBeep(offset + 0.12, 1046, 0.15, 'sine');
+        } else if (type === 'crystal') {
+          playBeep(offset, 1568, 0.08, 'triangle');
+          playBeep(offset + 0.1, 1760, 0.08, 'triangle');
+          playBeep(offset + 0.2, 1975, 0.12, 'triangle');
+        } else if (type === 'retro') {
+          playBeep(offset, 523, 0.12, 'square');
+          playBeep(offset + 0.15, 659, 0.12, 'square');
+          playBeep(offset + 0.3, 784, 0.2, 'square');
+        } else {
+          playBeep(offset, 2500, 0.2, 'square');
+        }
+      };
+
+      if (alertType === 'success') {
+        playTonePattern(0);
+        playTonePattern(0.6);
+        playTonePattern(1.2);
+      } else {
+        if (type === 'modern') playBeep(0, 1046, 0.15, 'sine');
+        else if (type === 'crystal') playBeep(0, 1975, 0.1, 'triangle');
+        else if (type === 'retro') playBeep(0, 784, 0.15, 'square');
+        else playBeep(0, 2500, 0.2, 'square');
+      }
+    } catch (e) { console.error(e); }
+  };
+
   const handleSaveProduct = async () => {
     const deptIds = editProductForm.departmentIds || (editProductForm.departmentId ? [editProductForm.departmentId] : []);
     if (!editProductForm.name || deptIds.length === 0) {
@@ -168,6 +233,7 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser }) => {
     const qty = parseInt(receiveQuantityInput, 10);
     if (isNaN(qty) || qty <= 0) return;
 
+    playFeedbackSound('info');
     setReceiveItems(prev => {
       const existing = prev.find(item => item.product.id === selectedProductToReceive.id);
       if (existing) {
@@ -195,6 +261,7 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser }) => {
     );
     
     if (result && result.success && result.batchId) {
+      playFeedbackSound('success');
       const orderBatch: OrderBatch = {
         batchId: result.batchId,
         date: new Date().toLocaleString(),
@@ -328,7 +395,7 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser }) => {
             </div>
             <div className="flex gap-2">
               <button onClick={() => { setEditProductForm(product); setShowEditProductModal(true); }} className="p-3 text-blue-600 bg-blue-50 dark:bg-blue-900/20 rounded-xl active:scale-90"><Edit2 size={18} /></button>
-              <button onClick={() => { storageService.deleteProduct(product.id, currentUser.name); }} className="p-3 text-red-600 bg-red-50 dark:bg-red-900/20 rounded-xl active:scale-90"><Trash2 size={18} /></button>
+              <button onClick={() => setProductToDelete(product)} className="p-3 text-red-600 bg-red-50 dark:bg-red-900/20 rounded-xl active:scale-90"><Trash2 size={18} /></button>
             </div>
           </div>
         ))}
@@ -412,7 +479,7 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser }) => {
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl max-w-sm w-full shadow-2xl">
             <h3 className="text-xl font-black text-slate-900 dark:text-white mb-2">¿Eliminar producto?</h3>
-            <p className="text-slate-500 dark:text-slate-400 mb-6">Esta acción no se puede deshacer.</p>
+            <p className="text-slate-500 dark:text-slate-400 mb-6">Esta acción es permanente y los datos desaparecerán para siempre. ¿Estás seguro?</p>
             <div className="flex gap-3">
               <button onClick={() => setProductToDelete(null)} className="flex-1 py-3 font-bold bg-slate-100 dark:bg-slate-700 rounded-xl text-slate-600 dark:text-slate-300">Cancelar</button>
               <button onClick={() => { storageService.deleteProduct(productToDelete.id, currentUser.name); setProductToDelete(null); }} className="flex-1 py-3 font-bold bg-red-600 text-white rounded-xl shadow-lg shadow-red-600/30">Eliminar</button>
@@ -456,7 +523,7 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser }) => {
            <div className="bg-white dark:bg-slate-800 w-full max-w-md rounded-3xl shadow-pop-in overflow-hidden animate-pop-in border border-gray-100 dark:border-slate-700/50">
               <div className="p-6 border-b border-gray-100 dark:border-slate-700">
                 <h3 className="text-2xl font-extrabold text-gray-900 dark:text-white text-center drop-shadow-sm">Eliminar Área</h3>
-                <p className="text-center text-gray-500 dark:text-slate-400 mt-2">¿Seguro que quieres eliminar esta área? Los productos asignados podrían verse afectados.</p>
+                <p className="text-center text-gray-500 dark:text-slate-400 mt-2">Esta acción es permanente y los datos desaparecerán para siempre. Las relaciones con productos podrían verse afectadas. ¿Estás seguro?</p>
               </div>
               <div className="p-6 flex gap-4">
                 <button 

@@ -231,8 +231,8 @@ const Documents: React.FC<DocumentsProps> = ({ currentUser }) => {
         <div className="fixed inset-0 bg-black/60 dark:bg-slate-900/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
           <div className="bg-white dark:bg-slate-800 rounded-3xl w-full max-w-sm shadow-pop-in p-6 animate-pop-in border border-gray-100 dark:border-slate-700/50 text-center">
             <div className="w-16 h-16 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-4 text-red-600 dark:text-red-500 shadow-md"><Trash2 size={32} /></div>
-            <h3 className="text-xl font-black text-gray-900 dark:text-white mb-2">¿Eliminar Documento?</h3>
-            <p className="text-gray-500 dark:text-slate-400 mb-6">Se eliminará <strong className="text-gray-800 dark:text-slate-200">{docToDelete.name}</strong> permanentemente.</p>
+            <h3 className="text-xl font-black text-gray-900 dark:text-white mb-2 uppercase">¿Eliminar Documento?</h3>
+            <p className="text-gray-500 dark:text-slate-400 mb-6 italic">Esta acción es permanente y los datos desaparecerán para siempre. ¿Estás seguro de eliminar <strong className="text-gray-800 dark:text-slate-200">{docToDelete.name}</strong>?</p>
             <div className="flex gap-3">
               <button onClick={() => setDocToDelete(null)} className="flex-1 py-3 font-bold text-gray-600 dark:text-slate-400 bg-gray-100 dark:bg-slate-700/50 rounded-xl hover:bg-gray-200 dark:hover:bg-slate-700 active:scale-[0.98]">Cancelar</button>
               <button onClick={handleDelete} className="flex-1 py-3 font-bold text-white bg-red-600 rounded-xl hover:bg-red-700 shadow-lg shadow-button-red active:scale-[0.98]">Eliminar</button>

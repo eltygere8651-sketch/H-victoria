@@ -6,7 +6,7 @@ interface SpeechContextType {
   currentText: string;
   narratorTitle: string;
   narratorSubtitle: string;
-  playSpeech: (text: string, title?: string, subtitle?: string, onEnd?: () => void) => void;
+  playSpeech: (text: string, title?: string, subtitle?: string, onEnd?: () => void, volume?: number) => void;
   stopSpeech: () => void;
   togglePause: () => void;
   isPaused: boolean;
@@ -48,7 +48,7 @@ export const SpeechProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   }, []);
 
-  const playSpeech = useCallback((text: string, title: string = "", subtitle: string = "", onEnd?: () => void) => {
+  const playSpeech = useCallback((text: string, title: string = "", subtitle: string = "", onEnd?: () => void, volume: number = 0.3) => {
     // We only stop if there's nothing playing or if it's a new context
     // But for simplicity, we'll stop and restart as before, but the state persists globally
     window.speechSynthesis.cancel();
@@ -70,6 +70,7 @@ export const SpeechProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     utterance.rate = 0.95;
     utterance.pitch = 1.0;
     utterance.lang = 'es-ES';
+    utterance.volume = volume;
     
     utterance.onstart = () => setIsSpeaking(true);
     utterance.onend = () => {

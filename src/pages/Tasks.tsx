@@ -1305,7 +1305,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
                <Trash2 size={40} />
             </div>
             <h3 className="text-2xl font-black text-gray-900 dark:text-white uppercase mb-2 tracking-tight">¿Eliminar Tarea?</h3>
-            <p className="text-gray-500 dark:text-slate-400 mb-8 font-bold text-lg">Esta acción no se puede deshacer.</p>
+            <p className="text-gray-500 dark:text-slate-400 mb-8 font-bold text-lg">Esta acción es permanente y los datos desaparecerán para siempre. ¿Estás seguro?</p>
             <div className="flex gap-4">
               <button onClick={() => setTaskToDelete(null)} className="flex-1 py-4 font-bold text-gray-600 dark:text-slate-400 bg-gray-100 dark:bg-slate-700 rounded-2xl hover:bg-gray-200 transition-colors">Cancelar</button>
               <button onClick={handleDeleteTask} className="flex-1 py-4 font-bold text-white bg-red-600 rounded-2xl hover:bg-red-700 shadow-lg shadow-button-red transition-all">ELIMINAR</button>

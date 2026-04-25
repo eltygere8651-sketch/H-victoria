@@ -12,9 +12,11 @@ interface ReplenishmentProps {
   setCart: React.Dispatch<React.SetStateAction<CartItem[]>>;
   showMobileCart: boolean;
   setShowMobileCart: React.Dispatch<React.SetStateAction<boolean>>;
+  notificationVolume?: number;
+  soundType?: string;
 }
 
-const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCart, showMobileCart, setShowMobileCart }) => {
+const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCart, showMobileCart, setShowMobileCart, notificationVolume = 0.3, soundType = 'Default' }) => {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [selectedDepartmentForOrder, setSelectedDepartmentForOrder] = useState<string>('');
   const [selectedDepartmentNameForOrder, setSelectedDepartmentNameForOrder] = useState<string>('');
@@ -92,7 +94,8 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCar
 
   const audioContextRef = useRef<AudioContext | null>(null);
 
-  const playAlarm = () => {
+  const playAlarm = (alertType: 'success' | 'warning' | 'info' = 'info') => {
+    if (notificationVolume <= 0) return;
     if (!audioContextRef.current) {
       const AudioCtor = window.AudioContext || (window as any).webkitAudioContext;
       if (!AudioCtor) return;
@@ -105,22 +108,60 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCar
     }
     
     const t = ctx.currentTime;
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
+    const volumeValue = notificationVolume * notificationVolume;
+
+    const playBeep = (timeOffset: number, freq: number, duration: number, type: OscillatorType) => {
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.type = type;
+      o.frequency.setValueAtTime(freq, t + timeOffset);
+      
+      const startTime = t + timeOffset;
+      const attack = Math.min(0.05, duration * 0.2);
+      const release = Math.min(0.1, duration * 0.3);
+
+      g.gain.setValueAtTime(0, startTime);
+      g.gain.linearRampToValueAtTime(volumeValue, startTime + attack);
+      g.gain.linearRampToValueAtTime(volumeValue, startTime + duration - release);
+      g.gain.linearRampToValueAtTime(0, startTime + duration);
+      
+      o.connect(g);
+      g.connect(ctx.destination);
+      o.start(startTime);
+      o.stop(startTime + duration + 0.05);
+    };
+
+    const type = soundType.toLowerCase();
     
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    
-    osc.type = 'square';
-    osc.frequency.setValueAtTime(800, t);
-    osc.frequency.setValueAtTime(1200, t + 0.15);
-    osc.frequency.setValueAtTime(800, t + 0.3);
-    
-    gain.gain.setValueAtTime(0.3, t);
-    gain.gain.exponentialRampToValueAtTime(0.01, t + 0.5);
-    
-    osc.start(t);
-    osc.stop(t + 0.5);
+    const playTonePattern = (offset: number) => {
+      if (type === 'modern') {
+        playBeep(offset, 784, 0.1, 'sine');
+        playBeep(offset + 0.12, 1046, 0.15, 'sine');
+      } else if (type === 'crystal') {
+        playBeep(offset, 1568, 0.08, 'triangle');
+        playBeep(offset + 0.1, 1760, 0.08, 'triangle');
+        playBeep(offset + 0.2, 1975, 0.12, 'triangle');
+      } else if (type === 'retro') {
+        playBeep(offset, 523, 0.12, 'square');
+        playBeep(offset + 0.15, 659, 0.12, 'square');
+        playBeep(offset + 0.3, 784, 0.2, 'square');
+      } else {
+        playBeep(offset, 2500, 0.2, 'square');
+      }
+    };
+
+    if (alertType === 'success' || alertType === 'warning') {
+      playTonePattern(0);
+      playTonePattern(0.6);
+      playTonePattern(1.2);
+      return;
+    }
+
+    // Single beep for simple info/feedback
+    if (type === 'modern') playBeep(0, 1046, 0.15, 'sine');
+    else if (type === 'crystal') playBeep(0, 1975, 0.1, 'triangle');
+    else if (type === 'retro') playBeep(0, 784, 0.15, 'square');
+    else playBeep(0, 2500, 0.2, 'square');
   };
 
   const quickAddToCart = (product: Product) => {
@@ -130,6 +171,7 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCar
 
     if (available <= 0) return;
 
+    playAlarm('info');
     setCart(prev => {
       const existing = prev.find(item => item.product.id === product.id);
       if (existing) {
@@ -162,6 +204,7 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCar
     }
     setQtyError('');
 
+    playAlarm('info');
     setCart(prev => {
       const existing = prev.find(item => item.product.id === selectedProduct.id);
       if (existing) {
@@ -221,6 +264,9 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCar
       setShowMobileCart(false);
       setOrderError('');
       
+      // Track batch ID to avoid duplicate notification sound
+      localStorage.setItem('last_processed_batch', result.batchId);
+      
       // Auto-share the PDF
       const orderBatch: OrderBatch = {
         batchId: result.batchId,
@@ -251,9 +297,10 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCar
       if (result.lowStockItems && result.lowStockItems.length > 0) {
         setLowStockList(result.lowStockItems);
         setShowLowStockModal(true);
-        playAlarm();
+        playAlarm('warning');
       } else {
         setShowSuccessModal(true);
+        playAlarm('success');
         setTimeout(() => {
           resetOrderState();
         }, 2000);

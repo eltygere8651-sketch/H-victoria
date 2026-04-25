@@ -140,6 +140,8 @@ interface TrainingProps {
   setCart: React.Dispatch<React.SetStateAction<CartItem[]>>;
   showMobileCart: boolean;
   setShowMobileCart: (show: boolean) => void;
+  notificationVolume?: number;
+  soundType?: string;
 }
 
 export const Training: React.FC<TrainingProps> = ({ 
@@ -148,7 +150,9 @@ export const Training: React.FC<TrainingProps> = ({
   cart, 
   setCart, 
   showMobileCart, 
-  setShowMobileCart 
+  setShowMobileCart,
+  notificationVolume = 0.3,
+  soundType = 'Default'
 }) => {
   const { playSpeech: globalPlaySpeech, stopSpeech: globalStopSpeech, isSpeaking: globalIsSpeaking } = useSpeech();
   
@@ -223,7 +227,7 @@ export const Training: React.FC<TrainingProps> = ({
           setIsAutoPlaying(false);
         }
       }
-    });
+    }, notificationVolume);
   }, [currentSlide, globalPlaySpeech, useSmartAI, aiExplanations, isAutoPlaying, nextSlide]);
 
   const toggleSpeech = () => {

@@ -29,6 +29,7 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
   const [selectedOrder, setSelectedOrder] = useState<OrderBatch | null>(null);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [batchToDelete, setBatchToDelete] = useState<string | null>(null);
+  const [userToDelete, setUserToDelete] = useState<User | null>(null);
 
   const [notificationFilter, setNotificationFilter] = useState<'all' | 'unread'>('unread');
 
@@ -143,10 +144,15 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
     }
   };
 
-  const handleDeleteUser = (id: string) => {
-    if (id === currentUser.id) { alert("No puedes eliminar tu propio usuario."); return; }
-    if (window.confirm('¿Seguro que quieres eliminar este usuario?')) {
-      storageService.deleteUser(id);
+  const handleDeleteUserClick = (user: User) => {
+    if (user.id === currentUser.id) { alert("No puedes eliminar tu propio usuario."); return; }
+    setUserToDelete(user);
+  };
+
+  const confirmDeleteUser = () => {
+    if (userToDelete) {
+      storageService.deleteUser(userToDelete.id);
+      setUserToDelete(null);
     }
   };
 
@@ -353,7 +359,7 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
                   </div>
                   <div className="flex items-center gap-2">
                     <button onClick={() => setEditingUser(u)} className="p-2 text-blue-600 bg-blue-50 dark:bg-blue-900/20 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30 active:scale-95 transition-colors shadow-sm"><Edit2 size={18} /></button>
-                    {u.id !== currentUser.id && <button onClick={() => handleDeleteUser(u.id)} className="p-2 text-red-600 bg-red-50 dark:bg-red-900/20 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 active:scale-95 transition-colors shadow-sm"><Trash2 size={18} /></button>}
+                    {u.id !== currentUser.id && <button onClick={() => handleDeleteUserClick(u)} className="p-2 text-red-600 bg-red-50 dark:bg-red-900/20 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 active:scale-95 transition-colors shadow-sm"><Trash2 size={18} /></button>}
                   </div>
                 </div>
               ))}
@@ -555,7 +561,7 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
          <div className="fixed inset-0 bg-black/60 z-[120] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
           <div className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-sm p-6 text-center shadow-pop-in animate-pop-in">
             <h3 className="font-bold text-lg text-gray-900 dark:text-white">¿Eliminar Albarán?</h3>
-            <p className="text-gray-500 dark:text-slate-400 text-sm my-4">Se eliminará el albarán <span className="font-bold text-gray-800 dark:text-slate-200">#{batchToDelete}</span>. Esta acción no se puede deshacer.</p>
+            <p className="text-gray-500 dark:text-slate-400 text-sm my-4">Se eliminará el albarán <span className="font-bold text-gray-800 dark:text-slate-200">#{batchToDelete}</span>. Esta acción es permanente y los datos desaparecerán para siempre. ¿Estás seguro?</p>
             <div className="flex gap-4">
               <button onClick={() => setBatchToDelete(null)} className="flex-1 py-3 bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-300 rounded-xl font-bold active:scale-95">Cancelar</button>
               <button onClick={confirmDeleteBatch} className="flex-1 py-3 bg-red-600 text-white rounded-xl font-bold shadow-lg shadow-button-red active:scale-95">Eliminar</button>
@@ -569,12 +575,26 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
           <div className="bg-white dark:bg-slate-800 rounded-3xl w-full max-w-sm shadow-pop-in p-6 animate-pop-in border border-gray-100 dark:border-slate-700/50 text-center">
             <div className="w-16 h-16 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-4 text-red-600 dark:text-red-500 shadow-md"><Trash2 size={32} /></div>
             <h3 className="text-xl font-black text-gray-900 dark:text-white mb-2">¿Limpiar Registro?</h3>
-            <p className="text-gray-500 dark:text-slate-400 mb-6">Esta acción eliminará permanentemente <strong>todas</strong> las notificaciones y registros de actividad.</p>
+            <p className="text-gray-500 dark:text-slate-400 mb-6">Esta acción es permanente y los datos desaparecerán para siempre. Eliminará todas las notificaciones. ¿Estás seguro?</p>
             <div className="flex gap-3">
               <button onClick={() => setShowClearNotificationsConfirm(false)} disabled={isClearing} className="flex-1 py-3 font-bold text-gray-600 dark:text-slate-400 bg-gray-100 dark:bg-slate-700/50 rounded-xl hover:bg-gray-200 dark:hover:bg-slate-700 active:scale-[0.98]">Cancelar</button>
               <button onClick={handleClearAllNotifications} disabled={isClearing} className="flex-1 py-3 font-bold text-white bg-red-600 rounded-xl hover:bg-red-700 shadow-lg shadow-button-red active:scale-[0.98] flex items-center justify-center gap-2">
                 {isClearing ? <Loader2 className="animate-spin" /> : 'Sí, Limpiar'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {userToDelete && (
+        <div className="fixed inset-0 bg-black/60 z-[120] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-sm p-6 text-center shadow-pop-in animate-pop-in border border-gray-100 dark:border-slate-700/50">
+            <div className="w-16 h-16 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-4 text-red-600 dark:text-red-500 shadow-md"><Trash2 size={32} /></div>
+            <h3 className="font-bold text-lg text-gray-900 dark:text-white uppercase">¿Eliminar Usuario?</h3>
+            <p className="text-gray-500 dark:text-slate-400 text-sm my-4">Se eliminará el usuario <span className="font-bold text-gray-800 dark:text-slate-200">{userToDelete.name}</span>. Esta acción es permanente y los datos desaparecerán para siempre. ¿Estás seguro?</p>
+            <div className="flex gap-4">
+              <button onClick={() => setUserToDelete(null)} className="flex-1 py-3 bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-300 rounded-xl font-bold active:scale-95 transition-colors">Cancelar</button>
+              <button onClick={confirmDeleteUser} className="flex-1 py-3 bg-red-600 text-white rounded-xl font-bold shadow-lg shadow-button-red active:scale-95 transition-all">Eliminar</button>
             </div>
           </div>
         </div>

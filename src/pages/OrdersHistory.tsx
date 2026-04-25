@@ -15,6 +15,7 @@ const OrdersHistory: React.FC<OrdersHistoryProps> = ({ currentUser }) => {
   const [orders, setOrders] = useState<OrderBatch[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<OrderBatch | null>(null);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [orderToDelete, setOrderToDelete] = useState<string | null>(null);
 
   useEffect(() => {
     const unsubscribe = storageService.subscribeToBatches(setOrders);
@@ -56,13 +57,14 @@ const OrdersHistory: React.FC<OrdersHistoryProps> = ({ currentUser }) => {
     }
   };
 
-  const handleDelete = (batchId: string) => {
-    if (window.confirm('¿ATENCIÓN: Estás seguro de que quieres eliminar este albarán completo? Se borrará del historial.')) {
-      storageService.deleteBatch(batchId);
-      if (selectedOrder?.batchId === batchId) {
+  const confirmDelete = () => {
+    if (orderToDelete) {
+      storageService.deleteBatch(orderToDelete);
+      if (selectedOrder?.batchId === orderToDelete) {
         setSelectedOrder(null);
       }
-      setOrders(prev => prev.filter(o => o.batchId !== batchId));
+      setOrders(prev => prev.filter(o => o.batchId !== orderToDelete));
+      setOrderToDelete(null);
     }
   };
 
@@ -113,7 +115,7 @@ const OrdersHistory: React.FC<OrdersHistoryProps> = ({ currentUser }) => {
               
               {currentUser.role === UserRole.ADMIN && (
                 <button 
-                  onClick={(e) => { e.stopPropagation(); handleDelete(order.batchId); }}
+                  onClick={(e) => { e.stopPropagation(); setOrderToDelete(order.batchId); }}
                   className="p-3 text-gray-400 dark:text-slate-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors border border-gray-100 dark:border-slate-700/50 hover:border-red-100 shadow-sm active:scale-95"
                   title="Eliminar Albarán"
                 >
@@ -146,7 +148,7 @@ const OrdersHistory: React.FC<OrdersHistoryProps> = ({ currentUser }) => {
                 <div className="flex gap-2 ml-auto">
                     {currentUser.role === UserRole.ADMIN && (
                       <button 
-                        onClick={() => handleDelete(selectedOrder.batchId)}
+                        onClick={() => setOrderToDelete(selectedOrder.batchId)}
                         className="p-2.5 bg-red-900/30 text-red-400 border border-red-900/50 rounded-lg font-bold flex items-center justify-center active:scale-95"
                         title="Eliminar"
                       >
@@ -202,6 +204,19 @@ const OrdersHistory: React.FC<OrdersHistoryProps> = ({ currentUser }) => {
         </div>
       )}
 
+      {orderToDelete && (
+        <div className="fixed inset-0 bg-black/60 z-[120] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white dark:bg-slate-800 rounded-3xl w-full max-w-sm p-6 text-center shadow-pop-in animate-pop-in border border-gray-100 dark:border-slate-700/50">
+            <div className="w-16 h-16 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-4 text-red-600 dark:text-red-500 shadow-md animate-bounce-short"><Trash2 size={32} /></div>
+            <h3 className="font-black text-xl text-gray-900 dark:text-white uppercase tracking-tight">¿Eliminar Albarán?</h3>
+            <p className="text-gray-500 dark:text-slate-400 text-sm my-4 font-bold">Esta acción es permanente y los datos desaparecerán para siempre. ¿Estás seguro de eliminar el albarán <span className="text-red-600">#{orderToDelete}</span>?</p>
+            <div className="flex gap-4">
+              <button onClick={() => setOrderToDelete(null)} className="flex-1 py-3 bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-300 rounded-xl font-bold active:scale-95 transition-colors">Cancelar</button>
+              <button onClick={confirmDelete} className="flex-1 py-3 bg-red-600 text-white rounded-xl font-bold shadow-lg shadow-button-red active:scale-95 transition-all">ELIMINAR</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
