@@ -251,8 +251,8 @@ const App: React.FC = () => {
         const startTime = ctx.currentTime + offset;
         const volumeValue = currentVol * currentVol; 
         
-        const attack = Math.min(0.05, dur * 0.2);
-        const release = Math.min(0.1, dur * 0.3);
+        const attack = 0.02;
+        const release = 0.05;
 
         gainNode.gain.setValueAtTime(0, startTime);
         gainNode.gain.linearRampToValueAtTime(volumeValue, startTime + attack);
@@ -268,16 +268,21 @@ const App: React.FC = () => {
       const type = currentType.toLowerCase();
       const playTonePattern = (offset: number) => {
         if (type === 'modern') {
-          playQuick(1046, 0.15, 'sine', offset);
+          playQuick(784, 0.08, 'sine', offset); // G5
+          playQuick(1046, 0.12, 'sine', offset + 0.1); // C6
         } else if (type === 'crystal') {
-          playQuick(1975, 0.1, 'triangle', offset);
+          playQuick(1568, 0.05, 'triangle', offset); // G6
+          playQuick(1760, 0.05, 'triangle', offset + 0.06); // A6
+          playQuick(1975, 0.08, 'triangle', offset + 0.12); // B6
         } else if (type === 'retro') {
-          playQuick(784, 0.15, 'square', offset);
+          playQuick(523, 0.1, 'square', offset); // C5
+          playQuick(784, 0.15, 'square', offset + 0.12); // G5
         } else {
-          playQuick(2500, 0.2, 'square', offset);
+          playQuick(2500, 0.15, 'square', offset);
         }
       };
 
+      // Play 3 times to demo the actual notification pattern
       playTonePattern(0);
       playTonePattern(0.6);
       playTonePattern(1.2);
@@ -350,14 +355,14 @@ const App: React.FC = () => {
           setToasts(prev => [...prev, ...newToasts]);
           newToasts.forEach(n => displayedToastIds.current.add(n.id));
           
-          // Only play notification sound if it's not a notification about the current user's action
-          // This avoids double sound when ordering or updating stock
-          const isOwnAction = newToasts.some(n => 
-            n.message.includes(user.name) || 
-            (n.payload?.orderBatchId && localStorage.getItem('last_processed_batch') === n.payload.orderBatchId)
+          // Only play notification sound if it's not redundant.
+          // We previously blocked it if message included user name, but the user wants to hear it too.
+          // We only block if the batch ID matches the one we just processed in THIS session to avoid double trigger if onSnapshot fires twice.
+          const isRedundantBatch = newToasts.some(n => 
+            n.payload?.orderBatchId && localStorage.getItem('last_processed_batch') === n.payload.orderBatchId
           );
           
-          if (!isOwnAction) {
+          if (!isRedundantBatch) {
             playNotificationSound();
           }
         }

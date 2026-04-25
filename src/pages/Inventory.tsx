@@ -233,7 +233,6 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser, notificationVolume =
     const qty = parseInt(receiveQuantityInput, 10);
     if (isNaN(qty) || qty <= 0) return;
 
-    playFeedbackSound('info');
     setReceiveItems(prev => {
       const existing = prev.find(item => item.product.id === selectedProductToReceive.id);
       if (existing) {

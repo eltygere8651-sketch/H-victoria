@@ -171,7 +171,6 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCar
 
     if (available <= 0) return;
 
-    playAlarm('info');
     setCart(prev => {
       const existing = prev.find(item => item.product.id === product.id);
       if (existing) {
@@ -204,7 +203,6 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCar
     }
     setQtyError('');
 
-    playAlarm('info');
     setCart(prev => {
       const existing = prev.find(item => item.product.id === selectedProduct.id);
       if (existing) {
