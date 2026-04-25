@@ -1,9 +1,8 @@
-import { Product, User, ReplenishmentRequest, UserRole, Department, CartItem, AppNotification, NotificationType, NotificationPayload, OrderBatch, Task, TaskStatus, TaskPriority, TaskType, TaskComment, Document, TaskRecurrence, AuditAction } from '../types';
+import { Product, User, ReplenishmentRequest, UserRole, Department, CartItem, AppNotification, NotificationType, NotificationPayload, OrderBatch, Task, TaskStatus, TaskPriority, TaskType, TaskComment, Document, TaskRecurrence } from '../types';
 import { db, auth, storage } from '../firebaseConfig';
 export { auth, db, storage };
 import firebase from 'firebase/compat/app';
 import { fileToBase64 } from '../utils/imageCompressor';
-import * as auditService from './auditService';
 
 export const SUPER_ADMIN_EMAIL = 'eltygere8651@gmail.com';
 
@@ -222,6 +221,14 @@ const retry = async <T>(fn: () => Promise<T>, retries = 3, delayMs = 1000): Prom
 };
 
 export const ensureAnonymousAuth = async () => {
+    if (!auth.currentUser) {
+        try {
+            await auth.signInAnonymously();
+            console.log("Sesión anónima iniciada para seguridad de Firestore.");
+        } catch (e) {
+            console.error("Error al iniciar sesión anónima:", e);
+        }
+    }
     await initFirestoreWithInitialData();
 };
 
@@ -299,13 +306,6 @@ export const saveProduct = async (product: Partial<Product>, userName: string = 
   const id = docRef.id;
   await docRef.set(sanitizeData({ ...product, id }), { merge: true });
 
-  await auditService.logAction(
-    isNew ? AuditAction.PRODUCT_CREATE : AuditAction.PRODUCT_UPDATE,
-    `${isNew ? 'Creado' : 'Actualizado'} producto: ${product.name}`,
-    { id: auth.currentUser?.uid || 'admin', name: userName },
-    { productId: id, productName: product.name }
-  );
-
   if (isNew) {
     await db.collection(KEYS.NOTIFICATIONS).add({
       type: NotificationType.INVENTORY_ADJUSTMENT,
@@ -323,13 +323,6 @@ export const deleteProduct = async (id: string, userName: string = 'Administrado
   const productName = productDoc.exists ? productDoc.data()?.name : 'Desconocido';
   
   await db.collection(KEYS.PRODUCTS).doc(id).delete();
-
-  await auditService.logAction(
-    AuditAction.PRODUCT_DELETE,
-    `Eliminado producto: ${productName}`,
-    { id: auth.currentUser?.uid || 'admin', name: userName },
-    { productId: id, productName: productName }
-  );
 
   await db.collection(KEYS.NOTIFICATIONS).add({
     type: NotificationType.INVENTORY_ADJUSTMENT,
@@ -425,13 +418,6 @@ export const submitOrderBatch = async (cart: CartItem[], departmentId: string, d
 
   await batch.commit();
 
-  await auditService.logAction(
-    AuditAction.ORDER_CREATED,
-    `Pedido realizado por ${user.name} para ${departmentName} (${cart.length} productos)`,
-    user,
-    { batchId, departmentId, departmentName, itemsCount: cart.length }
-  );
-
   return { success: true, lowStockItems, batchId };
 };
 
@@ -478,13 +464,6 @@ export const receiveStockBatch = async (items: { productId: string; productName:
 
   await batch.commit();
 
-  await auditService.logAction(
-    AuditAction.STOCK_RECEIVED,
-    `Ingreso de stock (${items.length} productos) por ${userName} (${sourceType})`,
-    { id: auth.currentUser?.uid || 'admin', name: userName },
-    { batchId, itemsCount: items.length, sourceType }
-  );
-
   return { success: true, batchId };
 };
 
@@ -520,13 +499,6 @@ export const addUser = async (user: Omit<User, 'id'>) => {
   }
   const result = await db.collection(KEYS.USERS).add(sanitizeData(user));
   
-  await auditService.logAction(
-    AuditAction.USER_CREATE,
-    `Usuario creado: ${user.name} (${user.role})`,
-    { id: auth.currentUser?.uid || 'admin', name: 'Administrador' },
-    { userId: result.id, userName: user.name, userRole: user.role }
-  );
-
   return result;
 };
 export const updateUser = async (user: User) => {
@@ -536,13 +508,6 @@ export const updateUser = async (user: User) => {
   }
   const { id, ...data } = user;
   await db.collection(KEYS.USERS).doc(id).update(sanitizeData(data));
-
-  await auditService.logAction(
-    AuditAction.USER_UPDATE,
-    `Usuario actualizado: ${user.name} (${user.role})`,
-    { id: auth.currentUser?.uid || 'admin', name: 'Administrador' },
-    { userId: user.id, userName: user.name, userRole: user.role }
-  );
 };
 
 export const deleteUser = async (id: string) => {
@@ -550,13 +515,6 @@ export const deleteUser = async (id: string) => {
   const userName = userDoc.exists ? userDoc.data()?.name : 'Desconocido';
 
   await db.collection(KEYS.USERS).doc(id).delete();
-
-  await auditService.logAction(
-    AuditAction.USER_DELETE,
-    `Usuario eliminado: ${userName}`,
-    { id: auth.currentUser?.uid || 'admin', name: 'Administrador' },
-    { userId: id, userName }
-  );
 };
 export const savePushToken = async (userId: string, token: string) => await db.collection(KEYS.USERS).doc(userId).set({ pushToken: token }, { merge: true });
 
@@ -612,16 +570,6 @@ export const saveTask = async (task: Partial<Task>, newFiles: File[] = []) => {
   
   await docRef.set(taskData, { merge: true });
 
-  const finalTask = isNew ? taskData : { ...(await docRef.get()).data(), ...taskData };
-  const action = isNew ? AuditAction.TASK_CREATE : (task.status === TaskStatus.COMPLETED ? AuditAction.TASK_COMPLETED : AuditAction.TASK_UPDATE);
-
-  await auditService.logAction(
-    action,
-    `${isNew ? 'Creada' : (action === AuditAction.TASK_COMPLETED ? 'Completada' : 'Actualizada')} tarea: ${finalTask.title}`,
-    { id: task.createdById || auth.currentUser?.uid || 'admin', name: task.createdBy || auth.currentUser?.displayName || 'Sistema' },
-    { taskId: docRef.id, taskTitle: finalTask.title }
-  );
-
   if (isNew) {
      // Notify about new task
      await db.collection(KEYS.NOTIFICATIONS).add({
@@ -641,13 +589,6 @@ export const deleteTask = async (id: string) => {
   const taskTitle = taskDoc.exists ? taskDoc.data()?.title : 'Desconocida';
 
   await db.collection(KEYS.TASKS).doc(id).delete();
-
-  await auditService.logAction(
-    AuditAction.TASK_DELETE,
-    `Tarea eliminada: ${taskTitle}`,
-    { id: auth.currentUser?.uid || 'admin', name: 'Administrador' },
-    { taskId: id, taskTitle }
-  );
 };
 
 // --- SHIFT HELPERS ---
@@ -693,13 +634,6 @@ export const resetDailyTask = async (taskId: string) => {
   };
 
   await taskRef.update(updateData);
-
-  await auditService.logAction(
-    AuditAction.TASK_UPDATE,
-    `Tarea diaria reiniciada: ${data.title} (Turno: ${shift})`,
-    { id: 'system', name: 'Sistema' },
-    { taskId, taskTitle: data.title, shift }
-  );
 };
 
 export const checkPendingDailyTasksAndNotify = async () => {
@@ -819,6 +753,33 @@ export const deleteAllNotifications = async () => {
   await batch.commit();
 };
 
+export const checkAutoCleanup = async () => {
+  try {
+    const cleanupRef = db.collection(KEYS.SYSTEM).doc('cleanup');
+    const cleanupDoc = await cleanupRef.get();
+    const now = Date.now();
+    const fifteenDaysInMs = 15 * 24 * 60 * 60 * 1000;
+
+    if (cleanupDoc.exists) {
+      const lastCleanup = cleanupDoc.data()?.lastAutoCleanup || 0;
+      if (now - lastCleanup < fifteenDaysInMs) return;
+    }
+
+    // Perform cleanup
+    await deleteAllNotifications();
+    
+    // Update the last cleanup timestamp
+    await cleanupRef.set({ 
+      lastAutoCleanup: now,
+      lastCleanupDate: new Date().toLocaleString()
+    }, { merge: true });
+    
+    console.log("Auto-limpieza de actividad completada (Ciclo de 15 días).");
+  } catch (error) {
+    console.error("Error en auto-limpieza:", error);
+  }
+};
+
 // --- NEW: DOCUMENT MANAGEMENT ---
 export const uploadDocumentFile = async (file: File): Promise<string> => {
   const path = `documents/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
@@ -832,24 +793,9 @@ export const subscribeToDocuments = (callback: (data: Document[]) => void) => {
 };
 export const saveDocument = async (document: Omit<Document, 'id'>) => {
   const result = await db.collection(KEYS.DOCUMENTS).add(sanitizeData(document));
-  
-  await auditService.logAction(
-    AuditAction.DOCUMENT_UPLOAD,
-    `Documento subido: ${document.name} (${document.category})`,
-    { id: auth.currentUser?.uid || 'admin', name: document.uploadedBy },
-    { documentId: result.id, documentName: document.name }
-  );
-
   return result;
 };
 export const deleteDocument = async (doc: Document) => {
   try { await storage.refFromURL(doc.url).delete(); } catch(e) {}
   await db.collection(KEYS.DOCUMENTS).doc(doc.id).delete();
-
-  await auditService.logAction(
-    AuditAction.DOCUMENT_DELETE,
-    `Documento eliminado: ${doc.name}`,
-    { id: auth.currentUser?.uid || 'admin', name: auth.currentUser?.displayName || 'Administrador' },
-    { documentId: doc.id, documentName: doc.name }
-  );
 };

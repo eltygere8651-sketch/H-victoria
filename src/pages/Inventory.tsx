@@ -218,12 +218,19 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser, notificationVolume =
     setDeptToDelete(null);
   };
 
+  const departmentOptions = useMemo(() => {
+    return departments.map(dep => (
+      <option key={dep.id} value={dep.id}>{dep.name.toUpperCase()}</option>
+    ));
+  }, [departments]);
+
   const filteredProducts = useMemo(() => {
+    const search = searchTerm.toLowerCase();
     return products.filter(p => {
       const pDeptIds = p.departmentIds || (p.departmentId ? [p.departmentId] : []);
       const matchesDept = selectedDepartmentFilter === 'all' || pDeptIds.includes(selectedDepartmentFilter);
-      const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                            p.category.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesSearch = p.name.toLowerCase().includes(search) || 
+                            p.category.toLowerCase().includes(search);
       return matchesDept && matchesSearch;
     });
   }, [products, selectedDepartmentFilter, searchTerm]);
@@ -367,7 +374,7 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser, notificationVolume =
                 className="w-full sm:w-auto pl-4 pr-10 py-3 rounded-xl border-2 border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-black uppercase tracking-wider focus:border-red-500 outline-none appearance-none dark:text-white"
               >
                 <option value="all">Todas las Áreas</option>
-                {departments.map(dep => <option key={dep.id} value={dep.id}>{dep.name.toUpperCase()}</option>)}
+                {departmentOptions}
               </select>
               <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
             </div>

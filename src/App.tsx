@@ -100,7 +100,7 @@ const App: React.FC = () => {
       if (registerMode === 'true') setIsRegistering(true);
       
       // Artificial delay for splash screen visibility (optional, improves perceived quality)
-      const minSplashTime = new Promise(resolve => setTimeout(resolve, 2000));
+      const minSplashTime = new Promise(resolve => setTimeout(resolve, 800));
       
       const authPromise = storageService.ensureAnonymousAuth();
       
