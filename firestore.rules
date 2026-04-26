@@ -59,21 +59,14 @@ service cloud.firestore {
       allow create: if isSignedIn() && userId == request.auth.uid;
       
       // Permitir actualización con restricciones
-      allow update: if (
-        // 1. EL PROPIETARIO DEL CORREO MAESTRO: Puede cambiarlo TODO (incluyendo otorgar Super Admin)
-        isWhiteListedSuperAdmin() || 
-        
-        // 2. OTROS SUPER ADMINS: Pueden gestionar usuarios, pero tienen PROHIBIDO tocar campos de rango crítico
-        (isSuperAdmin() && !incoming().diff(existing()).affectedKeys().hasAny(['isSuperAdmin', 'role'])) ||
-        
-        // 3. USUARIO PROPIO: Puede actualizar su perfil pero NO sus rangos
-        (isSignedIn() && 
+      allow update: if isSuperAdmin() || (
+        isSignedIn() && (
+          // El usuario puede actualizar su propio perfil PERO NO sus roles
           (userId == request.auth.uid || resource.data.get('authUid', '') == request.auth.uid) && 
           !incoming().diff(existing()).affectedKeys().hasAny(['role', 'isSuperAdmin', 'isAdmin'])
         ) ||
-        
-        // 4. VINCULACIÓN INICIAL: Cuando el documento de la lista (creado manualmente) se asocia a una cuenta Auth
-        (resource.data.get('authUid', '') == '' || !('authUid' in resource.data) || resource.data.authUid == null)
+        // Permitir vinculación inicial (cuando authUid está vacío)
+        (resource.data.get('authUid', '') == '' || !('authUid' in resource.data))
       );
                       
       allow delete: if isSuperAdmin();

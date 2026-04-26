@@ -123,7 +123,6 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
         name: newUser.name,
         role: newUser.role,
         pin: newUser.pin,
-        isSuperAdmin: false, // Default to false for UI addition
         permissions: newUser.role === UserRole.STAFF ? newUser.permissions : undefined
       });
       setNewUser({ name: '', role: UserRole.STAFF, pin: '', permissions: [] });
@@ -367,21 +366,7 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
                 <div key={u.id} className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-gray-100 dark:border-slate-800 flex items-center justify-between hover:shadow-lg transition-shadow group">
                   <div className="flex items-center gap-3">
                     <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg shadow-sm ${u.role === UserRole.ADMIN ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400' : 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300'}`}>{u.name.charAt(0)}</div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h4 className="font-bold text-gray-900 dark:text-white">{u.name}</h4>
-                        {u.email?.toLowerCase() === storageService.SUPER_ADMIN_EMAIL.toLowerCase() ? (
-                          <span className="bg-red-600 dark:bg-red-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded uppercase border border-red-700 dark:border-red-400 flex items-center gap-1 shadow-lg shadow-red-500/30 ring-1 ring-red-300 dark:ring-red-900 animate-pulse">
-                            <ShieldAlert size={10} className="fill-white" /> Creador
-                          </span>
-                        ) : u.isSuperAdmin ? (
-                          <span className="bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-[10px] font-black px-1.5 py-0.5 rounded uppercase border border-blue-200 dark:border-blue-800 flex items-center gap-1">
-                            <CheckCircle2 size={10} /> Verificado
-                          </span>
-                        ) : null}
-                      </div>
-                      <p className="text-xs text-gray-500 dark:text-slate-400">{u.role} • PIN: ••••••••</p>
-                    </div>
+                    <div><h4 className="font-bold text-gray-900 dark:text-white">{u.name}</h4><p className="text-xs text-gray-500 dark:text-slate-400">{u.role} • PIN: ••••••••</p></div>
                   </div>
                   <div className="flex items-center gap-2">
                     <button onClick={() => setEditingUser(u)} className="p-2 text-blue-600 bg-blue-50 dark:bg-blue-900/20 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30 active:scale-95 transition-colors shadow-sm"><Edit2 size={18} /></button>
@@ -561,22 +546,6 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
                   <option value={UserRole.STAFF}>Personal</option><option value={UserRole.ADMIN}>Admin</option>
                 </select>
               </div>
-              {isSuperAdmin && (
-                <div className="pt-2">
-                    <label className="flex items-center gap-3 p-3 border-2 border-transparent rounded-xl bg-amber-50 dark:bg-amber-900/10 cursor-pointer border-dashed border-amber-200 dark:border-amber-800">
-                        <input
-                            type="checkbox"
-                            className="w-5 h-5 rounded text-amber-600 focus:ring-amber-500 border-gray-300 dark:border-slate-600 bg-gray-200 dark:bg-slate-700"
-                            checked={!!editingUser.isSuperAdmin}
-                            onChange={e => setEditingUser({ ...editingUser, isSuperAdmin: e.target.checked })}
-                        />
-                        <div className="flex flex-col">
-                          <span className="font-black text-amber-600 dark:text-amber-400 text-sm italic">Estatus Verificado (Super)</span>
-                          <span className="text-[10px] text-amber-500/70 font-medium leading-tight">Acceso total sin restricciones de seguridad. Solo el Creador Maestro puede otorgar este estatus.</span>
-                        </div>
-                    </label>
-                </div>
-              )}
               {editingUser.role === UserRole.STAFF && (
                 <div className="pt-2">
                     <label className="flex items-center gap-3 p-3 border-2 border-transparent rounded-xl bg-gray-100 dark:bg-slate-800/60 cursor-pointer">
