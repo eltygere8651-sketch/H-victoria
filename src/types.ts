@@ -12,8 +12,11 @@ export interface User {
   pin: string; // Simplified password for this demo
   email?: string; // New: For Google Login authorization
   permissions?: ('CAN_MANAGE_TASKS')[]; // New: Granular permissions
+  isSuperAdmin?: boolean; // New: Flag for higher-level permissions
+  isAdmin?: boolean; // New: Flag for higher-level permissions
   // FIX: Added optional pushToken for FCM integration.
   pushToken?: string;
+  authUid?: string; // New: Link between Firestore user and Auth account
 }
 
 // New dynamic Department interface
