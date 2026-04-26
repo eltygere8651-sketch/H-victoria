@@ -18,6 +18,7 @@ import ProviderDelivery from './pages/ProviderDelivery';
 import Training from './pages/Training';
 import Register from './pages/Register';
 import QrAuthorize from './pages/QrAuthorize';
+import DeviceLinker from './pages/DeviceLinker';
 
 const App: React.FC = () => {
   const [isInitializing, setIsInitializing] = useState(true);
@@ -30,10 +31,10 @@ const App: React.FC = () => {
   const [shareData, setShareData] = useState({ url: '', title: '' });
   const [showGuideModal, setShowGuideModal] = useState(false);
 
-  const [view, setView] = useState<'inventory' | 'replenish' | 'admin' | 'tasks' | 'training'>(() => {
+  const [view, setView] = useState<'inventory' | 'replenish' | 'admin' | 'tasks' | 'training' | 'device_link'>(() => {
     const lastView = storageService.getLastView();
     const sessionUser = storageService.getSession();
-    let defaultView: 'inventory' | 'replenish' | 'tasks' | 'training' = 'replenish';
+    let defaultView: 'inventory' | 'replenish' | 'tasks' | 'training' | 'device_link' = 'replenish';
     if (sessionUser?.role === UserRole.ADMIN) defaultView = 'inventory';
     if (sessionUser?.role === UserRole.GUEST) defaultView = 'tasks';
     if (lastView) return lastView as any;
@@ -500,8 +501,16 @@ const App: React.FC = () => {
       >
         {view === 'inventory' && user.role === UserRole.ADMIN && <Inventory currentUser={user} />}
         {view === 'replenish' && user.role !== UserRole.GUEST && user.role !== UserRole.PROVIDER && <Replenishment currentUser={user} cart={cart} setCart={setCart} showMobileCart={showMobileCart} setShowMobileCart={setShowMobileCart} notificationVolume={notificationVolume} soundType={soundType} />}
-        {view === 'admin' && user.role === UserRole.ADMIN && <Admin currentUser={user} unreadNotificationsCount={unreadAdminNotifications.length} initialTab={initialAdminTab} />}
+        {view === 'admin' && user.role === UserRole.ADMIN && (
+          <Admin 
+            currentUser={user} 
+            unreadNotificationsCount={unreadAdminNotifications.length} 
+            initialTab={initialAdminTab} 
+            onDeviceLink={() => setView('device_link')}
+          />
+        )}
         {view === 'tasks' && <Tasks currentUser={user} initialTaskId={sharedTaskId} />}
+        {view === 'device_link' && <DeviceLinker onBack={() => setView('admin')} />}
         {view === 'training' && (
           <Training 
             onBack={() => setView('tasks')} 

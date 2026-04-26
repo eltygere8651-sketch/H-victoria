@@ -12,9 +12,10 @@ interface AdminProps {
   currentUser: User;
   unreadNotificationsCount: number;
   initialTab?: 'requests' | 'users' | 'reports';
+  onDeviceLink?: () => void;
 }
 
-const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, initialTab = 'requests' }) => {
+const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, initialTab = 'requests', onDeviceLink }) => {
   const [activeTab, setActiveTab] = useState<'requests' | 'users' | 'reports'>(initialTab);
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
   
@@ -255,6 +256,15 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
           </button>
           {isSuperAdmin && (
             <button onClick={() => setActiveTab('users')} className={`flex-1 min-w-[120px] py-4 text-sm font-extrabold border-b-2 transition-colors duration-200 ${activeTab === 'users' ? 'border-red-600 text-red-600 dark:text-red-400 dark:border-red-400 bg-red-50 dark:bg-red-900/10 shadow-inner' : 'border-transparent text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800/50'}`}>Usuarios</button>
+          )}
+          {onDeviceLink && (
+            <button 
+              onClick={onDeviceLink}
+              className="px-6 py-4 text-sm font-extrabold border-b-2 border-transparent text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/10 flex items-center justify-center gap-2 transition-colors duration-200"
+              title="Vincular PC mediante QR"
+            >
+              <Smartphone size={16} /> <span>Vincular PC</span>
+            </button>
           )}
         </div>
       </div>

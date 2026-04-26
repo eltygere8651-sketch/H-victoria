@@ -3,9 +3,9 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // QR Sessions: Public for login (MUST be at the top)
+    // --- QR Sessions (Public access for login flow) ---
     match /hotel_victoria_qr_sessions/{sessionId} {
-      allow read, write, create, update, delete: if true; 
+      allow read, create, update, delete: if true; 
     }
 
     // --- GLOBAL HELPERS ---
@@ -20,6 +20,7 @@ service cloud.firestore {
              request.auth.token.email.lower() == 'eltygere8651@gmail.com';
     }
 
+    // Explicit Super Admin Check
     function isSuperAdmin() {
       return isOwnerEmail() || (
         isSignedIn() && 
@@ -47,18 +48,13 @@ service cloud.firestore {
 
     // --- COLLECTIONS ---
 
-    // QR Sessions: Public for login
-    match /hotel_victoria_qr_sessions/{sessionId} {
-      allow read, write: if true; 
-    }
-
     match /hotel_victoria_users/{userId} {
       allow read: if isSignedIn();
-      allow write: if isSuperAdmin() || (isSignedIn() && userId == request.auth.uid);
+      allow write: if isSuperAdmin() || userId == request.auth.uid;
     }
 
     match /hotel_victoria_draft_cart/{cartId} {
-      allow read, write: if true; // Extremely permissive for debugging
+      allow read, write: if isSignedIn() && (cartId == request.auth.uid || isAdmin());
     }
 
     match /hotel_victoria_products/{productId} {
@@ -98,7 +94,7 @@ service cloud.firestore {
     }
 
     match /{document=**} {
-      allow read, write: if isSignedIn();
+      allow read, write: if isSuperAdmin();
     }
   }
 }
