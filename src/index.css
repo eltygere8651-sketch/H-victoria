@@ -73,34 +73,7 @@ body {
   opacity: 0.06;
 }
 
-/* --- ANIMACIONES ADICIONALES --- */
-@keyframes progress {
-  from { transform: scaleX(0); }
-  to { transform: scaleX(1); }
-}
-
-.animate-progress {
-  animation: progress 300s linear;
-}
-
-@keyframes shake {
-  0%, 100% { transform: translateX(0); }
-  25% { transform: translateX(-5px); }
-  75% { transform: translateX(5px); }
-}
-
-.animate-shake {
-  animation: shake 0.3s ease-in-out;
-}
-
-@keyframes pop-in {
-  0% { transform: scale(0.9); opacity: 0; }
-  100% { transform: scale(1); opacity: 1; }
-}
-
-.animate-pop-in {
-  animation: pop-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
+/* --- ANIMACIONES DE LOGO --- */
 
 @keyframes logo-float {
   0%, 100% { transform: translateY(0px); filter: drop-shadow(0 10px 15px rgba(220, 38, 38, 0.2)); }

@@ -1,11 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Logo } from '../components/Logo';
 import * as storageService from '../services/storageService';
 import { User, UserRole } from '../types';
-import { Loader2, ArrowRight, ShieldCheck, AlertCircle, Smartphone, QrCode, X } from 'lucide-react';
+import { Loader2, ArrowRight, ShieldCheck, AlertCircle, Smartphone } from 'lucide-react';
 import { GuideModal } from '../components/GuideModal';
 import { PWAInstallPrompt } from '../components/PWAInstallPrompt';
-import { QRCodeSVG } from 'qrcode.react';
 
 interface LoginProps {
   onLogin: (user: User) => void;
@@ -22,13 +21,8 @@ const Login: React.FC<LoginProps> = ({ onLogin, setShowGuideModal }) => {
   const [providerDisabled, setProviderDisabled] = useState(false);
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
 
-  // QR Login state
-  const [showQrLogin, setShowQrLogin] = useState(false);
-  const [qrSessionId, setQrSessionId] = useState<string | null>(null);
-  const [isQrLoading, setIsQrLoading] = useState(false);
-
   // Check for existing Google session with listener
-  useEffect(() => {
+  React.useEffect(() => {
     const unsubscribe = storageService.auth.onAuthStateChanged((currentUser) => {
       if (currentUser && currentUser.email === storageService.SUPER_ADMIN_EMAIL && !storageService.getSession()) {
         console.log("Auto-logging in owner via Auth listener...");
@@ -46,53 +40,6 @@ const Login: React.FC<LoginProps> = ({ onLogin, setShowGuideModal }) => {
     });
     return () => unsubscribe();
   }, [onLogin]);
-
-  // QR Session listener
-  useEffect(() => {
-    let unsubscribe: (() => void) | null = null;
-    if (showQrLogin && qrSessionId) {
-      unsubscribe = storageService.listenToQrSession(
-        qrSessionId,
-        (user) => {
-          console.log("QR Authorization received for user:", user.name);
-          storageService.saveSession(user);
-          onLogin(user);
-        },
-        (err) => {
-          setError("Error en la sesión QR: " + err.message);
-          setShowQrLogin(false);
-        }
-      );
-    }
-    return () => { if (unsubscribe) unsubscribe(); };
-  }, [showQrLogin, qrSessionId, onLogin]);
-
-  const handleStartQrLogin = async () => {
-    setIsQrLoading(true);
-    setError('');
-    try {
-      // Intentar asegurar una sesión anónima si no hay ninguna, para mayor compatibilidad con las reglas
-      if (!storageService.auth.currentUser) {
-        await storageService.auth.signInAnonymously();
-      }
-      
-      const sessionId = await storageService.createQrSession();
-      setQrSessionId(sessionId);
-      setShowQrLogin(true);
-    } catch (err: any) {
-      console.error("DEBUG QR ERROR:", err);
-      // Mensaje más descriptivo
-      const msg = err.message || JSON.stringify(err);
-      
-      if (msg.includes('permission')) {
-        setError("Error de permisos en Firestore. Si eres el dueño, usa la App móvil para 'Vincular PC' desde el panel de Admin.");
-      } else {
-        setError(`No se ha podido generar el QR: ${msg.slice(0, 50)}...`);
-      }
-    } finally {
-      setIsQrLoading(false);
-    }
-  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -277,93 +224,31 @@ const Login: React.FC<LoginProps> = ({ onLogin, setShowGuideModal }) => {
                 <div className="w-full border-t border-slate-100 dark:border-slate-800"></div>
               </div>
               <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-white dark:bg-slate-900 px-2 text-slate-400">Otras formas de acceso</span>
+                <span className="bg-white dark:bg-slate-900 px-2 text-slate-400">O accede como dueño</span>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={handleGoogleLogin}
-                disabled={loading || googleLoading || isQrLoading}
-                className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50 text-slate-700 dark:text-slate-200 font-semibold py-3 rounded-xl transition-all flex items-center justify-center gap-2 disabled:opacity-70 text-sm"
-              >
-                {googleLoading ? (
-                  <Loader2 className="animate-spin" size={18} />
-                ) : (
-                  <>
-                    <svg className="w-4 h-4" viewBox="0 0 24 24">
-                      <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                      <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                      <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" />
-                      <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
-                    </svg>
-                    <span>Google</span>
-                  </>
-                )}
-              </button>
-
-              <button
-                type="button"
-                onClick={handleStartQrLogin}
-                disabled={loading || googleLoading || isQrLoading}
-                className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50 text-slate-700 dark:text-slate-200 font-semibold py-3 rounded-xl transition-all flex items-center justify-center gap-2 disabled:opacity-70 text-sm"
-              >
-                {isQrLoading ? (
-                  <Loader2 className="animate-spin" size={18} />
-                ) : (
-                  <>
-                    <QrCode size={18} className="text-blue-500" />
-                    <span>Acceso QR</span>
-                  </>
-                )}
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={handleGoogleLogin}
+              disabled={loading || googleLoading}
+              className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50 text-slate-700 dark:text-slate-200 font-semibold py-3 rounded-xl transition-all flex items-center justify-center gap-3 disabled:opacity-70"
+            >
+              {googleLoading ? (
+                <Loader2 className="animate-spin" size={20} />
+              ) : (
+                <>
+                  <svg className="w-5 h-5" viewBox="0 0 24 24">
+                    <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                    <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                    <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" />
+                    <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+                  </svg>
+                  <span>Identificarme con Google</span>
+                </>
+              )}
+            </button>
           </form>
-
-          {/* QR Modal Overlay */}
-          {showQrLogin && qrSessionId && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 animate-in fade-in duration-300">
-              <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-[2rem] p-8 relative shadow-2xl flex flex-col items-center text-center animate-pop-in">
-                <button 
-                  onClick={() => setShowQrLogin(false)}
-                  className="absolute top-6 right-6 p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                >
-                  <X size={20} />
-                </button>
-                
-                <div className="w-16 h-16 bg-blue-50 dark:bg-blue-900/20 rounded-2xl flex items-center justify-center mb-6">
-                  <Smartphone className="text-blue-600" size={32} />
-                </div>
-                
-                <h3 className="text-xl font-bold mb-2">Acceso con QR</h3>
-                <p className="text-sm text-slate-500 dark:text-slate-400 mb-8">
-                  Escanea este código con el móvil donde ya tienes iniciada tu sesión para entrar sin contraseña.
-                </p>
-                
-                <div className="bg-white p-6 rounded-3xl shadow-inner border border-slate-100 flex items-center justify-center mb-8">
-                  <QRCodeSVG 
-                    value={`${window.location.origin}/qr-auth?sessionId=${qrSessionId}`} 
-                    size={200}
-                    level="H"
-                    includeMargin={false}
-                  />
-                </div>
-                
-                <div className="w-full h-1 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden mb-6">
-                  <div className="h-full bg-blue-600 animate-progress origin-left"></div>
-                </div>
-                
-                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                  <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
-                  </span>
-                  Esperando autorización...
-                </p>
-              </div>
-            </div>
-          )}
 
           <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-800 text-center">
              <p className="text-[10px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-widest">

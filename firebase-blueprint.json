@@ -163,26 +163,9 @@
         "metadata": { "type": "object" }
       },
       "required": ["id", "action", "details", "userName", "userId", "timestamp"]
-    },
-    "QrSession": {
-      "title": "QrSession",
-      "description": "Short-lived session for QR login",
-      "type": "object",
-      "properties": {
-        "status": { "type": "string", "enum": ["pending", "authorized"] },
-        "createdAt": { "type": "number" },
-        "expiresAt": { "type": "number" },
-        "user": { "$ref": "#/entities/User" },
-        "authorizedAt": { "type": "number" }
-      },
-      "required": ["status", "createdAt", "expiresAt"]
     }
   },
   "firestore": {
-    "/hotel_victoria_qr_sessions/{sessionId}": {
-      "schema": "QrSession",
-      "description": "QR Login sessions"
-    },
     "/hotel_victoria_users/{userId}": {
       "schema": "User",
       "description": "Users collection"
