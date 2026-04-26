@@ -3,36 +3,24 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // --- HELPERS ---
+    // --- BASIC HELPERS ---
     
     function isSignedIn() {
       return request.auth != null;
     }
     
     function isSuperAdmin() {
-      return isSignedIn() && (
-        (request.auth.token.get('email', '').lower() == 'eltygere8651@gmail.com') ||
-        (request.auth.token.email != null && request.auth.token.email.lower() == 'eltygere8651@gmail.com')
-      );
+      return isSignedIn() && 
+             request.auth.token.email != null && 
+             request.auth.token.email.lower() == 'eltygere8651@gmail.com';
     }
 
+    // Check if the current user is an Admin
     function isAdmin() {
       return isSuperAdmin() || (
         isSignedIn() && 
         exists(/databases/$(database)/documents/hotel_victoria_users/$(request.auth.uid)) && 
         get(/databases/$(database)/documents/hotel_victoria_users/$(request.auth.uid)).data.get('role', '') == 'ADMIN'
-      );
-    }
-
-    function isOwner(userId) {
-      return isSignedIn() && (
-        userId == request.auth.uid || 
-        isSuperAdmin() ||
-        (exists(/databases/$(database)/documents/hotel_victoria_users/$(userId)) && (
-          get(/databases/$(database)/documents/hotel_victoria_users/$(userId)).data.get('authUid', '') == request.auth.uid ||
-          get(/databases/$(database)/documents/hotel_victoria_users/$(userId)).data.get('authUid', '') == '' ||
-          get(/databases/$(database)/documents/hotel_victoria_users/$(userId)).data.get('authUid', null) == null
-        ))
       );
     }
 
@@ -49,7 +37,19 @@ service cloud.firestore {
 
     match /hotel_victoria_users/{userId} {
       allow read: if isSignedIn();
-      allow write: if isSuperAdmin() || userId == request.auth.uid || isOwner(userId);
+      // Permitir escritura si:
+      // 1. Es el propio UID del usuario
+      // 2. El documento está vinculado a su UID
+      // 3. Es un documento nuevo o vacío que el usuario desea reclamar (vínculo inicial)
+      allow write: if isSuperAdmin() || 
+                     userId == request.auth.uid || 
+                     (resource != null && (resource.data.get('authUid', '') == request.auth.uid || resource.data.get('authUid', '') == '')) ||
+                     (request.resource != null && (request.resource.data.get('authUid', '') == request.auth.uid));
+    }
+
+    // Soporte para carritos de borrador (si se usa como colección)
+    match /hotel_victoria_draft_cart/{cartId} {
+      allow read, write: if isSignedIn() && (cartId == request.auth.uid || isSuperAdmin());
     }
 
     match /hotel_victoria_products/{productId} {
@@ -85,8 +85,7 @@ service cloud.firestore {
     }
 
     match /hotel_victoria_system/{configId} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn();
+      allow read, write: if isSignedIn();
     }
 
     match /hotel_victoria_documents/{docId} {

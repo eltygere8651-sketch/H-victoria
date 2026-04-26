@@ -96,7 +96,14 @@ const safeStringify = (obj: any) => {
 
 function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
   const safeError = error instanceof Error ? error.message : String(error);
-  const fallbackMsg = `Firestore Error in ${operationType} at ${path}: ${safeError}`;
+  const currentUser = auth.currentUser;
+  const authInfo = currentUser ? {
+    uid: currentUser.uid,
+    email: currentUser.email,
+    isAnonymous: currentUser.isAnonymous
+  } : 'NOT SIGNED IN';
+
+  const fallbackMsg = `Firestore Error in ${operationType} at ${path}: ${safeError}. Auth: ${JSON.stringify(authInfo)}`;
   console.error(fallbackMsg);
   throw new Error(fallbackMsg);
 }
