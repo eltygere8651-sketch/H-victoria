@@ -11,26 +11,24 @@ service cloud.firestore {
     
     // Lista de correos con poder total (Super Admins de código)
     function isWhiteListedSuperAdmin() {
-      let email = request.auth.token.get('email', '').lower();
-      return email in [
-        'eltygere8651@gmail.com'
-        // Añade más correos aquí
-      ];
+      return isSignedIn() && 
+             request.auth.token.get('email', '').lower() == 'eltygere8651@gmail.com';
     }
 
     // Un usuario es Super Admin si está en la lista blanca o tiene el flag en su doc
     function isSuperAdmin() {
-      let userPath = /databases/$(database)/documents/hotel_victoria_users/$(request.auth.uid);
       return isSignedIn() && (
         isWhiteListedSuperAdmin() || 
-        (exists(userPath) && get(userPath).data.get('isSuperAdmin', false) == true)
+        (exists(/databases/$(database)/documents/hotel_victoria_users/$(request.auth.uid)) && 
+         get(/databases/$(database)/documents/hotel_victoria_users/$(request.auth.uid)).data.get('isSuperAdmin', false) == true)
       );
     }
 
     // Role detection via UID-indexed document
     function hasRole(role) {
-      let userPath = /databases/$(database)/documents/hotel_victoria_users/$(request.auth.uid);
-      return isSignedIn() && exists(userPath) && get(userPath).data.get('role', '') == role;
+      return isSignedIn() && 
+             exists(/databases/$(database)/documents/hotel_victoria_users/$(request.auth.uid)) && 
+             get(/databases/$(database)/documents/hotel_victoria_users/$(request.auth.uid)).data.get('role', '') == role;
     }
 
     function isAdmin() {
@@ -79,9 +77,7 @@ service cloud.firestore {
 
     // Sesiones de Login por QR
     match /hotel_victoria_qr_sessions/{sessionId} {
-      allow create: if true; // Cualquier cliente (PC) puede iniciar una sesión
-      allow read, update: if true; // El móvil/PC pueden leer/actualizar por ID si lo conocen
-      allow delete: if isAdmin();
+      allow read, write: if true; 
     }
 
     match /hotel_victoria_products/{productId} {

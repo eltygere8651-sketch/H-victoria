@@ -36,15 +36,22 @@ const KEYS = {
 
 export const createQrSession = async () => {
   const sessionId = uuidv4();
-  const sessionRef = db.collection(KEYS.QR_SESSIONS).doc(sessionId);
+  const path = `${KEYS.QR_SESSIONS}/${sessionId}`;
   
-  await sessionRef.set({
-    status: 'pending',
-    createdAt: Date.now(),
-    expiresAt: Date.now() + 5 * 60 * 1000, 
-  });
-  
-  return sessionId;
+  try {
+    const sessionRef = db.collection(KEYS.QR_SESSIONS).doc(sessionId);
+    
+    await sessionRef.set({
+      status: 'pending',
+      createdAt: Date.now(),
+      expiresAt: Date.now() + 5 * 60 * 1000, 
+    });
+    
+    return sessionId;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.CREATE, path);
+    throw error;
+  }
 };
 
 export const authorizeQrSession = async (sessionId: string, user: User) => {
