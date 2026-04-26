@@ -194,26 +194,26 @@ export const login = async (name: string, pin: string): Promise<User | null> => 
       const user = { ...match.data(), id: match.id } as User;
       // Associate Auth UID with the user document for rules evaluation
       if (auth.currentUser) {
-        console.log(`Asociando Auth UID ${auth.currentUser.uid} al usuario ${match.id} (${user.name})`);
+        const currentAuthUid = auth.currentUser.uid;
+        console.log(`Asociando Auth UID ${currentAuthUid} al usuario ${match.id} (${user.name})`);
         try {
           // 1. Update the original user doc with the authUid
-          await db.collection(KEYS.USERS).doc(match.id).update({ 
-            authUid: auth.currentUser.uid,
+          await db.collection(KEYS.USERS).doc(match.id).set({ 
+            authUid: currentAuthUid,
             lastLogin: Date.now()
-          });
+          }, { merge: true });
 
           // 2. Create/Update a UID-indexed document for persistent Firestore permissions
-          // This allows rules to check `get(/.../$(request.auth.uid)).data.role`
-          await db.collection(KEYS.USERS).doc(auth.currentUser.uid).set({
+          await db.collection(KEYS.USERS).doc(currentAuthUid).set({
             ...user,
-            authUid: auth.currentUser.uid,
+            authUid: currentAuthUid,
             originalId: match.id,
             lastLogin: Date.now()
-          });
+          }, { merge: true });
           
-          console.log("Documento de usuario indexado por UID creado/actualizado correctamente.");
+          console.log("Documentos de vinculación actualizados correctamente.");
         } catch (e: any) {
-          console.error("Error updating user authUid on login:", e.message);
+          console.error(`Error en vinculación de usuario [UID: ${currentAuthUid}, ID: ${match.id}]:`, e.message);
         }
       }
       saveSession(user);
@@ -283,20 +283,21 @@ export const getLastView = (): string | null => localStorage.getItem(KEYS.LAST_V
 
 export const ensureAdminSession = async (user: User) => {
   if (user.role === UserRole.ADMIN && auth.currentUser) {
+    const uid = auth.currentUser.uid;
     try {
-      const userRef = db.collection(KEYS.USERS).doc(auth.currentUser.uid);
+      const userRef = db.collection(KEYS.USERS).doc(uid);
       const userDoc = await userRef.get();
       if (!userDoc.exists || userDoc.data()?.role !== UserRole.ADMIN) {
-        console.log("Asegurando documento de usuario admin indexado por UID...");
+        console.log(`Asegurando rol ADMIN para UID: ${uid}...`);
         await userRef.set({
           ...user,
-          authUid: auth.currentUser.uid,
+          authUid: uid,
           lastLogin: Date.now(),
           reason: 'ensure-admin-status'
-        });
+        }, { merge: true });
       }
     } catch (e: any) {
-      console.error("Error ensuring admin UID-indexed doc:", e.message);
+      console.error(`Error asegurando status admin para UID ${uid}:`, e.message);
     }
   }
 };
@@ -347,12 +348,19 @@ export const subscribeToDepartments = (callback: (data: Department[]) => void) =
 export const saveDepartment = async (department: Partial<Department>) => {
   try {
     const docRef = department.id ? db.collection(KEYS.DEPARTMENTS).doc(department.id) : db.collection(KEYS.DEPARTMENTS).doc();
+    console.log(`Guardando departamento: ${docRef.id}... Role: ${getSession()?.role}`);
     await docRef.set(sanitizeData({ ...department, id: docRef.id }), { merge: true });
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, KEYS.DEPARTMENTS);
   }
 };
-export const deleteDepartment = async (id: string) => await db.collection(KEYS.DEPARTMENTS).doc(id).delete();
+export const deleteDepartment = async (id: string) => {
+  try {
+    await db.collection(KEYS.DEPARTMENTS).doc(id).delete();
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, KEYS.DEPARTMENTS);
+  }
+};
 
 // --- PRODUCTS ---
 export const subscribeToProducts = (callback: (data: Product[]) => void) => {
