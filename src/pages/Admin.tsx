@@ -61,6 +61,8 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
     
     // Check for auto-cleanup when admin dashboard loads
     storageService.checkAutoCleanup();
+    // Ensure admin session doc exists for Firestore security rules
+    storageService.ensureAdminSession(currentUser);
     
     return () => {
         unsubOrders();
@@ -214,12 +216,15 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
               (n.icon === 'PackagePlus' ? Package : 
               (n.icon === 'ShieldAlert' ? ShieldAlert :
               (n.icon === 'Trash2' ? Trash2 : 
-              (n.icon === 'Plus' ? Zap : Activity)))),
+              (n.icon === 'Plus' ? Zap : 
+              (n.icon === 'CheckCircle2' ? CheckCircle2 : Activity))))),
         color: n.readStatus 
           ? 'text-slate-400 bg-slate-50 dark:bg-slate-800/50' 
           : (n.icon === 'ShieldAlert' 
               ? 'text-amber-600 bg-amber-50 dark:bg-amber-900/20' 
-              : 'text-red-600 bg-red-50 dark:bg-red-900/20'),
+              : (n.icon === 'CheckCircle2'
+                  ? 'text-green-600 bg-green-50 dark:bg-green-900/20'
+                  : 'text-red-600 bg-red-50 dark:bg-red-900/20')),
         read: n.readStatus
       }));
 

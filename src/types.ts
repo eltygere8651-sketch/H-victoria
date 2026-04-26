@@ -145,6 +145,7 @@ export enum NotificationType {
   STOCK_RECEIVED = 'STOCK_RECEIVED',
   DAILY_TASK_ALERT = 'DAILY_TASK_ALERT',
   INVENTORY_ADJUSTMENT = 'INVENTORY_ADJUSTMENT',
+  TASK_COMPLETED = 'TASK_COMPLETED',
 }
 
 export interface NotificationPayload {

@@ -3,170 +3,95 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // ---------------------------------------------------------
-    // HELPER FUNCTIONS
-    // ---------------------------------------------------------
+    // --- HELPERS ---
     
     function isSignedIn() {
       return request.auth != null;
     }
     
-    function isEmailVerified() {
-      return isSignedIn() && request.auth.token.email_verified == true;
-    }
-
-    function isAdmin() {
-      // Admin if match super admin email OR has ADMIN role in users collection
+    function isSuperAdmin() {
       return isSignedIn() && (
-        isSuperAdmin() || 
-        (exists(/databases/$(database)/documents/hotel_victoria_users/$(request.auth.uid)) && 
-         get(/databases/$(database)/documents/hotel_victoria_users/$(request.auth.uid)).data.role == 'ADMIN')
+        (request.auth.token.get('email', '').lower() == 'eltygere8651@gmail.com') ||
+        (request.auth.token.email != null && request.auth.token.email.lower() == 'eltygere8651@gmail.com')
       );
     }
 
-    function isSuperAdmin() {
-      return isSignedIn() && request.auth.token.email == 'eltygere8651@gmail.com';
+    function isAdmin() {
+      return isSuperAdmin() || (
+        isSignedIn() && 
+        exists(/databases/$(database)/documents/hotel_victoria_users/$(request.auth.uid)) && 
+        get(/databases/$(database)/documents/hotel_victoria_users/$(request.auth.uid)).data.get('role', '') == 'ADMIN'
+      );
     }
 
-    function isValidId(id) {
-      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    function isOwner(userId) {
+      return isSignedIn() && (
+        userId == request.auth.uid || 
+        isSuperAdmin() ||
+        (exists(/databases/$(database)/documents/hotel_victoria_users/$(userId)) && (
+          get(/databases/$(database)/documents/hotel_victoria_users/$(userId)).data.get('authUid', '') == request.auth.uid ||
+          get(/databases/$(database)/documents/hotel_victoria_users/$(userId)).data.get('authUid', '') == '' ||
+          get(/databases/$(database)/documents/hotel_victoria_users/$(userId)).data.get('authUid', null) == null
+        ))
+      );
     }
 
-    function incoming() {
-      return request.resource.data;
-    }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
 
-    function existing() {
-      return resource.data;
-    }
-
-    // ---------------------------------------------------------
-    // GLOBAL DENY
-    // ---------------------------------------------------------
+    // --- GLOBAL ---
+    
     match /{document=**} {
-      allow read, write: if false;
+      allow read, write: if isSuperAdmin();
     }
 
-    // ---------------------------------------------------------
-    // USERS COLLECTION
-    // ---------------------------------------------------------
+    // --- COLLECTIONS ---
+
     match /hotel_victoria_users/{userId} {
-      // Allow read for authenticated users to show names and roles
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
-      
-      // Only Super Admin can manage users
-      allow create: if isSuperAdmin() && 
-                      incoming().role in ['ADMIN', 'STAFF', 'PROVIDER'] &&
-                      incoming().name is string;
-      
-      allow update: if isSuperAdmin() || (isSignedIn() && (
-                      userId == request.auth.uid || 
-                      // Allow anyone to save their own local state (like cart/tokens) 
-                      // even if IDs don't match perfectly, as long as it's ONLY these fields
-                      incoming().diff(existing()).affectedKeys().hasOnly(['pushToken', 'draftCart'])
-                    ));
-                      
-      allow delete: if isSuperAdmin() && userId != request.auth.uid;
+      allow read: if isSignedIn();
+      allow write: if isSuperAdmin() || userId == request.auth.uid || isOwner(userId);
     }
 
-    // ---------------------------------------------------------
-    // PRODUCTS COLLECTION
-    // ---------------------------------------------------------
     match /hotel_victoria_products/{productId} {
       allow read: if isSignedIn();
-      
-      allow create: if isAdmin() && 
-                      incoming().name is string && 
-                      incoming().quantity >= 0;
-                      
-      allow update: if isAdmin() || (isSignedIn() && 
-                      incoming().diff(existing()).affectedKeys().hasOnly(['quantity']));
-                      
-      allow delete: if isAdmin();
+      allow write: if isAdmin();
+      allow update: if isSignedIn() && (
+        isAdmin() || incoming().diff(existing()).affectedKeys().hasOnly(['quantity'])
+      );
     }
 
-    // ---------------------------------------------------------
-    // DEPARTMENTS COLLECTION
-    // ---------------------------------------------------------
     match /hotel_victoria_departments/{deptId} {
       allow read: if isSignedIn();
       allow write: if isAdmin();
     }
 
-    // ---------------------------------------------------------
-    // REQUESTS COLLECTION (Albaranes)
-    // ---------------------------------------------------------
     match /hotel_victoria_requests/{requestId} {
       allow read: if isSignedIn();
-      
-      allow create: if isSignedIn() && 
-                      incoming().requestedBy is string &&
-                      incoming().batchId is string;
-                      
-      allow update: if false; // Requests are immutable
-      
+      allow create: if isSignedIn();
+      allow update: if false;
       allow delete: if isAdmin();
     }
 
-    // ---------------------------------------------------------
-    // NOTIFICATIONS COLLECTION
-    // ---------------------------------------------------------
     match /hotel_victoria_notifications/{notifId} {
       allow read: if isSignedIn();
-      
-      allow create: if isSignedIn(); // System logs notifications
-      
-      allow update: if isSignedIn() && 
-                      incoming().diff(existing()).affectedKeys().hasOnly(['readStatus', 'reviewedBy', 'reviewedAt']);
-                      
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
       allow delete: if isAdmin();
     }
 
-    // ---------------------------------------------------------
-    // TASKS COLLECTION
-    // ---------------------------------------------------------
     match /hotel_victoria_tasks/{taskId} {
       allow read: if isSignedIn();
-      
-      allow create: if isSignedIn() && 
-                      (isAdmin() || 
-                       get(/databases/$(database)/documents/hotel_victoria_users/$(request.auth.uid)).data.permissions.hasAny(['CAN_MANAGE_TASKS']));
-      
-      allow update: if isSignedIn() && (
-                      // Admins or Managers can update everything
-                      isAdmin() || 
-                      get(/databases/$(database)/documents/hotel_victoria_users/$(request.auth.uid)).data.permissions.hasAny(['CAN_MANAGE_TASKS']) ||
-                      // Staff can update status and comments
-                      incoming().diff(existing()).affectedKeys().hasAny(['status', 'comments', 'seenBy', 'checklist'])
-                    );
-                    
-      allow delete: if isAdmin() || 
-                      (isSignedIn() && existing().createdById == request.auth.uid);
+      allow write: if isSignedIn();
     }
 
-
-    // ---------------------------------------------------------
-    // SYSTEM COLLECTION
-    // ---------------------------------------------------------
     match /hotel_victoria_system/{configId} {
       allow read: if isSignedIn();
-      // Allow general writes for initialization, and updates to alerts for anyone signed in (for the automatic task check)
-      allow update: if isSignedIn() && (
-                      isAdmin() || 
-                      (configId == 'alerts' && incoming().diff(existing()).affectedKeys().hasOnly(['lastDailyTaskAlert']))
-                    );
-      allow create: if isAdmin() || !exists(/databases/$(database)/documents/hotel_victoria_system/initialization);
-      allow delete: if isSuperAdmin();
+      allow write: if isSignedIn();
     }
-    
-    // ---------------------------------------------------------
-    // DOCUMENTS COLLECTION
-    // ---------------------------------------------------------
+
     match /hotel_victoria_documents/{docId} {
       allow read: if isSignedIn();
-      allow create: if isAdmin();
-      allow delete: if isAdmin();
+      allow write: if isAdmin();
     }
   }
 }

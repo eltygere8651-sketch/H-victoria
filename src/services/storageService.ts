@@ -185,6 +185,30 @@ export const login = async (name: string, pin: string): Promise<User | null> => 
 
     if (match) {
       const user = { ...match.data(), id: match.id } as User;
+      // Associate Auth UID with the user document for rules evaluation
+      if (auth.currentUser) {
+        console.log(`Asociando Auth UID ${auth.currentUser.uid} al usuario ${match.id} (${user.name})`);
+        try {
+          // 1. Update the original user doc with the authUid
+          await db.collection(KEYS.USERS).doc(match.id).update({ 
+            authUid: auth.currentUser.uid,
+            lastLogin: Date.now()
+          });
+
+          // 2. Create/Update a UID-indexed document for persistent Firestore permissions
+          // This allows rules to check `get(/.../$(request.auth.uid)).data.role`
+          await db.collection(KEYS.USERS).doc(auth.currentUser.uid).set({
+            ...user,
+            authUid: auth.currentUser.uid,
+            originalId: match.id,
+            lastLogin: Date.now()
+          });
+          
+          console.log("Documento de usuario indexado por UID creado/actualizado correctamente.");
+        } catch (e: any) {
+          console.error("Error updating user authUid on login:", e.message);
+        }
+      }
       saveSession(user);
       return user;
     }
@@ -198,8 +222,13 @@ export const login = async (name: string, pin: string): Promise<User | null> => 
     const doc = querySnapshotRaw.docs[0];
     const userData = doc.data();
     if (userData.pin === pin) {
+      const hashedPin = await hashPin(pin);
       // User found with raw PIN, migrate them to hashed PIN
-      await doc.ref.update({ pin: hashedPin });
+      await doc.ref.update({ 
+        pin: hashedPin,
+        authUid: auth.currentUser?.uid || null,
+        lastLogin: Date.now()
+      });
       const user = { ...userData, id: doc.id, pin: hashedPin } as User;
       saveSession(user);
       return user;
@@ -245,6 +274,26 @@ export const clearSession = async () => {
 export const saveLastView = (view: string) => localStorage.setItem(KEYS.LAST_VIEW, view);
 export const getLastView = (): string | null => localStorage.getItem(KEYS.LAST_VIEW);
 
+export const ensureAdminSession = async (user: User) => {
+  if (user.role === UserRole.ADMIN && auth.currentUser) {
+    try {
+      const userRef = db.collection(KEYS.USERS).doc(auth.currentUser.uid);
+      const userDoc = await userRef.get();
+      if (!userDoc.exists || userDoc.data()?.role !== UserRole.ADMIN) {
+        console.log("Asegurando documento de usuario admin indexado por UID...");
+        await userRef.set({
+          ...user,
+          authUid: auth.currentUser.uid,
+          lastLogin: Date.now(),
+          reason: 'ensure-admin-status'
+        });
+      }
+    } catch (e: any) {
+      console.error("Error ensuring admin UID-indexed doc:", e.message);
+    }
+  }
+};
+
 export const signInWithGoogle = async () => {
     const provider = new firebase.auth.GoogleAuthProvider();
     try {
@@ -289,8 +338,12 @@ export const subscribeToDepartments = (callback: (data: Department[]) => void) =
     }, error => handleFirestoreError(error, OperationType.GET, KEYS.DEPARTMENTS));
 };
 export const saveDepartment = async (department: Partial<Department>) => {
-  const docRef = department.id ? db.collection(KEYS.DEPARTMENTS).doc(department.id) : db.collection(KEYS.DEPARTMENTS).doc();
-  await docRef.set(sanitizeData({ ...department, id: docRef.id }), { merge: true });
+  try {
+    const docRef = department.id ? db.collection(KEYS.DEPARTMENTS).doc(department.id) : db.collection(KEYS.DEPARTMENTS).doc();
+    await docRef.set(sanitizeData({ ...department, id: docRef.id }), { merge: true });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, KEYS.DEPARTMENTS);
+  }
 };
 export const deleteDepartment = async (id: string) => await db.collection(KEYS.DEPARTMENTS).doc(id).delete();
 
@@ -301,21 +354,27 @@ export const subscribeToProducts = (callback: (data: Product[]) => void) => {
     }, error => handleFirestoreError(error, OperationType.GET, KEYS.PRODUCTS));
 };
 export const saveProduct = async (product: Partial<Product>, userName: string = 'Administrador') => {
-  const isNew = !product.id;
-  const docRef = product.id ? db.collection(KEYS.PRODUCTS).doc(product.id) : db.collection(KEYS.PRODUCTS).doc();
-  const id = docRef.id;
-  await docRef.set(sanitizeData({ ...product, id }), { merge: true });
+  try {
+    const isNew = !product.id;
+    const path = KEYS.PRODUCTS;
+    const docRef = product.id ? db.collection(path).doc(product.id) : db.collection(path).doc();
+    const id = docRef.id;
+    console.log(`Guardando producto en path: ${path}/${id}`);
+    await docRef.set(sanitizeData({ ...product, id }), { merge: true });
 
-  if (isNew) {
-    await db.collection(KEYS.NOTIFICATIONS).add({
-      type: NotificationType.INVENTORY_ADJUSTMENT,
-      title: 'Nuevo Producto Creado',
-      message: `El producto "${product.name}" ha sido añadido al inventario por ${userName}.`,
-      icon: 'Plus',
-      timestamp: Date.now(),
-      readStatus: false,
-      payload: { productId: id, productName: product.name }
-    });
+    if (isNew) {
+      await db.collection(KEYS.NOTIFICATIONS).add({
+        type: NotificationType.INVENTORY_ADJUSTMENT,
+        title: 'Nuevo Producto Creado',
+        message: `El producto "${product.name}" ha sido añadido al inventario por ${userName}.`,
+        icon: 'Plus',
+        timestamp: Date.now(),
+        readStatus: false,
+        payload: { productId: id, productName: product.name }
+      });
+    }
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, KEYS.PRODUCTS);
   }
 };
 export const deleteProduct = async (id: string, userName: string = 'Administrador') => {
@@ -581,6 +640,25 @@ export const saveTask = async (task: Partial<Task>, newFiles: File[] = []) => {
         readStatus: false,
         payload: { taskId: docRef.id, taskTitle: task.title, departmentName: task.departmentName }
      });
+  } else if (task.status === TaskStatus.COMPLETED) {
+     const fullTask = (await docRef.get()).data() as Task;
+     // Notify about task completion
+     await db.collection(KEYS.NOTIFICATIONS).add({
+        type: NotificationType.TASK_COMPLETED,
+        title: 'Tarea Completada',
+        message: `La tarea "${fullTask.title}" ha sido completada por ${fullTask.completedBy || 'un usuario'}.`,
+        icon: 'CheckCircle2',
+        timestamp: Date.now(),
+        readStatus: false,
+        payload: { taskId: docRef.id, taskTitle: fullTask.title }
+     });
+
+     // Immediate deletion for unique (non-recurring) tasks
+     const isUnique = !fullTask.recurrence || fullTask.recurrence === TaskRecurrence.NONE;
+     if (isUnique) {
+        console.log(`Eliminando tarea única completada inmediatamente: ${fullTask.title}`);
+        await docRef.delete();
+     }
   }
 };
 
@@ -693,7 +771,9 @@ export const checkPendingDailyTasksAndNotify = async () => {
 };
 
 export const cleanupCompletedTasks = async () => {
-  const twelveHoursAgo = Date.now() - (12 * 60 * 60 * 1000);
+  const safetyWindowUnique = Date.now() - (5 * 60 * 1000); // 5 minutes safety for unique
+  const twelveHoursAgo = Date.now() - (12 * 60 * 60 * 1000); // 12 hours for others
+
   // To avoid composite index requirement, we query only by status and filter by time in memory
   try {
     const q = db.collection(KEYS.TASKS).where('status', '==', TaskStatus.COMPLETED);
@@ -704,9 +784,14 @@ export const cleanupCompletedTasks = async () => {
       snapshot.docs.forEach(d => {
         const data = d.data() as Task;
         // EXCLUDE DAILY TASKS FROM DELETION
-        if (data.recurrence !== TaskRecurrence.DAILY && data.completedAt && data.completedAt < twelveHoursAgo) {
-          batch.delete(d.ref);
-          deletedCount++;
+        if (data.recurrence !== TaskRecurrence.DAILY) {
+          const isUnique = !data.recurrence || data.recurrence === TaskRecurrence.NONE;
+          const window = isUnique ? safetyWindowUnique : twelveHoursAgo;
+          
+          if (data.completedAt && data.completedAt < window) {
+            batch.delete(d.ref);
+            deletedCount++;
+          }
         }
       });
       if (deletedCount > 0) {
@@ -767,6 +852,7 @@ export const checkAutoCleanup = async () => {
 
     // Perform cleanup
     await deleteAllNotifications();
+    await cleanupCompletedTasks();
     
     // Update the last cleanup timestamp
     await cleanupRef.set({ 

@@ -122,7 +122,7 @@
       "type": "object",
       "properties": {
         "id": { "type": "string" },
-        "type": { "type": "string", "enum": ["LOW_STOCK", "NEW_ORDER", "NEW_TASK", "STOCK_RECEIVED"] },
+        "type": { "type": "string", "enum": ["LOW_STOCK", "NEW_ORDER", "NEW_TASK", "STOCK_RECEIVED", "DAILY_TASK_ALERT", "INVENTORY_ADJUSTMENT", "TASK_COMPLETED"] },
         "title": { "type": "string" },
         "message": { "type": "string" },
         "icon": { "type": "string" },

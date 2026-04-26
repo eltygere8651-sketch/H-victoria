@@ -123,9 +123,12 @@ const App: React.FC = () => {
   useEffect(() => {
     if (isInitializing) return;
     if (user && user.role !== UserRole.GUEST) initializePushNotifications(user);
-    if (user && user.role === UserRole.ADMIN && !cleanupPerformed.current) {
-      storageService.cleanupCompletedTasks();
-      cleanupPerformed.current = true;
+    if (user && user.role === UserRole.ADMIN) {
+      storageService.ensureAdminSession(user);
+      if (!cleanupPerformed.current) {
+        storageService.cleanupCompletedTasks();
+        cleanupPerformed.current = true;
+      }
     }
     
     // Load draft cart when user logs in
@@ -341,7 +344,11 @@ const App: React.FC = () => {
     const unsubNotifs = storageService.subscribeToNotifications((notifications) => {
       const relevantNotifications = user.role === UserRole.ADMIN 
         ? notifications 
-        : notifications.filter(n => n.type === NotificationType.NEW_TASK || n.type === NotificationType.DAILY_TASK_ALERT);
+        : notifications.filter(n => 
+            n.type === NotificationType.NEW_TASK || 
+            n.type === NotificationType.DAILY_TASK_ALERT ||
+            n.type === NotificationType.TASK_COMPLETED
+          );
 
       const unread = relevantNotifications.filter(n => !n.readStatus);
       
@@ -378,15 +385,16 @@ const App: React.FC = () => {
       setHasPendingDailyTasks(tasks.some(task => task.recurrence === TaskRecurrence.DAILY && task.status !== TaskStatus.COMPLETED));
     });
 
-    // Hourly check for pending daily tasks
-    const checkDailyTasks = () => {
+    // Hourly check for pending daily tasks and cleanup finished unique tasks
+    const checkDailyTasksAndCleanup = () => {
       if (user.role === UserRole.ADMIN || user.role === UserRole.STAFF) {
         storageService.checkPendingDailyTasksAndNotify();
+        storageService.cleanupCompletedTasks();
       }
     };
 
-    checkDailyTasks(); // Initial check
-    const dailyTaskInterval = setInterval(checkDailyTasks, 15 * 60 * 1000); // Check every 15 mins
+    checkDailyTasksAndCleanup(); // Initial check
+    const dailyTaskInterval = setInterval(checkDailyTasksAndCleanup, 15 * 60 * 1000); // Check every 15 mins
     
     return () => { unsubNotifs(); unsubTasks(); clearInterval(dailyTaskInterval); };
   }, [user, isInitializing]);
@@ -421,7 +429,7 @@ const App: React.FC = () => {
   };
 
   const handleToastNavigation = (notif: AppNotification) => {
-    if (notif.type === NotificationType.NEW_TASK || notif.type === NotificationType.DAILY_TASK_ALERT) {
+    if (notif.type === NotificationType.NEW_TASK || notif.type === NotificationType.DAILY_TASK_ALERT || notif.type === NotificationType.TASK_COMPLETED) {
       setView('tasks');
     } else if (user?.role === UserRole.ADMIN) { 
       setInitialAdminTab('reports'); 

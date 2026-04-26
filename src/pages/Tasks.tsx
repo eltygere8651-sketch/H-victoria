@@ -168,17 +168,27 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
     }
   };
 
-  // Auto-deletion logic for completed tasks after 12 hours
+  // Auto-deletion logic for completed tasks
   useEffect(() => {
-    const DELETION_WINDOW_MS = 12 * 60 * 60 * 1000;
+    const RECURRING_DELETION_WINDOW_MS = 12 * 60 * 60 * 1000; // 12 hours for recurring tasks (non-daily)
+
     const interval = setInterval(() => {
       const now = Date.now();
-      const tasksToDelete = allTasks.filter(task => 
-        task.recurrence !== TaskRecurrence.DAILY && // EXCLUDE DAILY
-        task.status === TaskStatus.COMPLETED && 
-        task.completedAt && 
-        (now - task.completedAt) > DELETION_WINDOW_MS
-      );
+      const tasksToDelete = allTasks.filter(task => {
+        if (task.recurrence === TaskRecurrence.DAILY) return false;
+        if (task.status !== TaskStatus.COMPLETED || !task.completedAt) return false;
+        
+        const isUnique = !task.recurrence || task.recurrence === TaskRecurrence.NONE;
+        
+        // Unique tasks are now deleted immediately by the service, 
+        // but this acts as a cleanup for any that might have been missed.
+        // We'll set a very short safety window for unique tasks (e.g., 5 seconds) 
+        // to give the UI time to animate/update before it disappears if needed, 
+        // but since saveTask now manages it, we mostly focus on recurring ones here.
+        const window = isUnique ? 5000 : RECURRING_DELETION_WINDOW_MS;
+        
+        return (now - task.completedAt) > window;
+      });
 
       tasksToDelete.forEach(task => {
         storageService.deleteTask(task.id);
