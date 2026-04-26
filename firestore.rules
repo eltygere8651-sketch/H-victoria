@@ -3,68 +3,47 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // --- QR Sessions (Public access for login flow) ---
-    match /hotel_victoria_qr_sessions/{sessionId} {
-      allow read, create, update, delete: if true; 
-    }
-
-    // --- GLOBAL HELPERS ---
-    
+    // helper functions
     function isSignedIn() {
       return request.auth != null;
     }
     
-    function isOwnerEmail() {
-      return isSignedIn() && 
-             'email' in request.auth.token && 
-             request.auth.token.email.lower() == 'eltygere8651@gmail.com';
-    }
-
-    // Explicit Super Admin Check
     function isSuperAdmin() {
-      return isOwnerEmail() || (
-        isSignedIn() && 
-        exists(/databases/$(database)/documents/hotel_victoria_users/$(request.auth.uid)) && 
-        get(/databases/$(database)/documents/hotel_victoria_users/$(request.auth.uid)).data.get('isSuperAdmin', false) == true
+      return isSignedIn() && (
+        request.auth.token.get('email', '').lower() == 'eltygere8651@gmail.com' || (
+          exists(/databases/$(database)/documents/hotel_victoria_users/$(request.auth.uid)) && 
+          get(/databases/$(database)/documents/hotel_victoria_users/$(request.auth.uid)).data.get('isSuperAdmin', false) == true
+        )
       );
     }
 
-    function isAdmin() {
-      return isSuperAdmin() || (
-        isSignedIn() &&
-        exists(/databases/$(database)/documents/hotel_victoria_users/$(request.auth.uid)) && 
-        get(/databases/$(database)/documents/hotel_victoria_users/$(request.auth.uid)).data.get('role', '') == 'ADMIN'
-      );
+    // QR sessions MUST be accessible by anonymous users
+    match /hotel_victoria_qr_sessions/{document=**} {
+      allow read, write: if true;
     }
 
-    function isStaff() {
-      return isAdmin() || (
-        isSignedIn() &&
-        exists(/databases/$(database)/documents/hotel_victoria_users/$(request.auth.uid)) && 
-        (get(/databases/$(database)/documents/hotel_victoria_users/$(request.auth.uid)).data.get('role', '') == 'STAFF' || 
-         get(/databases/$(database)/documents/hotel_victoria_users/$(request.auth.uid)).data.get('role', '') == 'ADMIN')
-      );
+    match /hotel_victoria_qrauth/{document=**} {
+      allow read, write: if true;
     }
 
-    // --- COLLECTIONS ---
-
+    // Other collections
     match /hotel_victoria_users/{userId} {
       allow read: if isSignedIn();
-      allow write: if isSuperAdmin() || userId == request.auth.uid;
+      allow write: if isSuperAdmin() || (isSignedIn() && userId == request.auth.uid);
     }
 
     match /hotel_victoria_draft_cart/{cartId} {
-      allow read, write: if isSignedIn() && (cartId == request.auth.uid || isAdmin());
+      allow read, write: if true; 
     }
 
     match /hotel_victoria_products/{productId} {
       allow read: if isSignedIn();
-      allow write: if isAdmin();
+      allow write: if isSuperAdmin();
     }
 
     match /hotel_victoria_departments/{deptId} {
       allow read: if isSignedIn();
-      allow write: if isAdmin();
+      allow write: if isSuperAdmin();
     }
 
     match /hotel_victoria_requests/{requestId} {
@@ -74,27 +53,21 @@ service cloud.firestore {
     match /hotel_victoria_notifications/{notifId} {
       allow read: if isSignedIn();
       allow write: if isSignedIn();
-      allow delete: if isAdmin();
     }
 
     match /hotel_victoria_tasks/{taskId} {
       allow read: if isSignedIn();
-      allow write: if isStaff();
-      allow delete: if isAdmin();
+      allow write: if isSignedIn();
     }
     
     match /hotel_victoria_documents/{docId} {
       allow read: if isSignedIn();
-      allow write: if isAdmin();
+      allow write: if isSuperAdmin();
     }
 
     match /hotel_victoria_system/{docId} {
       allow read: if isSignedIn();
-      allow write: if isAdmin();
-    }
-
-    match /{document=**} {
-      allow read, write: if isSuperAdmin();
+      allow write: if isSuperAdmin();
     }
   }
 }

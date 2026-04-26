@@ -260,10 +260,14 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
           {onDeviceLink && (
             <button 
               onClick={onDeviceLink}
-              className="px-6 py-4 text-sm font-extrabold border-b-2 border-transparent text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/10 flex items-center justify-center gap-2 transition-colors duration-200"
-              title="Vincular PC mediante QR"
+              className="px-6 py-4 text-sm font-extrabold border-b-2 border-transparent text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/10 flex items-center justify-center gap-2 transition-colors duration-200 group"
+              title="Vincular PC mediante QR estilo Telegram"
             >
-              <Smartphone size={16} /> <span>Vincular PC</span>
+              <div className="relative">
+                <Smartphone size={16} />
+                <div className="absolute -top-1 -right-1 w-2 h-2 bg-blue-500 rounded-full animate-ping"></div>
+              </div>
+              <span className="group-hover:translate-x-0.5 transition-transform">Vincular PC</span>
             </button>
           )}
         </div>

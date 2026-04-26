@@ -83,10 +83,11 @@ const Login: React.FC<LoginProps> = ({ onLogin, setShowGuideModal }) => {
       console.error("DEBUG QR ERROR:", err);
       // Mensaje más descriptivo
       const msg = err.message || JSON.stringify(err);
-      setError(`No se ha podido generar el QR. Detalle: ${msg}`);
       
       if (msg.includes('permission')) {
-        setError("Error de permisos en la base de datos. Por favor, contacta con el soporte técnico.");
+        setError("Error de permisos en Firestore. Si eres el dueño, usa la App móvil para 'Vincular PC' desde el panel de Admin.");
+      } else {
+        setError(`No se ha podido generar el QR: ${msg.slice(0, 50)}...`);
       }
     } finally {
       setIsQrLoading(false);
