@@ -369,6 +369,20 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
                     <div><h4 className="font-bold text-gray-900 dark:text-white">{u.name}</h4><p className="text-xs text-gray-500 dark:text-slate-400">{u.role} • PIN: ••••••••</p></div>
                   </div>
                   <div className="flex items-center gap-2">
+                    {isSuperAdmin && !u.isSuperAdmin && (
+                      <button 
+                        onClick={async () => {
+                          if (confirm(`¿Hacer a ${u.name} Super Usuario (Poder total en el sistema)?`)) {
+                            await storageService.promoteToSuperAdmin(u.id);
+                            alert(`${u.name} ahora es Super Usuario.`);
+                          }
+                        }}
+                        className="p-2 text-amber-600 bg-amber-50 dark:bg-amber-900/20 rounded-lg hover:bg-amber-100 dark:hover:bg-amber-900/30 active:scale-95 transition-colors shadow-sm"
+                        title="Ascender a Super Admin"
+                      >
+                        <ShieldAlert size={18} />
+                      </button>
+                    )}
                     <button onClick={() => setEditingUser(u)} className="p-2 text-blue-600 bg-blue-50 dark:bg-blue-900/20 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30 active:scale-95 transition-colors shadow-sm"><Edit2 size={18} /></button>
                     {u.id !== currentUser.id && <button onClick={() => handleDeleteUserClick(u)} className="p-2 text-red-600 bg-red-50 dark:bg-red-900/20 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 active:scale-95 transition-colors shadow-sm"><Trash2 size={18} /></button>}
                   </div>

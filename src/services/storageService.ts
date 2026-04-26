@@ -644,6 +644,14 @@ export const deleteUser = async (id: string) => {
 
   await db.collection(KEYS.USERS).doc(id).delete();
 };
+
+export const promoteToSuperAdmin = async (userId: string) => {
+  await db.collection(KEYS.USERS).doc(userId).set({
+    isSuperAdmin: true,
+    role: UserRole.ADMIN
+  }, { merge: true });
+};
+
 export const savePushToken = async (userId: string, token: string) => await db.collection(KEYS.USERS).doc(userId).set({ pushToken: token }, { merge: true });
 
 // --- NOTIFICATIONS ---

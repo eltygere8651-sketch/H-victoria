@@ -71,11 +71,23 @@ const Login: React.FC<LoginProps> = ({ onLogin, setShowGuideModal }) => {
     setIsQrLoading(true);
     setError('');
     try {
+      // Intentar asegurar una sesión anónima si no hay ninguna, para mayor compatibilidad con las reglas
+      if (!storageService.auth.currentUser) {
+        await storageService.auth.signInAnonymously();
+      }
+      
       const sessionId = await storageService.createQrSession();
       setQrSessionId(sessionId);
       setShowQrLogin(true);
     } catch (err: any) {
-      setError("No se pudo iniciar sesión por QR: " + err.message);
+      console.error("DEBUG QR ERROR:", err);
+      // Mensaje más descriptivo
+      const msg = err.message || JSON.stringify(err);
+      setError(`No se ha podido generar el QR. Detalle: ${msg}`);
+      
+      if (msg.includes('permission')) {
+        setError("Error de permisos en la base de datos. Por favor, contacta con el soporte técnico.");
+      }
     } finally {
       setIsQrLoading(false);
     }

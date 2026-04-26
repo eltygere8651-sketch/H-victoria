@@ -12,6 +12,11 @@ export interface User {
   pin: string; // Simplified password for this demo
   email?: string; // New: For Google Login authorization
   permissions?: ('CAN_MANAGE_TASKS')[]; // New: Granular permissions
+  isSuperAdmin?: boolean; // New: Master power
+  lastLogin?: number;
+  authUid?: string | null;
+  originalId?: string;
+  draftCart?: any[];
   // FIX: Added optional pushToken for FCM integration.
   pushToken?: string;
 }
