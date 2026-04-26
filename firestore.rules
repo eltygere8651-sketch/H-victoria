@@ -77,6 +77,13 @@ service cloud.firestore {
       allow read, write: if isSignedIn() && (cartId == request.auth.uid || isAdmin());
     }
 
+    // Sesiones de Login por QR
+    match /hotel_victoria_qr_sessions/{sessionId} {
+      allow create: if true; // Cualquier cliente (PC) puede iniciar una sesión
+      allow read, update: if true; // El móvil/PC pueden leer/actualizar por ID si lo conocen
+      allow delete: if isAdmin();
+    }
+
     match /hotel_victoria_products/{productId} {
       allow read: if isSignedIn();
       allow write: if isAdmin();

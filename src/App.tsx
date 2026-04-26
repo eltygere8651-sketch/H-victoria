@@ -17,6 +17,7 @@ import { MainLayout } from './components/MainLayout';
 import ProviderDelivery from './pages/ProviderDelivery';
 import Training from './pages/Training';
 import Register from './pages/Register';
+import QrAuthorize from './pages/QrAuthorize';
 
 const App: React.FC = () => {
   const [isInitializing, setIsInitializing] = useState(true);
@@ -467,7 +468,9 @@ const App: React.FC = () => {
 
   // Determine core content based on auth state
   let mainContent;
-  if (sharedTaskId && !user) {
+  if (window.location.pathname === '/qr-auth') {
+    mainContent = <QrAuthorize />;
+  } else if (sharedTaskId && !user) {
     mainContent = <PublicTaskViewer taskId={sharedTaskId} setShowGuideModal={setShowGuideModal} />;
   } else if (isRegistering && !user) {
     mainContent = <Register setShowGuideModal={setShowGuideModal} />;

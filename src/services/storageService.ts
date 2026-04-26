@@ -1,5 +1,6 @@
 import { Product, User, ReplenishmentRequest, UserRole, Department, CartItem, AppNotification, NotificationType, NotificationPayload, OrderBatch, Task, TaskStatus, TaskPriority, TaskType, TaskComment, Document, TaskRecurrence } from '../types';
 import { db, auth, storage } from '../firebaseConfig';
+import { v4 as uuidv4 } from 'uuid';
 export { auth, db, storage };
 import firebase from 'firebase/compat/app';
 import { fileToBase64 } from '../utils/imageCompressor';
@@ -28,6 +29,52 @@ const KEYS = {
   TASKS: 'hotel_victoria_tasks',
   DOCUMENTS: 'hotel_victoria_documents',
   SYSTEM: 'hotel_victoria_system',
+  QR_SESSIONS: 'hotel_victoria_qr_sessions'
+};
+
+// --- QR LOGIN LOGIC ---
+
+export const createQrSession = async () => {
+  const sessionId = uuidv4();
+  const sessionRef = db.collection(KEYS.QR_SESSIONS).doc(sessionId);
+  
+  await sessionRef.set({
+    status: 'pending',
+    createdAt: Date.now(),
+    expiresAt: Date.now() + 5 * 60 * 1000, 
+  });
+  
+  return sessionId;
+};
+
+export const authorizeQrSession = async (sessionId: string, user: User) => {
+  const sessionRef = db.collection(KEYS.QR_SESSIONS).doc(sessionId);
+  const doc = await sessionRef.get();
+  
+  if (!doc.exists) throw new Error("Sesión no encontrada");
+  
+  const data = doc.data();
+  if (data?.expiresAt < Date.now()) throw new Error("Sesión expirada");
+
+  await sessionRef.update({
+    status: 'authorized',
+    user: user,
+    authorizedAt: Date.now()
+  });
+};
+
+export const listenToQrSession = (sessionId: string, onAuthorized: (user: User) => void, onError: (err: any) => void) => {
+  return db.collection(KEYS.QR_SESSIONS).doc(sessionId).onSnapshot((doc) => {
+    if (doc.exists) {
+      const data = doc.data();
+      if (data?.status === 'authorized' && data.user) {
+        onAuthorized(data.user);
+      }
+    }
+  }, (err) => {
+    console.error("QR Session Error:", err);
+    if (onError) onError(err);
+  });
 };
 
 const INITIAL_USERS: User[] = [
