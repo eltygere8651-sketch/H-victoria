@@ -39,7 +39,7 @@ const Register: React.FC<RegisterProps> = ({ setShowGuideModal }) => {
         role: UserRole.STAFF,
         pin: password, // 'pin' field stores the hashed password
         permissions: []
-      });
+      }, username);
       setSuccess(true);
     } catch (err) {
       setError('Error al registrar usuario. Es posible que el nombre ya esté en uso o haya un problema de conexión.');

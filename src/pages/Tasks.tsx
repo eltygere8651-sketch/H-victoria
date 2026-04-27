@@ -150,7 +150,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
       };
 
       // Save as regular Task
-      await storageService.saveTask(taskData, selectedImages, selectedVideos);
+      await storageService.saveTask(taskData, currentUser.name, selectedImages, selectedVideos);
       setShowTaskModal(false);
       setEditingTask(null);
       setSelectedImages([]);
@@ -168,7 +168,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
 
   const handleDeleteTask = async () => {
     if (taskToDelete) {
-      await storageService.deleteTask(taskToDelete.id);
+      await storageService.deleteTask(taskToDelete.id, currentUser.name);
       setTaskToDelete(null);
     }
   };
@@ -196,7 +196,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
       });
 
       tasksToDelete.forEach(task => {
-        storageService.deleteTask(task.id);
+        storageService.deleteTask(task.id, 'Sistema (Limpieza Automática)');
       });
     }, 60000); // Check every minute
 
@@ -313,7 +313,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
     if (allCompleted && updatedChecklist.length > 0) {
       if (task.recurrence && task.recurrence !== TaskRecurrence.NONE && task.recurrence !== TaskRecurrence.DAILY) {
         // Recurring task completed (Weekly/Monthly): delete it so it "disappears" until the next one
-        await storageService.deleteTask(task.id);
+        await storageService.deleteTask(task.id, currentUser.name);
         return;
       }
       updateData.status = TaskStatus.COMPLETED;
@@ -321,20 +321,20 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
       updateData.completedAt = Date.now();
     }
 
-    await storageService.saveTask(updateData);
+    await storageService.saveTask(updateData, currentUser.name);
   }, [currentUser.name]);
 
   const handleStartTask = useCallback(async (taskId: string) => {
-    await storageService.saveTask({ id: taskId, status: TaskStatus.IN_PROGRESS });
-  }, []);
+    await storageService.saveTask({ id: taskId, status: TaskStatus.IN_PROGRESS }, currentUser.name);
+  }, [currentUser.name]);
 
   const handleCompleteTask = useCallback(async (task: Task) => {
     if (task.recurrence && task.recurrence !== TaskRecurrence.NONE && task.recurrence !== TaskRecurrence.DAILY) {
       // Recurring task completed (Weekly/Monthly): delete it so it "disappears" until the next one
-      await storageService.deleteTask(task.id);
+      await storageService.deleteTask(task.id, currentUser.name);
       return;
     }
-    await storageService.saveTask({ id: task.id, status: TaskStatus.COMPLETED, completedBy: currentUser.name, completedAt: Date.now() });
+    await storageService.saveTask({ id: task.id, status: TaskStatus.COMPLETED, completedBy: currentUser.name, completedAt: Date.now() }, currentUser.name);
   }, [currentUser.name]);
 
   const handleEditTask = useCallback((task: Task) => {
@@ -634,7 +634,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
       imagesTitle: template.imgTitle
     };
 
-    await storageService.saveTask(testTask);
+    await storageService.saveTask(testTask, currentUser.name);
     setShowGeneratorModal(false);
   };
 

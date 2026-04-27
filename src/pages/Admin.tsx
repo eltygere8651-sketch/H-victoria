@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { UserRole, User, Product, AppNotification, OrderBatch } from '../types';
+import { UserRole, User, Product, AppNotification, OrderBatch, Activity as ActivityType } from '../types';
 import * as storageService from '../services/storageService';
-import { Download, Users, Package, Trash2, Edit2, X, Save, Eye, Loader2, BarChart as BarChartIcon, BellRing, CheckCircle2, Share2, Smartphone, Activity, TrendingUp, ShieldAlert, Zap, Search, Filter } from 'lucide-react';
+import { Download, Users, Package, Trash2, Edit2, X, Save, Eye, Loader2, BarChart as BarChartIcon, BellRing, CheckCircle2, Share2, Smartphone, Activity as ActivityIcon, TrendingUp, ShieldAlert, Zap, Search, Filter } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { NotificationIcon } from '../components/NotificationIcon';
 import { generatePdfFromReactComponent, sharePdfFromReactComponent } from '../utils/pdfGenerator';
@@ -22,6 +22,7 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
   const [users, setUsers] = useState<User[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [activities, setActivities] = useState<ActivityType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
   const [newUser, setNewUser] = useState({ name: '', role: UserRole.STAFF, pin: '', permissions: [] as ('CAN_MANAGE_TASKS')[] });
@@ -58,6 +59,7 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
       setIsLoading(false);
     });
     const unsubNotifications = storageService.subscribeToNotifications(setNotifications, false);
+    const unsubActivities = storageService.subscribeToActivities(setActivities);
     
     // Check for auto-cleanup when admin dashboard loads
     storageService.checkAutoCleanup();
@@ -69,6 +71,7 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
         unsubUsers();
         unsubProducts();
         unsubNotifications();
+        unsubActivities();
     };
   }, []);
 
@@ -125,7 +128,7 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
         pin: newUser.pin,
         isSuperAdmin: false, // Default to false for UI addition
         permissions: newUser.role === UserRole.STAFF ? newUser.permissions : undefined
-      });
+      }, currentUser.name);
       setNewUser({ name: '', role: UserRole.STAFF, pin: '', permissions: [] });
     }
   };
@@ -157,7 +160,7 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
 
   const confirmDeleteUser = () => {
     if (userToDelete) {
-      storageService.deleteUser(userToDelete.id);
+      storageService.deleteUser(userToDelete.id, currentUser.name);
       setUserToDelete(null);
     }
   };
@@ -173,6 +176,7 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
   const handleClearAllNotifications = async () => {
     setIsClearing(true);
     await storageService.deleteAllNotifications();
+    await storageService.deleteAllActivities();
     setIsClearing(false);
     setShowClearNotificationsConfirm(false);
   };
@@ -206,33 +210,27 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
 
   // Consolidated Activity Timeline
   const activityTimeline = useMemo(() => {
-    const timelineItems = notifications
-      .map(n => ({
-        id: n.id,
-        type: 'notification' as const,
-        title: n.title,
-        message: n.message,
-        timestamp: n.timestamp,
-        icon: n.icon === 'AlertTriangle' ? ShieldAlert : 
-              (n.icon === 'PackagePlus' ? Package : 
-              (n.icon === 'ShieldAlert' ? ShieldAlert :
-              (n.icon === 'Trash2' ? Trash2 : 
-              (n.icon === 'Plus' ? Zap : 
-              (n.icon === 'CheckCircle2' ? CheckCircle2 : Activity))))),
-        color: n.readStatus 
-          ? 'text-slate-400 bg-slate-50 dark:bg-slate-800/50' 
-          : (n.icon === 'ShieldAlert' 
-              ? 'text-amber-600 bg-amber-50 dark:bg-amber-900/20' 
-              : (n.icon === 'CheckCircle2'
-                  ? 'text-green-600 bg-green-50 dark:bg-green-900/20'
-                  : 'text-red-600 bg-red-50 dark:bg-red-900/20')),
-        read: n.readStatus
+    const timelineItems = activities
+      .map(act => ({
+        id: act.id,
+        type: 'activity' as const,
+        title: act.userName,
+        message: act.action,
+        timestamp: act.timestamp?.seconds ? act.timestamp.seconds * 1000 : Date.now(),
+        icon: act.type === 'TASK' ? Zap : 
+              (act.type === 'INVENTORY' ? Package : 
+              (act.type === 'USER' ? Users : ActivityIcon)),
+        color: act.type === 'TASK' ? 'text-blue-600 bg-blue-50 dark:bg-blue-900/20' :
+               (act.type === 'INVENTORY' ? 'text-amber-600 bg-amber-50 dark:bg-amber-900/20' :
+               (act.type === 'USER' ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20' :
+               'text-red-600 bg-red-50 dark:bg-red-900/20')),
+        read: true // Activities are always considered "read" in the timeline
       }));
 
     return timelineItems
       .sort((a, b) => b.timestamp - a.timestamp)
-      .slice(0, 30);
-  }, [notifications]);
+      .slice(0, 50);
+  }, [activities]);
 
   const filteredNotifications = useMemo(() => notificationFilter === 'unread'
     ? notifications.filter(n => !n.readStatus)
@@ -427,7 +425,7 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
 
                   <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl shadow-sm border border-gray-100 dark:border-slate-800 flex flex-col items-center text-center group hover:scale-[1.02] transition-all">
                     <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-2xl text-blue-600 dark:text-blue-400 mb-3">
-                      <Activity size={24} />
+                      <ActivityIcon size={24} />
                     </div>
                     <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-none mb-2">Albaranes 24h</span>
                     <h4 className="text-2xl font-black text-slate-900 dark:text-white leading-none">{recentOrdersCount}</h4>
@@ -474,7 +472,7 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
               <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl shadow-md border border-gray-100 dark:border-slate-800">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
                   <h3 className="text-lg font-black text-gray-900 dark:text-white flex items-center gap-2">
-                    <Activity size={20} className="text-red-600 dark:text-red-400" />
+                    <ActivityIcon size={20} className="text-red-600 dark:text-red-400" />
                     Cronograma de Actividad
                   </h3>
                   <div className="flex items-center gap-4">
@@ -491,19 +489,16 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
                     <div className="pl-12 py-8 text-gray-400 dark:text-slate-500 font-bold italic">No hay actividad reciente registrada.</div>
                   ) : (
                     activityTimeline.map((item: any, idx: number) => (
-                      <div key={item.id} className={`relative pl-12 animate-fade-in group ${!item.read ? 'opacity-100' : 'opacity-70'}`} style={{ animationDelay: `${idx * 40}ms` }}>
+                      <div key={item.id} className={`relative pl-12 animate-fade-in group opacity-100`} style={{ animationDelay: `${idx * 40}ms` }}>
                         <div className={`absolute left-0 top-0 w-9 h-9 rounded-full flex items-center justify-center z-10 border-4 border-white dark:border-slate-900 transition-transform group-hover:scale-110 ${item.color}`}>
                           <item.icon size={16} />
                         </div>
                         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1">
-                              <h4 className={`font-black text-sm tracking-tight ${!item.read ? 'text-slate-900 dark:text-white' : 'text-slate-600 dark:text-slate-400'}`}>
+                              <h4 className="font-black text-sm tracking-tight text-slate-900 dark:text-white">
                                 {item.title}
                               </h4>
-                              {!item.read && (
-                                <span className="w-2 h-2 bg-red-600 rounded-full animate-pulse shadow-sm shadow-red-600/30"></span>
-                              )}
                             </div>
                             <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-medium">
                               {item.message}
@@ -513,15 +508,6 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
                             <span className="text-[10px] font-mono font-black text-slate-400 bg-slate-50 dark:bg-slate-800 px-1.5 py-0.5 rounded uppercase">
                               {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </span>
-                            {item.type === 'notification' && !item.read && (
-                              <button 
-                                onClick={() => handleMarkNotificationAsRead(item.id)}
-                                className="p-1.5 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg hover:bg-blue-600 hover:text-white transition-all active:scale-90"
-                                title="Marcar como leída"
-                              >
-                                <CheckCircle2 size={14} />
-                              </button>
-                            )}
                           </div>
                         </div>
                         <p className="text-[9px] font-black text-slate-300 dark:text-slate-600 mt-2 uppercase tracking-widest">

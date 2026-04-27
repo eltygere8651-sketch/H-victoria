@@ -1,4 +1,4 @@
-import { Product, User, ReplenishmentRequest, UserRole, Department, CartItem, AppNotification, NotificationType, NotificationPayload, OrderBatch, Task, TaskStatus, TaskPriority, TaskType, TaskComment, Document, TaskRecurrence } from '../types';
+import { Product, User, ReplenishmentRequest, UserRole, Department, CartItem, AppNotification, NotificationType, NotificationPayload, OrderBatch, Task, TaskStatus, TaskPriority, TaskType, TaskComment, Document, TaskRecurrence, Activity } from '../types';
 import { db, auth, storage } from '../firebaseConfig';
 export { auth, db, storage };
 import firebase from 'firebase/compat/app';
@@ -28,6 +28,18 @@ const KEYS = {
   TASKS: 'hotel_victoria_tasks',
   DOCUMENTS: 'hotel_victoria_documents',
   SYSTEM: 'hotel_victoria_system',
+  ACTIVITIES: 'activities',
+};
+
+export const logActivity = async (activity: Omit<Activity, 'id' | 'timestamp'>) => {
+  try {
+    await db.collection(KEYS.ACTIVITIES).add({
+      ...activity,
+      timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+    });
+  } catch (error) {
+    console.error('Error logging activity:', error);
+  }
 };
 
 const INITIAL_USERS: User[] = [
@@ -103,7 +115,7 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
     isAnonymous: currentUser.isAnonymous
   } : 'NOT SIGNED IN';
 
-  const fallbackMsg = `Firestore Error in ${operationType} at ${path}: ${safeError}. Auth: ${JSON.stringify(authInfo)}`;
+  const fallbackMsg = `Firestore Error in ${operationType} at ${path}: ${safeError}. Auth: ${safeStringify(authInfo)}`;
   console.error(fallbackMsg);
   throw new Error(fallbackMsg);
 }
@@ -316,16 +328,47 @@ export const signInWithGoogle = async () => {
 // --- CART ---
 export const saveDraftCart = async (userId: string, cart: CartItem[]) => {
   localStorage.setItem(KEYS.DRAFT_CART, safeStringify(cart));
-  if (userId && userId !== 'guest' && !userId.startsWith('guest-')) {
+  
+  // If we have an authenticated user, we also save to cloud using their UID for security
+  if (auth.currentUser && !auth.currentUser.isAnonymous) {
     try {
-      await db.collection(KEYS.USERS).doc(userId).set({ draftCart: cart }, { merge: true });
+      const uid = auth.currentUser.uid;
+      // We save in the dedicated draft_cart collection which is Auth UID indexed
+      await db.collection(KEYS.DRAFT_CART).doc(uid).set({ 
+        cart, 
+        profileId: userId,
+        updatedAt: Date.now() 
+      });
     } catch (e) {
-      console.error("Error saving draft cart to cloud", e);
+      console.error("Error saving draft cart to cloud collection:", e);
+      // Fallback fallback: try to save to user profile if rules allow
+      try {
+        await db.collection(KEYS.USERS).doc(userId).set({ draftCart: cart }, { merge: true });
+      } catch (e2) {
+        // Silently fail if both cloud attempts fail, we still have localStorage
+      }
     }
   }
 };
 
 export const getDraftCart = async (userId?: string): Promise<CartItem[]> => {
+  // 1. Try local storage first for fastest response
+  const localCart = JSON.parse(localStorage.getItem(KEYS.DRAFT_CART) || '[]');
+  
+  // 2. If authenticated, try to sync from cloud
+  if (auth.currentUser && !auth.currentUser.isAnonymous) {
+    try {
+      const uid = auth.currentUser.uid;
+      const doc = await db.collection(KEYS.DRAFT_CART).doc(uid).get();
+      if (doc.exists && doc.data()?.cart) {
+        return doc.data()?.cart as CartItem[];
+      }
+    } catch (e) {
+      console.error("Error getting draft cart from dedicated cloud collection:", e);
+    }
+  }
+
+  // 3. Fallback to user profile if provided
   if (userId && userId !== 'guest' && !userId.startsWith('guest-')) {
     try {
       const doc = await db.collection(KEYS.USERS).doc(userId).get();
@@ -333,10 +376,11 @@ export const getDraftCart = async (userId?: string): Promise<CartItem[]> => {
         return doc.data()?.draftCart as CartItem[];
       }
     } catch (e) {
-      console.error("Error getting draft cart from cloud", e);
+      console.error("Error getting draft cart from profile document:", e);
     }
   }
-  return JSON.parse(localStorage.getItem(KEYS.DRAFT_CART) || '[]');
+
+  return localCart;
 };
 
 // --- DEPARTMENTS ---
@@ -347,16 +391,40 @@ export const subscribeToDepartments = (callback: (data: Department[]) => void) =
 };
 export const saveDepartment = async (department: Partial<Department>) => {
   try {
+    const isNew = !department.id;
     const docRef = department.id ? db.collection(KEYS.DEPARTMENTS).doc(department.id) : db.collection(KEYS.DEPARTMENTS).doc();
+    const userName = getSession()?.name || 'Administrador';
     console.log(`Guardando departamento: ${docRef.id}... Role: ${getSession()?.role}`);
     await docRef.set(sanitizeData({ ...department, id: docRef.id }), { merge: true });
+
+    await logActivity({
+      userId: 'system',
+      userName: userName,
+      action: isNew ? `ha creado el área "${department.name}"` : `ha actualizado el área "${department.name}"`,
+      targetId: docRef.id,
+      targetName: department.name,
+      type: 'SYSTEM'
+    });
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, KEYS.DEPARTMENTS);
   }
 };
 export const deleteDepartment = async (id: string) => {
   try {
+    const deptDoc = await db.collection(KEYS.DEPARTMENTS).doc(id).get();
+    const deptName = deptDoc.exists ? deptDoc.data()?.name : 'Desconocida';
+    const userName = getSession()?.name || 'Administrador';
+
     await db.collection(KEYS.DEPARTMENTS).doc(id).delete();
+
+    await logActivity({
+      userId: 'system',
+      userName: userName,
+      action: `ha eliminado el área "${deptName}"`,
+      targetId: id,
+      targetName: deptName,
+      type: 'SYSTEM'
+    });
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, KEYS.DEPARTMENTS);
   }
@@ -378,6 +446,15 @@ export const saveProduct = async (product: Partial<Product>, userName: string = 
     await docRef.set(sanitizeData({ ...product, id }), { merge: true });
 
     if (isNew) {
+      await logActivity({
+        userId: 'system',
+        userName,
+        action: `ha creado el producto "${product.name}"`,
+        targetId: id,
+        targetName: product.name,
+        type: 'INVENTORY'
+      });
+
       await db.collection(KEYS.NOTIFICATIONS).add({
         type: NotificationType.INVENTORY_ADJUSTMENT,
         title: 'Nuevo Producto Creado',
@@ -386,6 +463,15 @@ export const saveProduct = async (product: Partial<Product>, userName: string = 
         timestamp: Date.now(),
         readStatus: false,
         payload: { productId: id, productName: product.name }
+      });
+    } else {
+      await logActivity({
+        userId: 'system',
+        userName,
+        action: `ha actualizado el producto "${product.name}"`,
+        targetId: id,
+        targetName: product.name,
+        type: 'INVENTORY'
       });
     }
   } catch (error) {
@@ -397,6 +483,15 @@ export const deleteProduct = async (id: string, userName: string = 'Administrado
   const productName = productDoc.exists ? productDoc.data()?.name : 'Desconocido';
   
   await db.collection(KEYS.PRODUCTS).doc(id).delete();
+
+  await logActivity({
+    userId: 'system',
+    userName,
+    action: `ha eliminado el producto "${productName}"`,
+    targetId: id,
+    targetName: productName,
+    type: 'INVENTORY'
+  });
 
   await db.collection(KEYS.NOTIFICATIONS).add({
     type: NotificationType.INVENTORY_ADJUSTMENT,
@@ -492,6 +587,15 @@ export const submitOrderBatch = async (cart: CartItem[], departmentId: string, d
 
   await batch.commit();
 
+  await logActivity({
+    userId: 'system',
+    userName: user.name,
+    action: `ha generado un albarán de salida (#${batchId}) en ${departmentName}`,
+    targetId: batchId,
+    targetName: `Albarán ${batchId}`,
+    type: 'INVENTORY'
+  });
+
   return { success: true, lowStockItems, batchId };
 };
 
@@ -538,6 +642,15 @@ export const receiveStockBatch = async (items: { productId: string; productName:
 
   await batch.commit();
 
+  await logActivity({
+    userId: 'system',
+    userName: userName,
+    action: `ha registrado un ingreso de mercancía (#${batchId})`,
+    targetId: batchId,
+    targetName: `Ingreso ${batchId}`,
+    type: 'INVENTORY'
+  });
+
   return { success: true, batchId };
 };
 
@@ -567,12 +680,21 @@ export const subscribeToUsers = (callback: (users: User[]) => void) => {
         callback(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as User)));
     }, error => handleFirestoreError(error, OperationType.GET, KEYS.USERS));
 };
-export const addUser = async (user: Omit<User, 'id'>) => {
+export const addUser = async (user: Omit<User, 'id'>, currentUserName: string = 'Administrador') => {
   if (user.pin) {
     user.pin = await hashPin(user.pin);
   }
   const result = await db.collection(KEYS.USERS).add(sanitizeData(user));
   
+  await logActivity({
+    userId: 'system',
+    userName: currentUserName,
+    action: `ha registrado al nuevo usuario "${user.name}"`,
+    targetId: result.id,
+    targetName: user.name,
+    type: 'USER'
+  });
+
   return result;
 };
 export const updateUser = async (user: User) => {
@@ -584,11 +706,20 @@ export const updateUser = async (user: User) => {
   await db.collection(KEYS.USERS).doc(id).update(sanitizeData(data));
 };
 
-export const deleteUser = async (id: string) => {
+export const deleteUser = async (id: string, currentUserName: string = 'Administrador') => {
   const userDoc = await db.collection(KEYS.USERS).doc(id).get();
   const userName = userDoc.exists ? userDoc.data()?.name : 'Desconocido';
 
   await db.collection(KEYS.USERS).doc(id).delete();
+
+  await logActivity({
+    userId: 'system',
+    userName: currentUserName,
+    action: `ha eliminado al usuario "${userName}"`,
+    targetId: id,
+    targetName: userName,
+    type: 'USER'
+  });
 };
 export const savePushToken = async (userId: string, token: string) => await db.collection(KEYS.USERS).doc(userId).set({ pushToken: token }, { merge: true });
 
@@ -628,7 +759,7 @@ export const uploadImage = async (file: File, folder: string = 'tasks'): Promise
 
 import { uploadVideoToCloudinary } from './cloudinaryService';
 
-export const saveTask = async (task: Partial<Task>, newFiles: File[] = [], newVideos: File[] = []) => {
+export const saveTask = async (task: Partial<Task>, currentUserName: string = 'Administrador', newFiles: File[] = [], newVideos: File[] = []) => {
   const isNew = !task.id;
   const docRef = isNew ? db.collection(KEYS.TASKS).doc() : db.collection(KEYS.TASKS).doc(task.id!);
   
@@ -659,6 +790,15 @@ export const saveTask = async (task: Partial<Task>, newFiles: File[] = [], newVi
   await docRef.set(taskData, { merge: true });
 
   if (isNew) {
+     await logActivity({
+        userId: 'system',
+        userName: currentUserName,
+        action: `ha creado la tarea "${task.title}"`,
+        targetId: docRef.id,
+        targetName: task.title,
+        type: 'TASK'
+     });
+
      // Notify about new task
      await db.collection(KEYS.NOTIFICATIONS).add({
         type: NotificationType.NEW_TASK,
@@ -671,6 +811,16 @@ export const saveTask = async (task: Partial<Task>, newFiles: File[] = [], newVi
      });
   } else if (task.status === TaskStatus.COMPLETED) {
      const fullTask = (await docRef.get()).data() as Task;
+     
+     await logActivity({
+        userId: 'system',
+        userName: fullTask.completedBy || currentUserName,
+        action: `ha completado la tarea "${fullTask.title}"`,
+        targetId: docRef.id,
+        targetName: fullTask.title,
+        type: 'TASK'
+     });
+
      // Notify about task completion
      await db.collection(KEYS.NOTIFICATIONS).add({
         type: NotificationType.TASK_COMPLETED,
@@ -688,14 +838,43 @@ export const saveTask = async (task: Partial<Task>, newFiles: File[] = [], newVi
         console.log(`Eliminando tarea única completada inmediatamente: ${fullTask.title}`);
         await docRef.delete();
      }
+  } else if (task.status === TaskStatus.IN_PROGRESS) {
+    const fullTask = (await docRef.get()).data() as Task;
+    await logActivity({
+       userId: 'system',
+       userName: currentUserName,
+       action: `ha comenzado la tarea "${fullTask?.title || 'Sin Título'}"`,
+       targetId: docRef.id,
+       targetName: fullTask?.title || 'Sin Título',
+       type: 'TASK'
+    });
+  } else if (!isNew) {
+    const fullTask = (await docRef.get()).data() as Task;
+    await logActivity({
+      userId: 'system',
+      userName: currentUserName,
+      action: `ha actualizado la tarea "${fullTask?.title || 'Sin Título'}"`,
+      targetId: docRef.id,
+      targetName: fullTask?.title || 'Sin Título',
+      type: 'TASK'
+    });
   }
 };
 
-export const deleteTask = async (id: string) => {
+export const deleteTask = async (id: string, currentUserName: string = 'Administrador') => {
   const taskDoc = await db.collection(KEYS.TASKS).doc(id).get();
   const taskTitle = taskDoc.exists ? taskDoc.data()?.title : 'Desconocida';
 
   await db.collection(KEYS.TASKS).doc(id).delete();
+
+  await logActivity({
+    userId: 'system',
+    userName: currentUserName,
+    action: `ha eliminado la tarea "${taskTitle}"`,
+    targetId: id,
+    targetName: taskTitle,
+    type: 'TASK'
+  });
 };
 
 // --- SHIFT HELPERS ---
@@ -833,7 +1012,19 @@ export const cleanupCompletedTasks = async () => {
 };
 export const addCommentToTask = async (taskId: string, comment: Omit<TaskComment, 'id'>) => {
   const taskRef = db.collection(KEYS.TASKS).doc(taskId);
+  const taskDoc = await taskRef.get();
+  const taskTitle = taskDoc.exists ? taskDoc.data()?.title : 'Desconocida';
+  
   await taskRef.update({ comments: firebase.firestore.FieldValue.arrayUnion({ ...comment, id: Date.now().toString(), timestamp: Date.now() }), seenBy: [comment.userId] });
+
+  await logActivity({
+    userId: 'system',
+    userName: comment.userName,
+    action: `ha comentado en la tarea "${taskTitle}"`,
+    targetId: taskId,
+    targetName: taskTitle,
+    type: 'TASK'
+  });
 };
 export const markTaskAsSeen = async (taskId: string, userId: string) => {
   await db.collection(KEYS.TASKS).doc(taskId).update({ seenBy: firebase.firestore.FieldValue.arrayUnion(userId) });
@@ -857,6 +1048,20 @@ export const subscribeToTask = (taskId: string, callback: (task: Task | null) =>
 export const getTaskById = async (taskId: string): Promise<Task | null> => {
   const doc = await db.collection(KEYS.TASKS).doc(taskId).get();
   return doc.exists ? { ...doc.data(), id: doc.id } as Task : null;
+};
+
+export const subscribeToActivities = (callback: (activities: Activity[]) => void) => {
+  return db.collection(KEYS.ACTIVITIES).orderBy('timestamp', 'desc').limit(50).onSnapshot(snapshot => {
+    callback(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Activity)));
+  }, error => handleFirestoreError(error, OperationType.GET, KEYS.ACTIVITIES));
+};
+
+export const deleteAllActivities = async () => {
+  const q = db.collection(KEYS.ACTIVITIES);
+  const snapshot = await q.get();
+  const batch = db.batch();
+  snapshot.docs.forEach(d => batch.delete(d.ref));
+  await batch.commit();
 };
 
 export const deleteAllNotifications = async () => {
@@ -908,9 +1113,29 @@ export const subscribeToDocuments = (callback: (data: Document[]) => void) => {
 };
 export const saveDocument = async (document: Omit<Document, 'id'>) => {
   const result = await db.collection(KEYS.DOCUMENTS).add(sanitizeData(document));
+  
+  await logActivity({
+    userId: 'system',
+    userName: document.uploadedBy,
+    action: `ha subido un nuevo documento: "${document.name}"`,
+    targetId: result.id,
+    targetName: document.name,
+    type: 'SYSTEM'
+  });
+
   return result;
 };
 export const deleteDocument = async (doc: Document) => {
+  const userName = getSession()?.name || 'Administrador';
   try { await storage.refFromURL(doc.url).delete(); } catch(e) {}
   await db.collection(KEYS.DOCUMENTS).doc(doc.id).delete();
+
+  await logActivity({
+    userId: 'system',
+    userName: userName,
+    action: `ha eliminado el documento "${doc.name}"`,
+    targetId: doc.id,
+    targetName: doc.name,
+    type: 'SYSTEM'
+  });
 };

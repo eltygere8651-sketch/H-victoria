@@ -177,7 +177,7 @@ body {
 }
 
 .btn-header-action {
-  @apply h-12 w-12 rounded-2xl flex items-center justify-center transition-all duration-300 border;
+  @apply h-12 w-12 rounded-2xl flex items-center justify-center transition-all duration-150 border;
   @apply bg-white/80 dark:bg-slate-800/40 backdrop-blur-xl border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 shadow-sm;
 }
 

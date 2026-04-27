@@ -426,9 +426,43 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser, notificationVolume =
                   Stock Inteligente: Categoría, unidad y áreas sugeridas automáticamente.
                 </div>
               )}
-              <div className="md:col-span-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Nombre</label>
-                <input className="w-full p-4 border-2 rounded-2xl bg-slate-50 dark:bg-slate-950 font-bold" value={editProductForm.name || ''} onChange={e => setEditProductForm({...editProductForm, name: e.target.value})} />
+              <div className="md:col-span-2 relative">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Nombre del Producto</label>
+                <div className="relative">
+                  <input 
+                    className={`w-full p-4 border-2 rounded-2xl bg-slate-50 dark:bg-slate-950 font-bold transition-all ${!editProductForm.id && products.some(p => p.name.toLowerCase() === (editProductForm.name || '').toLowerCase()) ? 'border-amber-500' : 'focus:border-red-500'}`}
+                    value={editProductForm.name || ''} 
+                    onChange={e => setEditProductForm({...editProductForm, name: e.target.value})}
+                    placeholder="Ej: Agua Mineral 500ml"
+                  />
+                  {editProductForm.name && products.some(p => p.name.toLowerCase().includes((editProductForm.name || '').toLowerCase())) && (
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl z-50 max-h-40 overflow-y-auto">
+                      <div className="p-2 text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-slate-700">Sugerencias (productos existentes)</div>
+                      {products
+                        .filter(p => p.name.toLowerCase().includes((editProductForm.name || '').toLowerCase()))
+                        .slice(0, 5)
+                        .map(p => (
+                          <button
+                            key={p.id}
+                            onClick={() => {
+                              setEditProductForm(p);
+                              setSmartSuggestion(false);
+                            }}
+                            className="w-full text-left px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-700/50 flex justify-between items-center transition-colors border-b border-slate-50 dark:border-slate-700/30 last:border-0"
+                          >
+                            <span className="font-bold text-sm dark:text-white">{p.name}</span>
+                            <span className="text-[9px] font-black bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 px-1.5 py-0.5 rounded">CARGAR DATOS</span>
+                          </button>
+                        ))
+                      }
+                    </div>
+                  )}
+                </div>
+                {!editProductForm.id && products.some(p => p.name.toLowerCase() === (editProductForm.name || '').toLowerCase()) && (
+                  <p className="text-[10px] text-amber-600 font-bold mt-1 flex items-center gap-1">
+                    <AlertTriangle size={12} /> Este producto ya está registrado en el sistema.
+                  </p>
+                )}
               </div>
               <div className="md:col-span-2">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Áreas</label>

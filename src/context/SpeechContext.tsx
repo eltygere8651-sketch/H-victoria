@@ -23,7 +23,10 @@ export const SpeechProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [narratorSubtitle, setNarratorSubtitle] = useState("");
   const speechRef = useRef<SpeechSynthesisUtterance | null>(null);
 
+  const cancelSpeechRef = useRef(false);
+
   const stopSpeech = useCallback(() => {
+    cancelSpeechRef.current = true;
     window.speechSynthesis.cancel();
     setIsSpeaking(false);
     setIsPaused(false);
@@ -37,53 +40,95 @@ export const SpeechProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }, []);
 
   const togglePause = useCallback(() => {
-    if (window.speechSynthesis.speaking) {
-      if (window.speechSynthesis.paused) {
-        window.speechSynthesis.resume();
+    const synth = window.speechSynthesis;
+    
+    if (isSpeaking || synth.speaking) {
+      if (isPaused || synth.paused) {
+        synth.resume();
         setIsPaused(false);
       } else {
-        window.speechSynthesis.pause();
+        synth.pause();
         setIsPaused(true);
       }
     }
-  }, []);
+  }, [isSpeaking, isPaused]);
 
   const playSpeech = useCallback((text: string, title: string = "", subtitle: string = "", onEnd?: () => void, volume: number = 0.3) => {
-    // We only stop if there's nothing playing or if it's a new context
-    // But for simplicity, we'll stop and restart as before, but the state persists globally
+    cancelSpeechRef.current = true;
     window.speechSynthesis.cancel();
     
     if (!text) return;
     
+    cancelSpeechRef.current = false;
     setCurrentText(text);
     setNarratorTitle(title);
     setNarratorSubtitle(subtitle);
     
     const utterance = new SpeechSynthesisUtterance(text);
-    
-    // Voice selection
     const voices = window.speechSynthesis.getVoices();
-    const spanishVoice = voices.find(v => v.lang.startsWith('es') && (v.name.includes('Google') || v.name.includes('Premium'))) 
-                       || voices.find(v => v.lang.startsWith('es'));
+    const femaleKeywords = ['monica', 'helena', 'lucia', 'laura', 'google español', 'microsoft helena', 'premium'];
     
-    if (spanishVoice) utterance.voice = spanishVoice;
-    utterance.rate = 0.95;
+    let selectedVoice = voices.find(v => {
+      const name = v.name.toLowerCase();
+      return v.lang.startsWith('es') && femaleKeywords.some(key => name.includes(key));
+    });
+
+    if (!selectedVoice) {
+      selectedVoice = voices.find(v => v.lang.startsWith('es'));
+    }
+    
+    if (selectedVoice) utterance.voice = selectedVoice;
+    
+    utterance.rate = 0.90;
     utterance.pitch = 1.0;
     utterance.lang = 'es-ES';
     utterance.volume = volume;
     
-    utterance.onstart = () => setIsSpeaking(true);
-    utterance.onend = () => {
-      setIsSpeaking(false);
-      if (onEnd) onEnd();
+    utterance.onstart = () => {
+      if (!cancelSpeechRef.current) {
+        setIsSpeaking(true);
+        setIsPaused(false);
+      }
     };
-    utterance.onerror = () => {
+
+    utterance.onend = () => {
+      if (!cancelSpeechRef.current) {
+        setIsSpeaking(false);
+        if (onEnd) onEnd();
+      }
+    };
+
+    utterance.onerror = (event) => {
+      if (event.error !== 'interrupted' && event.error !== 'canceled') {
+        console.error('Speech synthesis error:', event);
+      }
       setIsSpeaking(false);
     };
     
     speechRef.current = utterance;
-    window.speechSynthesis.speak(utterance);
-  }, [stopSpeech]);
+
+    setTimeout(() => {
+      if (!cancelSpeechRef.current) {
+        window.speechSynthesis.speak(utterance);
+      }
+    }, 50);
+  }, []);
+
+  // Periodic visual/state sync tick
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const synth = window.speechSynthesis;
+      if (isSpeaking && !synth.speaking && !synth.paused && !isPaused) {
+        setIsSpeaking(false);
+      }
+      
+      // Chrome bug fix: resume if speaking but paused by browser (15s limit)
+      if (isSpeaking && !isPaused && synth.speaking && synth.paused) {
+        synth.resume();
+      }
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [isSpeaking, isPaused]);
 
   return (
     <SpeechContext.Provider value={{

@@ -4,7 +4,7 @@ import React, { useId } from 'react';
 const CURRENT_VARIANT: 'v' = 'v';
 
 interface LogoProps {
-  size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl';
+  size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl';
   className?: string;
   solid?: boolean;
   simple?: boolean;
@@ -21,6 +21,7 @@ export const Logo: React.FC<LogoProps> = ({
   animated = false
 }) => {
   const sizeMap = {
+    xs: 24,
     sm: 32,
     md: 48,
     lg: 80,
