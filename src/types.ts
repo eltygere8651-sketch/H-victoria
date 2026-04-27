@@ -188,15 +188,3 @@ export interface Document {
   uploadedBy: string; // User's name
   createdAt: number; // Timestamp
 }
-
-// --- New Activity Tracking Types ---
-export interface Activity {
-  id: string;
-  userId: string;
-  userName: string;
-  action: string; // e.g., 'ha creado una tarea', 'ha completado el pedido'
-  type: 'TASK' | 'INVENTORY' | 'USER' | 'SYSTEM';
-  targetId?: string; // ID of the task, product, or user involved
-  targetName?: string; // Name/Title of the target for display
-  timestamp: any; // Firestore ServerTimestamp
-}

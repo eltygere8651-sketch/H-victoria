@@ -64,7 +64,7 @@ service cloud.firestore {
       allow read: if isSignedIn();
       
       // Permitir creación de perfil propio o si eres admin
-      allow create: if isSignedIn() && (userId == request.auth.uid || isAdmin());
+      allow create: if (isSignedIn() && userId == request.auth.uid) || isAdmin();
       
       // Permitir actualización: 
       // 1. Propietario (userId es su UID)
@@ -73,33 +73,22 @@ service cloud.firestore {
       // 4. Cualquier usuario intentando vincularse a un perfil vacío (necesario para el primer login)
       allow update: if isSignedIn() && (
         userId == request.auth.uid || 
-        (existing() != null && (
-          existing().get('authUid', '') == request.auth.uid ||
-          isAdmin() ||
-          (existing().get('authUid', '') == '' && incoming().get('authUid', '') == request.auth.uid)
-        ))
+        existing().get('authUid', '') == request.auth.uid ||
+        isAdmin() ||
+        (existing().get('authUid', '') == '' && incoming().get('authUid', '') == request.auth.uid)
       );
                         
       allow delete: if isAdmin();
     }
 
-    // Actividades (Todos pueden leer y agregar, solo admin borra)
-    match /activities/{activityId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isAdmin();
-      allow delete: if isAdmin();
-    }
-
     // Carritos de borrador (Cualquier Admin o el dueño)
     match /hotel_victoria_draft_cart/{cartId} {
-      allow read: if isSignedIn() && (cartId == request.auth.uid || isAdmin());
-      allow write: if isSignedIn() && (cartId == request.auth.uid || isAdmin());
+      allow read, write: if isSignedIn() && (cartId == request.auth.uid || isAdmin());
     }
 
     match /hotel_victoria_products/{productId} {
       allow read: if isSignedIn();
-      allow create, delete: if isAdmin();
+      allow write: if isAdmin();
       allow update: if isAdmin() || (isSignedIn() && incoming().diff(existing()).affectedKeys().hasOnly(['quantity']));
     }
 
@@ -109,22 +98,18 @@ service cloud.firestore {
     }
 
     match /hotel_victoria_requests/{requestId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update, delete: if isAdmin();
+      allow read, write: if isSignedIn();
     }
 
     match /hotel_victoria_notifications/{notifId} {
       allow read: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn();
+      allow write: if isSignedIn();
       allow delete: if isAdmin();
     }
 
     match /hotel_victoria_tasks/{taskId} {
       allow read: if isSignedIn();
-      allow create: if isStaff();
-      allow update: if isStaff();
+      allow write: if isStaff();
       allow delete: if isAdmin();
     }
     
@@ -135,11 +120,8 @@ service cloud.firestore {
 
     match /hotel_victoria_system/{docId} {
       allow read: if isSignedIn();
-      // Permitir inicialización si el documento no existe (primera ejecución)
-      // Permitir a cualquier usuario logueado actualizar los marcadores de alertas/limpieza (necesario para la lógica del cliente)
-      allow write: if !exists(/databases/$(database)/documents/hotel_victoria_system/initialization) || 
-                   isSignedIn() && (docId == 'alerts' || docId == 'cleanup') ||
-                   isStaff();
+      // Permitir inicialización si el documento no existe (primera ejecución) o es admin
+      allow write: if !exists(/databases/$(database)/documents/hotel_victoria_system/initialization) || isAdmin();
     }
   }
 }

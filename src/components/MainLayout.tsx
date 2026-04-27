@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Logo } from './Logo';
 import { Download, Share2, Sun, Moon, LogOut, ClipboardCheck, ClipboardList, LayoutGrid, ShieldCheck, ShoppingCart, X, Volume2, VolumeX, Pause, Play, Sparkles, Bell, ChevronDown } from 'lucide-react';
 import { User, UserRole, CartItem } from '../types';
@@ -113,90 +113,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
   const { isSpeaking, stopSpeech, togglePause, isPaused, narratorTitle, narratorSubtitle } = useSpeech();
   const [showVolumeMenu, setShowVolumeMenu] = useState(false);
   const [aiCompact, setAiCompact] = useState(false);
-  const [aiSize, setAiSize] = useState({ width: 180, height: 160 });
-  const [aiPosition, setAiPosition] = useState({ x: 0, y: 0 });
-  const aiRef = useRef<HTMLDivElement>(null);
   const volumeMenuRef = useRef<HTMLDivElement>(null);
-
-  // Smart Positioning: Avoid covering text
-  const adjustPositionToAvoidText = useCallback(() => {
-    if (!aiRef.current) return;
-    
-    const rect = aiRef.current.getBoundingClientRect();
-    // Check 9 points surrounding and inside the component to ensure it's not covering text
-    const points = [
-      { x: rect.left + 5, y: rect.top + 5 },
-      { x: rect.right - 5, y: rect.top + 5 },
-      { x: rect.left + 5, y: rect.bottom - 5 },
-      { x: rect.right - 5, y: rect.bottom - 5 },
-      { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 },
-      { x: rect.left + rect.width / 2, y: rect.top + 5 },
-      { x: rect.left + rect.width / 2, y: rect.bottom - 5 },
-      { x: rect.left + 5, y: rect.top + rect.height / 2 },
-      { x: rect.right - 5, y: rect.top + rect.height / 2 }
-    ];
-
-    let isCoveringText = false;
-    for (const point of points) {
-      if (point.x < 0 || point.x > window.innerWidth || point.y < 0 || point.y > window.innerHeight) continue;
-      
-      const elements = document.elementsFromPoint(point.x, point.y);
-      for (const el of elements) {
-        // Skip itself and ignore containers that don't directly render text
-        if (el === aiRef.current || aiRef.current.contains(el)) continue;
-        
-        const tagName = el.tagName.toLowerCase();
-        // Detect even very short text (>= 2 chars) to catch labels and small hints
-        const hasText = el.textContent?.trim().length ? el.textContent.trim().length >= 2 : false;
-        
-        // Block list for text elements
-        const textElements = ['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'span', 'li', 'a', 'button', 'input', 'label', 'strong', 'em', 'td', 'th'];
-        
-        if (textElements.includes(tagName) && hasText) {
-          isCoveringText = true;
-          break;
-        }
-      }
-      if (isCoveringText) break;
-    }
-
-    if (isCoveringText) {
-      // Try to find a safe spot by moving in a cycle of directions
-      setAiPosition(prev => {
-        const moveAmount = 60;
-        let nextX = prev.x;
-        let nextY = prev.y;
-
-        // Simple heuristic: if we're near the right edge, move left. If left, move right.
-        if (rect.right > window.innerWidth - 100) {
-          nextX -= moveAmount;
-        } else if (rect.left < 100) {
-          nextX += moveAmount;
-        } else {
-          // Default to moving left or up
-          nextX -= moveAmount;
-          nextY -= 20; 
-        }
-
-        // Keep within bounds
-        const padding = 20;
-        const boundedX = Math.min(Math.max(nextX, -window.innerWidth + rect.width + padding), padding);
-        const boundedY = Math.min(Math.max(nextY, -window.innerHeight + rect.height + padding), padding);
-
-        return { x: boundedX, y: boundedY };
-      });
-      
-      // Check again after a short delay if it's still covering
-      setTimeout(adjustPositionToAvoidText, 300);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (isSpeaking) {
-      const timer = setTimeout(adjustPositionToAvoidText, 2000);
-      return () => clearTimeout(timer);
-    }
-  }, [isSpeaking, adjustPositionToAvoidText]);
 
   // Close volume menu when clicking outside
   useEffect(() => {
@@ -216,112 +133,37 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
   return (
     <div className={`min-h-[100dvh] w-full flex flex-col font-sans transition-colors duration-500 antialiased ${darkMode ? 'dark' : ''} bg-premium relative`}>
       {/* Global Narrator HUD - Futuristic AI Face */}
-      <AnimatePresence mode="wait">
+      <AnimatePresence>
         {isSpeaking && (
           <motion.div 
-            key="ai-assistant-hud"
-            ref={aiRef}
             drag
             dragMomentum={false}
             initial={{ scale: 0, opacity: 0, x: 20, y: 20 }}
-            animate={{ 
-              scale: 1, 
-              opacity: 1, 
-              x: aiPosition.x, 
-              y: aiPosition.y,
-              width: aiCompact ? 100 : aiSize.width,
-              height: aiCompact ? 100 : aiSize.height
-            }}
+            animate={{ scale: 1, opacity: 1, x: 0, y: 0 }}
             exit={{ scale: 0, opacity: 0 }}
-            onDragEnd={(_, info) => {
-              setAiPosition(prev => ({
-                x: prev.x + info.delta.x,
-                y: prev.y + info.delta.y
-              }));
-              setTimeout(adjustPositionToAvoidText, 500);
-            }}
             className="fixed bottom-32 right-8 z-[100] cursor-move select-none"
-            style={{ 
-              touchAction: 'none',
-              maxWidth: '90vw',
-              maxHeight: '70vh'
-            }}
+            style={{ touchAction: 'none' }}
           >
-            <div className="relative group h-full w-full">
-              {/* Resize Handle */}
-              {!aiCompact && (
-                <div 
-                  className="absolute bottom-0 right-0 w-6 h-6 z-[120] cursor-nwse-resize flex items-center justify-center text-red-500/30 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                  onMouseDown={(e) => {
-                    e.stopPropagation();
-                    const startX = e.pageX;
-                    const startY = e.pageY;
-                    const startW = aiSize.width;
-                    const startH = aiSize.height;
-
-                    const onMouseMove = (moveEvent: MouseEvent) => {
-                      const newW = Math.max(180, startW + (moveEvent.pageX - startX));
-                      const newH = Math.max(150, startH + (moveEvent.pageY - startY));
-                      setAiSize({ width: newW, height: newH });
-                    };
-
-                    const onMouseUp = () => {
-                      document.removeEventListener('mousemove', onMouseMove);
-                      document.removeEventListener('mouseup', onMouseUp);
-                    };
-
-                    document.addEventListener('mousemove', onMouseMove);
-                    document.addEventListener('mouseup', onMouseUp);
-                  }}
-                  onTouchStart={(e) => {
-                    e.stopPropagation();
-                    const touch = e.touches[0];
-                    const startX = touch.pageX;
-                    const startY = touch.pageY;
-                    const startW = aiSize.width;
-                    const startH = aiSize.height;
-
-                    const onTouchMove = (moveEvent: TouchEvent) => {
-                      const moveTouch = moveEvent.touches[0];
-                      const newW = Math.max(180, startW + (moveTouch.pageX - startX));
-                      const newH = Math.max(150, startH + (moveTouch.pageY - startY));
-                      setAiSize({ width: newW, height: newH });
-                    };
-
-                    const onTouchEnd = () => {
-                      document.removeEventListener('touchmove', onTouchMove);
-                      document.removeEventListener('touchend', onTouchEnd);
-                    };
-
-                    document.addEventListener('touchmove', onTouchMove);
-                    document.addEventListener('touchend', onTouchEnd);
-                  }}
-                >
-                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M11 11L1 1M11 6L6 11M11 1L11 11" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                  </svg>
-                </div>
-              )}
-
+            <div className="relative group">
               {/* Compact Toggle Button */}
               <button 
                 onClick={(e) => {
                   e.stopPropagation();
                   setAiCompact(!aiCompact);
                 }}
-                className="absolute -top-2 -right-2 z-[110] w-7 h-7 bg-red-600 rounded-full border border-white/20 text-white flex items-center justify-center shadow-lg hover:scale-110 active:scale-95 transition-transform"
+                className="absolute -top-2 -right-2 z-[110] w-6 h-6 bg-red-600 rounded-full border border-white/20 text-white flex items-center justify-center shadow-lg hover:scale-110 active:scale-95 transition-transform"
                 title={aiCompact ? "Expandir" : "Contraer"}
               >
                 <motion.div animate={{ rotate: aiCompact ? 180 : 0 }}>
-                  <ChevronDown size={16} strokeWidth={3} />
+                  <ChevronDown size={14} strokeWidth={3} />
                 </motion.div>
               </button>
 
               {/* Core Glowing Aura */}
               <motion.div 
                 animate={{ 
-                  scale: aiCompact ? [0.9, 1.1, 0.9] : [1, 1.15, 1],
-                  opacity: aiCompact ? [0.3, 0.5, 0.3] : [0.3, 0.6, 0.3],
+                  scale: aiCompact ? [0.8, 1, 0.8] : [1, 1.15, 1],
+                  opacity: aiCompact ? [0.2, 0.4, 0.2] : [0.3, 0.6, 0.3],
                 }}
                 transition={{ duration: 2, repeat: Infinity }}
                 className="absolute inset-[-10px] bg-red-600/30 rounded-full blur-3xl z-0"
@@ -337,22 +179,24 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
               {/* AI Head Container */}
               <motion.div 
                 animate={{ 
+                  width: aiCompact ? 64 : 208,
+                  height: aiCompact ? 64 : 'auto',
                   borderRadius: aiCompact ? '50%' : '2rem'
                 }}
-                className="bg-[#05060a]/95 backdrop-blur-3xl border border-red-500/30 shadow-[0_0_30px_rgba(220,38,38,0.2)] overflow-hidden relative flex flex-col items-center justify-center p-4 w-full h-full"
+                className="bg-[#05060a]/95 backdrop-blur-3xl border border-red-500/30 shadow-[0_0_30px_rgba(220,38,38,0.2)] overflow-hidden relative flex flex-col items-center justify-center p-4"
               >
                 {/* Holographic Hex Grid */}
                 <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] scale-50" />
                 
-                <div className={`flex flex-col items-center gap-4 relative z-10 w-full h-full justify-center ${aiCompact ? 'scale-90' : ''}`}>
+                <div className={`flex flex-col items-center gap-4 relative z-10 w-full ${aiCompact ? 'scale-75' : ''}`}>
                   {/* The Face */}
-                  <div className={`flex items-center justify-center ${aiCompact ? 'gap-3' : 'gap-6'} py-1 transition-all`}>
+                  <div className={`flex items-center justify-center ${aiCompact ? 'gap-2' : 'gap-6'} py-1 transition-all`}>
                     {/* Left Eye */}
                     <div className="relative">
                       <motion.div 
                         animate={{ 
-                          height: aiCompact ? 6 : [10, 10, 1, 10], 
-                          width: aiCompact ? 12 : (aiSize.width > 250 ? 40 : 32),
+                          height: aiCompact ? 4 : [10, 10, 1, 10], 
+                          width: aiCompact ? 4 : 32,
                           borderRadius: aiCompact ? '50%' : '9999px',
                           scaleX: aiCompact ? 1 : [1, 1.2, 0.8, 1],
                           backgroundColor: ["#dc2626", "#ef4444", "#dc2626"]
@@ -365,8 +209,8 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
                     <div className="relative">
                       <motion.div 
                         animate={{ 
-                          height: aiCompact ? 6 : [10, 10, 1, 10],
-                          width: aiCompact ? 12 : (aiSize.width > 250 ? 40 : 32),
+                          height: aiCompact ? 4 : [10, 10, 1, 10],
+                          width: aiCompact ? 4 : 32,
                           borderRadius: aiCompact ? '50%' : '9999px',
                           scaleX: aiCompact ? 1 : [1, 1.2, 0.8, 1],
                           backgroundColor: ["#dc2626", "#ef4444", "#dc2626"]
@@ -381,15 +225,15 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
                     <motion.div 
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="flex flex-col items-center gap-4 w-full h-full justify-between"
+                      className="flex flex-col items-center gap-4 w-full"
                     >
                       {/* Speech Waveform */}
                       <div className="flex items-center gap-0.5 h-6">
-                        {[...Array(Math.floor(aiSize.width / 15))].map((_, i) => (
+                        {[...Array(14)].map((_, i) => (
                           <motion.div
                             key={i}
                             animate={{ 
-                              height: isPaused ? 2 : [2, Math.random() * (aiSize.height / 8) + 4, 2],
+                              height: isPaused ? 2 : [2, Math.random() * 20 + 4, 2],
                             }}
                             transition={{ 
                               duration: 0.25, 
