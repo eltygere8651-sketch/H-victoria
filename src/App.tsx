@@ -470,9 +470,9 @@ const App: React.FC = () => {
   if (sharedTaskId && !user) {
     mainContent = <PublicTaskViewer taskId={sharedTaskId} setShowGuideModal={setShowGuideModal} />;
   } else if (isRegistering && !user) {
-    mainContent = <Register setShowGuideModal={setShowGuideModal} />;
+    mainContent = <Register onBack={() => setIsRegistering(false)} setShowGuideModal={setShowGuideModal} />;
   } else if (!user) {
-    mainContent = <Login onLogin={handleLogin} setShowGuideModal={setShowGuideModal} />;
+    mainContent = <Login onLogin={handleLogin} onRegisterClick={() => setIsRegistering(true)} setShowGuideModal={setShowGuideModal} />;
   } else {
     mainContent = (
       <MainLayout

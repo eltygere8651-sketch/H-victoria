@@ -63,8 +63,13 @@ service cloud.firestore {
     match /hotel_victoria_users/{userId} {
       allow read: if isSignedIn();
       
-      // Permitir creación de perfil propio o si eres admin
-      allow create: if (isSignedIn() && userId == request.auth.uid) || isAdmin();
+      // Permitir creación:
+      // 1. Perfil propio (userId es su UID)
+      // 2. Registro de nuevo empleado (rol STAFF, sin poderes de admin)
+      // 3. Admin creando cualquier usuario
+      allow create: if (isSignedIn() && userId == request.auth.uid) || 
+                   (isSignedIn() && incoming().get('role', '') == 'STAFF' && incoming().get('isSuperAdmin', false) == false) ||
+                   isAdmin();
       
       // Permitir actualización: 
       // 1. Propietario (userId es su UID)

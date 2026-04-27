@@ -5,10 +5,11 @@ import { UserRole } from '../types';
 import { Loader2, ArrowRight, CheckCircle2, ShieldCheck, AlertCircle, Lock, User as UserIcon, Eye, EyeOff, KeyRound } from 'lucide-react';
 
 interface RegisterProps {
+  onBack: () => void;
   setShowGuideModal: (show: boolean) => void;
 }
 
-const Register: React.FC<RegisterProps> = ({ setShowGuideModal }) => {
+const Register: React.FC<RegisterProps> = ({ onBack, setShowGuideModal }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -217,7 +218,7 @@ const Register: React.FC<RegisterProps> = ({ setShowGuideModal }) => {
 
         {/* Back Link */}
         <button 
-            onClick={() => window.location.href = '/'}
+            onClick={onBack}
             className="text-slate-500 hover:text-white font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all group"
         >
             <ArrowRight size={14} className="rotate-180 group-hover:-translate-x-1 transition-transform" /> Volver al Inicio
