@@ -132,6 +132,7 @@ export interface Task {
   completedBy?: string;
   completedAt?: number;
   imageUrls?: string[]; // New: Store Firebase Storage URLs for images
+  videoUrls?: string[]; // New: Store Cloudinary URLs for videos
   imagesTitle?: string; // New: Title for the images section
   type: TaskType; // New: Differentiates between task and announcement
   comments?: TaskComment[]; // New: Thread for discussions

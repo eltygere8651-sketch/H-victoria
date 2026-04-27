@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { Task, User, Department, TaskStatus, TaskPriority, UserRole, TaskType, TaskComment, TaskChecklistItem, TaskRecurrence } from '../types';
 import * as storageService from '../services/storageService';
-import { ClipboardCheck, Plus, X, Save, Loader2, Edit2, Trash2, ChevronDown, MessagesSquare, Check, Camera, AlertTriangle, Share2, Send, Image, Info, Flame, Bold, Calendar, Clock, List, FileText, Zap, Users, Phone, Hash, ChevronRight, User as UserIcon, Wand2, RotateCcw } from 'lucide-react';
+import { ClipboardCheck, Plus, X, Save, Loader2, Edit2, Trash2, ChevronDown, MessagesSquare, Check, Camera, AlertTriangle, Share2, Send, Image, Info, Flame, Bold, Calendar, Clock, List, FileText, Zap, Users, Phone, Hash, ChevronRight, User as UserIcon, Wand2, RotateCcw, Video } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { compressImage } from '../utils/imageCompressor';
 import { ImageViewer } from '../components/ImageViewer';
@@ -34,10 +34,13 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
   const [isCompressing, setIsCompressing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
   const descriptionInputRef = useRef<HTMLTextAreaElement>(null);
 
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
+  const [selectedVideos, setSelectedVideos] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
+  const [videoPreviews, setVideoPreviews] = useState<string[]>([]);
   const [viewingImages, setViewingImages] = useState<{ images: string[], startIndex: number } | null>(null);
 
   const [activeCommentTaskId, setActiveCommentTaskId] = useState<string | null>(null);
@@ -147,11 +150,13 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
       };
 
       // Save as regular Task
-      await storageService.saveTask(taskData, selectedImages);
+      await storageService.saveTask(taskData, selectedImages, selectedVideos);
       setShowTaskModal(false);
       setEditingTask(null);
       setSelectedImages([]);
+      setSelectedVideos([]);
       setPreviews([]);
+      setVideoPreviews([]);
       setNewChecklistItemText('');
     } catch (error) {
       console.error(error);
@@ -225,15 +230,12 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
   const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       setIsCompressing(true);
-      // Fix: Explicitly cast to File[] or verify typing. 
-      // Array.from on FileList sometimes infers unknown[] in certain TS configs.
       const filesArray = Array.from(e.target.files);
       const compressedFiles: File[] = [];
       const newPreviews: string[] = [];
 
       try {
         for (const file of filesArray) {
-          // Explicitly cast file to File to satisfy TS
           const compressed = await compressImage(file as File);
           compressedFiles.push(compressed);
           newPreviews.push(URL.createObjectURL(compressed));
@@ -245,15 +247,41 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
         alert("Error al procesar las imágenes.");
       } finally {
         setIsCompressing(false);
-        // Reset input value to allow selecting the same file again if needed
         if (e.target) e.target.value = '';
       }
+    }
+  };
+
+  const handleVideoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const filesArray = Array.from(e.target.files);
+      const newVideoFiles: File[] = [];
+      const newPreviews: string[] = [];
+
+      filesArray.forEach(file => {
+        // Limit video size roughly to 50MB for free tier stability
+        if (file.size > 50 * 1024 * 1024) {
+          alert(`El video ${file.name} es demasiado grande. Máximo 50MB.`);
+          return;
+        }
+        newVideoFiles.push(file as File);
+        newPreviews.push(URL.createObjectURL(file as File));
+      });
+
+      setSelectedVideos(prev => [...prev, ...newVideoFiles]);
+      setVideoPreviews(prev => [...prev, ...newPreviews]);
+      if (e.target) e.target.value = '';
     }
   };
 
   const removeImage = (index: number) => {
     setSelectedImages(prev => prev.filter((_, i) => i !== index));
     setPreviews(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const removeVideo = (index: number) => {
+    setSelectedVideos(prev => prev.filter((_, i) => i !== index));
+    setVideoPreviews(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleAddComment = async (taskId: string) => {
@@ -1222,7 +1250,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
                 </div>
 
                 <div>
-                   <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Imágenes</label>
+                   <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Imágenes y Videos</label>
                    <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar">
                       {/* BUTTON 1: CAMERA (Forced Environment Capture) */}
                       <button 
@@ -1240,6 +1268,15 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
                       >
                         <Image size={28} className="group-hover:scale-110 transition-transform"/>
                         <span className="text-[10px] font-black mt-1 uppercase tracking-wide">GALERÍA</span>
+                      </button>
+
+                      {/* BUTTON 3: VIDEO (Cloudinary) */}
+                      <button 
+                        onClick={() => videoInputRef.current?.click()}
+                        className="w-24 h-24 rounded-2xl border-2 border-dashed border-gray-300 dark:border-slate-600 flex flex-col items-center justify-center text-gray-400 hover:text-indigo-500 hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-slate-800 transition-all flex-shrink-0 group"
+                      >
+                        <Video size={28} className="group-hover:scale-110 transition-transform"/>
+                        <span className="text-[10px] font-black mt-1 uppercase tracking-wide">VIDEO</span>
                       </button>
 
                       {/* Hidden Input for CAMERA */}
@@ -1261,12 +1298,32 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
                         accept="image/*" 
                         multiple
                       />
+
+                      {/* Hidden Input for VIDEO */}
+                      <input 
+                        type="file" 
+                        ref={videoInputRef} 
+                        onChange={handleVideoSelect} 
+                        className="hidden" 
+                        accept="video/*,video/quicktime,.mov"
+                      />
                       
                       {/* Existing Images (Edit Mode) */}
                       {editingTask?.imageUrls?.map((url, i) => (
                         <div key={`existing-${i}`} className="relative w-24 h-24 flex-shrink-0">
                            <img src={url} className="w-full h-full object-cover rounded-2xl border-2 border-gray-200 dark:border-slate-700" />
-                           <span className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[9px] font-bold text-center py-1 rounded-b-[14px]">Guardada</span>
+                           <span className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[9px] font-bold text-center py-1 rounded-b-[14px]">Ima.</span>
+                        </div>
+                      ))}
+
+                      {/* Existing Videos (Cloudinary) */}
+                      {editingTask?.videoUrls?.map((url, i) => (
+                        <div key={`existing-video-${i}`} className="relative w-24 h-24 flex-shrink-0">
+                           <video src={url} className="w-full h-full object-cover rounded-2xl border-2 border-indigo-500" />
+                           <div className="absolute inset-0 flex items-center justify-center">
+                              <Video size={20} className="text-white drop-shadow-md" />
+                           </div>
+                           <span className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[9px] font-bold text-center py-1 rounded-b-[14px]">Vid.</span>
                         </div>
                       ))}
 
@@ -1275,6 +1332,19 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
                         <div key={`new-${i}`} className="relative w-24 h-24 flex-shrink-0 group">
                            <img src={url} className="w-full h-full object-cover rounded-2xl border-2 border-red-500 shadow-md" />
                            <button onClick={() => removeImage(i)} className="absolute top-1 right-1 bg-red-600 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-md hover:scale-110"><X size={14} strokeWidth={3} /></button>
+                        </div>
+                      ))}
+
+                      {/* New Preview Videos */}
+                      {videoPreviews.map((url, i) => (
+                        <div key={`new-video-${i}`} className="relative w-24 h-24 flex-shrink-0 group">
+                           <video 
+                             src={url} 
+                             className="w-full h-full object-cover rounded-2xl border-2 border-orange-500 shadow-md" 
+                             playsInline
+                             muted
+                           />
+                           <button onClick={() => removeVideo(i)} className="absolute top-1 right-1 bg-red-600 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-md hover:scale-110"><X size={14} strokeWidth={3} /></button>
                         </div>
                       ))}
                    </div>

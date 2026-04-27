@@ -626,12 +626,15 @@ export const uploadImage = async (file: File, folder: string = 'tasks'): Promise
   return await snapshot.ref.getDownloadURL();
 };
 
-export const saveTask = async (task: Partial<Task>, newFiles: File[] = []) => {
+import { uploadVideoToCloudinary } from './cloudinaryService';
+
+export const saveTask = async (task: Partial<Task>, newFiles: File[] = [], newVideos: File[] = []) => {
   const isNew = !task.id;
   const docRef = isNew ? db.collection(KEYS.TASKS).doc() : db.collection(KEYS.TASKS).doc(task.id!);
   
   let taskData: any = sanitizeData({ ...task, id: docRef.id });
 
+  // Handle Images
   if (newFiles.length > 0) {
       const uploadPromises = newFiles.map(file => uploadImage(file, 'tasks'));
       const newImageUrls = await Promise.all(uploadPromises);
@@ -640,6 +643,17 @@ export const saveTask = async (task: Partial<Task>, newFiles: File[] = []) => {
       taskData.imageUrls = finalImageUrls;
   } else if (task.imageUrls !== undefined) {
       taskData.imageUrls = task.imageUrls.length > 0 ? task.imageUrls : firebase.firestore.FieldValue.delete();
+  }
+
+  // Handle Videos (Cloudinary)
+  if (newVideos.length > 0) {
+      const videoPromises = newVideos.map(file => uploadVideoToCloudinary(file));
+      const newVideoUrls = await Promise.all(videoPromises);
+      const existingVideoUrls = Array.isArray(task.videoUrls) ? task.videoUrls : [];
+      const finalVideoUrls = [...existingVideoUrls, ...newVideoUrls];
+      taskData.videoUrls = finalVideoUrls;
+  } else if (task.videoUrls !== undefined) {
+      taskData.videoUrls = task.videoUrls.length > 0 ? task.videoUrls : firebase.firestore.FieldValue.delete();
   }
   
   await docRef.set(taskData, { merge: true });

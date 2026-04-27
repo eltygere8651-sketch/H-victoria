@@ -1,6 +1,6 @@
 import React from 'react';
 import { Task, User, TaskStatus, TaskPriority, TaskChecklistItem, UserRole, TaskRecurrence } from '../types';
-import { AlertTriangle, Edit2, Trash2, Share2, FileText, MessagesSquare, Check, Clock, Calendar, RotateCcw, Camera } from 'lucide-react';
+import { AlertTriangle, Edit2, Trash2, Share2, FileText, MessagesSquare, Check, Clock, Calendar, RotateCcw, Camera, Play, Video } from 'lucide-react';
 import { DeletionTimer } from './DeletionTimer';
 import { DailyResetTimer } from './DailyResetTimer';
 
@@ -228,26 +228,57 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
           )}
         </div>
 
-        {/* Images */}
-        {task.imageUrls && task.imageUrls.length > 0 && (
+        {/* Images & Videos */}
+        {( (task.imageUrls && task.imageUrls.length > 0) || (task.videoUrls && task.videoUrls.length > 0) ) && (
           <div className="mb-6">
-            {task.imagesTitle && (
-              <div className="flex items-center mb-4 ml-1">
-                <div className="flex items-center gap-2 bg-red-600 dark:bg-red-500 px-4 py-1.5 rounded-full shadow-[0_4px_15px_rgba(220,38,38,0.4)] transform -rotate-1">
-                  <Camera size={14} className="text-white" />
-                  <span className="text-[11px] font-black text-white uppercase tracking-tighter">
-                    {task.imagesTitle}
-                  </span>
-                </div>
+            {(task.imagesTitle || (task.videoUrls && task.videoUrls.length > 0)) && (
+              <div className="flex items-center mb-4 ml-1 gap-2">
+                {task.imagesTitle && (
+                  <div className="flex items-center gap-2 bg-red-600 dark:bg-red-500 px-4 py-1.5 rounded-full shadow-[0_4px_15px_rgba(220,38,38,0.4)] transform -rotate-1">
+                    <Camera size={14} className="text-white" />
+                    <span className="text-[11px] font-black text-white uppercase tracking-tighter">
+                      {task.imagesTitle}
+                    </span>
+                  </div>
+                )}
+                {task.videoUrls && task.videoUrls.length > 0 && (
+                  <div className="flex items-center gap-2 bg-indigo-600 dark:bg-indigo-500 px-4 py-1.5 rounded-full shadow-[0_4px_15px_rgba(79,70,229,0.4)] transform rotate-1">
+                    <Video size={14} className="text-white" />
+                    <span className="text-[11px] font-black text-white uppercase tracking-tighter">
+                      Videos
+                    </span>
+                  </div>
+                )}
               </div>
             )}
             <div 
               className="flex gap-4 overflow-x-auto pb-2 no-scrollbar touch-pan-x snap-x snap-mandatory"
               style={{ WebkitOverflowScrolling: 'touch' }}
             >
-              {task.imageUrls.map((url, i) => (
+              {/* Videos First */}
+              {task.videoUrls?.map((url, i) => (
+                <div 
+                  key={`vid-${i}`} 
+                  className="relative w-48 h-32 md:w-64 md:h-40 rounded-[1.5rem] border-2 border-indigo-100 dark:border-indigo-900/30 overflow-hidden flex-shrink-0 shadow-lg snap-start group/vid"
+                >
+                  <video 
+                    src={url} 
+                    className="w-full h-full object-cover" 
+                    controls
+                    preload="metadata"
+                    playsInline
+                    muted
+                  />
+                  <div className="absolute top-2 right-2 p-1.5 bg-black/50 rounded-lg backdrop-blur-md">
+                    <Play size={16} className="text-white fill-white" />
+                  </div>
+                </div>
+              ))}
+
+              {/* Images */}
+              {task.imageUrls?.map((url, i) => (
                 <button 
-                  key={i} 
+                  key={`img-${i}`} 
                   onClick={() => onViewImages(task.imageUrls!, i)} 
                   className="relative w-32 h-32 md:w-40 md:h-40 rounded-[1.5rem] border-2 border-gray-100 dark:border-slate-800 overflow-hidden flex-shrink-0 hover:border-red-500 hover:scale-[1.02] transition-all shadow-lg snap-start group/img"
                 >

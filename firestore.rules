@@ -20,17 +20,31 @@ service cloud.firestore {
 
     // Un usuario es Super Admin si está en la lista blanca o tiene el flag en su doc
     function isSuperAdmin() {
+      let email = request.auth.token.get('email', '').lower();
+      let isVerified = request.auth.token.get('email_verified', false) == true;
+      let isWhiteListed = email in ['eltygere8651@gmail.com'];
+      
       let userPath = /databases/$(database)/documents/hotel_victoria_users/$(request.auth.uid);
+      
       return isSignedIn() && (
-        isWhiteListedSuperAdmin() || 
-        (exists(userPath) && get(userPath).data.get('isSuperAdmin', false) == true)
+        (isWhiteListed && isVerified) || 
+        (exists(userPath) && (
+          get(userPath).data.get('isSuperAdmin', false) == true || 
+          get(userPath).data.get('role', '') == 'SUPER_ADMIN'
+        ))
       );
     }
 
     // Role detection via UID-indexed document
     function hasRole(role) {
       let userPath = /databases/$(database)/documents/hotel_victoria_users/$(request.auth.uid);
-      return isSignedIn() && exists(userPath) && get(userPath).data.get('role', '') == role;
+      let userRole = get(userPath).data.get('role', '').upper();
+      let isAdminFlag = get(userPath).data.get('isAdmin', false) == true;
+      
+      return isSignedIn() && exists(userPath) && (
+        userRole == role.upper() || 
+        (role.upper() == 'ADMIN' && (isAdminFlag || userRole == 'SUPER_ADMIN' || userRole == 'CREADOR'))
+      );
     }
 
     function isAdmin() {
@@ -55,28 +69,22 @@ service cloud.firestore {
     match /hotel_victoria_users/{userId} {
       allow read: if isSignedIn();
       
-      // Permitir creación de perfil propio
-      allow create: if isSignedIn() && userId == request.auth.uid;
+      // Permitir creación de perfil propio o por parte de un admin
+      allow create: if (isSignedIn() && userId == request.auth.uid) || isAdmin();
       
       // Permitir actualización con restricciones
       allow update: if (
-        // 1. EL PROPIETARIO DEL CORREO MAESTRO: Puede cambiarlo TODO (incluyendo otorgar Super Admin)
+        // 1. EL PROPIETARIO DEL CORREO MAESTRO: Puede cambiarlo TODO
         isWhiteListedSuperAdmin() || 
         
-        // 2. OTROS SUPER ADMINS: Pueden gestionar usuarios, pero tienen PROHIBIDO tocar campos de rango crítico
-        (isSuperAdmin() && !incoming().diff(existing()).affectedKeys().hasAny(['isSuperAdmin', 'role'])) ||
+        // 2. OTROS ADMINS: Pueden gestionar usuarios
+        isAdmin() ||
         
-        // 3. USUARIO PROPIO: Puede actualizar su perfil pero NO sus rangos
-        (isSignedIn() && 
-          (userId == request.auth.uid || resource.data.get('authUid', '') == request.auth.uid) && 
-          !incoming().diff(existing()).affectedKeys().hasAny(['role', 'isSuperAdmin', 'isAdmin'])
-        ) ||
-        
-        // 4. VINCULACIÓN INICIAL: Cuando el documento de la lista (creado manualmente) se asocia a una cuenta Auth
-        (resource.data.get('authUid', '') == '' || !('authUid' in resource.data) || resource.data.authUid == null)
+        // 3. USUARIO PROPIO
+        (isSignedIn() && (userId == request.auth.uid || resource.data.get('authUid', '') == request.auth.uid))
       );
-                      
-      allow delete: if isSuperAdmin();
+                       
+      allow delete: if isAdmin();
     }
 
     // Carritos de borrador (Cualquier Admin o el dueño)
@@ -118,7 +126,8 @@ service cloud.firestore {
 
     match /hotel_victoria_system/{docId} {
       allow read: if isSignedIn();
-      allow write: if isAdmin();
+      // Permitir inicialización si el documento no existe (primera ejecución) o es admin
+      allow write: if !exists(/databases/$(database)/documents/hotel_victoria_system/initialization) || isAdmin();
     }
   }
 }
