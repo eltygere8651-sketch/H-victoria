@@ -15,7 +15,6 @@ import { GuideModal } from './components/GuideModal';
 import { MainLayout } from './components/MainLayout';
 
 import ProviderDelivery from './pages/ProviderDelivery';
-import Training from './pages/Training';
 import Register from './pages/Register';
 
 const App: React.FC = () => {
@@ -29,13 +28,13 @@ const App: React.FC = () => {
   const [shareData, setShareData] = useState({ url: '', title: '' });
   const [showGuideModal, setShowGuideModal] = useState(false);
 
-  const [view, setView] = useState<'inventory' | 'replenish' | 'admin' | 'tasks' | 'training'>(() => {
+  const [view, setView] = useState<'inventory' | 'replenish' | 'admin' | 'tasks'>(() => {
     const lastView = storageService.getLastView();
     const sessionUser = storageService.getSession();
-    let defaultView: 'inventory' | 'replenish' | 'tasks' | 'training' = 'replenish';
+    let defaultView: 'inventory' | 'replenish' | 'tasks' = 'replenish';
     if (sessionUser?.role === UserRole.ADMIN) defaultView = 'inventory';
     if (sessionUser?.role === UserRole.GUEST) defaultView = 'tasks';
-    if (lastView) return lastView as any;
+    if (lastView && (['inventory', 'replenish', 'admin', 'tasks'] as string[]).includes(lastView)) return lastView as any;
     return defaultView;
   });
 
@@ -499,18 +498,6 @@ const App: React.FC = () => {
         {view === 'replenish' && user.role !== UserRole.GUEST && user.role !== UserRole.PROVIDER && <Replenishment currentUser={user} cart={cart} setCart={setCart} showMobileCart={showMobileCart} setShowMobileCart={setShowMobileCart} notificationVolume={notificationVolume} soundType={soundType} />}
         {view === 'admin' && user.role === UserRole.ADMIN && <Admin currentUser={user} unreadNotificationsCount={unreadAdminNotifications.length} initialTab={initialAdminTab} />}
         {view === 'tasks' && <Tasks currentUser={user} initialTaskId={sharedTaskId} />}
-        {view === 'training' && (
-          <Training 
-            onBack={() => setView('tasks')} 
-            currentUser={user}
-            cart={cart}
-            setCart={setCart}
-            showMobileCart={showMobileCart}
-            setShowMobileCart={setShowMobileCart}
-            notificationVolume={notificationVolume}
-            soundType={soundType}
-          />
-        )}
         {(view as any) === 'provider' && <ProviderDelivery currentUser={user} />}
       </MainLayout>
     );
@@ -525,10 +512,6 @@ const App: React.FC = () => {
       <GuideModal 
         isOpen={showGuideModal} 
         onClose={() => setShowGuideModal(false)} 
-        onStartTraining={() => {
-          setShowGuideModal(false);
-          if (user) setView('training');
-        }}
       />
       <ShareModal isOpen={showShareModal} onClose={() => setShowShareModal(false)} url={shareData.url} title={shareData.title} />
 

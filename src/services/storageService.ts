@@ -600,12 +600,41 @@ export const subscribeToUsers = (callback: (users: User[]) => void) => {
     }, error => handleFirestoreError(error, OperationType.GET, KEYS.USERS));
 };
 export const addUser = async (user: Omit<User, 'id'>) => {
-  if (user.pin) {
-    user.pin = await hashPin(user.pin);
+  try {
+    // 1. Asegurar que estamos autenticados anónimamente para tener permisos de escritura
+    if (!auth.currentUser) {
+      console.log("No hay sesión activa para registro, iniciando sesión anónima...");
+      await auth.signInAnonymously();
+    }
+
+    // 2. Comprobar si el nombre de usuario ya existe (insensible a mayúsculas/minúsculas)
+    const q = db.collection(KEYS.USERS).where("name", "==", user.name);
+    const snapshot = await q.get();
+    
+    if (!snapshot.empty) {
+      throw new Error('USERNAME_EXISTS');
+    }
+
+    // 3. Hashear el PIN/Password
+    if (user.pin) {
+      user.pin = await hashPin(user.pin);
+    }
+
+    // 4. Limpiar y añadir datos por defecto para cumplir con las reglas de seguridad
+    const userData = sanitizeData({
+      ...user,
+      isSuperAdmin: false,
+      isAdmin: false,
+      createdAt: Date.now()
+    });
+
+    const result = await db.collection(KEYS.USERS).add(userData);
+    console.log("Usuario registrado con éxito:", result.id);
+    return result;
+  } catch (error: any) {
+    if (error.message === 'USERNAME_EXISTS') throw error;
+    handleFirestoreError(error, OperationType.WRITE, KEYS.USERS);
   }
-  const result = await db.collection(KEYS.USERS).add(sanitizeData(user));
-  
-  return result;
 };
 export const updateUser = async (user: User) => {
   // If pin is changed (not a 64 char hash), we hash it

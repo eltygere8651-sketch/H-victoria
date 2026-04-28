@@ -2,7 +2,6 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Logo } from './Logo';
 import { Download, Share2, Sun, Moon, LogOut, ClipboardCheck, ClipboardList, LayoutGrid, ShieldCheck, ShoppingCart, X, Volume2, VolumeX, Pause, Play, Sparkles, Bell, ChevronDown } from 'lucide-react';
 import { User, UserRole, CartItem } from '../types';
-import { useSpeech } from '../context/SpeechContext';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface MainLayoutProps {
@@ -110,9 +109,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
   unreadAdminNotificationsCount
 }) => {
   const hasCartItems = cart.length > 0;
-  const { isSpeaking, stopSpeech, togglePause, isPaused, narratorTitle, narratorSubtitle } = useSpeech();
   const [showVolumeMenu, setShowVolumeMenu] = useState(false);
-  const [aiCompact, setAiCompact] = useState(false);
   const volumeMenuRef = useRef<HTMLDivElement>(null);
 
   // Close volume menu when clicking outside
@@ -132,166 +129,6 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
 
   return (
     <div className={`min-h-[100dvh] w-full flex flex-col font-sans transition-colors duration-500 antialiased ${darkMode ? 'dark' : ''} bg-premium relative`}>
-      {/* Global Narrator HUD - Futuristic AI Face */}
-      <AnimatePresence>
-        {isSpeaking && (
-          <motion.div 
-            drag
-            dragMomentum={false}
-            initial={{ scale: 0, opacity: 0, x: 20, y: 20 }}
-            animate={{ scale: 1, opacity: 1, x: 0, y: 0 }}
-            exit={{ scale: 0, opacity: 0 }}
-            className="fixed bottom-32 right-8 z-[100] cursor-move select-none"
-            style={{ touchAction: 'none' }}
-          >
-            <div className="relative group">
-              {/* Compact Toggle Button */}
-              <button 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setAiCompact(!aiCompact);
-                }}
-                className="absolute -top-2 -right-2 z-[110] w-6 h-6 bg-red-600 rounded-full border border-white/20 text-white flex items-center justify-center shadow-lg hover:scale-110 active:scale-95 transition-transform"
-                title={aiCompact ? "Expandir" : "Contraer"}
-              >
-                <motion.div animate={{ rotate: aiCompact ? 180 : 0 }}>
-                  <ChevronDown size={14} strokeWidth={3} />
-                </motion.div>
-              </button>
-
-              {/* Core Glowing Aura */}
-              <motion.div 
-                animate={{ 
-                  scale: aiCompact ? [0.8, 1, 0.8] : [1, 1.15, 1],
-                  opacity: aiCompact ? [0.2, 0.4, 0.2] : [0.3, 0.6, 0.3],
-                }}
-                transition={{ duration: 2, repeat: Infinity }}
-                className="absolute inset-[-10px] bg-red-600/30 rounded-full blur-3xl z-0"
-              />
-
-              {/* Rotating Outer Ring */}
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
-                className={`absolute ${aiCompact ? 'inset-0' : 'inset-[-4px]'} border-2 border-dashed border-red-600/20 rounded-[2rem] z-0 pointer-events-none`}
-              />
-
-              {/* AI Head Container */}
-              <motion.div 
-                animate={{ 
-                  width: aiCompact ? 64 : 208,
-                  height: aiCompact ? 64 : 'auto',
-                  borderRadius: aiCompact ? '50%' : '2rem'
-                }}
-                className="bg-[#05060a]/95 backdrop-blur-3xl border border-red-500/30 shadow-[0_0_30px_rgba(220,38,38,0.2)] overflow-hidden relative flex flex-col items-center justify-center p-4"
-              >
-                {/* Holographic Hex Grid */}
-                <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] scale-50" />
-                
-                <div className={`flex flex-col items-center gap-4 relative z-10 w-full ${aiCompact ? 'scale-75' : ''}`}>
-                  {/* The Face */}
-                  <div className={`flex items-center justify-center ${aiCompact ? 'gap-2' : 'gap-6'} py-1 transition-all`}>
-                    {/* Left Eye */}
-                    <div className="relative">
-                      <motion.div 
-                        animate={{ 
-                          height: aiCompact ? 4 : [10, 10, 1, 10], 
-                          width: aiCompact ? 4 : 32,
-                          borderRadius: aiCompact ? '50%' : '9999px',
-                          scaleX: aiCompact ? 1 : [1, 1.2, 0.8, 1],
-                          backgroundColor: ["#dc2626", "#ef4444", "#dc2626"]
-                        }}
-                        transition={{ duration: 3.5, repeat: Infinity, times: [0, 0.9, 0.95, 1] }}
-                        className="bg-red-600 shadow-[0_0_15px_rgba(220,38,38,1)]"
-                      />
-                    </div>
-                    {/* Right Eye */}
-                    <div className="relative">
-                      <motion.div 
-                        animate={{ 
-                          height: aiCompact ? 4 : [10, 10, 1, 10],
-                          width: aiCompact ? 4 : 32,
-                          borderRadius: aiCompact ? '50%' : '9999px',
-                          scaleX: aiCompact ? 1 : [1, 1.2, 0.8, 1],
-                          backgroundColor: ["#dc2626", "#ef4444", "#dc2626"]
-                        }}
-                        transition={{ duration: 3.5, repeat: Infinity, delay: 0.15, times: [0, 0.92, 0.97, 1] }}
-                        className="bg-red-600 shadow-[0_0_15px_rgba(220,38,38,1)]"
-                      />
-                    </div>
-                  </div>
-
-                  {!aiCompact && (
-                    <motion.div 
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="flex flex-col items-center gap-4 w-full"
-                    >
-                      {/* Speech Waveform */}
-                      <div className="flex items-center gap-0.5 h-6">
-                        {[...Array(14)].map((_, i) => (
-                          <motion.div
-                            key={i}
-                            animate={{ 
-                              height: isPaused ? 2 : [2, Math.random() * 20 + 4, 2],
-                            }}
-                            transition={{ 
-                              duration: 0.25, 
-                              repeat: Infinity, 
-                              delay: i * 0.03,
-                              ease: "linear"
-                            }}
-                            className="w-[3px] bg-red-600/80 rounded-full"
-                          />
-                        ))}
-                      </div>
-
-                      {/* Text Info */}
-                      <div className="text-center w-full">
-                        <div className="text-[8px] font-black text-red-500 uppercase tracking-[0.4em] mb-1 leading-none opacity-80">
-                          Neural Unit 01
-                        </div>
-                        <div className="text-xs font-bold text-white truncate max-w-[160px] italic px-1 mx-auto">
-                          {narratorTitle || 'Asistente IA'}
-                        </div>
-                      </div>
-
-                      {/* Minimalist Controls */}
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <button 
-                          onClick={(e) => { e.stopPropagation(); togglePause(); }}
-                          className="w-10 h-10 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white flex items-center justify-center transition-all active:scale-90"
-                        >
-                          {isPaused ? <Play size={16} fill="currentColor" /> : <Pause size={16} fill="currentColor" />}
-                        </button>
-                        <button 
-                          onClick={(e) => { e.stopPropagation(); stopSpeech(); }}
-                          className="w-10 h-10 rounded-xl bg-red-600/10 hover:bg-red-600 border border-red-600/20 text-red-500 hover:text-white flex items-center justify-center transition-all active:scale-90"
-                        >
-                          <X size={16} strokeWidth={3} />
-                        </button>
-                      </div>
-                    </motion.div>
-                  )}
-                </div>
-
-                {/* Vertical Scanline */}
-                <motion.div 
-                  animate={{ top: ['-100%', '200%'] }}
-                  transition={{ duration: 2.5, repeat: Infinity, ease: "linear" }}
-                  className="absolute left-0 right-0 h-[100px] bg-gradient-to-b from-transparent via-red-600/[0.05] to-transparent z-0 pointer-events-none"
-                />
-              </motion.div>
-
-              {/* Minimal Drag Handle */}
-              <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-[7px] font-black uppercase text-red-500/40 tracking-[0.3em] pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                Sistema de Navegación
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       {/* HEADER GLOBAL FIJO */}
       <header 
         className="fixed top-0 left-0 right-0 h-[var(--header-h)] bg-white/80 dark:bg-slate-900/90 backdrop-blur-2xl shadow-sm z-50 border-b border-slate-200 dark:border-white/5 flex items-center px-3 sm:px-4 pb-2"

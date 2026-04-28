@@ -1,7 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
-import { SpeechProvider } from './context/SpeechContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import './index.css';
 
@@ -10,9 +9,7 @@ if (rootElement) {
   ReactDOM.createRoot(rootElement).render(
     <React.StrictMode>
       <ErrorBoundary>
-        <SpeechProvider>
-          <App />
-        </SpeechProvider>
+        <App />
       </ErrorBoundary>
     </React.StrictMode>
   );

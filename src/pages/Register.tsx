@@ -36,15 +36,19 @@ const Register: React.FC<RegisterProps> = ({ onBack, setShowGuideModal }) => {
     
     try {
       await storageService.addUser({
-        name: username, // Using 'name' field as username for system compatibility
+        name: username.trim(), // Limpiar espacios en blanco
         role: UserRole.STAFF,
-        pin: password, // 'pin' field stores the hashed password
+        pin: password,
         permissions: []
       });
       setSuccess(true);
-    } catch (err) {
-      setError('Error al registrar usuario. Es posible que el nombre ya esté en uso o haya un problema de conexión.');
-      console.error(err);
+    } catch (err: any) {
+      if (err.message === 'USERNAME_EXISTS') {
+        setError('Este nombre de usuario ya está registrado. Por favor, elige otro.');
+      } else {
+        setError('Error de conexión con el servidor. Por favor, comprueba tu internet e inténtalo de nuevo.');
+      }
+      console.error('Error de registro:', err);
     } finally {
       setLoading(false);
     }

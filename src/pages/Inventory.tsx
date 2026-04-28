@@ -172,7 +172,7 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser, notificationVolume =
     } catch (e) { console.error(e); }
   };
 
-  const isDeveloper = currentUser.email === storageService.SUPER_ADMIN_EMAIL;
+  const isDeveloper = storageService.auth.currentUser?.email === storageService.SUPER_ADMIN_EMAIL || !!currentUser.isSuperAdmin;
 
   const handleSaveProduct = async () => {
     if (!isDeveloper && !editProductForm.id) {
@@ -555,20 +555,30 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser, notificationVolume =
 
       {/* MODAL RESTRICCIÓN DESARROLLADOR */}
       {showDeveloperRestrictedModal && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-950/90 backdrop-blur-md p-4 animate-fade-in">
-          <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] max-w-md w-full shadow-2xl border-4 border-red-500/20 text-center animate-pop-in">
-            <div className="w-20 h-20 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-6">
-              <ShieldAlert className="text-red-600" size={40} />
+        <div className="fixed inset-0 z-[300] flex items-center justify-center bg-slate-950/95 backdrop-blur-md p-4 animate-fade-in">
+          <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] max-w-md w-full shadow-2xl border-4 border-red-600/30 text-center animate-pop-in">
+            <div className="w-24 h-24 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
+              <ShieldAlert className="text-red-600" size={48} />
             </div>
-            <h3 className="text-2xl font-black text-slate-900 dark:text-white uppercase italic mb-4">Acceso <span className="text-red-600">Restringido</span></h3>
-            <p className="text-slate-600 dark:text-slate-400 font-bold mb-8 leading-relaxed">
-              Lo sentimos, la creación o eliminación de productos del stock está reservada únicamente para el <span className="text-red-600 font-black tracking-tight">desarrollador de la aplicación</span>.
-              <br /><br />
-              Por favor, ponte en contacto con <span className="text-red-600 font-black text-lg underline underline-offset-4">BIENVE</span> para que gestione cualquier cambio que necesites en el inventario.
-            </p>
+            <h3 className="text-3xl font-black text-slate-900 dark:text-white uppercase italic mb-4 leading-none">Acceso <br /><span className="text-red-600">Restringido</span></h3>
+            <div className="space-y-4 mb-8">
+              <p className="text-slate-600 dark:text-slate-400 font-bold leading-relaxed">
+                Lo sentimos, la creación o eliminación de productos del inventario está reservada únicamente para el <span className="text-red-600 font-black">desarrollador de la aplicación</span>.
+              </p>
+              <div className="p-4 bg-red-50 dark:bg-red-900/10 rounded-2xl border border-red-100 dark:border-red-900/20">
+                <p className="text-slate-700 dark:text-slate-300 font-medium text-sm">
+                  Por favor, ponte en contacto con <br />
+                  <span className="text-red-600 font-black text-xl underline underline-offset-4 decoration-2 tracking-tight">BIENVE</span><br />
+                  <span className="text-[10px] uppercase font-bold text-slate-400 mt-1 block tracking-widest">Desarrollador Maestro</span>
+                </p>
+              </div>
+              <p className="text-xs text-slate-400 italic">
+                Él podrá gestionar cualquier cambio estructural que necesites.
+              </p>
+            </div>
             <button 
               onClick={() => setShowDeveloperRestrictedModal(false)}
-              className="w-full py-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black rounded-2xl shadow-xl active:scale-95 transition-transform uppercase tracking-wider"
+              className="w-full py-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black rounded-2xl shadow-xl active:scale-95 transition-transform uppercase tracking-widest"
             >
               Entendido
             </button>
