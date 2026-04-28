@@ -46,9 +46,7 @@ const Register: React.FC<RegisterProps> = ({ onBack, setShowGuideModal }) => {
       if (err.message === 'USERNAME_EXISTS') {
         setError('Este nombre de usuario ya está registrado. Por favor, elige otro.');
       } else {
-        // Extraer mensaje de error de Firestore si está disponible para depuración
-        const technicalMsg = err.message || 'Error desconocido';
-        setError(`Error: ${technicalMsg.split('\n')[0]}`); // Mostrar solo la primera línea del error
+        setError('Error al registrar usuario. Es posible que el servidor esté ocupado o no tengas conexión.');
       }
       console.error('Error de registro:', err);
     } finally {

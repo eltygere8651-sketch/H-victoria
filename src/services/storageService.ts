@@ -601,40 +601,35 @@ export const subscribeToUsers = (callback: (users: User[]) => void) => {
 };
 export const addUser = async (user: Omit<User, 'id'>) => {
   try {
-    // 1. Asegurar que estamos autenticados anónimamente para tener permisos de escritura
+    // Asegurar que estamos autenticados para tener permisos de escritura (reglas de seguridad)
     if (!auth.currentUser) {
-      console.log("No hay sesión activa para registro, iniciando sesión anónima...");
       await auth.signInAnonymously();
     }
 
-    // 2. Comprobar si el nombre de usuario ya existe (usando una referencia directa es más eficiente y evita problemas de índices)
-    const userRef = db.collection(KEYS.USERS).doc(user.name.toLowerCase().trim());
+    const userId = user.name.toLowerCase().trim();
+    const userRef = db.collection(KEYS.USERS).doc(userId);
     const doc = await userRef.get();
     
     if (doc.exists) {
       throw new Error('USERNAME_EXISTS');
     }
 
-    // 3. Hashear el PIN/Password
     if (user.pin) {
       user.pin = await hashPin(user.pin);
     }
 
-    // 4. Limpiar y añadir datos por defecto para cumplir con las reglas de seguridad
     const userData = sanitizeData({
       ...user,
       isSuperAdmin: false,
       isAdmin: false,
       createdAt: Date.now(),
-      id: user.name.toLowerCase().trim() // Usar el nombre como ID para asegurar unicidad
+      id: userId
     });
 
     await userRef.set(userData);
-    console.log("Usuario registrado con éxito:", userData.id);
     return userData;
   } catch (error: any) {
     if (error.message === 'USERNAME_EXISTS') throw error;
-    console.error("Detalle del error en addUser:", error);
     handleFirestoreError(error, OperationType.WRITE, KEYS.USERS);
   }
 };

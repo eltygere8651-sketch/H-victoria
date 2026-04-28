@@ -25,18 +25,22 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      let userPath = /databases/$(database)/documents/hotel_victoria_users/$(request.auth.uid);
-      return isSuperAdmin() || (
-        isSignedIn() && exists(userPath) && (
-          get(userPath).data.get('role', '').upper() == 'ADMIN' ||
-          get(userPath).data.get('role', '').upper() == 'SUPER_ADMIN' ||
-          get(userPath).data.get('isAdmin', false) == true
-        )
+      return isSignedIn() && (
+        isSuperAdmin() || 
+        (exists(/databases/$(database)/documents/hotel_victoria_users/$(request.auth.uid)) && (
+          get(/databases/$(database)/documents/hotel_victoria_users/$(request.auth.uid)).data.get('isAdmin', false) == true ||
+          get(/databases/$(database)/documents/hotel_victoria_users/$(request.auth.uid)).data.get('role', '') == 'ADMIN' ||
+          get(/databases/$(database)/documents/hotel_victoria_users/$(request.auth.uid)).data.get('role', '') == 'SUPER_ADMIN'
+        ))
       );
     }
 
     function isStaff() {
-      return isAdmin() || hasRole('STAFF');
+      return isSignedIn() && (
+        isAdmin() || 
+        (exists(/databases/$(database)/documents/hotel_victoria_users/$(request.auth.uid)) && 
+         get(/databases/$(database)/documents/hotel_victoria_users/$(request.auth.uid)).data.get('role', '') == 'STAFF')
+      );
     }
 
     function incoming() { return request.resource.data; }
@@ -51,27 +55,23 @@ service cloud.firestore {
     // --- COLLECTIONS ---
 
     match /hotel_victoria_users/{userId} {
-      allow read: if isSignedIn();
+      allow get: if isSignedIn();
+      allow list: if isAdmin();
       
-      // Permitir creación:
-      // 1. Perfil propio (userId es su UID - necesario para vincular Auth con perfil de PIN)
-      // 2. Registro de nuevo empleado (rol STAFF, sin poderes de admin)
-      // 3. Admin creando cualquier usuario
+      // Permitir registro: Cualquier usuario autenticado puede crear un perfil STAFF 
+      // siempre que no se asigne a sí mismo permisos de administrador.
       allow create: if isSignedIn() && (
-        userId == request.auth.uid || 
-        (incoming().get('role', '') == 'STAFF' && incoming().get('isSuperAdmin', false) == false) ||
-        isAdmin()
+        (request.resource.data.role == 'STAFF' && 
+         request.resource.data.isAdmin == false && 
+         request.resource.data.isSuperAdmin == false) ||
+        isSuperAdmin()
       );
       
-      // Permitir actualización: 
-      // 1. Propietario (userId es su UID)
-      // 2. Vinculado (el documento tiene su authUid)
-      // 3. Admin/SuperAdmin
       allow update: if isSignedIn() && (
         userId == request.auth.uid || 
-        existing().get('authUid', '') == request.auth.uid ||
-        isAdmin() ||
-        (existing().get('authUid', '') == '' && incoming().get('authUid', '') == request.auth.uid)
+        (exists(/databases/$(database)/documents/hotel_victoria_users/$(userId)) && 
+         get(/databases/$(database)/documents/hotel_victoria_users/$(userId)).data.get('authUid', '') == request.auth.uid) ||
+        isAdmin()
       );
                         
       allow delete: if isAdmin();
