@@ -607,11 +607,11 @@ export const addUser = async (user: Omit<User, 'id'>) => {
       await auth.signInAnonymously();
     }
 
-    // 2. Comprobar si el nombre de usuario ya existe (insensible a mayúsculas/minúsculas)
-    const q = db.collection(KEYS.USERS).where("name", "==", user.name);
-    const snapshot = await q.get();
+    // 2. Comprobar si el nombre de usuario ya existe (usando una referencia directa es más eficiente y evita problemas de índices)
+    const userRef = db.collection(KEYS.USERS).doc(user.name.toLowerCase().trim());
+    const doc = await userRef.get();
     
-    if (!snapshot.empty) {
+    if (doc.exists) {
       throw new Error('USERNAME_EXISTS');
     }
 
@@ -625,14 +625,16 @@ export const addUser = async (user: Omit<User, 'id'>) => {
       ...user,
       isSuperAdmin: false,
       isAdmin: false,
-      createdAt: Date.now()
+      createdAt: Date.now(),
+      id: user.name.toLowerCase().trim() // Usar el nombre como ID para asegurar unicidad
     });
 
-    const result = await db.collection(KEYS.USERS).add(userData);
-    console.log("Usuario registrado con éxito:", result.id);
-    return result;
+    await userRef.set(userData);
+    console.log("Usuario registrado con éxito:", userData.id);
+    return userData;
   } catch (error: any) {
     if (error.message === 'USERNAME_EXISTS') throw error;
+    console.error("Detalle del error en addUser:", error);
     handleFirestoreError(error, OperationType.WRITE, KEYS.USERS);
   }
 };
