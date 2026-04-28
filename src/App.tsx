@@ -472,7 +472,7 @@ const App: React.FC = () => {
   } else if (isRegistering && !user) {
     mainContent = <Register onBack={() => setIsRegistering(false)} setShowGuideModal={setShowGuideModal} />;
   } else if (!user) {
-    mainContent = <Login onLogin={handleLogin} onRegisterClick={() => setIsRegistering(true)} setShowGuideModal={setShowGuideModal} />;
+    mainContent = <Login onLogin={handleLogin} setShowGuideModal={setShowGuideModal} />;
   } else {
     mainContent = (
       <MainLayout

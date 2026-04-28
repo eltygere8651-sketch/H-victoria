@@ -8,11 +8,10 @@ import { PWAInstallPrompt } from '../components/PWAInstallPrompt';
 
 interface LoginProps {
   onLogin: (user: User) => void;
-  onRegisterClick: () => void;
   setShowGuideModal: (show: boolean) => void;
 }
 
-const Login: React.FC<LoginProps> = ({ onLogin, onRegisterClick, setShowGuideModal }) => {
+const Login: React.FC<LoginProps> = ({ onLogin, setShowGuideModal }) => {
   const [username, setUsername] = useState('');
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
@@ -251,15 +250,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onRegisterClick, setShowGuideMod
             </button>
           </form>
 
-          <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-800 text-center space-y-4">
-             <button 
-               type="button"
-               onClick={onRegisterClick}
-               className="text-xs font-bold text-slate-500 hover:text-red-600 transition-colors uppercase tracking-widest"
-             >
-               ¿No tienes cuenta? <span className="underline underline-offset-4 decoration-red-600/30">Regístrate aquí</span>
-             </button>
-             
+          <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-800 text-center">
              <p className="text-[10px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-widest">
                Hub Operational Intelligence
              </p>

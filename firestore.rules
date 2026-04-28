@@ -8,24 +8,11 @@ service cloud.firestore {
     function isSignedIn() {
       return request.auth != null;
     }
-    
-    // Lista de correos con poder total (Super Admins de código)
-    function isWhiteListedSuperAdmin() {
-      let email = request.auth.token.get('email', '').lower();
-      return email in [
-        'eltygere8651@gmail.com'
-        // Añade más correos aquí
-      ];
-    }
 
-    // Un usuario es Super Admin si está en la lista blanca o tiene el flag en su doc
+    // Un usuario es Super Admin si está en la lista blanca por email
     function isSuperAdmin() {
       let email = request.auth.token.get('email', '').lower();
-      let userPath = /databases/$(database)/documents/hotel_victoria_users/$(request.auth.uid);
-      return isSignedIn() && (
-        email == 'eltygere8651@gmail.com' || 
-        (exists(userPath) && get(userPath).data.get('role', '') == 'SUPER_ADMIN')
-      );
+      return isSignedIn() && email == 'eltygere8651@gmail.com';
     }
 
     // Role detection via UID-indexed document
@@ -33,20 +20,23 @@ service cloud.firestore {
       let userPath = /databases/$(database)/documents/hotel_victoria_users/$(request.auth.uid);
       return isSignedIn() && exists(userPath) && (
         get(userPath).data.get('role', '').upper() == role.upper() || 
-        (role.upper() == 'ADMIN' && (
-          get(userPath).data.get('isAdmin', false) == true || 
-          get(userPath).data.get('role', '').upper() == 'SUPER_ADMIN' || 
-          get(userPath).data.get('role', '').upper() == 'CREADOR'
-        ))
+        get(userPath).data.get('role', '').upper() == 'SUPER_ADMIN'
       );
     }
 
     function isAdmin() {
-      return isSuperAdmin() || hasRole('ADMIN');
+      let userPath = /databases/$(database)/documents/hotel_victoria_users/$(request.auth.uid);
+      return isSuperAdmin() || (
+        isSignedIn() && exists(userPath) && (
+          get(userPath).data.get('role', '').upper() == 'ADMIN' ||
+          get(userPath).data.get('role', '').upper() == 'SUPER_ADMIN' ||
+          get(userPath).data.get('isAdmin', false) == true
+        )
+      );
     }
 
     function isStaff() {
-      return isSuperAdmin() || hasRole('STAFF') || hasRole('ADMIN');
+      return isAdmin() || hasRole('STAFF');
     }
 
     function incoming() { return request.resource.data; }
@@ -64,18 +54,19 @@ service cloud.firestore {
       allow read: if isSignedIn();
       
       // Permitir creación:
-      // 1. Perfil propio (userId es su UID)
+      // 1. Perfil propio (userId es su UID - necesario para vincular Auth con perfil de PIN)
       // 2. Registro de nuevo empleado (rol STAFF, sin poderes de admin)
       // 3. Admin creando cualquier usuario
-      allow create: if (isSignedIn() && userId == request.auth.uid) || 
-                   (isSignedIn() && incoming().get('role', '') == 'STAFF' && incoming().get('isSuperAdmin', false) == false) ||
-                   isAdmin();
+      allow create: if isSignedIn() && (
+        userId == request.auth.uid || 
+        (incoming().get('role', '') == 'STAFF' && incoming().get('isSuperAdmin', false) == false) ||
+        isAdmin()
+      );
       
       // Permitir actualización: 
       // 1. Propietario (userId es su UID)
       // 2. Vinculado (el documento tiene su authUid)
       // 3. Admin/SuperAdmin
-      // 4. Cualquier usuario intentando vincularse a un perfil vacío (necesario para el primer login)
       allow update: if isSignedIn() && (
         userId == request.auth.uid || 
         existing().get('authUid', '') == request.auth.uid ||

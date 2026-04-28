@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { Product, UserRole, User, Department, OrderBatch } from '../types';
 import * as storageService from '../services/storageService';
-import { Search, Plus, AlertTriangle, Edit2, Trash2, X, Save, Loader2, ListTree, ChevronDown, RefreshCw, Sparkles, Wand2, PackagePlus, ArrowRight, CheckCircle2, FileText, Share2 } from 'lucide-react';
+import { Search, Plus, AlertTriangle, Edit2, Trash2, X, Save, Loader2, ListTree, ChevronDown, RefreshCw, Sparkles, Wand2, PackagePlus, ArrowRight, CheckCircle2, FileText, Share2, ShieldAlert } from 'lucide-react';
 import { sharePdfFromReactComponent } from '../utils/pdfGenerator';
 import { OrderPdfDocument } from '../components/OrderPdfDocument';
 
@@ -10,6 +10,8 @@ interface InventoryProps {
   notificationVolume?: number;
   soundType?: string;
 }
+
+const UNIT_OPTIONS = ['unidades', 'botellin', 'bot', 'porcion', 'bote', 'packs', 'caja', 'kilo', 'sobres', 'tercio', 'litro'];
 
 const Inventory: React.FC<InventoryProps> = ({ currentUser, notificationVolume = 0.3, soundType = 'Default' }) => {
   const [products, setProducts] = useState<Product[]>([]);
@@ -21,6 +23,7 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser, notificationVolume =
   const [showEditProductModal, setShowEditProductModal] = useState(false);
   const [editProductForm, setEditProductForm] = useState<Partial<Product>>({});
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
+  const [showDeveloperRestrictedModal, setShowDeveloperRestrictedModal] = useState(false);
   const [showManageDepartmentsModal, setShowManageDepartmentsModal] = useState(false);
   const [editingDepartment, setEditingDepartment] = useState<Department | null>(null);
   const [newDepartmentName, setNewDepartmentName] = useState('');
@@ -64,14 +67,14 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser, notificationVolume =
         changed = true;
       } else if (isFood && !editProductForm.category) {
         suggestedCategory = 'Cocina/Despensa';
-        suggestedUnit = suggestedUnit || 'kg';
+        suggestedUnit = suggestedUnit || 'kilo';
         if (suggestedDeptIds.length === 0 && restDept) {
           suggestedDeptIds = [restDept.id];
         }
         changed = true;
       } else if (isSupply && !editProductForm.category) {
         suggestedCategory = 'Suministros';
-        suggestedUnit = suggestedUnit || 'paquetes';
+        suggestedUnit = suggestedUnit || 'packs';
         if (suggestedDeptIds.length === 0 && restDept) {
           suggestedDeptIds = [restDept.id];
         }
@@ -169,7 +172,13 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser, notificationVolume =
     } catch (e) { console.error(e); }
   };
 
+  const isDeveloper = currentUser.email === storageService.SUPER_ADMIN_EMAIL;
+
   const handleSaveProduct = async () => {
+    if (!isDeveloper && !editProductForm.id) {
+      setShowDeveloperRestrictedModal(true);
+      return;
+    }
     const deptIds = editProductForm.departmentIds || (editProductForm.departmentId ? [editProductForm.departmentId] : []);
     if (!editProductForm.name || deptIds.length === 0) {
       setFormError('El nombre y al menos un área son obligatorios.');
@@ -199,6 +208,10 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser, notificationVolume =
   };
 
   const handleSaveDepartment = async () => {
+    if (!isDeveloper) {
+      setShowDeveloperRestrictedModal(true);
+      return;
+    }
     if (!newDepartmentName.trim()) return;
     await storageService.saveDepartment({ id: editingDepartment?.id || undefined, name: newDepartmentName.trim() });
     setEditingDepartment(null);
@@ -207,10 +220,18 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser, notificationVolume =
 
   const handleDeleteDepartment = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
+    if (!isDeveloper) {
+      setShowDeveloperRestrictedModal(true);
+      return;
+    }
     setDeptToDelete(id);
   };
 
   const confirmDeleteDepartment = async () => {
+    if (!isDeveloper) {
+      setShowDeveloperRestrictedModal(true);
+      return;
+    }
     if (!deptToDelete) return;
     setIsDeletingDept(deptToDelete);
     await storageService.deleteDepartment(deptToDelete);
@@ -348,7 +369,14 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser, notificationVolume =
                 <ListTree size={16} />
               </button>
               <button 
-                onClick={() => { setEditProductForm({}); setShowEditProductModal(true); }}
+                onClick={() => { 
+                  if (!isDeveloper) {
+                    setShowDeveloperRestrictedModal(true);
+                    return;
+                  }
+                  setEditProductForm({}); 
+                  setShowEditProductModal(true); 
+                }}
                 className="bg-red-600 text-white w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg shadow-red-600/30 active:scale-90 transition-transform"
               >
                 <Plus size={24} strokeWidth={3} />
@@ -401,7 +429,18 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser, notificationVolume =
             </div>
             <div className="flex gap-2">
               <button onClick={() => { setEditProductForm(product); setShowEditProductModal(true); }} className="p-3 text-blue-600 bg-blue-50 dark:bg-blue-900/20 rounded-xl active:scale-90"><Edit2 size={18} /></button>
-              <button onClick={() => setProductToDelete(product)} className="p-3 text-red-600 bg-red-50 dark:bg-red-900/20 rounded-xl active:scale-90"><Trash2 size={18} /></button>
+              <button 
+                onClick={() => { 
+                  if (!isDeveloper) {
+                    setShowDeveloperRestrictedModal(true);
+                    return;
+                  }
+                  setProductToDelete(product); 
+                }} 
+                className="p-3 text-red-600 bg-red-50 dark:bg-red-900/20 rounded-xl active:scale-90"
+              >
+                <Trash2 size={18} />
+              </button>
             </div>
           </div>
         ))}
@@ -468,6 +507,18 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser, notificationVolume =
                 <p className="text-[9px] font-bold text-blue-600 dark:text-blue-400 mt-1 uppercase tracking-tighter">Gestionar vía Ingreso 📦</p>
               </div>
               <div>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Unidad de Medida</label>
+                <select 
+                  className="w-full p-4 border-2 rounded-2xl bg-slate-50 dark:bg-slate-950 font-bold appearance-none outline-none focus:border-red-500"
+                  value={editProductForm.unit || 'unidades'} 
+                  onChange={e => setEditProductForm({...editProductForm, unit: e.target.value})}
+                >
+                  {UNIT_OPTIONS.map(unit => (
+                    <option key={unit} value={unit}>{unit.toUpperCase()}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Alerta</label>
                 <input type="number" className="w-full p-4 border-2 rounded-2xl bg-slate-50 dark:bg-slate-950 font-bold text-red-600" value={editProductForm.minThreshold || 0} onChange={e => setEditProductForm({...editProductForm, minThreshold: Number(e.target.value)})} />
               </div>
@@ -488,8 +539,39 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser, notificationVolume =
             <p className="text-slate-500 dark:text-slate-400 mb-6">Esta acción es permanente y los datos desaparecerán para siempre. ¿Estás seguro?</p>
             <div className="flex gap-3">
               <button onClick={() => setProductToDelete(null)} className="flex-1 py-3 font-bold bg-slate-100 dark:bg-slate-700 rounded-xl text-slate-600 dark:text-slate-300">Cancelar</button>
-              <button onClick={() => { storageService.deleteProduct(productToDelete.id, currentUser.name); setProductToDelete(null); }} className="flex-1 py-3 font-bold bg-red-600 text-white rounded-xl shadow-lg shadow-red-600/30">Eliminar</button>
+              <button onClick={() => { 
+                if (!isDeveloper) {
+                  setShowDeveloperRestrictedModal(true);
+                  setProductToDelete(null);
+                  return;
+                }
+                storageService.deleteProduct(productToDelete.id, currentUser.name); 
+                setProductToDelete(null); 
+              }} className="flex-1 py-3 font-bold bg-red-600 text-white rounded-xl shadow-lg shadow-red-600/30">Eliminar</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL RESTRICCIÓN DESARROLLADOR */}
+      {showDeveloperRestrictedModal && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-950/90 backdrop-blur-md p-4 animate-fade-in">
+          <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] max-w-md w-full shadow-2xl border-4 border-red-500/20 text-center animate-pop-in">
+            <div className="w-20 h-20 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-6">
+              <ShieldAlert className="text-red-600" size={40} />
+            </div>
+            <h3 className="text-2xl font-black text-slate-900 dark:text-white uppercase italic mb-4">Acceso <span className="text-red-600">Restringido</span></h3>
+            <p className="text-slate-600 dark:text-slate-400 font-bold mb-8 leading-relaxed">
+              Lo sentimos, la creación o eliminación de productos del stock está reservada únicamente para el <span className="text-red-600 font-black tracking-tight">desarrollador de la aplicación</span>.
+              <br /><br />
+              Por favor, ponte en contacto con <span className="text-red-600 font-black text-lg underline underline-offset-4">BIENVE</span> para que gestione cualquier cambio que necesites en el inventario.
+            </p>
+            <button 
+              onClick={() => setShowDeveloperRestrictedModal(false)}
+              className="w-full py-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black rounded-2xl shadow-xl active:scale-95 transition-transform uppercase tracking-wider"
+            >
+              Entendido
+            </button>
           </div>
         </div>
       )}
