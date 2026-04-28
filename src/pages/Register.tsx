@@ -46,7 +46,8 @@ const Register: React.FC<RegisterProps> = ({ onBack, setShowGuideModal }) => {
       if (err.message === 'USERNAME_EXISTS') {
         setError('Este nombre de usuario ya está registrado. Por favor, elige otro.');
       } else {
-        setError('Error al registrar usuario. Es posible que el servidor esté ocupado o no tengas conexión.');
+        // Mostramos el error técnico para saber qué está pasando exactamente
+        setError(`Error: ${err.message || 'Error de conexión'}`);
       }
       console.error('Error de registro:', err);
     } finally {

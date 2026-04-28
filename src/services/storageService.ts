@@ -622,6 +622,7 @@ export const addUser = async (user: Omit<User, 'id'>) => {
       ...user,
       isSuperAdmin: false,
       isAdmin: false,
+      authUid: auth.currentUser?.uid || null,
       createdAt: Date.now(),
       id: userId
     });

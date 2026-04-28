@@ -58,19 +58,18 @@ service cloud.firestore {
       allow get: if isSignedIn();
       allow list: if isAdmin();
       
-      // Permitir registro: Cualquier usuario autenticado puede crear un perfil STAFF 
-      // siempre que no se asigne a sí mismo permisos de administrador.
+      // Permitir registro: Cualquier usuario autenticado puede crear un perfil
+      // Se valida que no se asignen permisos administrativos.
       allow create: if isSignedIn() && (
-        (request.resource.data.role == 'STAFF' && 
-         request.resource.data.isAdmin == false && 
-         request.resource.data.isSuperAdmin == false) ||
+        (incoming().get('role', 'STAFF') == 'STAFF' && 
+         incoming().get('isAdmin', false) == false && 
+         incoming().get('isSuperAdmin', false) == false) ||
         isSuperAdmin()
       );
       
       allow update: if isSignedIn() && (
         userId == request.auth.uid || 
-        (exists(/databases/$(database)/documents/hotel_victoria_users/$(userId)) && 
-         get(/databases/$(database)/documents/hotel_victoria_users/$(userId)).data.get('authUid', '') == request.auth.uid) ||
+        existing().get('authUid', '') == request.auth.uid ||
         isAdmin()
       );
                         
