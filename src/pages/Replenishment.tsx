@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Product, User, CartItem, Department, OrderBatch, UserRole, ReplenishmentRequest } from '../types';
 import * as storageService from '../services/storageService';
-import { Search, ShoppingCart, Plus, Minus, Trash2, CheckCircle2, X, ArrowRight, Package, ChevronUp, AlertTriangle, Siren, Loader2, ChevronDown, ListTree, Filter, Zap, Share2, Sparkles } from 'lucide-react';
+import { Search, ShoppingCart, Plus, Minus, Trash2, CheckCircle2, X, ArrowRight, Package, ChevronUp, AlertTriangle, Siren, Loader2, ChevronDown, ListTree, Filter, Share2, Sparkles } from 'lucide-react';
 import { sharePdfFromReactComponent } from '../utils/pdfGenerator';
 import { OrderPdfDocument } from '../components/OrderPdfDocument';
 import { motion, AnimatePresence } from 'motion/react';
@@ -35,7 +35,6 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCar
   
   const [showLowStockModal, setShowLowStockModal] = useState(false);
   const [lowStockList, setLowStockList] = useState<string[]>([]);
-  const [showRandomOrderConfirm, setShowRandomOrderConfirm] = useState(false);
   const [qtyError, setQtyError] = useState('');
   const [orderError, setOrderError] = useState('');
   const [justAddedId, setJustAddedId] = useState<string | null>(null);
@@ -237,17 +236,6 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCar
       }
       return item;
     }));
-  };
-
-  const handleRandomOrder = async () => {
-    setIsProcessing(true);
-    setShowRandomOrderConfirm(false);
-    await storageService.generateRandomOrders(currentUser);
-    setIsProcessing(false);
-    setShowSuccessModal(true);
-    setTimeout(() => {
-      setShowSuccessModal(false);
-    }, 2000);
   };
 
   const processOrder = async () => {
@@ -560,32 +548,6 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCar
         )}
       </AnimatePresence>
 
-      {/* MODAL CONFIRMAR PEDIDO ALEATORIO */}
-      {showRandomOrderConfirm && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 dark:bg-slate-900/90 backdrop-blur-sm p-4 animate-fade-in">
-           <div className="bg-white dark:bg-slate-800 w-full max-w-md rounded-3xl shadow-pop-in overflow-hidden animate-pop-in border border-gray-100 dark:border-slate-700/50">
-              <div className="p-6 border-b border-gray-100 dark:border-slate-700">
-                <h3 className="text-2xl font-extrabold text-gray-900 dark:text-white text-center drop-shadow-sm">Pedido Aleatorio</h3>
-                <p className="text-center text-gray-500 dark:text-slate-400 mt-2">¿Generar un pedido aleatorio para probar el sistema?</p>
-              </div>
-              <div className="p-6 flex gap-4">
-                <button 
-                  onClick={() => setShowRandomOrderConfirm(false)}
-                  className="flex-1 py-4 rounded-xl font-bold text-gray-600 dark:text-slate-400 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors"
-                >
-                  Cancelar
-                </button>
-                <button 
-                  onClick={handleRandomOrder}
-                  className="flex-1 py-4 rounded-xl font-bold text-white bg-purple-600 hover:bg-purple-700 shadow-lg shadow-purple-600/30 transition-colors"
-                >
-                  Generar
-                </button>
-              </div>
-           </div>
-        </div>
-      )}
-
       <AnimatePresence>
         {showSuccessModal && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -686,15 +648,6 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCar
                  Crear <span className="italic opacity-80">Pedido</span>
                </h2>
              </div>
-             {currentUser.role === UserRole.ADMIN && (
-               <button 
-                 onClick={() => setShowRandomOrderConfirm(true)} 
-                 title="Generar pedido aleatorio"
-                 className="bg-purple-600 text-white w-8 h-8 rounded-full flex items-center justify-center hover:bg-purple-700 transition-all active:scale-90 shadow-lg shadow-purple-600/20"
-               >
-                 <Zap size={14} fill="white" />
-               </button>
-             )}
            </div>
            
            <div className="flex gap-2">
@@ -744,7 +697,7 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCar
                   key={product.id} 
                   className={`group relative bg-white dark:bg-slate-900 p-4 rounded-[1.5rem] shadow-sm border border-gray-100 dark:border-white/5 transition-all duration-300 min-h-[130px] flex flex-col justify-between
                     ${available <= 0 
-                      ? 'opacity-60 bg-gray-100 dark:bg-slate-800/60 grayscale' 
+                      ? 'bg-red-50/30 border-red-200 dark:bg-red-900/10 dark:border-red-900/20 shadow-red-500/5' 
                       : 'hover:border-red-500/50 dark:hover:border-red-500/50 hover:shadow-xl hover:shadow-red-500/5'}
                   `}
                 >
@@ -769,10 +722,10 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCar
                     </div>
                     
                     <div className="mt-auto pt-3 flex flex-col gap-2">
-                      <div className={`text-[10px] font-black px-2.5 py-1.5 rounded-xl border self-start ${available <= 0 ? 'bg-red-50 text-red-600 border-red-100 dark:bg-red-900/20 dark:text-red-400 dark:border-red-900/30 animate-pulse' : 'bg-green-50 text-green-600 border-green-100 dark:bg-green-900/20 dark:text-green-400 dark:border-green-900/30'}`}>
+                      <div className={`text-[12px] font-black px-3 py-2 rounded-xl border self-start shadow-2xl ${available <= 0 ? 'bg-critical-red animate-critical-blink ring-4 ring-red-600/30 font-bold' : 'bg-green-50 text-green-600 border-green-100 dark:bg-green-900/20 dark:text-green-400 dark:border-green-900/30'}`}>
                         {available <= 0 ? (
-                          <span className="flex items-center gap-1.5 uppercase">
-                            <AlertTriangle size={12} /> NO HAY STOCK
+                          <span className="flex items-center gap-2 uppercase tracking-tighter scale-110">
+                            <Siren size={16} className="animate-pulse" /> ¡AGOTADO! - PEDIR YA
                           </span>
                         ) : (
                           `${available} ${product.unit}`

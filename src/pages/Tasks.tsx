@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { Task, User, Department, TaskStatus, TaskPriority, UserRole, TaskType, TaskComment, TaskChecklistItem, TaskRecurrence } from '../types';
 import * as storageService from '../services/storageService';
-import { ClipboardCheck, Plus, X, Save, Loader2, Edit2, Trash2, ChevronDown, MessagesSquare, Check, Camera, AlertTriangle, Share2, Send, Image, Info, Flame, Bold, Calendar, Clock, List, FileText, Zap, Users, Phone, Hash, ChevronRight, User as UserIcon, Wand2, RotateCcw, Video } from 'lucide-react';
+import { ClipboardCheck, Plus, X, Save, Loader2, Edit2, Trash2, ChevronDown, MessagesSquare, Check, Camera, AlertTriangle, Share2, Send, Image, Info, Flame, Bold, Calendar, Clock, List, FileText, Users, Phone, Hash, ChevronRight, User as UserIcon, Video } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { compressImage } from '../utils/imageCompressor';
 import { ImageViewer } from '../components/ImageViewer';
@@ -27,7 +27,6 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
   const [activeTab, setActiveTab] = useState<'ACTIVE' | 'DAILY'>('ACTIVE');
   
   const [showTaskModal, setShowTaskModal] = useState(false);
-  const [showGeneratorModal, setShowGeneratorModal] = useState(false);
   const [editingTask, setEditingTask] = useState<Partial<Task> | null>(null);
   const [taskToDelete, setTaskToDelete] = useState<Task | null>(null);
   
@@ -484,160 +483,6 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
     });
   }, [filteredTasks, activeTab, currentWeekStart, currentWeekEnd]);
 
-  const generateRandomHospitalityTask = async (recurrence: TaskRecurrence = TaskRecurrence.NONE) => {
-    const categories = [
-      {
-        name: "Desayunos",
-        templates: [
-          { 
-            title: "Montaje de Buffet de Desayuno", 
-            desc: "Preparar el buffet siguiendo los estándares. Revisar fruta fresca.", 
-            checklist: ["Mantelería", "Cubertería", "Zumos", "Café", "Bollería"], 
-            imgIds: ["photo-1504754524776-8f4f37790ca0", "photo-1496048970073-17329c9b07ea"], 
-            imgTitle: "Estándar Buffet" 
-          },
-          { 
-            title: "Reposición de Estación de Calientes", 
-            desc: "Asegurar que los huevos y bacon estén siempre calientes.", 
-            checklist: ["Huevos revueltos", "Bacon", "Salchichas", "Champiñones", "Limpieza de bandejas"], 
-            imgIds: ["photo-1525351484163-7529414344d8", "photo-1533089860892-a7c6f0a88666"], 
-            imgTitle: "Zona Calientes" 
-          }
-        ]
-      },
-      {
-        name: "Cafetería",
-        templates: [
-          { 
-            title: "Apertura de Barra y Cafetería", 
-            desc: "Preparar la barra para el primer servicio. Encender máquinas y revisar stock.", 
-            checklist: ["Encender cafetera y molinos", "Revisar stock de leche y café", "Montar vitrina de bollería", "Limpiar barra y taburetes", "Preparar cambio de caja"], 
-            imgIds: ["photo-1495474472287-4d71bcdd2085", "photo-1501339847302-ac426a4a7cbb"], 
-            imgTitle: "Montaje de Barra" 
-          },
-          { 
-            title: "Limpieza de Máquina de Café", 
-            desc: "Limpieza profunda tras el turno. Desinfectar vaporizador y portafiltros.", 
-            checklist: ["Limpiar filtros y duchas", "Descalcificar vaporizadores", "Limpiar bandeja de goteo", "Vaciar cajón de posos", "Brillo exterior de acero"], 
-            imgIds: ["photo-1510972527921-ce03766a1cf1", "photo-1442512595331-e89e73853f31"], 
-            imgTitle: "Limpieza Cafetera" 
-          }
-        ]
-      },
-      {
-        name: "Restaurante",
-        templates: [
-          { 
-            title: "Montaje de Mesas y Comedor", 
-            desc: "Preparar el salón para el servicio de almuerzo/cena.", 
-            checklist: ["Colocar mantelería/caminos", "Disponer cubertería y copas", "Revisar limpieza de sillas", "Colocar servilletas dobladas", "Revisar saleros y aceiteras"], 
-            imgIds: ["photo-1517248135467-4c7edcad34c4", "photo-1550966841-300ad55a3923"], 
-            imgTitle: "Montaje de Comedor" 
-          },
-          { 
-            title: "Repaso de Cristalería y Cubiertos", 
-            desc: "Asegurar que todo el material brille antes del servicio.", 
-            checklist: ["Repasar copas con vapor", "Pulir cubiertos de acero", "Revisar platos desportillados", "Organizar en aparador"], 
-            imgIds: ["photo-1513519245088-0e12902e5a38", "photo-1574936145840-28808d77a0b6"], 
-            imgTitle: "Calidad de Menaje" 
-          }
-        ]
-      },
-      {
-        name: "Limpieza",
-        templates: [
-          { 
-            title: "Limpieza Profunda Habitación VIP", 
-            desc: "Atención especial a los detalles. Revisar minibar.", 
-            checklist: ["Cambio lencería", "Desinfección baño", "Aspirado", "Polvo en molduras", "Amenities VIP"], 
-            imgIds: ["photo-1566073771259-6a8506099945", "photo-1590490360182-c33d57733427"], 
-            imgTitle: "Resultado VIP" 
-          },
-          { 
-            title: "Desinfección de Zonas Comunes", 
-            desc: "Limpieza de pasillos y ascensores.", 
-            checklist: ["Limpiar espejos", "Desinfectar botones", "Fregar suelos", "Limpiar barandillas"], 
-            imgIds: ["photo-1564501049412-61c2a3083791", "photo-1582719478250-c89cae4dc85b"], 
-            imgTitle: "Zonas Comunes" 
-          }
-        ]
-      },
-      {
-        name: "Mantenimiento",
-        templates: [
-          { 
-            title: "Revisión de Aire Acondicionado", 
-            desc: "Limpieza de filtros en planta 3.", 
-            checklist: ["Desmontar rejillas", "Limpiar filtros", "Comprobar gas", "Probar mando"], 
-            imgIds: ["photo-1581092160562-40aa08e78837", "photo-1621905251189-08b45d6a269e"], 
-            imgTitle: "Mantenimiento A/C" 
-          },
-          { 
-            title: "Control de Piscina y Spa", 
-            desc: "Medir niveles de cloro y pH.", 
-            checklist: ["Test de agua", "Limpiar bordes", "Revisar depuradora", "Reponer toallas"], 
-            imgIds: ["photo-1560185127-6ed189bf02f4", "photo-1576013551627-0cc20b96c2a7"], 
-            imgTitle: "Control Piscina" 
-          }
-        ]
-      }
-    ];
-
-    const category = categories[Math.floor(Math.random() * categories.length)];
-    const template = category.templates[Math.floor(Math.random() * category.templates.length)];
-    
-    const variations = ["", " (Urgente)", " - Turno Mañana", " - Turno Tarde", " (Prioritario)"];
-    const dynamicTitle = template.title + variations[Math.floor(Math.random() * variations.length)];
-
-    const selectedChecklist = template.checklist.map((text, i) => ({
-      id: Date.now().toString() + i + Math.random().toString(36).substr(2, 5),
-      text,
-      isCompleted: false
-    }));
-
-    const priorities = [TaskPriority.LOW, TaskPriority.MEDIUM, TaskPriority.HIGH];
-    const randomPriority = priorities[Math.floor(Math.random() * priorities.length)];
-
-    const matchingDept = departments.find(d => 
-      d.name.toLowerCase().includes(category.name.toLowerCase()) || 
-      category.name.toLowerCase().includes(d.name.toLowerCase())
-    );
-    const randomDept = matchingDept || (departments.length > 0 
-      ? departments[Math.floor(Math.random() * departments.length)] 
-      : { id: 'general', name: 'General' });
-
-    const now = Date.now();
-    const randomStartOffset = (Math.floor(Math.random() * 3) - 1) * 24 * 60 * 60 * 1000;
-    const randomDuration = (Math.floor(Math.random() * 4) + 1) * 60 * 60 * 1000;
-    const startDate = now + randomStartOffset;
-    const dueDate = startDate + randomDuration;
-
-    // Use curated Unsplash IDs for 100% relevance
-    const imageUrls = template.imgIds.map(id => `https://images.unsplash.com/${id}?auto=format&fit=crop&w=800&q=80`);
-
-    const testTask: Partial<Task> = {
-      title: dynamicTitle,
-      description: template.desc,
-      departmentId: randomDept.id,
-      departmentName: randomDept.name,
-      priority: randomPriority,
-      status: TaskStatus.PENDING,
-      type: TaskType.TASK,
-      recurrence,
-      createdBy: currentUser.name,
-      createdById: currentUser.id,
-      createdAt: now,
-      startDate: recurrence === TaskRecurrence.DAILY ? undefined : startDate,
-      dueDate: recurrence === TaskRecurrence.DAILY ? undefined : dueDate,
-      checklist: selectedChecklist,
-      imageUrls,
-      imagesTitle: template.imgTitle
-    };
-
-    await storageService.saveTask(testTask);
-    setShowGeneratorModal(false);
-  };
-
   const handleDayClick = (date: Date) => {
     if (!canManageTasks) return;
     const start = new Date(date);
@@ -831,13 +676,6 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
             {/* Only Admins or Staff with 'CAN_MANAGE_TASKS' permission can create new tasks */}
             {canManageTasks && (
               <div className="flex items-center gap-1.5">
-                <button
-                  onClick={() => setShowGeneratorModal(true)}
-                  className="flex items-center justify-center w-8 h-8 bg-blue-600 hover:bg-blue-700 text-white rounded-full transition-all active:scale-90 shadow-lg shadow-blue-600/20"
-                  title="Generar Tarea de Prueba"
-                >
-                  <Zap size={14} fill="white" />
-                </button>
                 <button 
                   onClick={() => {
                     setEditingTask({});
@@ -1389,54 +1227,6 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
             <div className="flex gap-4">
               <button onClick={() => setTaskToDelete(null)} className="flex-1 py-4 font-bold text-gray-600 dark:text-slate-400 bg-gray-100 dark:bg-slate-700 rounded-2xl hover:bg-gray-200 transition-colors">Cancelar</button>
               <button onClick={handleDeleteTask} className="flex-1 py-4 font-bold text-white bg-red-600 rounded-2xl hover:bg-red-700 shadow-lg shadow-button-red transition-all">ELIMINAR</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Generator Selection Modal */}
-      {showGeneratorModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-fade-in">
-          <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-[2.5rem] p-8 shadow-2xl animate-scale-up border border-gray-100 dark:border-slate-800">
-            <div className="w-20 h-20 bg-blue-50 dark:bg-blue-900/20 rounded-full flex items-center justify-center mx-auto mb-6 text-blue-600 dark:text-blue-500 shadow-inner">
-               <Wand2 size={40} />
-            </div>
-            <h3 className="text-2xl font-black text-gray-900 dark:text-white uppercase mb-2 tracking-tight text-center">Generador de Tareas</h3>
-            <p className="text-gray-500 dark:text-slate-400 mb-8 font-bold text-center">¿Qué tipo de tarea deseas generar para el equipo?</p>
-            
-            <div className="space-y-4">
-              <button 
-                onClick={() => generateRandomHospitalityTask(TaskRecurrence.DAILY)}
-                className="w-full flex items-center gap-4 p-5 bg-indigo-50 dark:bg-indigo-900/20 border-2 border-indigo-100 dark:border-indigo-900/30 rounded-3xl hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition-all group"
-              >
-                <div className="w-12 h-12 bg-indigo-600 text-white rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
-                  <RotateCcw size={24} />
-                </div>
-                <div className="text-left">
-                  <div className="font-black text-indigo-900 dark:text-indigo-100 uppercase tracking-tight">Tarea Diaria</div>
-                  <div className="text-xs font-bold text-indigo-600 dark:text-indigo-400">Permanente con reinicio cada 4h</div>
-                </div>
-              </button>
-
-              <button 
-                onClick={() => generateRandomHospitalityTask(TaskRecurrence.NONE)}
-                className="w-full flex items-center gap-4 p-5 bg-amber-50 dark:bg-amber-900/20 border-2 border-amber-100 dark:border-amber-900/30 rounded-3xl hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-all group"
-              >
-                <div className="w-12 h-12 bg-amber-600 text-white rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
-                  <ClipboardCheck size={24} />
-                </div>
-                <div className="text-left">
-                  <div className="font-black text-amber-900 dark:text-amber-100 uppercase tracking-tight">Tarea Única</div>
-                  <div className="text-xs font-bold text-amber-600 dark:text-amber-400">Tarea puntual para el turno actual</div>
-                </div>
-              </button>
-
-              <button 
-                onClick={() => setShowGeneratorModal(false)}
-                className="w-full py-4 font-black text-gray-400 dark:text-slate-500 uppercase tracking-widest hover:text-gray-600 dark:hover:text-slate-300 transition-colors"
-              >
-                Cancelar
-              </button>
             </div>
           </div>
         </div>

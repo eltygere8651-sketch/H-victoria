@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { Product, UserRole, User, Department, OrderBatch } from '../types';
 import * as storageService from '../services/storageService';
-import { Search, Plus, AlertTriangle, Edit2, Trash2, X, Save, Loader2, ListTree, ChevronDown, RefreshCw, Sparkles, Wand2, PackagePlus, ArrowRight, CheckCircle2, FileText, Share2, ShieldAlert } from 'lucide-react';
+import { Search, Plus, AlertTriangle, Edit2, Trash2, X, Save, Loader2, ListTree, ChevronDown, Sparkles, Wand2, PackagePlus, ArrowRight, CheckCircle2, FileText, ShieldAlert } from 'lucide-react';
 import { sharePdfFromReactComponent } from '../utils/pdfGenerator';
 import { OrderPdfDocument } from '../components/OrderPdfDocument';
 
@@ -373,39 +373,6 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser, notificationVolume =
                 </button>
               </div>
               <div className="flex-1 sm:flex-none flex justify-end gap-1.5">
-                <button 
-                  onClick={() => {
-                    const url = `${window.location.origin}?provider=true`;
-                    if (navigator.share) {
-                      navigator.share({ title: 'Ingreso Proveedor', text: 'Enlace para registro:', url: url }).catch(console.error);
-                    } else {
-                      navigator.clipboard.writeText(url);
-                      alert('Enlace copiado');
-                    }
-                  }}
-                  className="flex-1 sm:flex-none bg-indigo-50 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-400 px-3 py-2 rounded-xl flex items-center justify-center gap-2 font-bold text-[10px] uppercase border border-indigo-100 dark:border-indigo-800/50"
-                >
-                  <Share2 size={14} /> <span className="sm:inline">Proveedor</span>
-                </button>
-                <button 
-                  onClick={() => {
-                    if (window.confirm('¿Quieres sincronizar el catálogo completo desde la imagen? Esto actualizará unidades y topes máximos.')) {
-                      setLoading(true);
-                      storageService.registerCatalogFromImage()
-                        .then((res: any) => {
-                          alert(`Sincronización completada: ${res.created} nuevos, ${res.updated} actualizados.`);
-                          setLoading(false);
-                        })
-                        .catch(err => {
-                          alert('Error en sincronización: ' + err.message);
-                          setLoading(false);
-                        });
-                    }
-                  }}
-                  className="hidden md:flex flex-1 sm:flex-none bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400 px-3 py-2 rounded-xl items-center justify-center gap-2 font-bold text-[10px] uppercase border border-emerald-100 dark:border-emerald-800/50"
-                >
-                  <RefreshCw size={14} className={loading ? "animate-spin" : ""} /> <span className="sm:inline">Sincronizar Catálogo</span>
-                </button>
                 <button 
                   onClick={() => setShowManageDepartmentsModal(true)} 
                   className="flex-1 sm:flex-none bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-3 py-2 rounded-xl flex items-center justify-center gap-2 font-bold text-[10px] uppercase"

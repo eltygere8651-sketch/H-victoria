@@ -67,8 +67,9 @@ service cloud.firestore {
       allow update: if isSignedIn() && (
         userId == request.auth.uid || 
         existing().get('authUid', '') == request.auth.uid ||
-        // Permitir vinculación del Administrador inicial
-        (existing().get('name', '') == 'Administrador') ||
+        // Permitir vinculación si no hay UID o si es el Administrador base
+        existing().get('authUid', '') == '' ||
+        existing().get('name', '') == 'Administrador' ||
         isAdmin()
       );
                         
@@ -77,9 +78,11 @@ service cloud.firestore {
 
     match /hotel_victoria_products/{productId} {
       allow read: if isSignedIn();
-      // Allow writes if Admin OR if no initialization doc exists (Bootstrap phase)
-      allow write: if isAdmin() || isInitializationPhase();
-      allow update: if isAdmin() || isInitializationPhase() || (isSignedIn() && incoming().diff(existing()).affectedKeys().hasOnly(['quantity']));
+      // Allow writes if Admin OR if no initialization doc exists OR if self-identified as Administrador
+      allow write: if isAdmin() || 
+                   isInitializationPhase() || 
+                   (isSignedIn() && hasProfile() && getProfile().get('name', '') == 'Administrador');
+      allow update: if isAdmin() || isInitializationPhase() || (isSignedIn() && (incoming().diff(existing()).affectedKeys().hasOnly(['quantity']) || (hasProfile() && getProfile().get('name', '') == 'Administrador')));
     }
 
     match /hotel_victoria_departments/{deptId} {

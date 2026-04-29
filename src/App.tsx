@@ -107,11 +107,6 @@ const App: React.FC = () => {
         
         await minSplashTime;
 
-        // Trigger catalog update in background
-        storageService.registerCatalogFromImage().catch(err => {
-          console.error("Catalog sync background error:", err);
-        });
-
         if (providerMode === 'true' && !storageService.getSession()) {
           const providerUser: User = { id: 'provider-' + Date.now(), name: 'Proveedor', role: UserRole.PROVIDER, contraseña: '' };
           setUser(providerUser);
