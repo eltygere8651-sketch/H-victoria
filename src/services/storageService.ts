@@ -649,6 +649,17 @@ export const addUser = async (user: Omit<User, 'id'>) => {
     });
 
     await userRef.set(userData);
+
+    // 4. CREAR COPIA POR UID para que las reglas de Firestore (hasRole) funcionen de inmediato
+    if (auth.currentUser) {
+      const uid = auth.currentUser.uid;
+      const uidRef = db.collection(KEYS.USERS).doc(uid);
+      await uidRef.set({
+        ...userData,
+        authUid: uid,
+        originalId: userId
+      }, { merge: true });
+    }
     
     // Auto-login tras registro
     const finalUser = { ...userData, contraseña: hashedPassword } as User;

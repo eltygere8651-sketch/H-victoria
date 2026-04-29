@@ -50,12 +50,17 @@ service cloud.firestore {
       allow get: if isSignedIn();
       allow list: if isAdmin();
       
-      // Permitir registro: Cualquier usuario puede registrarse.
-      // SE ENFuerza que el rol sea STAFF y no puedan ser admins.
-      allow create: if true && (
-        incoming().get('role', 'STAFF') == 'STAFF' &&
-        incoming().get('isAdmin', false) == false && 
-        incoming().get('isSuperAdmin', false) == false
+      // Permitir registro: Un administrador puede crear cualquier usuario.
+      // Un usuario nuevo puede crear su propio perfil (por UID o Nombre)
+      // siempre que se asigne el rol STAFF y no intente elevar privilegios.
+      allow create: if isSignedIn() && (
+        isAdmin() || 
+        (
+          (userId == request.auth.uid || incoming().get('authUid', '') == request.auth.uid) &&
+          incoming().get('role', 'STAFF') == 'STAFF' &&
+          incoming().get('isAdmin', false) == false && 
+          incoming().get('isSuperAdmin', false) == false
+        )
       );
       
       allow update: if isSignedIn() && (
