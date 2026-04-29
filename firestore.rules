@@ -58,14 +58,11 @@ service cloud.firestore {
       allow get: if isSignedIn();
       allow list: if isAdmin();
       
-      // Permitir registro: Cualquier usuario autenticado puede crear un perfil
-      // Se valida que no se asignen permisos administrativos.
-      allow create: if isSignedIn() && (
-        (incoming().get('role', 'STAFF') == 'STAFF' && 
-         incoming().get('isAdmin', false) == false && 
-         incoming().get('isSuperAdmin', false) == false) ||
-        isSuperAdmin()
-      );
+      // Permitir creación simplificada: cualquier usuario autenticado puede crear un perfil
+      // solo validamos que no se den permisos de admin a sí mismos
+      allow create: if isSignedIn() && 
+        incoming().get('isAdmin', false) == false && 
+        incoming().get('isSuperAdmin', false) == false;
       
       allow update: if isSignedIn() && (
         userId == request.auth.uid || 
