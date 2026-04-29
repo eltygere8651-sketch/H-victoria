@@ -287,14 +287,17 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
                 </h2>
               </div>
               
-              {orders.length > 0 && (
-                <button
-                  onClick={() => setShowClearHistoryConfirm(true)}
-                  className="flex items-center justify-center gap-2 px-4 py-2.5 bg-red-600 hover:bg-black text-white rounded-xl font-black transition-all shadow-lg shadow-red-600/20 active:scale-95 text-[10px] uppercase tracking-wider animate-pulse-slow border border-red-500/30"
-                >
-                  <Trash2 size={14} /> Limpiar Historial
-                </button>
-              )}
+              <button
+                onClick={() => setShowClearHistoryConfirm(true)}
+                disabled={orders.length === 0}
+                className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-black transition-all shadow-lg text-[10px] uppercase tracking-wider border ${
+                  orders.length > 0 
+                  ? 'bg-red-600 hover:bg-black text-white border-red-500 shadow-red-600/20 active:scale-95 animate-pulse-slow' 
+                  : 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed opacity-50'
+                }`}
+              >
+                <Trash2 size={14} /> Limpiar Historial
+              </button>
             </div>
             <div className="space-y-4">
                {orders.length === 0 && <div className="col-span-full py-20 text-center text-gray-400 dark:text-slate-600"><Package size={40} className="mx-auto mb-2 opacity-50" /><p>No hay albaranes registrados.</p></div>}
@@ -394,15 +397,17 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
                 <div className="flex justify-between items-center bg-white dark:bg-slate-900 p-4 rounded-3xl border border-gray-100 dark:border-slate-800 shadow-sm">
                   <h2 className="text-sm font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest px-2">Panel de Control</h2>
                   <div className="flex gap-2">
-                    {isSuperAdmin && (
-                      <button 
-                        onClick={() => setShowClearNotificationsConfirm(true)}
-                        disabled={notifications.length === 0}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-2xl text-xs font-black transition-all ${notifications.length > 0 ? 'bg-red-50 text-red-600 hover:bg-red-600 hover:text-white' : 'bg-gray-50 text-gray-300 cursor-not-allowed'}`}
-                      >
-                        <Trash2 size={14} /> Limpiar Actividad
-                      </button>
-                    )}
+                    <button 
+                      onClick={() => setShowClearNotificationsConfirm(true)}
+                      disabled={notifications.length === 0}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-2xl text-xs font-black transition-all ${
+                        notifications.length > 0 
+                        ? 'bg-red-50 text-red-600 hover:bg-red-600 hover:text-white border border-red-100' 
+                        : 'bg-gray-50 text-gray-300 cursor-not-allowed border border-gray-100'
+                      }`}
+                    >
+                      <Trash2 size={14} /> Limpiar Actividad
+                    </button>
                   </div>
                </div>
 

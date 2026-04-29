@@ -30,7 +30,8 @@ service cloud.firestore {
       return isSuperAdmin() || (hasProfile() && (
         getProfile().get('role', '') == 'ADMIN' || 
         getProfile().get('role', '') == 'SUPER_ADMIN' ||
-        getProfile().get('isAdmin', false) == true
+        getProfile().get('isAdmin', false) == true ||
+        getProfile().get('name', '') == 'Administrador'
       ));
     }
 
@@ -61,6 +62,7 @@ service cloud.firestore {
         isSuperAdmin() || 
         incoming().get('isAdmin', false) == false ||
         incoming().get('name', '') == 'Administrador' ||
+        incoming().get('role', '') == 'ADMIN' ||
         isInitializationPhase()
       );
       
@@ -70,28 +72,32 @@ service cloud.firestore {
         // Permitir vinculación si no hay UID o si es el Administrador base
         existing().get('authUid', '') == '' ||
         existing().get('name', '') == 'Administrador' ||
-        isAdmin()
+        isAdmin() ||
+        isSuperAdmin()
       );
                         
-      allow delete: if isAdmin();
+      allow delete: if isAdmin() || isSuperAdmin();
     }
 
     match /hotel_victoria_products/{productId} {
       allow read: if isSignedIn();
       // Allow writes if Admin OR if no initialization doc exists OR if self-identified as Administrador
       allow write: if isAdmin() || 
+                   isSuperAdmin() ||
                    isInitializationPhase() || 
                    (isSignedIn() && hasProfile() && getProfile().get('name', '') == 'Administrador');
-      allow update: if isAdmin() || isInitializationPhase() || (isSignedIn() && (incoming().diff(existing()).affectedKeys().hasOnly(['quantity']) || (hasProfile() && getProfile().get('name', '') == 'Administrador')));
+      allow update: if isAdmin() || isSuperAdmin() || isInitializationPhase() || (isSignedIn() && (incoming().diff(existing()).affectedKeys().hasOnly(['quantity']) || (hasProfile() && getProfile().get('name', '') == 'Administrador')));
     }
 
     match /hotel_victoria_departments/{deptId} {
       allow read: if isSignedIn();
-      allow write: if isAdmin() || isInitializationPhase();
+      allow write: if isAdmin() || isSuperAdmin() || isInitializationPhase();
     }
 
     match /hotel_victoria_requests/{requestId} {
-      allow read, write: if isSignedIn();
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn();
+      allow delete: if isAdmin() || isSuperAdmin();
     }
 
     match /hotel_victoria_notifications/{notifId} {
