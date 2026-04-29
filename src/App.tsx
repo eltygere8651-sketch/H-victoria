@@ -15,11 +15,13 @@ import { GuideModal } from './components/GuideModal';
 import { MainLayout } from './components/MainLayout';
 
 import ProviderDelivery from './pages/ProviderDelivery';
+import Register from './pages/Register';
 
 const App: React.FC = () => {
   const [isInitializing, setIsInitializing] = useState(true);
   const [user, setUser] = useState<User | null>(storageService.getSession());
   const [sharedTaskId, setSharedTaskId] = useState<string | null>(null);
+  const [isRegistering, setIsRegistering] = useState(false);
   const [isPublicMode, setIsPublicMode] = useState(false);
 
   const [showShareModal, setShowShareModal] = useState(false);
@@ -464,8 +466,10 @@ const App: React.FC = () => {
   let mainContent;
   if (sharedTaskId && !user) {
     mainContent = <PublicTaskViewer taskId={sharedTaskId} setShowGuideModal={setShowGuideModal} />;
+  } else if (isRegistering && !user) {
+    mainContent = <Register onRegister={(user) => { setUser(user); setIsRegistering(false); }} onBack={() => setIsRegistering(false)} setShowGuideModal={setShowGuideModal} />;
   } else if (!user) {
-    mainContent = <Login onLogin={handleLogin} setShowGuideModal={setShowGuideModal} />;
+    mainContent = <Login onLogin={handleLogin} onGoToRegister={() => setIsRegistering(true)} setShowGuideModal={setShowGuideModal} />;
   } else {
     mainContent = (
       <MainLayout

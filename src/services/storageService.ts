@@ -618,12 +618,12 @@ export const subscribeToUsers = (callback: (users: User[]) => void) => {
 };
 export const addUser = async (user: Omit<User, 'id'>) => {
   try {
-    // Asegurar que estamos autenticados para tener permisos de escritura (reglas de seguridad)
+    // 1. Asegurar sesión anónima inicial para permisos de Firestore si no hay una
     if (!auth.currentUser) {
       await auth.signInAnonymously();
     }
 
-    const userId = user.name.toLowerCase().trim();
+    const userId = user.name.toLowerCase().trim().replace(/\s+/g, '_');
     const userRef = db.collection(KEYS.USERS).doc(userId);
     const doc = await userRef.get();
     
@@ -639,7 +639,8 @@ export const addUser = async (user: Omit<User, 'id'>) => {
     const { contraseña, ...rest } = user;
     const userData = sanitizeData({
       ...rest,
-      pin: hashedPassword, // Store as pin in DB
+      role: user.role || UserRole.STAFF, // Por defecto STAFF
+      pin: hashedPassword, // Almacenado como pin por compatibilidad
       isSuperAdmin: false,
       isAdmin: false,
       authUid: auth.currentUser?.uid || null,
@@ -648,7 +649,12 @@ export const addUser = async (user: Omit<User, 'id'>) => {
     });
 
     await userRef.set(userData);
-    return userData;
+    
+    // Auto-login tras registro
+    const finalUser = { ...userData, contraseña: hashedPassword } as User;
+    saveSession(finalUser);
+    
+    return finalUser;
   } catch (error: any) {
     if (error.message === 'USERNAME_EXISTS') throw error;
     handleFirestoreError(error, OperationType.WRITE, KEYS.USERS);

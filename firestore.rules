@@ -50,13 +50,12 @@ service cloud.firestore {
       allow get: if isSignedIn();
       allow list: if isAdmin();
       
-      // Permitir creación: Super Admins pueden crear cualquier perfil.
-      // Otros usuarios pueden crear perfiles básicos.
-      allow create: if isSignedIn() && (
-        isSuperAdmin() || (
-          incoming().get('isAdmin', false) == false && 
-          incoming().get('isSuperAdmin', false) == false
-        )
+      // Permitir registro: Cualquier usuario puede registrarse.
+      // SE ENFuerza que el rol sea STAFF y no puedan ser admins.
+      allow create: if true && (
+        incoming().get('role', 'STAFF') == 'STAFF' &&
+        incoming().get('isAdmin', false) == false && 
+        incoming().get('isSuperAdmin', false) == false
       );
       
       allow update: if isSignedIn() && (
