@@ -248,15 +248,6 @@ const Login: React.FC<LoginProps> = ({ onLogin, setShowGuideModal }) => {
                 </>
               )}
             </button>
-
-            <div className="pt-6 text-center">
-              <a 
-                href="/?register=true" 
-                className="text-xs font-bold text-slate-400 dark:text-slate-500 hover:text-red-500 transition-colors uppercase tracking-widest"
-              >
-                Cambiar mi contraseña de acceso
-              </a>
-            </div>
           </form>
 
           <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-800 text-center">

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { UserRole, User, Product, AppNotification, OrderBatch } from '../types';
 import * as storageService from '../services/storageService';
-import { Download, Users, Package, Trash2, Edit2, X, Save, Eye, Loader2, BarChart as BarChartIcon, BellRing, CheckCircle2, Share2, Smartphone, Activity, TrendingUp, ShieldAlert, Zap, Search, Filter, KeyRound } from 'lucide-react';
+import { Download, Users, Package, Trash2, Edit2, X, Save, Eye, Loader2, BarChart as BarChartIcon, BellRing, CheckCircle2, Share2, Smartphone, Activity, TrendingUp, ShieldAlert, Zap, Search, Filter } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { NotificationIcon } from '../components/NotificationIcon';
 import { generatePdfFromReactComponent, sharePdfFromReactComponent } from '../utils/pdfGenerator';
@@ -298,32 +298,6 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
 
         {activeTab === 'users' && (
           <div>
-            {isSuperAdmin && (
-              <div className="mb-6 p-4 bg-indigo-50 dark:bg-indigo-900/10 border border-indigo-100 dark:border-indigo-900/30 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2.5 bg-indigo-600 rounded-xl text-white shadow-lg shadow-indigo-600/30">
-                    <KeyRound size={24} />
-                  </div>
-                  <div>
-                    <h3 className="font-black text-slate-900 dark:text-white leading-none">Cambiar Contraseña de Acceso</h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 text-balance text-left">Envía este enlace a un empleado para que pueda cambiar su contraseña o actualizarla.</p>
-                  </div>
-                </div>
-                <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
-                  <button 
-                    onClick={() => {
-                      const url = new URL(window.location.origin);
-                      url.searchParams.set('register', 'true');
-                      navigator.clipboard.writeText(url.toString());
-                      alert('Enlace de recuperación copiado. ¡Ya puedes enviarlo por WhatsApp!');
-                    }}
-                    className="w-full sm:w-auto px-6 py-3 bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 font-bold rounded-xl border-2 border-indigo-200 dark:border-indigo-800 hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-600 dark:hover:text-white transition-all active:scale-95 shadow-sm"
-                  >
-                    Copiar Enlace
-                  </button>
-                </div>
-              </div>
-            )}
             <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-md border border-gray-100 dark:border-slate-800 mb-6">
               <div className="flex items-center gap-2 mb-4">
                 <div className="flex flex-col">

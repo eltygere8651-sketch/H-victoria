@@ -608,57 +608,6 @@ export const deleteBatch = async (batchId: string) => {
 };
 
 // --- USERS ---
-export const cambiar = async (username: string, oldPassword: string, newPassword: string) => {
-  try {
-    // 1. Asegurar sesión para interactuar con la base de datos
-    if (!auth.currentUser) {
-      await auth.signInAnonymously();
-    }
-
-    const userId = username.toLowerCase().trim();
-    const userRef = db.collection(KEYS.USERS).doc(userId);
-    const doc = await userRef.get();
-    
-    if (!doc.exists) {
-      throw new Error('USER_NOT_FOUND');
-    }
-
-    const userData = doc.data();
-    
-    // 2. VERIFICACIÓN DE SEGURIDAD: Comparar contraseña antigua
-    const isOldPasswordCorrect = await verificarContraseña(oldPassword, userData?.pin || '');
-    if (!isOldPasswordCorrect) {
-      throw new Error('INVALID_OLD_PASSWORD');
-    }
-
-    // 3. ENCRIPTAR Y ACTUALIZAR
-    const hashedPin = await hashContraseña(newPassword);
-    
-    await userRef.update({ 
-      pin: hashedPin,
-      updatedAt: Date.now()
-    });
-    
-    // Sincronizar si tiene authUid
-    if (userData?.authUid) {
-      try {
-        await db.collection(KEYS.USERS).doc(userData.authUid).update({
-          pin: hashedPin,
-          updatedAt: Date.now()
-        });
-      } catch (e) {
-        // Ignoramos si falla la sincronización por UID
-      }
-    }
-
-    return true;
-  } catch (error: any) {
-    const knownErrors = ['USER_NOT_FOUND', 'INVALID_OLD_PASSWORD'];
-    if (knownErrors.includes(error.message)) throw error;
-    handleFirestoreError(error, OperationType.WRITE, KEYS.USERS);
-  }
-};
-
 export const subscribeToUsers = (callback: (users: User[]) => void) => {
     return db.collection(KEYS.USERS).orderBy('name').onSnapshot(snapshot => {
         callback(snapshot.docs.map(doc => {

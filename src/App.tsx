@@ -15,13 +15,11 @@ import { GuideModal } from './components/GuideModal';
 import { MainLayout } from './components/MainLayout';
 
 import ProviderDelivery from './pages/ProviderDelivery';
-import Register from './pages/Register';
 
 const App: React.FC = () => {
   const [isInitializing, setIsInitializing] = useState(true);
   const [user, setUser] = useState<User | null>(storageService.getSession());
   const [sharedTaskId, setSharedTaskId] = useState<string | null>(null);
-  const [isRegistering, setIsRegistering] = useState(false);
   const [isPublicMode, setIsPublicMode] = useState(false);
 
   const [showShareModal, setShowShareModal] = useState(false);
@@ -94,9 +92,7 @@ const App: React.FC = () => {
       const shareId = searchParams.get('shareId');
       const publicMode = searchParams.get('public');
       const providerMode = searchParams.get('provider');
-      const registerMode = searchParams.get('register');
       if (shareId) setSharedTaskId(shareId);
-      if (registerMode === 'true') setIsRegistering(true);
       
       // Artificial delay for splash screen visibility (optional, improves perceived quality)
       const minSplashTime = new Promise(resolve => setTimeout(resolve, 800));
@@ -468,8 +464,6 @@ const App: React.FC = () => {
   let mainContent;
   if (sharedTaskId && !user) {
     mainContent = <PublicTaskViewer taskId={sharedTaskId} setShowGuideModal={setShowGuideModal} />;
-  } else if (isRegistering && !user) {
-    mainContent = <Register onBack={() => setIsRegistering(false)} setShowGuideModal={setShowGuideModal} />;
   } else if (!user) {
     mainContent = <Login onLogin={handleLogin} setShowGuideModal={setShowGuideModal} />;
   } else {
