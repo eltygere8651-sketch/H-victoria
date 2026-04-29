@@ -8,11 +8,10 @@ import { PWAInstallPrompt } from '../components/PWAInstallPrompt';
 
 interface LoginProps {
   onLogin: (user: User) => void;
-  onGoToRegister: () => void;
   setShowGuideModal: (show: boolean) => void;
 }
 
-const Login: React.FC<LoginProps> = ({ onLogin, onGoToRegister, setShowGuideModal }) => {
+const Login: React.FC<LoginProps> = ({ onLogin, setShowGuideModal }) => {
   const [username, setUsername] = useState('');
   const [contraseña, setContraseña] = useState('');
   const [error, setError] = useState('');
@@ -219,16 +218,6 @@ const Login: React.FC<LoginProps> = ({ onLogin, onGoToRegister, setShowGuideModa
                 </>
               )}
             </button>
-
-            <div className="pt-4 text-center">
-              <button 
-                type="button"
-                onClick={onGoToRegister}
-                className="text-xs font-bold text-slate-400 dark:text-slate-500 hover:text-red-500 transition-colors uppercase tracking-[0.1em]"
-              >
-                ¿No tienes cuenta? <span className="text-red-600 font-black">REGÍSTRATE AQUÍ</span>
-              </button>
-            </div>
 
             <div className="relative py-2">
               <div className="absolute inset-0 flex items-center">
