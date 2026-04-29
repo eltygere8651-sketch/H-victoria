@@ -305,9 +305,9 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
                   {orders.map((order) => (
                     <div key={order.batchId} className="bg-white dark:bg-slate-900 rounded-2xl shadow-md border border-gray-100 dark:border-slate-800 p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 hover:border-red-500/50 dark:hover:border-red-500/50 hover:shadow-lg transition-all group">
                       <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-xs font-black px-2 py-1 rounded uppercase tracking-wider border border-red-100 dark:border-red-900/30">{order.departmentName}</span>
-                          <span className="text-xs text-gray-400 dark:text-slate-500 font-mono">{order.date}</span>
+                        <div className="flex flex-wrap items-center gap-2 mb-2">
+                          <span className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-[10px] md:text-xs font-black px-2 py-1 rounded uppercase tracking-tighter md:tracking-wider border border-red-100 dark:border-red-900/30 break-words max-w-full">{order.departmentName}</span>
+                          <span className="text-[10px] md:text-xs text-gray-400 dark:text-slate-500 font-mono">{order.date}</span>
                         </div>
                         <h3 className="font-bold text-gray-900 dark:text-white text-lg">Albarán <span className="font-mono text-gray-500 dark:text-slate-400">#{order.batchId}</span></h3>
                         <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">Solicitado por: <span className="font-bold text-gray-700 dark:text-slate-300">{order.requestedBy}</span></p>

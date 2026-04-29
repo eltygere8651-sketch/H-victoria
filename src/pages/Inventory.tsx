@@ -345,39 +345,44 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser, notificationVolume =
                   Almacén <span className="text-red-600 dark:text-red-500 italic">General</span>
                 </h2>
               </div>
-              <div className="flex gap-1 sm:hidden">
-                <button onClick={() => setShowReceiveStockModal(true)} className="bg-blue-600 text-white w-9 h-9 rounded-xl flex items-center justify-center active:scale-90 shadow-lg shadow-blue-600/20"><PackagePlus size={18} /></button>
+              <div className="flex gap-2 sm:hidden">
+                <button 
+                  onClick={() => setShowReceiveStockModal(true)} 
+                  className="bg-blue-600 text-white px-3 py-2 rounded-xl flex items-center gap-1.5 active:scale-95 shadow-lg shadow-blue-600/20 text-xs font-black uppercase tracking-tighter"
+                >
+                  <PackagePlus size={16} /> Ingreso
+                </button>
                 <button 
                   onClick={() => { 
                     if (!isDeveloper) { setShowDeveloperRestrictedModal(true); return; }
                     setEditProductForm({}); setShowEditProductModal(true); 
                   }}
-                  className="bg-red-600 text-white w-9 h-9 rounded-xl flex items-center justify-center shadow-lg shadow-red-600/30 active:scale-90"
+                  className="bg-red-600 text-white px-3 py-2 rounded-xl flex items-center gap-1.5 shadow-lg shadow-red-600/30 active:scale-95 text-xs font-black uppercase tracking-tighter"
                 >
-                  <Plus size={20} strokeWidth={3} />
+                  <Plus size={16} strokeWidth={3} /> Nuevo
                 </button>
               </div>
             </div>
             
-            <div className="flex items-center gap-1.5 md:gap-2">
+            <div className="flex items-center gap-2 md:gap-2">
               <div className="hidden sm:flex gap-1.5">
-                <button onClick={() => setShowReceiveStockModal(true)} className="bg-blue-600 text-white px-3 py-2 rounded-xl flex items-center gap-2 hover:bg-blue-700 transition-all font-bold text-xs"><PackagePlus size={16} /> Ingreso</button>
+                <button onClick={() => setShowReceiveStockModal(true)} className="bg-blue-600 text-white px-4 py-2.5 rounded-xl flex items-center gap-2 hover:bg-blue-700 transition-all font-black text-xs uppercase tracking-wider shadow-lg shadow-blue-600/10"><PackagePlus size={16} /> Ingreso Stock</button>
                 <button 
                   onClick={() => { 
                     if (!isDeveloper) { setShowDeveloperRestrictedModal(true); return; }
                     setEditProductForm({}); setShowEditProductModal(true); 
                   }}
-                  className="bg-red-600 text-white px-3 py-2 rounded-xl flex items-center gap-2 shadow-lg shadow-red-600/20 font-bold text-xs"
+                  className="bg-red-600 text-white px-4 py-2.5 rounded-xl flex items-center gap-2 shadow-lg shadow-red-600/20 font-black text-xs uppercase tracking-wider"
                 >
-                  <Plus size={16} strokeWidth={3} /> Nuevo
+                  <Plus size={16} strokeWidth={3} /> Nuevo Prod.
                 </button>
               </div>
               <div className="flex-1 sm:flex-none flex justify-end gap-1.5">
                 <button 
                   onClick={() => setShowManageDepartmentsModal(true)} 
-                  className="flex-1 sm:flex-none bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-3 py-2 rounded-xl flex items-center justify-center gap-2 font-bold text-[10px] uppercase"
+                  className="flex-1 sm:flex-none bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 font-black text-xs uppercase tracking-widest shadow-sm hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors border border-slate-200 dark:border-slate-800"
                 >
-                  <ListTree size={14} /> <span className="sm:inline">Áreas</span>
+                  <ListTree size={18} /> Áreas
                 </button>
               </div>
             </div>
@@ -418,9 +423,9 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser, notificationVolume =
               <h3 className="font-black text-slate-900 dark:text-white truncate uppercase tracking-tight text-lg">{product.name}</h3>
               <div className="flex flex-wrap items-center gap-2 mt-1">
                 {(product.departmentNames || [product.departmentName]).map((name, idx) => (
-                  <span key={idx} className="text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">{name}</span>
+                  <span key={idx} className="text-[10px] md:text-[11px] font-black text-slate-400 uppercase tracking-tight md:tracking-widest bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md leading-tight">{name}</span>
                 ))}
-                <span className="text-[10px] font-bold text-red-500 uppercase tracking-widest ml-auto">{product.category}</span>
+                <span className="text-[10px] md:text-[11px] font-bold text-red-500 uppercase tracking-tight md:tracking-widest ml-auto">{product.category}</span>
               </div>
               <div className="mt-3 flex flex-col gap-2">
                 <div className={`inline-flex items-center self-start px-3 py-1 rounded-lg font-black text-sm ${product.quantity <= 0 ? 'bg-red-100 text-red-600 dark:bg-red-900/30' : 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white'}`}>
@@ -512,7 +517,7 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser, notificationVolume =
                 </div>
               </div>
               <div className="md:col-span-2 relative">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Categoría</label>
+                <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Categoría</label>
                 <div className="relative group">
                   <input 
                     className="w-full p-3 md:p-4 border-2 rounded-xl md:rounded-2xl bg-slate-50 dark:bg-slate-950 font-bold text-sm focus:border-red-500 outline-none transition-all" 
@@ -662,11 +667,11 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser, notificationVolume =
             </div>
             <div className="flex-1 overflow-y-auto p-4 space-y-2">
               {departments.map(dep => (
-                <div key={dep.id} className="flex items-center justify-between p-4 rounded-2xl border-2 border-slate-50 dark:border-slate-800 bg-white dark:bg-slate-900">
-                  <span className="font-black text-slate-900 dark:text-white uppercase text-sm">{dep.name}</span>
-                  <div className="flex gap-1">
-                    <button onClick={() => { setEditingDepartment(dep); setNewDepartmentName(dep.name); }} className="p-2 text-blue-600"><Edit2 size={18} /></button>
-                    <button onClick={(e) => handleDeleteDepartment(dep.id, e)} className="p-2 text-red-600"><Trash2 size={18} /></button>
+                <div key={dep.id} className="flex items-center justify-between p-4 rounded-2xl border-2 border-slate-50 dark:border-slate-800 bg-white dark:bg-slate-900 gap-4">
+                  <span className="font-black text-slate-900 dark:text-white uppercase text-xs sm:text-sm flex-1 break-words leading-tight">{dep.name}</span>
+                  <div className="flex gap-1 flex-shrink-0">
+                    <button onClick={() => { setEditingDepartment(dep); setNewDepartmentName(dep.name); }} className="p-2 text-blue-600 active:scale-90"><Edit2 size={18} /></button>
+                    <button onClick={(e) => handleDeleteDepartment(dep.id, e)} className="p-2 text-red-600 active:scale-90"><Trash2 size={18} /></button>
                   </div>
                 </div>
               ))}

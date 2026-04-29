@@ -650,34 +650,34 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCar
              </div>
            </div>
            
-           <div className="flex gap-2">
-             <div className="relative flex-1">
-                <label htmlFor="catalog-department-select" className="sr-only">Filtrar Productos por Departamento</label>
-                <select
-                  id="catalog-department-select"
-                  value={selectedDepartmentForOrder}
-                  onChange={(e) => setSelectedDepartmentForOrder(e.target.value)}
-                  className="w-full px-4 py-2 pl-9 rounded-xl border-2 border-gray-100 dark:border-slate-800 focus:border-red-500 outline-none transition-all bg-gray-50 dark:bg-slate-800/60 dark:text-white shadow-sm appearance-none font-bold text-[10px] sm:text-xs text-gray-500"
-                >
-                  {departments.map((dep) => (
-                    <option key={dep.id} value={dep.id}>{dep.name}</option>
-                  ))}
-                </select>
-                <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500 pointer-events-none" size={14} />
-                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500 pointer-events-none" size={16} />
-             </div>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <div className="relative flex-1">
+                 <label htmlFor="catalog-department-select" className="sr-only">Filtrar Productos por Departamento</label>
+                 <select
+                   id="catalog-department-select"
+                   value={selectedDepartmentForOrder}
+                   onChange={(e) => setSelectedDepartmentForOrder(e.target.value)}
+                   className="w-full px-4 py-3 pl-10 rounded-2xl border-2 border-gray-100 dark:border-slate-800 focus:border-red-500 outline-none transition-all bg-gray-50 dark:bg-slate-800/60 dark:text-white shadow-sm appearance-none font-black text-xs text-gray-700 dark:text-slate-300 uppercase tracking-tighter"
+                 >
+                   {departments.map((dep) => (
+                     <option key={dep.id} value={dep.id}>{dep.name}</option>
+                   ))}
+                 </select>
+                 <Filter className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500 pointer-events-none" size={16} />
+                 <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500 pointer-events-none" size={18} />
+              </div>
 
-             <div className="relative flex-[1.5]">
-               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" size={14} />
-               <input 
-                 type="text" 
-                 placeholder="Buscar producto..." 
-                 value={searchTerm}
-                 onChange={(e) => setSearchTerm(e.target.value)}
-                 className="w-full pl-9 pr-4 py-2 rounded-xl border-2 border-gray-100 dark:border-slate-800 text-[10px] sm:text-xs focus:border-red-500 outline-none transition-all bg-gray-50 dark:bg-slate-800/60 dark:text-white placeholder-gray-500 dark:placeholder-slate-400 shadow-sm font-medium text-gray-900"
-               />
-             </div>
-           </div>
+              <div className="relative flex-[1.5]">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" size={16} />
+                <input 
+                  type="text" 
+                  placeholder="Buscar producto..." 
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-10 pr-4 py-3 rounded-xl border-2 border-gray-100 dark:border-slate-800 text-xs focus:border-red-500 outline-none transition-all bg-gray-50 dark:bg-slate-800/60 dark:text-white placeholder-gray-500 dark:placeholder-slate-400 shadow-sm font-bold text-gray-900"
+                />
+              </div>
+            </div>
         </div>
 
         <div className="p-4 md:p-6 bg-gray-50 dark:bg-slate-950 transition-colors duration-300 pb-40">
@@ -825,10 +825,10 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCar
                   <p className="text-xs text-gray-500 dark:text-slate-400 truncate mt-1">{item.product.departmentName}</p>
                 </div>
                 <div className="flex items-center gap-3">
-                  <button onClick={() => updateQuantityInCart(item.product.id, -1)} className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-slate-700 flex items-center justify-center hover:bg-gray-200 dark:hover:bg-slate-600 font-bold active:scale-95 transition-all"><Minus size={14} /></button>
+                  <button onClick={() => updateQuantityInCart(item.product.id, -1)} className="w-10 h-10 rounded-xl bg-gray-100 dark:bg-slate-700 flex items-center justify-center hover:bg-gray-200 dark:hover:bg-slate-600 font-bold active:scale-95 transition-all outline-none border border-slate-200 dark:border-slate-700"><Minus size={18} /></button>
                   <span className="font-black text-lg w-8 text-center text-gray-900 dark:text-white">{item.quantity}</span>
-                  <button onClick={() => updateQuantityInCart(item.product.id, 1)} className="w-8 h-8 rounded-xl bg-gray-100 dark:bg-slate-700 flex items-center justify-center hover:bg-gray-200 dark:hover:bg-slate-600 font-bold active:scale-95 transition-all"><Plus size={14} /></button>
-                  <button onClick={() => removeFromCart(item.product.id)} className="text-gray-300 hover:text-red-500 ml-2 transition-colors p-2 -mr-2 rounded-full hover:bg-red-50 dark:hover:bg-red-900/20 active:scale-95"><Trash2 size={18} /></button>
+                  <button onClick={() => updateQuantityInCart(item.product.id, 1)} className="w-10 h-10 rounded-xl bg-gray-100 dark:bg-slate-700 flex items-center justify-center hover:bg-gray-200 dark:hover:bg-slate-600 font-bold active:scale-95 transition-all outline-none border border-slate-200 dark:border-slate-700"><Plus size={18} /></button>
+                  <button onClick={() => removeFromCart(item.product.id)} className="text-gray-400 hover:text-red-500 ml-2 transition-colors p-3 -mr-2 rounded-full hover:bg-red-50 dark:hover:bg-red-900/20 active:scale-95"><Trash2 size={20} /></button>
                 </div>
               </div>
             ))
