@@ -9,7 +9,7 @@ export interface User {
   id: string;
   name: string;
   role: UserRole;
-  pin: string; // Simplified password for this demo
+  contraseña: string; // Password for the user
   email?: string; // New: For Google Login authorization
   permissions?: ('CAN_MANAGE_TASKS')[]; // New: Granular permissions
   isSuperAdmin?: boolean; // New: Flag for higher-level permissions

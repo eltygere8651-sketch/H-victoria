@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { UserRole, User, Product, AppNotification, OrderBatch } from '../types';
 import * as storageService from '../services/storageService';
-import { Download, Users, Package, Trash2, Edit2, X, Save, Eye, Loader2, BarChart as BarChartIcon, BellRing, CheckCircle2, Share2, Smartphone, Activity, TrendingUp, ShieldAlert, Zap, Search, Filter } from 'lucide-react';
+import { Download, Users, Package, Trash2, Edit2, X, Save, Eye, Loader2, BarChart as BarChartIcon, BellRing, CheckCircle2, Share2, Smartphone, Activity, TrendingUp, ShieldAlert, Zap, Search, Filter, KeyRound } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { NotificationIcon } from '../components/NotificationIcon';
 import { generatePdfFromReactComponent, sharePdfFromReactComponent } from '../utils/pdfGenerator';
@@ -24,7 +24,7 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
-  const [newUser, setNewUser] = useState({ name: '', role: UserRole.STAFF, pin: '', permissions: [] as ('CAN_MANAGE_TASKS')[] });
+  const [newUser, setNewUser] = useState({ name: '', role: UserRole.STAFF, contraseña: '', permissions: [] as ('CAN_MANAGE_TASKS')[] });
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<OrderBatch | null>(null);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
@@ -118,15 +118,15 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
 
   const handleAddUser = (e: React.FormEvent) => {
     e.preventDefault();
-    if (newUser.name && newUser.pin) {
+    if (newUser.name && newUser.contraseña) {
       storageService.addUser({
         name: newUser.name,
         role: newUser.role,
-        pin: newUser.pin,
+        contraseña: newUser.contraseña,
         isSuperAdmin: false, // Default to false for UI addition
         permissions: newUser.role === UserRole.STAFF ? newUser.permissions : undefined
       });
-      setNewUser({ name: '', role: UserRole.STAFF, pin: '', permissions: [] });
+      setNewUser({ name: '', role: UserRole.STAFF, contraseña: '', permissions: [] });
     }
   };
 
@@ -134,12 +134,12 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
     if (editingUser && editingUser.name) {
       const userToUpdate = { ...editingUser };
       
-      // If pin is empty, it means we don't want to change it. 
+      // If contraseña is empty, it means we don't want to change it. 
       // But we need to make sure we don't overwrite the existing hash with empty string.
-      if (!userToUpdate.pin) {
-        // Find the original user to get current PIN
+      if (!userToUpdate.contraseña) {
+        // Find the original user to get current password hash
         const original = users.find(u => u.id === editingUser.id);
-        if (original) userToUpdate.pin = original.pin;
+        if (original) userToUpdate.contraseña = original.contraseña;
       }
 
       if (userToUpdate.role === UserRole.ADMIN) {
@@ -299,14 +299,14 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
         {activeTab === 'users' && (
           <div>
             {isSuperAdmin && (
-              <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="mb-6 p-4 bg-indigo-50 dark:bg-indigo-900/10 border border-indigo-100 dark:border-indigo-900/30 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
-                  <div className="p-2.5 bg-blue-600 rounded-xl text-white shadow-lg shadow-blue-600/30">
-                    <Share2 size={24} />
+                  <div className="p-2.5 bg-indigo-600 rounded-xl text-white shadow-lg shadow-indigo-600/30">
+                    <KeyRound size={24} />
                   </div>
                   <div>
-                    <h3 className="font-black text-slate-900 dark:text-white leading-none">Enlace de Registro</h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Comparte este enlace para que nuevos empleados se registren.</p>
+                    <h3 className="font-black text-slate-900 dark:text-white leading-none">Cambiar Contraseña de Acceso</h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 text-balance text-left">Envía este enlace a un empleado para que pueda cambiar su contraseña o actualizarla.</p>
                   </div>
                 </div>
                 <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
@@ -315,9 +315,9 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
                       const url = new URL(window.location.origin);
                       url.searchParams.set('register', 'true');
                       navigator.clipboard.writeText(url.toString());
-                      alert('Enlace de registro copiado al portapapeles. ¡Ya puedes enviarlo!');
+                      alert('Enlace de recuperación copiado. ¡Ya puedes enviarlo por WhatsApp!');
                     }}
-                    className="w-full sm:w-auto px-6 py-3 bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 font-bold rounded-xl border-2 border-blue-200 dark:border-blue-800 hover:bg-blue-600 hover:text-white dark:hover:bg-blue-600 dark:hover:text-white transition-all active:scale-95 shadow-sm"
+                    className="w-full sm:w-auto px-6 py-3 bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 font-bold rounded-xl border-2 border-indigo-200 dark:border-indigo-800 hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-600 dark:hover:text-white transition-all active:scale-95 shadow-sm"
                   >
                     Copiar Enlace
                   </button>
@@ -336,7 +336,7 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
               <form onSubmit={handleAddUser} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <input type="text" placeholder="Nombre" value={newUser.name} onChange={e => setNewUser({...newUser, name: e.target.value})} className="p-3 border-2 border-gray-200 dark:border-slate-700 rounded-xl bg-gray-100 dark:bg-slate-800/60 dark:text-white outline-none focus:border-red-500 focus:ring-2 focus:ring-red-200 dark:focus:ring-red-500/50 shadow-sm" required />
-                  <input type="password" placeholder="PIN" value={newUser.pin} onChange={e => setNewUser({...newUser, pin: e.target.value})} className="p-3 border-2 border-gray-200 dark:border-slate-700 rounded-xl bg-gray-100 dark:bg-slate-800/60 dark:text-white outline-none focus:border-red-500 focus:ring-2 focus:ring-red-200 dark:focus:ring-red-500/50 shadow-sm" required />
+                  <input type="password" placeholder="Contraseña" value={newUser.contraseña} onChange={e => setNewUser({...newUser, contraseña: e.target.value})} className="p-3 border-2 border-gray-200 dark:border-slate-700 rounded-xl bg-gray-100 dark:bg-slate-800/60 dark:text-white outline-none focus:border-red-500 focus:ring-2 focus:ring-red-200 dark:focus:ring-red-500/50 shadow-sm" required />
                   <select value={newUser.role} onChange={e => setNewUser({...newUser, role: e.target.value as UserRole})} className="p-3 border-2 border-gray-200 dark:border-slate-700 rounded-xl bg-gray-100 dark:bg-slate-800/60 dark:text-white outline-none focus:border-red-500 focus:ring-2 focus:ring-red-200 dark:focus:ring-red-500/50 shadow-sm appearance-none">
                     <option value={UserRole.STAFF}>Personal</option><option value={UserRole.ADMIN}>Admin</option>
                   </select>
@@ -376,7 +376,7 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
                           </span>
                         )}
                       </div>
-                      <p className="text-xs text-gray-500 dark:text-slate-400">{u.role} • PIN: ••••••••</p>
+                      <p className="text-xs text-gray-500 dark:text-slate-400">{u.role} • Contraseña: ••••••••</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -549,7 +549,7 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
               </div>
               <div className="space-y-1">
                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Contraseña Nueva</label>
-                <input type="password" placeholder="•••••••• (dejar vacío para no cambiar)" value={editingUser.pin.length === 64 ? '' : editingUser.pin} onChange={e => setEditingUser({...editingUser, pin: e.target.value})} className="w-full p-3 border-2 border-slate-200 dark:border-slate-700/50 rounded-xl bg-slate-50 dark:bg-slate-800/60 dark:text-white outline-none focus:border-red-600 focus:ring-4 focus:ring-red-600/10 shadow-sm" />
+                <input type="password" placeholder="•••••••• (dejar vacío para no cambiar)" value={editingUser.contraseña.length === 64 ? '' : editingUser.contraseña} onChange={e => setEditingUser({...editingUser, contraseña: e.target.value})} className="w-full p-3 border-2 border-slate-200 dark:border-slate-700/50 rounded-xl bg-slate-50 dark:bg-slate-800/60 dark:text-white outline-none focus:border-red-600 focus:ring-4 focus:ring-red-600/10 shadow-sm" />
               </div>
               <div className="space-y-1">
                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Rol del Sistema</label>

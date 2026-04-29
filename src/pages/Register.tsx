@@ -11,45 +11,37 @@ interface RegisterProps {
 
 const Register: React.FC<RegisterProps> = ({ onBack, setShowGuideModal }) => {
   const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const [oldPassword, setOldPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
-  const handleRegister = async (e: React.FormEvent) => {
+  const handleChangePin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     
-    if (password !== confirmPassword) {
+    if (newPassword !== confirmPassword) {
       setError('Las contraseñas no coinciden');
-      return;
-    }
-
-    if (password.length < 6) {
-      setError('La contraseña debe tener al menos 6 caracteres para ser segura');
       return;
     }
 
     setLoading(true);
     
     try {
-      await storageService.addUser({
-        name: username.trim(), // Limpiar espacios en blanco
-        role: UserRole.STAFF,
-        pin: password,
-        permissions: []
-      });
+      await storageService.cambiar(username.trim(), oldPassword, newPassword);
       setSuccess(true);
     } catch (err: any) {
-      if (err.message === 'USERNAME_EXISTS') {
-        setError('Este nombre de usuario ya está registrado. Por favor, elige otro.');
+      if (err.message === 'USER_NOT_FOUND') {
+        setError('El nombre de usuario no existe. Asegúrate de escribirlo correctamente.');
+      } else if (err.message === 'INVALID_OLD_PASSWORD') {
+        setError('La contraseña anterior es incorrecta. Por seguridad, verifica tus datos.');
       } else {
-        // Mostramos el error técnico para saber qué está pasando exactamente
-        setError(`Error: ${err.message || 'Error de conexión'}`);
+        setError(`Error: ${err.message || 'Fallo de conexión con el servidor'}`);
       }
-      console.error('Error de registro:', err);
+      console.error('Error de cambio de contraseña:', err);
     } finally {
       setLoading(false);
     }
@@ -59,18 +51,18 @@ const Register: React.FC<RegisterProps> = ({ onBack, setShowGuideModal }) => {
     return (
       <div className="min-h-[100dvh] bg-[#060812] flex flex-col items-center justify-center p-4 font-sans selection:bg-red-500/30">
         <div className="w-full max-w-md bg-slate-900/40 backdrop-blur-2xl rounded-[2.5rem] shadow-2xl p-10 border border-white/10 text-center space-y-8 animate-pop-in">
-          <div className="w-24 h-24 bg-gradient-to-tr from-emerald-500 to-emerald-400 rounded-full flex items-center justify-center mx-auto text-white shadow-[0_0_40px_rgba(16,185,129,0.3)] animate-pulse">
+          <div className="w-24 h-24 bg-gradient-to-tr from-blue-500 to-blue-400 rounded-full flex items-center justify-center mx-auto text-white shadow-[0_0_40px_rgba(59,130,246,0.3)] animate-pulse">
             <CheckCircle2 size={56} strokeWidth={2.5} />
           </div>
           <div className="space-y-2">
-            <h2 className="text-4xl font-black text-white tracking-tight">¡Bienvenido a Hub!</h2>
-            <p className="text-slate-400 text-lg">Tu identidad ha sido encriptada.</p>
+            <h2 className="text-4xl font-black text-white tracking-tight text-balance">Contraseña Actualizada</h2>
+            <p className="text-slate-400 text-lg">Tu nueva contraseña ha sido configurada con éxito.</p>
           </div>
-          <div className="p-6 bg-emerald-500/10 rounded-3xl border border-emerald-500/20 space-y-3">
-             <div className="flex items-center gap-2 text-emerald-400 font-bold text-xs uppercase tracking-[0.2em] justify-center">
-                <Lock size={14} /> Protocolo Militar SHA-256
+          <div className="p-6 bg-blue-500/10 rounded-3xl border border-blue-500/20 space-y-3">
+             <div className="flex items-center gap-2 text-blue-400 font-bold text-xs uppercase tracking-[0.2em] justify-center">
+                <Lock size={14} /> SEGURIDAD SHA-256
              </div>
-             <p className="text-[11px] text-emerald-400/70 leading-relaxed font-medium">Tus credenciales han sido procesadas. Nadie, ni siquiera el sistema, puede ver tu contraseña original.</p>
+             <p className="text-[11px] text-blue-400/70 leading-relaxed font-medium">Ya puedes iniciar sesión con tu nueva contraseña de acceso. El cambio ha sido aplicado a tu perfil de STAFF o ADMIN.</p>
           </div>
           <button 
             onClick={() => window.location.href = '/'}
@@ -86,8 +78,8 @@ const Register: React.FC<RegisterProps> = ({ onBack, setShowGuideModal }) => {
   return (
     <div className="min-h-[100dvh] bg-[#060812] flex flex-col items-center justify-center p-4 font-sans relative overflow-hidden selection:bg-red-500/30">
         {/* Cinematic Background Elements */}
-        <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] bg-red-600/10 rounded-full blur-[150px] pointer-events-none animate-pulse"></div>
-        <div className="absolute bottom-[-15%] right-[-10%] w-[70%] h-[70%] bg-blue-600/5 rounded-full blur-[150px] pointer-events-none animate-pulse" style={{ animationDelay: '3s' }}></div>
+        <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] bg-blue-600/10 rounded-full blur-[150px] pointer-events-none animate-pulse"></div>
+        <div className="absolute bottom-[-15%] right-[-10%] w-[70%] h-[70%] bg-red-600/5 rounded-full blur-[150px] pointer-events-none animate-pulse" style={{ animationDelay: '3s' }}></div>
         
         {/* Micro-Interaction Grid Background */}
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10 pointer-events-none"></div>
@@ -103,27 +95,27 @@ const Register: React.FC<RegisterProps> = ({ onBack, setShowGuideModal }) => {
               <Logo size="xl" />
             </div>
             <div className="space-y-1">
-                <h1 className="text-3xl font-black tracking-tighter text-white uppercase italic">Crear mi Acceso</h1>
-                <p className="text-slate-500 text-xs font-bold tracking-[0.2em] uppercase">Hub: Hotel Victoria Intelligence</p>
+                <h1 className="text-3xl font-black tracking-tighter text-white uppercase italic">Cambiar Contraseña</h1>
+                <p className="text-slate-500 text-xs font-bold tracking-[0.2em] uppercase text-balance">Hub: Gestión de Seguridad Staff & Admin</p>
             </div>
         </div>
 
         <div className="bg-slate-900/50 backdrop-blur-3xl rounded-[3rem] shadow-[0_50px_100px_rgba(0,0,0,0.5)] overflow-hidden border border-white/5 transition-all duration-700 animate-slide-up">
           <div className="p-10">
-            <form onSubmit={handleRegister} className="space-y-6">
+            <form onSubmit={handleChangePin} className="space-y-6">
               
               <div className="space-y-5">
                 {/* Username Input */}
                 <div className="space-y-2 group">
-                  <label className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] ml-2 group-focus-within:text-red-500 transition-colors">
-                    <UserIcon size={12} /> Usuario único
+                  <label className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] ml-2 group-focus-within:text-blue-500 transition-colors">
+                    <UserIcon size={12} /> Tu Usuario
                   </label>
                   <div className="relative">
                       <input
                         type="text"
                         value={username}
                         onChange={(e) => setUsername(e.target.value)}
-                        className="w-full px-6 py-4.5 rounded-2xl border border-white/5 bg-white/5 text-white placeholder-slate-600 focus:bg-white/10 focus:border-red-600 focus:ring-4 focus:ring-red-600/10 outline-none transition-all font-bold text-lg"
+                        className="w-full px-6 py-4.5 rounded-2xl border border-white/5 bg-white/5 text-white placeholder-slate-600 focus:bg-white/10 focus:border-blue-600 focus:ring-4 focus:ring-blue-600/10 outline-none transition-all font-bold text-lg"
                         placeholder="Nombre de usuario"
                         required
                         disabled={loading}
@@ -131,16 +123,34 @@ const Register: React.FC<RegisterProps> = ({ onBack, setShowGuideModal }) => {
                   </div>
                 </div>
 
-                {/* Password Input */}
+                {/* Old Password Input */}
                 <div className="space-y-2 group">
-                  <label className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] ml-2 group-focus-within:text-red-500 transition-colors">
-                    <KeyRound size={12} /> Contraseña Robusta
+                  <label className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] ml-2 group-focus-within:text-amber-500 transition-colors">
+                    <Lock size={12} /> Contraseña Anterior (Seguridad)
                   </label>
                   <div className="relative">
                     <input
                       type={showPassword ? "text" : "password"}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
+                      value={oldPassword}
+                      onChange={(e) => setOldPassword(e.target.value)}
+                      className="w-full pl-6 pr-14 py-4.5 rounded-2xl border border-white/5 bg-white/5 text-white placeholder-slate-600 focus:bg-white/10 focus:border-amber-600 focus:ring-4 focus:ring-amber-600/10 outline-none transition-all font-bold text-lg tracking-widest [&:not(:placeholder-shown)]:tracking-[0.8em]"
+                      placeholder="••••••••"
+                      required
+                      disabled={loading}
+                    />
+                  </div>
+                </div>
+
+                {/* New Password Input */}
+                <div className="space-y-2 group">
+                  <label className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] ml-2 group-focus-within:text-red-500 transition-colors">
+                    <KeyRound size={12} /> Nueva Contraseña de acceso
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
                       className="w-full pl-6 pr-14 py-4.5 rounded-2xl border border-white/5 bg-white/5 text-white placeholder-slate-600 focus:bg-white/10 focus:border-red-600 focus:ring-4 focus:ring-red-600/10 outline-none transition-all font-bold text-lg tracking-widest [&:not(:placeholder-shown)]:tracking-[0.8em]"
                       placeholder="••••••••"
                       required
@@ -159,7 +169,7 @@ const Register: React.FC<RegisterProps> = ({ onBack, setShowGuideModal }) => {
                 {/* Confirm Password */}
                 <div className="space-y-2 group">
                   <label className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] ml-2 group-focus-within:text-red-500 transition-colors">
-                    Confirmar Contraseña
+                    Confirmar Nueva Contraseña
                   </label>
                   <div className="relative">
                     <input
@@ -172,8 +182,8 @@ const Register: React.FC<RegisterProps> = ({ onBack, setShowGuideModal }) => {
                       disabled={loading}
                     />
                     <div className="absolute right-5 top-1/2 -translate-y-1/2">
-                        {password && confirmPassword && (
-                            password === confirmPassword ? 
+                        {newPassword && confirmPassword && (
+                            newPassword === confirmPassword ? 
                             <CheckCircle2 size={20} className="text-emerald-500 animate-pop-in" /> : 
                             <AlertCircle size={20} className="text-red-500 animate-shake" />
                         )}
@@ -197,7 +207,7 @@ const Register: React.FC<RegisterProps> = ({ onBack, setShowGuideModal }) => {
                   <Loader2 className="animate-spin" size={24} />
                 ) : (
                   <>
-                    <span className="uppercase tracking-[0.2em] text-sm">Activar Cuenta</span> 
+                    <span className="uppercase tracking-[0.2em] text-sm text-balance">Cambiar mi contraseña de acceso</span> 
                     <ArrowRight size={22} className="group-hover:translate-x-1.5 transition-transform" />
                   </>
                 )}
@@ -209,12 +219,12 @@ const Register: React.FC<RegisterProps> = ({ onBack, setShowGuideModal }) => {
                  <div className="flex items-center gap-3 text-[10px] uppercase tracking-[0.2em] font-black text-slate-600">
                     <span className="flex items-center gap-1.5"><ShieldCheck size={12} className="text-emerald-500" /> AES-256</span>
                     <span className="w-1 h-1 bg-slate-800 rounded-full"></span>
-                    <span className="flex items-center gap-1.5"><Lock size={12} className="text-blue-500" /> SHA-HASH</span>
+                    <span className="flex items-center gap-1.5"><Lock size={12} className="text-blue-500" /> SECURE</span>
                     <span className="w-1 h-1 bg-slate-800 rounded-full"></span>
-                    <span className="flex items-center gap-1.5">TLS 1.3</span>
+                    <span className="flex items-center gap-1.5">SHA-256</span>
                  </div>
-                 <p className="text-[10px] text-slate-500 font-bold italic tracking-tight">
-                   "Tu contraseña es encriptada antes de ser guardada. Jamás compartas tus credenciales."
+                 <p className="text-[10px] text-slate-500 font-bold italic tracking-tight opacity-70">
+                   "Debes conocer tu contraseña actual para poder establecer una nueva."
                  </p>
               </div>
             </form>

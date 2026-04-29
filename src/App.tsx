@@ -106,11 +106,11 @@ const App: React.FC = () => {
       await Promise.all([authPromise, minSplashTime]);
 
       if (providerMode === 'true' && !storageService.getSession()) {
-        const providerUser: User = { id: 'provider-' + Date.now(), name: 'Proveedor', role: UserRole.PROVIDER, pin: '' };
+        const providerUser: User = { id: 'provider-' + Date.now(), name: 'Proveedor', role: UserRole.PROVIDER, contraseña: '' };
         setUser(providerUser);
         setView('provider' as any);
       } else if (publicMode === 'true' && !storageService.getSession()) {
-        const guestUser: User = { id: 'guest-' + Date.now(), name: 'Invitado', role: UserRole.GUEST, pin: '' };
+        const guestUser: User = { id: 'guest-' + Date.now(), name: 'Invitado', role: UserRole.GUEST, contraseña: '' };
         setUser(guestUser);
         setView('tasks');
       }

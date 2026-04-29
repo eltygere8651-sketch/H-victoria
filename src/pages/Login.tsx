@@ -13,7 +13,7 @@ interface LoginProps {
 
 const Login: React.FC<LoginProps> = ({ onLogin, setShowGuideModal }) => {
   const [username, setUsername] = useState('');
-  const [pin, setPin] = useState('');
+  const [contraseña, setContraseña] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
@@ -30,7 +30,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, setShowGuideModal }) => {
           id: currentUser.uid,
           name: currentUser.displayName || 'Propietario',
           role: UserRole.ADMIN,
-          pin: '****',
+          contraseña: '****',
           permissions: ['CAN_MANAGE_TASKS'],
           email: currentUser.email || undefined
         };
@@ -47,7 +47,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, setShowGuideModal }) => {
     setError('');
     
     setTimeout(async () => {
-      const user = await storageService.login(username, pin);
+      const user = await storageService.login(username, contraseña);
       setLoading(false);
       
       if (user) {
@@ -71,7 +71,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, setShowGuideModal }) => {
           id: user.uid,
           name: user.displayName || 'Propietario',
           role: UserRole.ADMIN,
-          pin: '****',
+          contraseña: '****',
           permissions: ['CAN_MANAGE_TASKS'],
           email: user.email
         };
@@ -138,8 +138,8 @@ const Login: React.FC<LoginProps> = ({ onLogin, setShowGuideModal }) => {
               <label className="block text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.2em] ml-1 group-focus-within:text-red-500 transition-colors">Contraseña Personal</label>
               <input
                 type="password"
-                value={pin}
-                onChange={(e) => setPin(e.target.value)}
+                value={contraseña}
+                onChange={(e) => setContraseña(e.target.value)}
                 className="w-full px-5 py-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:bg-white dark:focus:bg-slate-900 focus:border-red-600 focus:ring-4 focus:ring-red-600/10 outline-none transition-all tracking-[0.5em] font-black"
                 placeholder="••••••••"
                 required
@@ -248,6 +248,15 @@ const Login: React.FC<LoginProps> = ({ onLogin, setShowGuideModal }) => {
                 </>
               )}
             </button>
+
+            <div className="pt-6 text-center">
+              <a 
+                href="/?register=true" 
+                className="text-xs font-bold text-slate-400 dark:text-slate-500 hover:text-red-500 transition-colors uppercase tracking-widest"
+              >
+                Cambiar mi contraseña de acceso
+              </a>
+            </div>
           </form>
 
           <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-800 text-center">

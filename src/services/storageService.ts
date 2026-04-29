@@ -31,9 +31,9 @@ const KEYS = {
 };
 
 const INITIAL_USERS: User[] = [
-  { id: '1', name: 'Administrador', role: UserRole.ADMIN, pin: '1234', permissions: ['CAN_MANAGE_TASKS'] },
-  { id: '2', name: 'Camarero Bar', role: UserRole.STAFF, pin: '1234' },
-  { id: '3', name: 'Chef Restaurante', role: UserRole.STAFF, pin: '1234' }
+  { id: '1', name: 'Administrador', role: UserRole.ADMIN, contraseña: '1234', permissions: ['CAN_MANAGE_TASKS'] },
+  { id: '2', name: 'Camarero Bar', role: UserRole.STAFF, contraseña: '1234' },
+  { id: '3', name: 'Chef Restaurante', role: UserRole.STAFF, contraseña: '1234' }
 ];
 
 // REQUISITO: Solo Bar y Restaurante
@@ -141,7 +141,15 @@ async function initFirestoreWithInitialData() {
         const batch = db.batch();
         data.forEach(item => {
           const docRef = item.id ? db.collection(name).doc(item.id) : db.collection(name).doc();
-          batch.set(docRef, { ...item, id: item.id || docRef.id });
+          let finalItem = { ...item, id: item.id || docRef.id };
+          
+          // Map contraseña to pin for initial user documents
+          if (name === KEYS.USERS && 'contraseña' in item) {
+            const { contraseña, ...rest }: any = finalItem;
+            finalItem = { ...rest, pin: contraseña };
+          }
+          
+          batch.set(docRef, finalItem);
         });
         await batch.commit();
       }
@@ -168,19 +176,24 @@ async function initFirestoreWithInitialData() {
 
 // --- AUTH HELPERS ---
 
-// Simple hashing for PINs using SHA-256
-async function hashPin(pin: string): Promise<string> {
+// Simple hashing for passwords using SHA-256
+async function hashContraseña(contraseña: string): Promise<string> {
   const encoder = new TextEncoder();
-  const data = encoder.encode(pin);
+  const data = encoder.encode(contraseña);
   const hashBuffer = await crypto.subtle.digest('SHA-256', data);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-export const login = async (name: string, pin: string): Promise<User | null> => {
-  const hashedPin = await hashPin(pin);
+async function verificarContraseña(contraseña: string, hashedContraseña: string): Promise<boolean> {
+  const hash = await hashContraseña(contraseña);
+  return hash === hashedContraseña;
+}
+
+export const login = async (name: string, contraseña: string): Promise<User | null> => {
+  const hashedPin = await hashContraseña(contraseña);
   
-  // Try to find user with hashed PIN
+  // Try to find user with hashed PIN (we keep DB field as "pin" for migration safety, but use it as password)
   const qHashed = db.collection(KEYS.USERS).where("pin", "==", hashedPin);
   const querySnapshotHashed = await qHashed.get();
   
@@ -191,7 +204,8 @@ export const login = async (name: string, pin: string): Promise<User | null> => 
     });
 
     if (match) {
-      const user = { ...match.data(), id: match.id } as User;
+      const data = match.data();
+      const user = { ...data, contraseña: data.pin, id: match.id } as User;
       // Associate Auth UID with the user document for rules evaluation
       if (auth.currentUser) {
         const currentAuthUid = auth.currentUser.uid;
@@ -221,22 +235,22 @@ export const login = async (name: string, pin: string): Promise<User | null> => 
     }
   }
 
-  // Fallback: Check if user exists with raw PIN (for migration)
+  // Fallback: Check if user exists with raw password (for migration)
   const qRaw = db.collection(KEYS.USERS).where("name", "==", name);
   const querySnapshotRaw = await qRaw.get();
 
   if (!querySnapshotRaw.empty) {
     const doc = querySnapshotRaw.docs[0];
     const userData = doc.data();
-    if (userData.pin === pin) {
-      const hashedPin = await hashPin(pin);
-      // User found with raw PIN, migrate them to hashed PIN
+    if (userData.pin === contraseña) {
+      const hashedPin = await hashContraseña(contraseña);
+      // User found with raw password, migrate them to hashed password
       await doc.ref.update({ 
         pin: hashedPin,
         authUid: auth.currentUser?.uid || null,
         lastLogin: Date.now()
       });
-      const user = { ...userData, id: doc.id, pin: hashedPin } as User;
+      const user = { ...userData, id: doc.id, contraseña: hashedPin } as User;
       saveSession(user);
       return user;
     }
@@ -594,9 +608,63 @@ export const deleteBatch = async (batchId: string) => {
 };
 
 // --- USERS ---
+export const cambiar = async (username: string, oldPassword: string, newPassword: string) => {
+  try {
+    // 1. Asegurar sesión para interactuar con la base de datos
+    if (!auth.currentUser) {
+      await auth.signInAnonymously();
+    }
+
+    const userId = username.toLowerCase().trim();
+    const userRef = db.collection(KEYS.USERS).doc(userId);
+    const doc = await userRef.get();
+    
+    if (!doc.exists) {
+      throw new Error('USER_NOT_FOUND');
+    }
+
+    const userData = doc.data();
+    
+    // 2. VERIFICACIÓN DE SEGURIDAD: Comparar contraseña antigua
+    const isOldPasswordCorrect = await verificarContraseña(oldPassword, userData?.pin || '');
+    if (!isOldPasswordCorrect) {
+      throw new Error('INVALID_OLD_PASSWORD');
+    }
+
+    // 3. ENCRIPTAR Y ACTUALIZAR
+    const hashedPin = await hashContraseña(newPassword);
+    
+    await userRef.update({ 
+      pin: hashedPin,
+      updatedAt: Date.now()
+    });
+    
+    // Sincronizar si tiene authUid
+    if (userData?.authUid) {
+      try {
+        await db.collection(KEYS.USERS).doc(userData.authUid).update({
+          pin: hashedPin,
+          updatedAt: Date.now()
+        });
+      } catch (e) {
+        // Ignoramos si falla la sincronización por UID
+      }
+    }
+
+    return true;
+  } catch (error: any) {
+    const knownErrors = ['USER_NOT_FOUND', 'INVALID_OLD_PASSWORD'];
+    if (knownErrors.includes(error.message)) throw error;
+    handleFirestoreError(error, OperationType.WRITE, KEYS.USERS);
+  }
+};
+
 export const subscribeToUsers = (callback: (users: User[]) => void) => {
     return db.collection(KEYS.USERS).orderBy('name').onSnapshot(snapshot => {
-        callback(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as User)));
+        callback(snapshot.docs.map(doc => {
+          const data = doc.data();
+          return { ...data, contraseña: data.pin, id: doc.id } as User;
+        }));
     }, error => handleFirestoreError(error, OperationType.GET, KEYS.USERS));
 };
 export const addUser = async (user: Omit<User, 'id'>) => {
@@ -614,12 +682,15 @@ export const addUser = async (user: Omit<User, 'id'>) => {
       throw new Error('USERNAME_EXISTS');
     }
 
-    if (user.pin) {
-      user.pin = await hashPin(user.pin);
+    let hashedPassword = '';
+    if (user.contraseña) {
+      hashedPassword = await hashContraseña(user.contraseña);
     }
 
+    const { contraseña, ...rest } = user;
     const userData = sanitizeData({
-      ...user,
+      ...rest,
+      pin: hashedPassword, // Store as pin in DB
       isSuperAdmin: false,
       isAdmin: false,
       authUid: auth.currentUser?.uid || null,
@@ -635,11 +706,17 @@ export const addUser = async (user: Omit<User, 'id'>) => {
   }
 };
 export const updateUser = async (user: User) => {
-  // If pin is changed (not a 64 char hash), we hash it
-  if (user.pin && user.pin.length !== 64) {
-    user.pin = await hashPin(user.pin);
+  // If password is changed (not a 64 char hash), we hash it
+  let finalPassword = user.contraseña;
+  if (user.contraseña && user.contraseña.length !== 64) {
+    finalPassword = await hashContraseña(user.contraseña);
   }
-  const { id, ...data } = user;
+  
+  const { id, contraseña, ...rest } = user;
+  const data = {
+    ...rest,
+    pin: finalPassword // Store as pin in DB
+  };
   await db.collection(KEYS.USERS).doc(id).update(sanitizeData(data));
 };
 

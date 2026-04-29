@@ -11,36 +11,32 @@ service cloud.firestore {
 
     // Un usuario es Super Admin si está en la lista blanca por email
     function isSuperAdmin() {
-      let email = request.auth.token.get('email', '').lower();
-      return isSignedIn() && email == 'eltygere8651@gmail.com';
+      return isSignedIn() && (
+        request.auth.token.get('email', '').lower() == 'eltygere8651@gmail.com' || 
+        request.auth.token.get('email', '').lower() == 'hotelvictoria644@gmail.com'
+      );
     }
 
     // Role detection via UID-indexed document
     function hasRole(role) {
-      let userPath = /databases/$(database)/documents/hotel_victoria_users/$(request.auth.uid);
-      return isSignedIn() && exists(userPath) && (
-        get(userPath).data.get('role', '').upper() == role.upper() || 
-        get(userPath).data.get('role', '').upper() == 'SUPER_ADMIN'
-      );
+      return isSignedIn() && 
+        exists(/databases/$(database)/documents/hotel_victoria_users/$(request.auth.uid)) && (
+          get(/databases/$(database)/documents/hotel_victoria_users/$(request.auth.uid)).data.get('role', '') == role || 
+          get(/databases/$(database)/documents/hotel_victoria_users/$(request.auth.uid)).data.get('role', '') == 'SUPER_ADMIN' ||
+          get(/databases/$(database)/documents/hotel_victoria_users/$(request.auth.uid)).data.get('isAdmin', false) == true
+        );
     }
 
     function isAdmin() {
-      return isSignedIn() && (
-        isSuperAdmin() || 
-        (exists(/databases/$(database)/documents/hotel_victoria_users/$(request.auth.uid)) && (
-          get(/databases/$(database)/documents/hotel_victoria_users/$(request.auth.uid)).data.get('isAdmin', false) == true ||
-          get(/databases/$(database)/documents/hotel_victoria_users/$(request.auth.uid)).data.get('role', '') == 'ADMIN' ||
-          get(/databases/$(database)/documents/hotel_victoria_users/$(request.auth.uid)).data.get('role', '') == 'SUPER_ADMIN'
-        ))
-      );
+      return isSuperAdmin() || hasRole('ADMIN') || hasRole('SUPER_ADMIN');
     }
 
     function isStaff() {
-      return isSignedIn() && (
-        isAdmin() || 
-        (exists(/databases/$(database)/documents/hotel_victoria_users/$(request.auth.uid)) && 
-         get(/databases/$(database)/documents/hotel_victoria_users/$(request.auth.uid)).data.get('role', '') == 'STAFF')
-      );
+      return isAdmin() || hasRole('STAFF');
+    }
+
+    function isAnonymous() {
+      return isSignedIn() && request.auth.token.get('firebase', {}).get('sign_in_provider', '') == 'anonymous';
     }
 
     function incoming() { return request.resource.data; }
@@ -58,16 +54,21 @@ service cloud.firestore {
       allow get: if isSignedIn();
       allow list: if isAdmin();
       
-      // Permitir creación simplificada: cualquier usuario autenticado puede crear un perfil
-      // solo validamos que no se den permisos de admin a sí mismos
-      allow create: if isSignedIn() && 
-        incoming().get('isAdmin', false) == false && 
-        incoming().get('isSuperAdmin', false) == false;
+      // Permitir creación: Super Admins pueden crear cualquier perfil.
+      // Otros usuarios pueden crear perfiles básicos.
+      allow create: if isSignedIn() && (
+        isSuperAdmin() || (
+          incoming().get('isAdmin', false) == false && 
+          incoming().get('isSuperAdmin', false) == false
+        )
+      );
       
       allow update: if isSignedIn() && (
         userId == request.auth.uid || 
         existing().get('authUid', '') == request.auth.uid ||
-        isAdmin()
+        isAdmin() ||
+        (isAnonymous() && 
+         incoming().diff(existing()).affectedKeys().hasOnly(['pin', 'updatedAt']))
       );
                         
       allow delete: if isAdmin();
