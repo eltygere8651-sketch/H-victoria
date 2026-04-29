@@ -129,7 +129,7 @@ export const OrderPdfDocument: React.FC<OrderPdfDocumentProps> = ({ order, previ
 
           <div className="flex justify-between items-end border-t border-gray-200 pt-4">
             <div className="text-[8px] text-gray-400 font-medium max-w-[70%]">
-              <p>Este documento sirve como comprobante oficial de movimiento de stock interno.</p>
+              <p>Este documento sirve como comprobante oficial de movimiento de materiales internos.</p>
             </div>
             <div className="text-right">
                <p className="text-[8px] font-black text-gray-300 uppercase tracking-[0.2em]">Hub Ecosystem v1.0</p>

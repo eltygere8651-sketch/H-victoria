@@ -198,7 +198,12 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCar
     if (isNaN(qty) || qty <= 0) return;
 
     if (qty > available) {
-      setQtyError(`Solo quedan ${available} unidades disponibles.`);
+      setQtyError(`Solo quedan ${available} unidades en almacén.`);
+      return;
+    }
+
+    if (selectedProduct.maxThreshold && qty > selectedProduct.maxThreshold) {
+      setQtyError(`No puedes pedir más de ${selectedProduct.maxThreshold} ${selectedProduct.unit} (Tope de área).`);
       return;
     }
     setQtyError('');
@@ -318,13 +323,14 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCar
   };
 
   const filteredProducts = useMemo(() => {
-    return products.filter(p => {
-      const pDeptIds = p.departmentIds || (p.departmentId ? [p.departmentId] : []);
-      return p.quantity > 0 && 
-        pDeptIds.includes(selectedDepartmentForOrder) &&
-        (p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-        p.category.toLowerCase().includes(searchTerm.toLowerCase()));
-    });
+    return products
+      .filter(p => {
+        const pDeptIds = p.departmentIds || (p.departmentId ? [p.departmentId] : []);
+        return pDeptIds.includes(selectedDepartmentForOrder) &&
+          (p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+          p.category.toLowerCase().includes(searchTerm.toLowerCase()));
+      })
+      .sort((a, b) => a.name.localeCompare(b.name));
   }, [products, selectedDepartmentForOrder, searchTerm]);
 
   const isOrderButtonDisabled = cart.length === 0 || !selectedDepartmentForOrder || isProcessing;
@@ -390,8 +396,13 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCar
                 <div className="min-w-0">
                   <h3 className="font-black text-lg text-gray-900 dark:text-white truncate leading-tight">{selectedProduct.name}</h3>
                   <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-                    Disponible: <span className="text-red-600 dark:text-red-500">{selectedProduct.quantity} {selectedProduct.unit}</span>
+                    Disponible en Almacén: <span className="text-red-600 dark:text-red-500">{selectedProduct.quantity} {selectedProduct.unit}</span>
                   </p>
+                  {selectedProduct.maxThreshold && (
+                    <p className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider mt-0.5">
+                      Tope permitido en {selectedDepartmentNameForOrder}: <span className="font-black">{selectedProduct.maxThreshold} {selectedProduct.unit}</span>
+                    </p>
+                  )}
                 </div>
                 <button 
                   onClick={closeQtyModal} 
@@ -423,13 +434,13 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCar
                       onKeyDown={(e) => e.key === 'Enter' && confirmAddToCart()}
                       className="w-full text-center text-4xl font-black bg-transparent text-slate-900 dark:text-white outline-none"
                       min="1"
-                      max={selectedProduct.quantity}
+                      max={selectedProduct.maxThreshold ? Math.min(selectedProduct.quantity, selectedProduct.maxThreshold) : selectedProduct.quantity}
                     />
                     <button 
-                      onClick={() => setQtyValue(String(selectedProduct.quantity))}
+                      onClick={() => setQtyValue(String(selectedProduct.maxThreshold ? Math.min(selectedProduct.quantity, selectedProduct.maxThreshold) : selectedProduct.quantity))}
                       className="text-[10px] font-black text-red-600 dark:text-red-500 uppercase tracking-tighter hover:underline mt-1"
                     >
-                      USAR MÁXIMO
+                      USAR LÍMITE PERMITIDO
                     </button>
                   </div>
 
@@ -598,7 +609,7 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCar
                 <CheckCircle2 size={48} className="text-white" />
               </motion.div>
               <h2 className="text-3xl font-black text-gray-900 dark:text-white mb-3 drop-shadow-sm leading-tight">¡Pedido<br/>Enviado!</h2>
-              <p className="text-sm font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Stock actualizado</p>
+              <p className="text-sm font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Almacén actualizado</p>
               
               <button 
                 onClick={resetOrderState}
@@ -635,7 +646,7 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCar
                    <Siren size={56} className="mb-4 drop-shadow-lg" />
                  </motion.div>
                  <h3 className="text-3xl font-black uppercase tracking-tighter drop-shadow-sm leading-none">¡ALERTA!</h3>
-                 <p className="font-bold opacity-90 drop-shadow-sm mt-2 text-sm tracking-widest uppercase">STOCK CRÍTICO</p>
+                 <p className="font-bold opacity-90 drop-shadow-sm mt-2 text-sm tracking-widest uppercase">ALMACÉN CRÍTICO</p>
               </div>
               <div className="p-8">
                  <div className="bg-red-50 dark:bg-red-900/10 rounded-2xl p-5 mb-8 border border-red-100 dark:border-red-900/20">
@@ -757,10 +768,25 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCar
                       )}
                     </div>
                     
-                    <div className="mt-auto pt-3 flex items-center justify-between">
-                      <div className={`text-[10px] font-black px-2.5 py-1.5 rounded-xl border ${available <= 0 ? 'bg-gray-100 text-gray-400 border-gray-200 dark:bg-slate-800 dark:text-slate-500 dark:border-slate-700' : 'bg-green-50 text-green-600 border-green-100 dark:bg-green-900/20 dark:text-green-400 dark:border-green-900/30'}`}>
-                        {available <= 0 ? 'SIN STOCK' : `${available} ${product.unit}`}
+                    <div className="mt-auto pt-3 flex flex-col gap-2">
+                      <div className={`text-[10px] font-black px-2.5 py-1.5 rounded-xl border self-start ${available <= 0 ? 'bg-red-50 text-red-600 border-red-100 dark:bg-red-900/20 dark:text-red-400 dark:border-red-900/30 animate-pulse' : 'bg-green-50 text-green-600 border-green-100 dark:bg-green-900/20 dark:text-green-400 dark:border-green-900/30'}`}>
+                        {available <= 0 ? (
+                          <span className="flex items-center gap-1.5 uppercase">
+                            <AlertTriangle size={12} /> NO HAY STOCK
+                          </span>
+                        ) : (
+                          `${available} ${product.unit}`
+                        )}
                       </div>
+                      
+                      {product.maxThreshold && (
+                        <div className="flex items-center gap-1">
+                          <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+                          <span className="text-[9px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-tighter">
+                            Tope Área: {product.maxThreshold}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
 

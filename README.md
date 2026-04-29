@@ -34,7 +34,7 @@ npm run clean
 ## Características
 
 - **Autenticación Segura:** Sistema de inicio de sesión basado en roles (Admin, Staff).
-- **Gestión de Inventario:** Control de stock en tiempo real, con alertas de umbral mínimo.
+- **Gestión de Inventario:** Control de almacén en tiempo real, con alertas de umbral mínimo.
 - **Sistema de Pedidos:** Flujo de trabajo para solicitar productos del inventario por departamento.
 - **Gestión de Tareas y Anuncios:** Asignación y seguimiento de tareas con prioridades, estados, imágenes y comentarios.
 - **Panel de Administración:** Visualización de reportes, historial de pedidos y gestión de usuarios.

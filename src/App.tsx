@@ -88,29 +88,44 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const initializeApp = async () => {
-      const searchParams = new URLSearchParams(window.location.search);
-      const shareId = searchParams.get('shareId');
-      const publicMode = searchParams.get('public');
-      const providerMode = searchParams.get('provider');
-      if (shareId) setSharedTaskId(shareId);
-      
-      // Artificial delay for splash screen visibility (optional, improves perceived quality)
-      const minSplashTime = new Promise(resolve => setTimeout(resolve, 800));
-      
-      const authPromise = storageService.ensureAnonymousAuth();
-      
-      await Promise.all([authPromise, minSplashTime]);
+      try {
+        const searchParams = new URLSearchParams(window.location.search);
+        const shareId = searchParams.get('shareId');
+        const publicMode = searchParams.get('public');
+        const providerMode = searchParams.get('provider');
+        if (shareId) setSharedTaskId(shareId);
+        
+        // Artificial delay for splash screen visibility
+        const minSplashTime = new Promise(resolve => setTimeout(resolve, 800));
+        
+        // Start auth and sync
+        try {
+          await storageService.ensureAnonymousAuth();
+        } catch (e) {
+          console.error("Non-critical initialization error:", e);
+        }
+        
+        await minSplashTime;
 
-      if (providerMode === 'true' && !storageService.getSession()) {
-        const providerUser: User = { id: 'provider-' + Date.now(), name: 'Proveedor', role: UserRole.PROVIDER, contraseña: '' };
-        setUser(providerUser);
-        setView('provider' as any);
-      } else if (publicMode === 'true' && !storageService.getSession()) {
-        const guestUser: User = { id: 'guest-' + Date.now(), name: 'Invitado', role: UserRole.GUEST, contraseña: '' };
-        setUser(guestUser);
-        setView('tasks');
+        // Trigger catalog update in background
+        storageService.registerCatalogFromImage().catch(err => {
+          console.error("Catalog sync background error:", err);
+        });
+
+        if (providerMode === 'true' && !storageService.getSession()) {
+          const providerUser: User = { id: 'provider-' + Date.now(), name: 'Proveedor', role: UserRole.PROVIDER, contraseña: '' };
+          setUser(providerUser);
+          setView('provider' as any);
+        } else if (publicMode === 'true' && !storageService.getSession()) {
+          const guestUser: User = { id: 'guest-' + Date.now(), name: 'Invitado', role: UserRole.GUEST, contraseña: '' };
+          setUser(guestUser);
+          setView('tasks');
+        }
+      } catch (error) {
+        console.error("Critical app initialization error:", error);
+      } finally {
+        setIsInitializing(false);
       }
-      setIsInitializing(false);
     };
     initializeApp();
   }, []);

@@ -244,18 +244,18 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
   return (
     <div className="transition-colors duration-300 min-h-screen pb-24 bg-gray-50 dark:bg-slate-950">
       <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-b dark:border-slate-800 sticky top-[var(--header-h)] z-30 shadow-md transition-all duration-300">
-        <div className="flex overflow-x-auto no-scrollbar">
-          <button onClick={() => setActiveTab('requests')} className={`flex-1 min-w-[120px] py-4 text-sm font-extrabold border-b-2 transition-colors duration-200 ${activeTab === 'requests' ? 'border-red-600 text-red-600 dark:text-red-400 dark:border-red-400 bg-red-50 dark:bg-red-900/10 shadow-inner' : 'border-transparent text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800/50'}`}>Historial de Albaranes</button>
-          <button onClick={() => setActiveTab('reports')} className={`flex-1 min-w-[120px] py-4 text-sm font-extrabold border-b-2 transition-colors duration-200 relative ${activeTab === 'reports' ? 'border-red-600 text-red-600 dark:text-red-400 dark:border-red-400 bg-red-50 dark:bg-red-900/10 shadow-inner' : 'border-transparent text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800/50'}`}>
+        <div className="flex overflow-x-auto no-scrollbar max-w-7xl mx-auto">
+          <button onClick={() => setActiveTab('requests')} className={`flex-1 min-w-[100px] py-4 text-[11px] md:text-sm font-black border-b-2 transition-colors duration-200 uppercase tracking-wider ${activeTab === 'requests' ? 'border-red-600 text-red-600 dark:text-red-400 dark:border-red-400 bg-red-50 dark:bg-red-900/10 shadow-inner' : 'border-transparent text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800/50'}`}>Historial</button>
+          <button onClick={() => setActiveTab('reports')} className={`flex-1 min-w-[100px] py-4 text-[11px] md:text-sm font-black border-b-2 transition-colors duration-200 relative uppercase tracking-wider ${activeTab === 'reports' ? 'border-red-600 text-red-600 dark:text-red-400 dark:border-red-400 bg-red-50 dark:bg-red-900/10 shadow-inner' : 'border-transparent text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800/50'}`}>
             Reportes
             {unreadNotificationsCount > 0 && (
-                <span className="absolute top-2 right-2 md:right-4 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold ring-2 ring-white dark:ring-slate-900 animate-pulse" aria-label={`${unreadNotificationsCount} nuevas notificaciones`}>
+                <span className="absolute top-2 right-1 md:right-4 w-4 h-4 md:w-5 md:h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-[9px] md:text-xs font-bold ring-2 ring-white dark:ring-slate-900 animate-pulse">
                     {unreadNotificationsCount}
                 </span>
             )}
           </button>
           {isSuperAdmin && (
-            <button onClick={() => setActiveTab('users')} className={`flex-1 min-w-[120px] py-4 text-sm font-extrabold border-b-2 transition-colors duration-200 ${activeTab === 'users' ? 'border-red-600 text-red-600 dark:text-red-400 dark:border-red-400 bg-red-50 dark:bg-red-900/10 shadow-inner' : 'border-transparent text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800/50'}`}>Usuarios</button>
+            <button onClick={() => setActiveTab('users')} className={`flex-1 min-w-[100px] py-4 text-[11px] md:text-sm font-black border-b-2 transition-colors duration-200 uppercase tracking-wider ${activeTab === 'users' ? 'border-red-600 text-red-600 dark:text-red-400 dark:border-red-400 bg-red-50 dark:bg-red-900/10 shadow-inner' : 'border-transparent text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800/50'}`}>Usuarios</button>
           )}
         </div>
       </div>
@@ -387,7 +387,7 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
                     <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-2xl text-green-600 dark:text-green-400 mb-3">
                       <TrendingUp size={24} />
                     </div>
-                    <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-none mb-2">Salud Stock</span>
+                    <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-none mb-2">Salud Almacén</span>
                     <h4 className="text-2xl font-black text-slate-900 dark:text-white leading-none">{healthPercentage}%</h4>
                   </div>
 
@@ -418,7 +418,7 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
 
                <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-md border border-gray-100 dark:border-slate-800">
                  <h3 className="text-lg font-bold mb-4 text-gray-900 dark:text-white flex items-center gap-2">
-                   <BarChartIcon size={20} className="text-red-600 dark:text-red-400" /> Top 10 Productos en Stock Crítico
+                   <BarChartIcon size={20} className="text-red-600 dark:text-red-400" /> Top 10 Productos en Almacén Crítico
                  </h3>
                  <div className="h-64 w-full">
                     {lowStockData.length > 0 ? (
@@ -431,7 +431,7 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
                               contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(4px)', border: '1px solid rgba(200, 200, 200, 0.5)', borderRadius: '1rem', color: '#333' }}
                               cursor={{ fill: 'rgba(220, 38, 38, 0.1)' }}
                           />
-                          <Bar dataKey="stock" name="Stock Actual" radius={[4, 4, 0, 0]}>
+                          <Bar dataKey="stock" name="Almacén Actual" radius={[4, 4, 0, 0]}>
                               {lowStockData.map((entry: any, index: number) => (
                                   <Cell key={`cell-${index}`} fill={entry.stock <= entry.min ? '#dc2626' : '#f59e0b'} />
                               ))}
@@ -439,7 +439,7 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
                         </BarChart>
                       </ResponsiveContainer>
                     ) : (
-                      <div className="flex h-full items-center justify-center text-gray-400 dark:text-slate-500"><p>No hay datos de stock bajo.</p></div>
+                      <div className="flex h-full items-center justify-center text-gray-400 dark:text-slate-500"><p>No hay datos de almacén bajo.</p></div>
                     )}
                  </div>
                </div>

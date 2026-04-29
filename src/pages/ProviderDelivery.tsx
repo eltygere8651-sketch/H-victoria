@@ -205,7 +205,7 @@ const ProviderDelivery: React.FC<ProviderDeliveryProps> = ({ currentUser }) => {
                   <div className="flex-1 min-w-0 pr-4">
                     <span className="font-bold dark:text-white truncate block">{item.product.name}</span>
                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                      Stock actual: {item.product.quantity} <ArrowRight size={10} className="inline mx-1" /> {item.product.quantity + item.quantityToAdd}
+                      Almacén actual: {item.product.quantity} <ArrowRight size={10} className="inline mx-1" /> {item.product.quantity + item.quantityToAdd}
                     </span>
                   </div>
                   <div className="flex items-center gap-3">

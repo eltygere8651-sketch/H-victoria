@@ -36,6 +36,7 @@
         "quantity": { "type": "number" },
         "unit": { "type": "string" },
         "minThreshold": { "type": "number" },
+        "maxThreshold": { "type": "number" },
         "departmentId": { "type": "string" },
         "departmentName": { "type": "string" },
         "departmentIds": { "type": "array", "items": { "type": "string" } },

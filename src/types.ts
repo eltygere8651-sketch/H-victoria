@@ -32,6 +32,7 @@ export interface Product {
   quantity: number;
   unit: string; // e.g., 'unidades', 'litros', 'cajas'
   minThreshold: number; // For low stock alerts
+  maxThreshold?: number; // New: For maximum capacity/stock limit
   departmentId: string; // Legacy/Primary department ID
   departmentName: string; // Legacy/Primary department Name
   departmentIds?: string[]; // New: Array of department IDs
