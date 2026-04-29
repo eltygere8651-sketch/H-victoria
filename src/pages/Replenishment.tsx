@@ -722,10 +722,10 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCar
                     </div>
                     
                     <div className="mt-auto pt-3 flex flex-col gap-2">
-                      <div className={`text-[12px] font-black px-3 py-2 rounded-xl border self-start shadow-2xl ${available <= 0 ? 'bg-critical-red animate-critical-blink ring-4 ring-red-600/30 font-bold' : 'bg-green-50 text-green-600 border-green-100 dark:bg-green-900/20 dark:text-green-400 dark:border-green-900/30'}`}>
+                      <div className={`text-[10px] font-black px-2.5 py-1.5 rounded-xl border self-start shadow-2xl ${available <= 0 ? 'bg-critical-red animate-critical-blink ring-4 ring-red-600/30' : 'bg-green-50 text-green-600 border-green-100 dark:bg-green-900/20 dark:text-green-400 dark:border-green-900/30'}`}>
                         {available <= 0 ? (
-                          <span className="flex items-center gap-2 uppercase tracking-tighter scale-110">
-                            <Siren size={16} className="animate-pulse" /> ¡AGOTADO! - PEDIR YA
+                          <span className="flex items-center gap-1.5 uppercase tracking-tighter">
+                            <Siren size={14} className="animate-pulse" /> ¡AGOTADO! - PEDIR YA
                           </span>
                         ) : (
                           `${available} ${product.unit}`

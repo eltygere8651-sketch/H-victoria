@@ -5,6 +5,7 @@ import { FileText, Trash2, X, Eye, Package, Download, Loader2, Share2 } from 'lu
 import { Logo } from '../components/Logo';
 import { generatePdfFromReactComponent, sharePdfFromReactComponent } from '../utils/pdfGenerator';
 import { OrderPdfDocument } from '../components/OrderPdfDocument';
+import { motion } from 'motion/react';
 
 
 interface OrdersHistoryProps {
@@ -16,6 +17,8 @@ const OrdersHistory: React.FC<OrdersHistoryProps> = ({ currentUser }) => {
   const [selectedOrder, setSelectedOrder] = useState<OrderBatch | null>(null);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [orderToDelete, setOrderToDelete] = useState<string | null>(null);
+  const [showClearAllModal, setShowClearAllModal] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
 
   useEffect(() => {
     const unsubscribe = storageService.subscribeToBatches(setOrders);
@@ -68,15 +71,45 @@ const OrdersHistory: React.FC<OrdersHistoryProps> = ({ currentUser }) => {
     }
   };
 
+  const handleClearAll = async () => {
+    setIsClearing(true);
+    try {
+      await storageService.clearAllReplenishmentRequests();
+      setOrders([]);
+      setShowClearAllModal(false);
+    } catch (error) {
+      console.error("Error clearing history:", error);
+      alert('Error al limpiar el historial.');
+    } finally {
+      setIsClearing(false);
+    }
+  };
+
   return (
     <div className="p-4 md:p-8 bg-gray-50 dark:bg-slate-900 min-h-full pb-24 md:pb-6 font-sans transition-colors duration-300">
       
-      <div className="mb-8">
-        <h2 className="text-3xl font-extrabold text-gray-900 dark:text-white flex items-center gap-3 drop-shadow-sm">
-          <span className="bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 p-2 rounded-xl shadow-sm"><FileText size={32} /></span>
-          Historial de Albaranes
-        </h2>
-        <p className="text-gray-500 dark:text-slate-400 text-base mt-2 ml-1 drop-shadow-sm">Consulta y reimprime los albaranes anteriores</p>
+      <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-3xl font-extrabold text-gray-900 dark:text-white flex items-center gap-3 drop-shadow-sm">
+            <span className="bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 p-2 rounded-xl shadow-sm"><FileText size={32} /></span>
+            Historial de Albaranes
+          </h2>
+          <p className="text-gray-500 dark:text-slate-400 text-base mt-2 ml-1 drop-shadow-sm">Consulta y reimprime los albaranes anteriores</p>
+        </div>
+
+        {currentUser.role === UserRole.ADMIN && (
+          <button
+            onClick={() => setShowClearAllModal(true)}
+            disabled={orders.length === 0}
+            className={`flex items-center justify-center gap-2 px-6 py-3 rounded-2xl font-black transition-all shadow-lg text-sm uppercase tracking-wider border-2 ${
+              orders.length > 0 
+                ? 'bg-red-600 hover:bg-black text-white border-red-500 shadow-red-600/30 active:scale-95 animate-pulse-slow' 
+                : 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed opacity-50'
+            }`}
+          >
+            <Trash2 size={18} /> Limpiar Historial
+          </button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -213,6 +246,38 @@ const OrdersHistory: React.FC<OrdersHistoryProps> = ({ currentUser }) => {
             <div className="flex gap-4">
               <button onClick={() => setOrderToDelete(null)} className="flex-1 py-3 bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-300 rounded-xl font-bold active:scale-95 transition-colors">Cancelar</button>
               <button onClick={confirmDelete} className="flex-1 py-3 bg-red-600 text-white rounded-xl font-bold shadow-lg shadow-button-red active:scale-95 transition-all">ELIMINAR</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showClearAllModal && (
+        <div className="fixed inset-0 bg-black/80 z-[130] flex items-center justify-center p-4 backdrop-blur-md animate-fade-in">
+          <div className="bg-white dark:bg-slate-800 rounded-[2.5rem] w-full max-w-md p-8 text-center shadow-2xl animate-pop-in border border-red-100 dark:border-red-900/30">
+            <div className="w-24 h-24 bg-red-600 text-white rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl shadow-red-600/40 relative">
+               <motion.div animate={{ rotate: [0, 10, -10, 0] }} transition={{ repeat: Infinity, duration: 1.5 }}>
+                 <Trash2 size={48} />
+               </motion.div>
+            </div>
+            <h3 className="font-black text-3xl text-gray-900 dark:text-white uppercase tracking-tighter mb-2">¡LIMPIEZA TOTAL!</h3>
+            <p className="text-gray-500 dark:text-slate-300 font-bold mb-8 leading-relaxed">
+              Estás a punto de borrar <span className="text-red-600 font-black">TODO el historial</span> de albaranes. Esta acción NO se puede deshacer y liberará espacio en el sistema.
+            </p>
+            <div className="flex flex-col gap-3">
+              <button 
+                onClick={handleClearAll} 
+                disabled={isClearing}
+                className="w-full py-5 bg-red-600 text-white rounded-2xl font-black text-lg shadow-xl shadow-red-600/30 active:scale-95 transition-all flex items-center justify-center gap-3"
+              >
+                {isClearing ? <Loader2 className="animate-spin" size={24} /> : 'SÍ, BORRAR TODO EL HISTORIAL'}
+              </button>
+              <button 
+                onClick={() => setShowClearAllModal(false)}
+                disabled={isClearing}
+                className="w-full py-4 text-gray-400 dark:text-slate-500 font-bold hover:text-gray-600 dark:hover:text-slate-300 transition-colors uppercase tracking-widest text-sm"
+              >
+                Cancelar
+              </button>
             </div>
           </div>
         </div>

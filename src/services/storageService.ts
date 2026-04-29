@@ -574,6 +574,30 @@ export const deleteBatch = async (batchId: string) => {
   await batch.commit();
 };
 
+export const clearAllReplenishmentRequests = async () => {
+  try {
+    const snapshot = await db.collection(KEYS.REQUESTS).get();
+    const batchSize = 450;
+    let batch = db.batch();
+    let count = 0;
+
+    for (const doc of snapshot.docs) {
+      batch.delete(doc.ref);
+      count++;
+      if (count >= batchSize) {
+        await batch.commit();
+        batch = db.batch();
+        count = 0;
+      }
+    }
+    if (count > 0) {
+      await batch.commit();
+    }
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, KEYS.REQUESTS);
+  }
+};
+
 // --- USERS ---
 export const subscribeToUsers = (callback: (users: User[]) => void) => {
     return db.collection(KEYS.USERS).orderBy('name').onSnapshot(snapshot => {

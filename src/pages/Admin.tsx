@@ -7,6 +7,7 @@ import { NotificationIcon } from '../components/NotificationIcon';
 import { generatePdfFromReactComponent, sharePdfFromReactComponent } from '../utils/pdfGenerator';
 import { OrderPdfDocument } from '../components/OrderPdfDocument';
 import { PWAInstallPrompt } from '../components/PWAInstallPrompt';
+import { motion } from 'motion/react';
 
 interface AdminProps {
   currentUser: User;
@@ -35,6 +36,7 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
 
   // New states for clearing history
   const [showClearNotificationsConfirm, setShowClearNotificationsConfirm] = useState(false);
+  const [showClearHistoryConfirm, setShowClearHistoryConfirm] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
 
   const isSuperAdmin = storageService.auth.currentUser?.email === storageService.SUPER_ADMIN_EMAIL;
@@ -177,6 +179,20 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
     setShowClearNotificationsConfirm(false);
   };
 
+  const handleClearHistory = async () => {
+    setIsClearing(true);
+    try {
+      await storageService.clearAllReplenishmentRequests();
+      setOrders([]);
+      setShowClearHistoryConfirm(false);
+    } catch (error) {
+      console.error("Error clearing history:", error);
+      alert('Error al limpiar el historial de albaranes.');
+    } finally {
+      setIsClearing(false);
+    }
+  };
+
   const lowStockData = useMemo(() => products
     .filter(p => p.quantity <= p.minThreshold * 2)
     .map(p => ({ name: p.name, stock: p.quantity, min: p.minThreshold }))
@@ -263,13 +279,22 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
       <div className="p-4 transition-colors duration-300">
         {activeTab === 'requests' && (
           <div>
-            <div className="flex justify-between items-center mb-4">
+            <div className="flex justify-between items-center mb-6">
               <div className="flex flex-col">
                 <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.3em] leading-none mb-1">Registro de</span>
                 <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tighter leading-none">
                   Historial de <span className="text-red-600 dark:text-red-500 italic">Albaranes</span>
                 </h2>
               </div>
+              
+              {orders.length > 0 && (
+                <button
+                  onClick={() => setShowClearHistoryConfirm(true)}
+                  className="flex items-center justify-center gap-2 px-4 py-2.5 bg-red-600 hover:bg-black text-white rounded-xl font-black transition-all shadow-lg shadow-red-600/20 active:scale-95 text-[10px] uppercase tracking-wider animate-pulse-slow border border-red-500/30"
+                >
+                  <Trash2 size={14} /> Limpiar Historial
+                </button>
+              )}
             </div>
             <div className="space-y-4">
                {orders.length === 0 && <div className="col-span-full py-20 text-center text-gray-400 dark:text-slate-600"><Package size={40} className="mx-auto mb-2 opacity-50" /><p>No hay albaranes registrados.</p></div>}
@@ -595,6 +620,38 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
               <button onClick={() => setShowClearNotificationsConfirm(false)} disabled={isClearing} className="flex-1 py-3 font-bold text-gray-600 dark:text-slate-400 bg-gray-100 dark:bg-slate-700/50 rounded-xl hover:bg-gray-200 dark:hover:bg-slate-700 active:scale-[0.98]">Cancelar</button>
               <button onClick={handleClearAllNotifications} disabled={isClearing} className="flex-1 py-3 font-bold text-white bg-red-600 rounded-xl hover:bg-red-700 shadow-lg shadow-button-red active:scale-[0.98] flex items-center justify-center gap-2">
                 {isClearing ? <Loader2 className="animate-spin" /> : 'Sí, Limpiar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showClearHistoryConfirm && (
+        <div className="fixed inset-0 bg-black/80 z-[200] flex items-center justify-center p-4 backdrop-blur-md animate-fade-in">
+          <div className="bg-white dark:bg-slate-800 rounded-[2rem] w-full max-w-md p-8 text-center shadow-2xl animate-pop-in border border-red-100 dark:border-red-900/30">
+            <div className="w-20 h-20 bg-red-600 text-white rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl shadow-red-600/40 relative">
+               <motion.div animate={{ rotate: [0, 10, -10, 0] }} transition={{ repeat: Infinity, duration: 1.5 }}>
+                 <Trash2 size={40} />
+               </motion.div>
+            </div>
+            <h3 className="font-black text-2xl text-gray-900 dark:text-white uppercase tracking-tighter mb-2">¡LIMPIEZA TOTAL!</h3>
+            <p className="text-gray-500 dark:text-slate-300 font-bold mb-8 leading-relaxed text-sm">
+              Estás a punto de borrar <span className="text-red-600 font-black">TODO el historial</span> de albaranes del sistema. Esta acción NO se puede deshacer.
+            </p>
+            <div className="flex flex-col gap-3">
+              <button 
+                onClick={handleClearHistory} 
+                disabled={isClearing}
+                className="w-full py-4 bg-red-600 text-white rounded-2xl font-black text-lg shadow-xl shadow-red-600/30 active:scale-95 transition-all flex items-center justify-center gap-3"
+              >
+                {isClearing ? <Loader2 className="animate-spin" size={24} /> : 'BORRAR TODO EL HISTORIAL'}
+              </button>
+              <button 
+                onClick={() => setShowClearHistoryConfirm(false)}
+                disabled={isClearing}
+                className="w-full py-3 text-gray-400 dark:text-slate-500 font-bold hover:text-gray-600 dark:hover:text-slate-300 transition-colors uppercase tracking-widest text-xs"
+              >
+                Cancelar
               </button>
             </div>
           </div>
