@@ -140,6 +140,8 @@ export interface Task {
   seenBy?: string[]; // New: Array of user IDs who have seen the latest update
   checklist?: TaskChecklistItem[]; // New: Interactive checklist for tasks
   recurrence?: TaskRecurrence; // New: Recurrence for scheduled tasks
+  isPublishedToMontaje?: boolean; // New: Whether task is published to Montaje tab
+  hallId?: string; // New: Link to a specific event hall
 }
 
 // --- Notification System Types ---

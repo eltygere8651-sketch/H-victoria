@@ -770,7 +770,13 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
               <div className="flex items-center gap-1.5">
                 <button 
                   onClick={() => {
-                    setEditingTask({});
+                    const defaultNewTask: Partial<Task> = {};
+                    if (activeTab === 'HALLS') {
+                      defaultNewTask.isPublishedToMontaje = true;
+                    } else if (activeTab === 'DAILY') {
+                      defaultNewTask.recurrence = TaskRecurrence.DAILY;
+                    }
+                    setEditingTask(defaultNewTask);
                     setSelectedImages([]);
                     setPreviews([]);
                     setShowTaskModal(true);
@@ -868,6 +874,41 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
       <div className="p-4 md:p-6 space-y-10">
         {activeTab === 'HALLS' ? (
           <div className="space-y-8">
+            {/* General Montaje Tasks (Not assigned to a specific hall) */}
+            {allTasks.some(t => t.isPublishedToMontaje && !t.hallId) && (
+              <motion.div 
+                layout
+                className="bg-white dark:bg-slate-900 rounded-[2.5rem] border-2 border-gray-100 dark:border-slate-800 overflow-hidden shadow-xl"
+              >
+                <div className="p-6 md:p-8">
+                  <div className="flex flex-col mb-6">
+                    <span className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-[0.3em] mb-1">Coordinación General</span>
+                    <h3 className="text-3xl font-black text-slate-950 dark:text-white uppercase tracking-tighter leading-none italic text-blue-600">Tareas Generales</h3>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    {allTasks.filter(t => t.isPublishedToMontaje && !t.hallId).map(task => (
+                      <TaskCard 
+                        key={task.id}
+                        task={task}
+                        currentUser={currentUser}
+                        onToggleChecklist={handleToggleChecklistItem}
+                        onStart={handleStartTask}
+                        onComplete={handleCompleteTask}
+                        onEdit={handleEditTask}
+                        onDelete={handleDeleteTaskConfirm}
+                        onComment={handleCommentTask}
+                        onShare={handleShareTaskAction}
+                        onSharePdf={handleSharePdfAction}
+                        onViewImages={handleViewImagesAction}
+                        compact={true}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
             {halls.length === 0 ? (
               <div className="py-24 text-center bg-white dark:bg-slate-900 rounded-[2.5rem] border-4 border-dashed border-gray-200 dark:border-slate-800 shadow-inner">
                 <LayoutDashboard size={80} className="mx-auto mb-6 text-gray-300 dark:text-slate-700" />
@@ -904,77 +945,118 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
                          </div>
                        </div>
                        
-                       <div className="space-y-6">
-                         <div className="flex items-center justify-between border-b border-gray-100 dark:border-slate-800 pb-2">
-                           <h4 className="text-sm font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 flex items-center gap-2">
-                             <List size={16} /> Guías de Montaje
-                           </h4>
-                           {canManageTasks && (
-                             <button 
-                               onClick={() => {
-                                 setActiveHallForGuide(hall);
-                                 setEditingGuide({});
-                                 setPreviews([]);
-                                 setSelectedImages([]);
-                                 setShowGuideModal(true);
-                               }}
-                               className="text-[10px] font-black text-red-600 dark:text-red-400 uppercase tracking-widest hover:underline"
-                             >
-                               + Nueva Guía
-                             </button>
-                           )}
-                         </div>
-                         
-                         {(!hall.setupGuides || hall.setupGuides.length === 0) ? (
-                           <p className="text-xs text-slate-400 italic text-center py-8 bg-gray-50 dark:bg-slate-950/50 rounded-2xl border-2 border-dashed border-gray-100 dark:border-slate-800">No hay guías publicadas para este salón.</p>
-                         ) : (
-                           <div className="grid grid-cols-1 gap-4">
-                             {hall.setupGuides.map(guide => (
-                               <div key={guide.id} className="group bg-gray-50 dark:bg-slate-950/50 rounded-2xl p-4 border border-gray-200 dark:border-slate-800 transition-all hover:shadow-lg">
-                                 <div className="flex justify-between items-start mb-3">
-                                   <div className="flex items-center gap-3">
-                                      <div className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center shadow-md">
-                                        <Map size={20} />
-                                      </div>
-                                      <div>
-                                        <h5 className="font-black text-slate-900 dark:text-white uppercase leading-none text-sm">{guide.title}</h5>
-                                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2 md:line-clamp-none">{guide.description}</p>
-                                      </div>
+                       <div className="space-y-8">
+                         {/* Setup Guides Section */}
+                         <div className="space-y-4">
+                           <div className="flex items-center justify-between border-b border-gray-100 dark:border-slate-800 pb-2">
+                             <h4 className="text-sm font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 flex items-center gap-2">
+                               <List size={16} /> Guías de Montaje
+                             </h4>
+                             {canManageTasks && (
+                               <button 
+                                 onClick={() => {
+                                   setActiveHallForGuide(hall);
+                                   setEditingGuide({});
+                                   setPreviews([]);
+                                   setSelectedImages([]);
+                                   setShowGuideModal(true);
+                                 }}
+                                 className="text-[10px] font-black text-red-600 dark:text-red-400 uppercase tracking-widest hover:underline"
+                               >
+                                 + Nueva Guía
+                               </button>
+                             )}
+                           </div>
+                           
+                           {(!hall.setupGuides || hall.setupGuides.length === 0) ? (
+                             <p className="text-[10px] text-slate-400 italic text-center py-6 bg-gray-50/50 dark:bg-slate-950/30 rounded-2xl border border-dashed border-gray-100 dark:border-slate-800">No hay guías publicadas para este salón.</p>
+                           ) : (
+                             <div className="grid grid-cols-1 gap-4">
+                               {hall.setupGuides.map(guide => (
+                                 <div key={guide.id} className="group bg-gray-50 dark:bg-slate-950/50 rounded-2xl p-4 border border-gray-200 dark:border-slate-800 transition-all hover:shadow-lg">
+                                   <div className="flex justify-between items-start mb-3">
+                                     <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center shadow-md">
+                                          <Map size={20} />
+                                        </div>
+                                        <div>
+                                          <h5 className="font-black text-slate-900 dark:text-white uppercase leading-none text-sm">{guide.title}</h5>
+                                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">{guide.description}</p>
+                                        </div>
+                                     </div>
+                                     {canManageTasks && (
+                                       <div className="flex gap-1">
+                                         <button onClick={() => { 
+                                           setActiveHallForGuide(hall); 
+                                           setEditingGuide(guide); 
+                                           setPreviews([]);
+                                           setSelectedImages([]);
+                                           setShowGuideModal(true); 
+                                         }} className="p-1.5 text-slate-400 hover:text-blue-600"><Edit2 size={14} /></button>
+                                         <button onClick={() => handleDeleteGuide(hall, guide.id)} className="p-1.5 text-slate-400 hover:text-red-600"><Trash2 size={14} /></button>
+                                       </div>
+                                     )}
                                    </div>
-                                   {canManageTasks && (
-                                     <div className="flex gap-1">
-                                       <button onClick={() => { 
-                                         setActiveHallForGuide(hall); 
-                                         setEditingGuide(guide); 
-                                         setPreviews([]);
-                                         setSelectedImages([]);
-                                         setShowGuideModal(true); 
-                                       }} className="p-1.5 text-slate-400 hover:text-blue-600"><Edit2 size={14} /></button>
-                                       <button onClick={() => handleDeleteGuide(hall, guide.id)} className="p-1.5 text-slate-400 hover:text-red-600"><Trash2 size={14} /></button>
+                                   
+                                   {guide.imageUrls && guide.imageUrls.length > 0 && (
+                                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-4">
+                                       {guide.imageUrls.map((url, idx) => (
+                                         <div 
+                                           key={idx} 
+                                           onClick={() => handleViewImagesAction(guide.imageUrls, idx)}
+                                           className="relative aspect-video rounded-xl overflow-hidden cursor-zoom-in group/img shadow-sm"
+                                         >
+                                           <img src={url} alt="Montaje" className="w-full h-full object-cover transition-transform duration-500 group-hover/img:scale-110" />
+                                           <div className="absolute inset-0 bg-black/20 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center">
+                                             <Images size={20} className="text-white" />
+                                           </div>
+                                         </div>
+                                       ))}
                                      </div>
                                    )}
                                  </div>
-                                 
-                                 {guide.imageUrls && guide.imageUrls.length > 0 && (
-                                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-4">
-                                     {guide.imageUrls.map((url, idx) => (
-                                       <div 
-                                         key={idx} 
-                                         onClick={() => handleViewImagesAction(guide.imageUrls, idx)}
-                                         className="relative aspect-video rounded-xl overflow-hidden cursor-zoom-in group/img shadow-sm"
-                                       >
-                                         <img src={url} alt="Montaje" className="w-full h-full object-cover transition-transform duration-500 group-hover/img:scale-110" />
-                                         <div className="absolute inset-0 bg-black/20 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center">
-                                           <Images size={20} className="text-white" />
-                                         </div>
-                                       </div>
-                                     ))}
-                                   </div>
-                                 )}
+                               ))}
+                             </div>
+                           )}
+                         </div>
+
+                         {/* Tasks Section for this Hall */}
+                         <div className="space-y-4 pt-6 border-t border-gray-100 dark:border-slate-800">
+                           <h4 className="text-sm font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 flex items-center gap-2">
+                             <ClipboardCheck size={16} /> Tareas de Montaje
+                           </h4>
+                           
+                           {(() => {
+                             const hallTasks = allTasks.filter(t => t.isPublishedToMontaje && t.hallId === hall.id);
+                             if (hallTasks.length === 0) return (
+                               <p className="text-[10px] text-slate-400 italic text-center py-6 bg-gray-50/50 dark:bg-slate-950/30 rounded-2xl border border-dashed border-gray-200 dark:border-slate-800">
+                                 No hay tareas activas asignadas a este salón.
+                               </p>
+                             );
+                             
+                             return (
+                               <div className="space-y-4">
+                                 {hallTasks.map(task => (
+                                   <TaskCard 
+                                     key={task.id}
+                                     task={task}
+                                     currentUser={currentUser}
+                                     onToggleChecklist={handleToggleChecklistItem}
+                                     onStart={handleStartTask}
+                                     onComplete={handleCompleteTask}
+                                     onEdit={handleEditTask}
+                                     onDelete={handleDeleteTaskConfirm}
+                                     onComment={handleCommentTask}
+                                     onShare={handleShareTaskAction}
+                                     onSharePdf={handleSharePdfAction}
+                                     onViewImages={handleViewImagesAction}
+                                     compact={true}
+                                   />
+                                 ))}
                                </div>
-                             ))}
-                           </div>
-                         )}
+                             );
+                           })()}
+                         </div>
                        </div>
                     </div>
                   </motion.div>
@@ -1232,6 +1314,54 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
                      <p className="text-[10px] font-bold text-gray-400 dark:text-slate-500 mt-2 ml-1 italic">
                        * Las tareas diarias son permanentes y se reinician automáticamente 4 horas después de completarse.
                      </p>
+                  </div>
+                )}
+
+                {/* Montaje de Salones Option */}
+                {canManageTasks && (
+                  <div className="bg-slate-50 dark:bg-slate-800/30 p-4 rounded-2xl border-2 border-slate-200 dark:border-slate-700 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Map size={18} className="text-red-600" />
+                        <label className="text-sm font-black text-gray-700 dark:text-white uppercase tracking-tight">Publicar en Montaje</label>
+                      </div>
+                      <button 
+                        type="button"
+                        onClick={() => setEditingTask({ ...editingTask, isPublishedToMontaje: !editingTask?.isPublishedToMontaje })}
+                        className={`w-12 h-6 rounded-full transition-all relative ${editingTask?.isPublishedToMontaje ? 'bg-red-600' : 'bg-gray-300 dark:bg-slate-600'}`}
+                      >
+                        <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${editingTask?.isPublishedToMontaje ? 'left-7' : 'left-1'}`} />
+                      </button>
+                    </div>
+
+                    <AnimatePresence>
+                      {editingTask?.isPublishedToMontaje && (
+                        <motion.div 
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          className="space-y-3 overflow-hidden"
+                        >
+                          <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Asignar a Salón</label>
+                          <div className="relative">
+                            <select 
+                              value={editingTask?.hallId || ''}
+                              onChange={e => setEditingTask({ ...editingTask, hallId: e.target.value })}
+                              className="w-full pl-4 pr-10 py-3 font-bold bg-white dark:bg-slate-900 border-2 border-gray-200 dark:border-slate-700 rounded-xl focus:border-red-500 outline-none appearance-none dark:text-white text-sm"
+                            >
+                              <option value="">Seleccionar Salón (General)</option>
+                              {halls.map(h => (
+                                <option key={h.id} value={h.id}>{h.name}</option>
+                              ))}
+                            </select>
+                            <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={18} />
+                          </div>
+                          <p className="text-[10px] font-bold text-gray-400 italic">
+                            * Al activar esta opción, la tarea aparecerá también en la pestaña de Montaje de Salones.
+                          </p>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
                 )}
 
