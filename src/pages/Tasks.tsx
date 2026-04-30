@@ -783,9 +783,9 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
                     setPreviews([]);
                     setShowTaskModal(true);
                   }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold uppercase tracking-wider rounded-full transition-all active:scale-95 shadow-lg shadow-red-600/20"
+                  className="min-h-[44px] flex items-center justify-center gap-2 px-6 bg-red-600 hover:bg-red-700 text-white text-sm font-black uppercase tracking-widest rounded-full transition-all active:scale-95 shadow-lg shadow-red-600/20"
                 >
-                  <Plus size={14} strokeWidth={3} />
+                  <Plus size={16} strokeWidth={3} />
                   <span>Nueva Tarea</span>
                 </button>
               </div>
@@ -871,30 +871,6 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
                   </button>
                 ))}
               </div>
-              
-              {canManageTasks && (
-                <button 
-                  onClick={async () => {
-                    const hallsToCreate = [
-                      { name: "Terraza", capacity: "0" },
-                      { name: "Restaurante", capacity: "0" },
-                      { name: "Salon C", capacity: "0" }
-                    ];
-                    try {
-                      for (const hall of hallsToCreate) {
-                        await storageService.saveEventHall(hall);
-                      }
-                      window.location.reload();
-                    } catch (e: any) {
-                      console.error("Error creating halls:", e);
-                      alert("Error detallado al crear salones: " + e.message);
-                    }
-                  }}
-                  className="px-4 py-2 bg-blue-600 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:scale-105 transition-all shadow-lg"
-                >
-                   Sincronizar Salones
-                </button>
-              )}
             </div>
           </div>
         )}
@@ -939,10 +915,25 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
             )}
 
             {halls.length === 0 ? (
-              <div className="py-24 text-center bg-white dark:bg-slate-900 rounded-[2.5rem] border-4 border-dashed border-gray-200 dark:border-slate-800 shadow-inner">
+              <div className="py-24 text-center bg-white dark:bg-slate-900 rounded-[2.5rem] border-4 border-dashed border-gray-200 dark:border-slate-800 shadow-inner flex flex-col items-center">
                 <LayoutDashboard size={80} className="mx-auto mb-6 text-gray-300 dark:text-slate-700" />
                 <p className="text-3xl font-black text-gray-400 dark:text-slate-600 uppercase tracking-tighter">Sin Salones</p>
-                <p className="text-gray-400 dark:text-slate-500 font-medium mt-2">Registra los salones para subir sus guías de montaje.</p>
+                <p className="text-gray-400 dark:text-slate-500 font-medium mt-2 mb-6">Registra los salones para subir sus guías de montaje.</p>
+                <button
+                  onClick={async () => {
+                    const hallsToCreate = [
+                      { name: "Terraza", capacity: "0" },
+                      { name: "Restaurante", capacity: "0" },
+                      { name: "Salon C", capacity: "0" }
+                    ];
+                    for (const hall of hallsToCreate) {
+                      await storageService.saveEventHall(hall);
+                    }
+                  }}
+                  className="min-h-[44px] flex items-center justify-center px-8 bg-red-600 hover:bg-red-700 text-white text-sm font-black uppercase tracking-widest rounded-full transition-all active:scale-95 shadow-lg shadow-red-600/20 cursor-pointer"
+                >
+                  Generar Salones
+                </button>
               </div>
             ) : (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -1379,9 +1370,9 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
                               className="w-full pl-4 pr-10 py-3 font-bold bg-white dark:bg-slate-900 border-2 border-gray-200 dark:border-slate-700 rounded-xl focus:border-red-500 outline-none appearance-none dark:text-white text-sm"
                             >
                               <option value="General">General</option>
-                              <option value="Restaurante">Restaurante</option>
-                              <option value="Salon C">Salon C</option>
-                              <option value="Terraza">Terraza</option>
+                              {halls.map(hall => (
+                                <option key={hall.id} value={hall.name}>{hall.name}</option>
+                              ))}
                             </select>
                             <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={18} />
                           </div>

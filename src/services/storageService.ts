@@ -53,6 +53,12 @@ const INITIAL_PRODUCTS: Product[] = [
   { id: 'p6', name: 'Servilletas', category: 'Suministros', quantity: 100, unit: 'paquetes', minThreshold: 20, departmentId: 'd-restaurante', departmentName: 'Restaurante', departmentIds: ['d-restaurante'], departmentNames: ['Restaurante'] },
 ];
 
+const INITIAL_HALLS: any[] = [
+  { name: "Terraza", capacity: "0" },
+  { name: "Restaurante", capacity: "0" },
+  { name: "Salon C", capacity: "0" }
+];
+
 enum OperationType {
   CREATE = 'create',
   UPDATE = 'update',
@@ -121,8 +127,12 @@ async function initFirestoreWithInitialData() {
     // Comprobamos si hay productos. Si no hay nada, forzamos re-inicialización básica
     const productsCheck = await db.collection(KEYS.PRODUCTS).limit(1).get();
     const hasProducts = !productsCheck.empty;
+    
+    // Comprobamos si hay salones.
+    const hallsCheck = await db.collection(KEYS.EVENT_HALLS).limit(1).get();
+    const hasHalls = !hallsCheck.empty;
 
-    if (initDoc.exists && initDoc.data()?.isInitialized && hasProducts) {
+    if (initDoc.exists && initDoc.data()?.isInitialized && hasProducts && hasHalls) {
       return;
     }
 
@@ -143,6 +153,7 @@ async function initFirestoreWithInitialData() {
       { name: KEYS.USERS, data: INITIAL_USERS },
       { name: KEYS.PRODUCTS, data: INITIAL_PRODUCTS },
       { name: KEYS.DEPARTMENTS, data: INITIAL_DEPARTMENTS },
+      { name: KEYS.EVENT_HALLS, data: INITIAL_HALLS },
     ];
 
     for (const { name, data } of collectionsToInit) {
