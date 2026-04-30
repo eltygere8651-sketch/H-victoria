@@ -102,38 +102,6 @@ const App: React.FC = () => {
         // Start auth and sync
         try {
           await storageService.ensureAnonymousAuth();
-          
-          // Force add "Restaurante" if not present or just ensure it exists
-          // Run in background to avoid blocking the main app initialization
-          (async () => {
-            try {
-              const existingHalls = await new Promise<EventHall[]>((resolve, reject) => {
-                const unsub = storageService.subscribeToEventHalls(
-                  (data) => {
-                    unsub();
-                    resolve(data);
-                  },
-                  (err) => {
-                    unsub();
-                    reject(err);
-                  }
-                );
-                // Timeout after 5 seconds just in case
-                setTimeout(() => { unsub(); resolve([]); }, 5000);
-              });
-
-              const hasRestaurante = existingHalls.some(h => h.name === 'Restaurante');
-              if (!hasRestaurante) {
-                console.log("Adding missing Restaurante hall...");
-                await storageService.saveEventHall({
-                  name: 'Restaurante',
-                  capacity: '100'
-                });
-              }
-            } catch (err) {
-              console.error("Background hall init error:", err);
-            }
-          })();
         } catch (e) {
           console.error("Non-critical initialization error:", e);
         }

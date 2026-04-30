@@ -80,8 +80,9 @@ export const HallSetups: React.FC = () => {
       setShowHallModal(false);
       setEditingHall(null);
     } catch (error: any) {
-      console.error(error);
-      alert('Error al guardar el salón: ' + (error.message || 'Error desconocido') + '. Por favor revisa los permisos.');
+      console.error('Error saving hall:', error);
+      const errorMessage = error?.message || 'Error desconocido';
+      alert(`No se pudo guardar: ${errorMessage}\n\nSi ves "Missing or insufficient permissions", contacta soporte para revisar tus privilegios de administrador.`);
     } finally {
       setIsSaving(false);
     }
