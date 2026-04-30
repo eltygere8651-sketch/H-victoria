@@ -137,8 +137,9 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
   }, []);
 
   const handleSaveTask = async () => {
-    if (!editingTask?.title || !editingTask?.departmentId) {
-      setSaveError('Título y Departamento son obligatorios');
+    // New requirement: Department is optional for Montaje tasks (if isPublishedToMontaje is true)
+    if (!editingTask?.title || (!editingTask?.departmentId && !editingTask?.isPublishedToMontaje)) {
+      setSaveError('Título es obligatorio, y debes asignar un Departamento o seleccionar un Salón (Montaje)');
       return;
     }
 
@@ -871,29 +872,6 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
                 ))}
               </div>
               
-              {canManageTasks && (
-                <button 
-                  onClick={async () => {
-                    const hallsToCreate = [
-                      { name: "Terraza", capacity: "0" },
-                      { name: "Restaurante", capacity: "0" },
-                      { name: "Salon C", capacity: "0" }
-                    ];
-                    try {
-                      for (const hall of hallsToCreate) {
-                        await storageService.saveEventHall(hall);
-                      }
-                      window.location.reload();
-                    } catch (e: any) {
-                      console.error("Error creating halls:", e);
-                      alert("Error detallado al crear salones: " + e.message);
-                    }
-                  }}
-                  className="px-4 py-2 bg-blue-600 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:scale-105 transition-all shadow-lg"
-                >
-                   Sincronizar Salones
-                </button>
-              )}
             </div>
           </div>
         )}
@@ -1370,22 +1348,22 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
                           exit={{ opacity: 0, height: 0 }}
                           className="space-y-3 overflow-hidden"
                         >
-                          <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Asignar a Salón</label>
+                          <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Ubicación / Salón</label>
                           <div className="relative">
                             <select 
-                              value={editingTask?.hallId || ''}
-                              onChange={e => setEditingTask({ ...editingTask, hallId: e.target.value })}
+                              value={editingTask?.location || 'General'}
+                              onChange={e => setEditingTask({ ...editingTask, location: e.target.value as any })}
                               className="w-full pl-4 pr-10 py-3 font-bold bg-white dark:bg-slate-900 border-2 border-gray-200 dark:border-slate-700 rounded-xl focus:border-red-500 outline-none appearance-none dark:text-white text-sm"
                             >
-                              <option value="">Seleccionar Salón (General)</option>
-                              {halls.map(h => (
-                                <option key={h.id} value={h.id}>{h.name}</option>
-                              ))}
+                              <option value="General">General</option>
+                              <option value="Restaurante">Restaurante</option>
+                              <option value="Salon C">Salon C</option>
+                              <option value="Terraza">Terraza</option>
                             </select>
                             <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={18} />
                           </div>
                           <p className="text-[10px] font-bold text-gray-400 italic">
-                            * Al activar esta opción, la tarea aparecerá también en la pestaña de Montaje de Salones.
+                            * Al activar esta opción, la tarea aparecerá en la sección correspondiente de Montaje.
                           </p>
                         </motion.div>
                       )}

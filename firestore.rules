@@ -112,7 +112,7 @@ service cloud.firestore {
     }
 
     match /hotel_victoria_event_halls/{hallId} {
-      allow read, write: if request.auth.uid == "CLjyo1YLmeQtEAgHEmNFNowXSIJ2" || isSuperAdmin();
+      allow read, write: if isAdmin();
     }
     
     match /hotel_victoria_documents/{docId} {

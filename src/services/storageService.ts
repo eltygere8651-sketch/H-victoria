@@ -43,6 +43,12 @@ const INITIAL_DEPARTMENTS: Department[] = [
   { id: 'd-restaurante', name: 'Restaurante' }
 ];
 
+const INITIAL_EVENT_HALLS: EventHall[] = [
+  { id: 't-restaurante', name: 'Restaurante', createdAt: Date.now(), updatedAt: Date.now() },
+  { id: 't-salon-c', name: 'Salon C', createdAt: Date.now(), updatedAt: Date.now() },
+  { id: 't-terraza', name: 'Terraza', createdAt: Date.now(), updatedAt: Date.now() }
+];
+
 // Productos de ejemplo optimizados para los nuevos departamentos
 const INITIAL_PRODUCTS: Product[] = [
   { id: 'p1', name: 'Coca Cola', category: 'Bebidas', quantity: 24, unit: 'latas', minThreshold: 12, departmentId: 'd-bar', departmentName: 'Bar', departmentIds: ['d-bar', 'd-restaurante'], departmentNames: ['Bar', 'Restaurante'] },
@@ -121,8 +127,12 @@ async function initFirestoreWithInitialData() {
     // Comprobamos si hay productos. Si no hay nada, forzamos re-inicialización básica
     const productsCheck = await db.collection(KEYS.PRODUCTS).limit(1).get();
     const hasProducts = !productsCheck.empty;
+    
+    // Comprobamos si hay salones.
+    const hallsCheck = await db.collection(KEYS.EVENT_HALLS).limit(1).get();
+    const hasHalls = !hallsCheck.empty;
 
-    if (initDoc.exists && initDoc.data()?.isInitialized && hasProducts) {
+    if (initDoc.exists && initDoc.data()?.isInitialized && hasProducts && hasHalls) {
       return;
     }
 
@@ -143,6 +153,7 @@ async function initFirestoreWithInitialData() {
       { name: KEYS.USERS, data: INITIAL_USERS },
       { name: KEYS.PRODUCTS, data: INITIAL_PRODUCTS },
       { name: KEYS.DEPARTMENTS, data: INITIAL_DEPARTMENTS },
+      { name: KEYS.EVENT_HALLS, data: INITIAL_EVENT_HALLS },
     ];
 
     for (const { name, data } of collectionsToInit) {

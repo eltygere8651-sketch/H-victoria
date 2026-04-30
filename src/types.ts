@@ -122,12 +122,12 @@ export interface Task {
   description?: string;
   status: TaskStatus;
   priority: TaskPriority;
-  location?: string;
-  departmentId: string; // The department this task is assigned to
-  departmentName: string;
+  departmentId: string | undefined; // The department this task is assigned to
+  departmentName: string | undefined;
   createdBy: string; // User's name
   createdById: string; // User's ID
   createdAt: number; // Timestamp
+  location?: 'General' | 'Restaurante' | 'Salon C' | 'Terraza'; // New field for task location
   startDate?: number; // New: Task start date/time
   dueDate?: number; // New: Task end/due date/time
   completedBy?: string;
@@ -142,6 +142,7 @@ export interface Task {
   recurrence?: TaskRecurrence; // New: Recurrence for scheduled tasks
   isPublishedToMontaje?: boolean; // New: Whether task is published to Montaje tab
   hallId?: string; // New: Link to a specific event hall
+  locationLabel?: string; // To be able to set explicitly
 }
 
 // --- Notification System Types ---
