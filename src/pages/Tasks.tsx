@@ -882,7 +882,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
                     for (const hall of hallsToCreate) {
                       await storageService.saveEventHall(hall);
                     }
-                    alert("Salones sincronizados");
+                    window.location.reload();
                   }}
                   className="px-4 py-2 bg-blue-600 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:scale-105 transition-all shadow-lg"
                 >
