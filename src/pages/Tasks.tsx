@@ -879,10 +879,15 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
                       { name: "Restaurante", capacity: "0" },
                       { name: "Salon C", capacity: "0" }
                     ];
-                    for (const hall of hallsToCreate) {
-                      await storageService.saveEventHall(hall);
+                    try {
+                      for (const hall of hallsToCreate) {
+                        await storageService.saveEventHall(hall);
+                      }
+                      window.location.reload();
+                    } catch (e: any) {
+                      console.error("Error creating halls:", e);
+                      alert("Error detallado al crear salones: " + e.message);
                     }
-                    window.location.reload();
                   }}
                   className="px-4 py-2 bg-blue-600 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:scale-105 transition-all shadow-lg"
                 >
