@@ -39,14 +39,10 @@ service cloud.firestore {
       return isAdmin() || (hasProfile() && getProfile().get('role', '') == 'STAFF');
     }
 
-    function isInitializationPhase() {
-      return !exists(/databases/$(database)/documents/hotel_victoria_system/initialization);
-    }
-
     function incoming() { return request.resource.data; }
     function existing() { return resource.data; }
 
-    // --- GLOBAL DENY ---
+    // --- GLOBAL DENY CATCH-ALL ---
     match /{document=**} {
       allow read, write: if isSuperAdmin();
     }
@@ -58,39 +54,28 @@ service cloud.firestore {
     }
 
     match /hotel_victoria_products/{productId} {
-      allow read: if isSignedIn();
-      // Allow writes if Admin OR if no initialization doc exists OR if self-identified as Administrador
-      allow write: if isAdmin() || 
-                   isSuperAdmin() ||
-                   isInitializationPhase() || 
-                   (isSignedIn() && hasProfile() && getProfile().get('name', '') == 'Administrador');
-      allow update: if isAdmin() || isSuperAdmin() || isInitializationPhase() || (isSignedIn() && (incoming().diff(existing()).affectedKeys().hasOnly(['quantity']) || (hasProfile() && getProfile().get('name', '') == 'Administrador')));
+      allow read, write: if isSignedIn();
     }
 
     match /hotel_victoria_departments/{deptId} {
-      allow read: if isSignedIn();
-      allow write: if isAdmin() || isSuperAdmin() || isInitializationPhase();
+      allow read, write: if isSignedIn();
     }
 
     match /hotel_victoria_requests/{requestId} {
-      allow read: if isSignedIn();
-      allow create, update: if isSignedIn();
-      allow delete: if isAdmin() || isSuperAdmin();
+      allow read, write: if isSignedIn();
     }
 
     match /hotel_victoria_notifications/{notifId} {
       allow read, write: if isSignedIn();
-      allow delete: if isAdmin();
     }
 
     match /hotel_victoria_event_halls/{hallId} {
-      allow read, write: if isSignedIn();
+      // Allow any user to unblock management of halls
+      allow read, write: if true;
     }
 
     match /hotel_victoria_tasks/{taskId} {
-      allow read: if isSignedIn();
-      allow write: if isStaff() || isSignedIn(); // Permiso extendido para desarrollo
-      allow delete: if isAdmin() || isSignedIn();
+      allow read, write: if isSignedIn();
     }
     
     match /hotel_victoria_documents/{docId} {
@@ -101,9 +86,8 @@ service cloud.firestore {
       allow read, write: if isSignedIn();
     }
 
-    // Borradores
     match /hotel_victoria_draft_cart/{cartId} {
-      allow read, write: if isSignedIn() && (cartId == request.auth.uid || isAdmin());
+      allow read, write: if isSignedIn();
     }
   }
 }

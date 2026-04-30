@@ -4,10 +4,11 @@ import Inventory from './pages/Inventory';
 import Replenishment from './pages/Replenishment';
 import Admin from './pages/Admin';
 import Tasks from './pages/Tasks';
+import { HallSetups } from './pages/HallSetups';
 import { PublicTaskViewer } from './components/PublicTaskViewer';
 import * as storageService from './services/storageService';
 import { Logo } from './components/Logo';
-import { User, UserRole, AppNotification, CartItem, NotificationType, TaskRecurrence, TaskStatus } from './types';
+import { User, UserRole, AppNotification, CartItem, NotificationType, TaskRecurrence, TaskStatus, EventHall } from './types';
 import { NotificationToast } from './components/NotificationToast';
 import { initializePushNotifications } from './services/pushNotificationService';
 import { ShareModal } from './components/ShareModal';
@@ -26,13 +27,13 @@ const App: React.FC = () => {
   const [shareData, setShareData] = useState({ url: '', title: '' });
   const [showGuideModal, setShowGuideModal] = useState(false);
 
-  const [view, setView] = useState<'inventory' | 'replenish' | 'admin' | 'tasks'>(() => {
+  const [view, setView] = useState<'inventory' | 'replenish' | 'admin' | 'tasks' | 'halls'>(() => {
     const lastView = storageService.getLastView();
     const sessionUser = storageService.getSession();
-    let defaultView: 'inventory' | 'replenish' | 'tasks' = 'replenish';
+    let defaultView: 'inventory' | 'replenish' | 'tasks' | 'halls' = 'replenish';
     if (sessionUser?.role === UserRole.ADMIN) defaultView = 'inventory';
     if (sessionUser?.role === UserRole.GUEST) defaultView = 'tasks';
-    if (lastView && (['inventory', 'replenish', 'admin', 'tasks'] as string[]).includes(lastView)) return lastView as any;
+    if (lastView && (['inventory', 'replenish', 'admin', 'tasks', 'halls'] as string[]).includes(lastView)) return lastView as any;
     return defaultView;
   });
 
@@ -101,6 +102,38 @@ const App: React.FC = () => {
         // Start auth and sync
         try {
           await storageService.ensureAnonymousAuth();
+          
+          // Force add "Restaurante" if not present or just ensure it exists
+          // Run in background to avoid blocking the main app initialization
+          (async () => {
+            try {
+              const existingHalls = await new Promise<EventHall[]>((resolve, reject) => {
+                const unsub = storageService.subscribeToEventHalls(
+                  (data) => {
+                    unsub();
+                    resolve(data);
+                  },
+                  (err) => {
+                    unsub();
+                    reject(err);
+                  }
+                );
+                // Timeout after 5 seconds just in case
+                setTimeout(() => { unsub(); resolve([]); }, 5000);
+              });
+
+              const hasRestaurante = existingHalls.some(h => h.name === 'Restaurante');
+              if (!hasRestaurante) {
+                console.log("Adding missing Restaurante hall...");
+                await storageService.saveEventHall({
+                  name: 'Restaurante',
+                  capacity: '100'
+                });
+              }
+            } catch (err) {
+              console.error("Background hall init error:", err);
+            }
+          })();
         } catch (e) {
           console.error("Non-critical initialization error:", e);
         }
@@ -502,6 +535,7 @@ const App: React.FC = () => {
         {view === 'replenish' && user.role !== UserRole.GUEST && user.role !== UserRole.PROVIDER && <Replenishment currentUser={user} cart={cart} setCart={setCart} showMobileCart={showMobileCart} setShowMobileCart={setShowMobileCart} notificationVolume={notificationVolume} soundType={soundType} />}
         {view === 'admin' && user.role === UserRole.ADMIN && <Admin currentUser={user} unreadNotificationsCount={unreadAdminNotifications.length} initialTab={initialAdminTab} />}
         {view === 'tasks' && <Tasks currentUser={user} initialTaskId={sharedTaskId} />}
+        {view === 'halls' && <HallSetups />}
         {(view as any) === 'provider' && <ProviderDelivery currentUser={user} />}
       </MainLayout>
     );
