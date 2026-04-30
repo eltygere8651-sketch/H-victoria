@@ -526,7 +526,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
       if (activeTab === 'DAILY') {
         return statusMatch && deptMatch && task.recurrence === TaskRecurrence.DAILY;
       } else if (activeTab === 'ACTIVE') {
-        return statusMatch && deptMatch && task.recurrence !== TaskRecurrence.DAILY;
+        return statusMatch && deptMatch && task.recurrence !== TaskRecurrence.DAILY && !task.isPublishedToMontaje;
       }
       
       return statusMatch && deptMatch;
@@ -688,6 +688,13 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
             
             <div className="flex bg-gray-100 dark:bg-slate-800 rounded-xl p-1 mx-4 overflow-x-auto no-scrollbar">
               <button
+                onClick={() => setActiveTab('HALLS')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap flex items-center gap-1.5 ${activeTab === 'HALLS' ? 'bg-white dark:bg-slate-700 shadow-sm text-red-600' : 'text-gray-500 dark:text-gray-400'}`}
+              >
+                <Bold size={14} className={activeTab === 'HALLS' ? 'text-red-600' : ''} strokeWidth={3} />
+                <span>Montajes Salones</span>
+              </button>
+              <button
                 onClick={() => setActiveTab('ACTIVE')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === 'ACTIVE' ? 'bg-white dark:bg-slate-700 shadow-sm text-red-600' : 'text-gray-500 dark:text-gray-400'}`}
               >
@@ -719,13 +726,6 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
                     className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000"
                   />
                 )}
-              </button>
-              <button
-                onClick={() => setActiveTab('HALLS')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap flex items-center gap-1.5 ${activeTab === 'HALLS' ? 'bg-white dark:bg-slate-700 shadow-sm text-red-600' : 'text-gray-500 dark:text-gray-400'}`}
-              >
-                <Bold size={14} className={activeTab === 'HALLS' ? 'text-red-600' : ''} strokeWidth={3} />
-                <span>Montajes Salones</span>
               </button>
             </div>
             
@@ -773,6 +773,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
                     const defaultNewTask: Partial<Task> = {};
                     if (activeTab === 'HALLS') {
                       defaultNewTask.isPublishedToMontaje = true;
+                      if (selectedHall) defaultNewTask.hallId = selectedHall.id;
                     } else if (activeTab === 'DAILY') {
                       defaultNewTask.recurrence = TaskRecurrence.DAILY;
                     }
@@ -850,20 +851,42 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
         )}
 
         {activeTab === 'HALLS' && (
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between">
-              <div className="px-3 py-1 bg-slate-100 dark:bg-slate-800 rounded-full border border-slate-200 dark:border-slate-700">
-                <span className="text-[10px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-widest">Gestión de Salones</span>
+              <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
+                <button
+                  onClick={() => setSelectedHall(null)}
+                  className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap ${!selectedHall ? 'bg-red-600 text-white shadow-lg shadow-red-600/20' : 'bg-gray-100 dark:bg-slate-800 text-gray-500 hover:bg-gray-200'}`}
+                >
+                  General
+                </button>
+                {halls.map(h => (
+                  <button
+                    key={h.id}
+                    onClick={() => setSelectedHall(h)}
+                    className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap ${selectedHall?.id === h.id ? 'bg-red-600 text-white shadow-lg shadow-red-600/20' : 'bg-gray-100 dark:bg-slate-800 text-gray-500 hover:bg-gray-200'}`}
+                  >
+                    {h.name}
+                  </button>
+                ))}
               </div>
+              
               {canManageTasks && (
                 <button 
-                  onClick={() => {
-                    setEditingHall({});
-                    setShowHallModal(true);
+                  onClick={async () => {
+                    const hallsToCreate = [
+                      { name: "Terraza", capacity: "0" },
+                      { name: "Restaurante", capacity: "0" },
+                      { name: "Salon C", capacity: "0" }
+                    ];
+                    for (const hall of hallsToCreate) {
+                      await storageService.saveEventHall(hall);
+                    }
+                    alert("Salones sincronizados");
                   }}
-                  className="px-4 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-950 text-[10px] font-black uppercase tracking-widest rounded-xl hover:scale-105 transition-all shadow-lg"
+                  className="px-4 py-2 bg-blue-600 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:scale-105 transition-all shadow-lg"
                 >
-                  <Plus size={14} strokeWidth={3} className="inline mr-1" /> Nuevo Salón
+                   Sincronizar Salones
                 </button>
               )}
             </div>
@@ -917,7 +940,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
               </div>
             ) : (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {halls.map(hall => (
+                {(selectedHall ? [selectedHall] : halls).map(hall => (
                   <motion.div 
                     layout
                     key={hall.id}
