@@ -1,4 +1,4 @@
-import { Product, User, ReplenishmentRequest, UserRole, Department, CartItem, AppNotification, NotificationType, NotificationPayload, OrderBatch, Task, TaskStatus, TaskPriority, TaskType, TaskComment, Document, TaskRecurrence } from '../types';
+import { Product, User, ReplenishmentRequest, UserRole, Department, CartItem, AppNotification, NotificationType, NotificationPayload, OrderBatch, Task, TaskStatus, TaskPriority, TaskType, TaskComment, Document, TaskRecurrence, EventHall, SetupGuide } from '../types';
 import { db, auth, storage } from '../firebaseConfig';
 export { auth, db, storage };
 import firebase from 'firebase/compat/app';
@@ -27,11 +27,12 @@ const KEYS = {
   NOTIFICATIONS: 'hotel_victoria_notifications',
   TASKS: 'hotel_victoria_tasks',
   DOCUMENTS: 'hotel_victoria_documents',
+  EVENT_HALLS: 'hotel_victoria_event_halls',
   SYSTEM: 'hotel_victoria_system',
 };
 
 const INITIAL_USERS: User[] = [
-  { id: '1', name: 'Administrador', role: UserRole.ADMIN, contraseña: '1234', permissions: ['CAN_MANAGE_TASKS'] },
+  { id: '1', name: 'Administrador', role: UserRole.ADMIN, contraseña: '1234', permissions: ['CAN_MANAGE_TASKS'], isSuperAdmin: true },
   { id: '2', name: 'Camarero Bar', role: UserRole.STAFF, contraseña: '1234' },
   { id: '3', name: 'Chef Restaurante', role: UserRole.STAFF, contraseña: '1234' }
 ];
@@ -989,4 +990,42 @@ export const saveDocument = async (document: Omit<Document, 'id'>) => {
 export const deleteDocument = async (doc: Document) => {
   try { await storage.refFromURL(doc.url).delete(); } catch(e) {}
   await db.collection(KEYS.DOCUMENTS).doc(doc.id).delete();
+};
+
+// --- NEW: EVENT HALLS SETUP ---
+export const subscribeToEventHalls = (callback: (data: EventHall[]) => void) => {
+  return db.collection(KEYS.EVENT_HALLS).orderBy('createdAt', 'desc').onSnapshot(snapshot => {
+    callback(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as EventHall)));
+  }, error => handleFirestoreError(error, OperationType.GET, KEYS.EVENT_HALLS));
+};
+
+export const saveEventHall = async (hall: Partial<EventHall>) => {
+  try {
+    const isNew = !hall.id;
+    const docRef = isNew ? db.collection(KEYS.EVENT_HALLS).doc() : db.collection(KEYS.EVENT_HALLS).doc(hall.id!);
+    const id = docRef.id;
+    const finalData = sanitizeData({
+      ...hall,
+      id,
+      updatedAt: Date.now(),
+      createdAt: hall.createdAt || Date.now()
+    });
+    await docRef.set(finalData, { merge: true });
+    return id;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, KEYS.EVENT_HALLS);
+  }
+};
+
+export const deleteEventHall = async (id: string, imageUrls: string[] = []) => {
+  try {
+    if (imageUrls && imageUrls.length > 0) {
+      for (const url of imageUrls) {
+        try { await storage.refFromURL(url).delete(); } catch(e) {}
+      }
+    }
+    await db.collection(KEYS.EVENT_HALLS).doc(id).delete();
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, KEYS.EVENT_HALLS);
+  }
 };

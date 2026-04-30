@@ -165,57 +165,32 @@
       },
       "required": ["id", "action", "details", "userName", "userId", "timestamp"]
     },
-    "Hall": {
-      "title": "Hall",
-      "description": "Event hall/room",
+    "EventHall": {
+      "title": "EventHall",
+      "description": "Event hall setup configuration",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
         "name": { "type": "string" },
         "description": { "type": "string" },
-        "qrCodeUrl": { "type": "string" },
-        "storageInfo": { "type": "string" },
-        "rules": { "type": "string" },
-        "commonErrors": { "type": "array", "items": { "type": "object" } },
-        "setupTypes": { "type": "array", "items": { "type": "string" } }
+        "capacity": { "type": "string" },
+        "imageUrls": { "type": "array", "items": { "type": "string" } },
+        "setupGuides": { 
+          "type": "array", 
+          "items": { 
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "title": { "type": "string" },
+              "description": { "type": "string" },
+              "imageUrls": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        },
+        "createdAt": { "type": "number" },
+        "updatedAt": { "type": "number" }
       },
-      "required": ["id", "name"]
-    },
-    "HallSetup": {
-      "title": "HallSetup",
-      "description": "Configuration for a specific setup type in a hall",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "hallId": { "type": "string" },
-        "setupType": { "type": "string", "enum": ["RESTAURANTE", "CAFETERIA", "GASTROBAR", "COCKTAIL", "IMPERIAL"] },
-        "finalImageUrl": { "type": "string" },
-        "schemaUrl": { "type": "string" },
-        "tablesCount": { "type": "number" },
-        "chairsCount": { "type": "number" },
-        "steps": { "type": "array", "items": { "type": "string" } },
-        "checklist": { "type": "array", "items": { "type": "string" } }
-      },
-      "required": ["id", "hallId", "setupType"]
-    },
-    "HallExecution": {
-      "title": "HallExecution",
-      "description": "Record of a setup performed",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "hallId": { "type": "string" },
-        "hallName": { "type": "string" },
-        "setupTypeId": { "type": "string" },
-        "setupTypeName": { "type": "string" },
-        "workerName": { "type": "string" },
-        "workerId": { "type": "string" },
-        "status": { "type": "string", "enum": ["PENDING", "COMPLETED", "REVIEWED"] },
-        "checklistResults": { "type": "object" },
-        "resultImageUrl": { "type": "string" },
-        "completedAt": { "type": "number" }
-      },
-      "required": ["id", "hallId", "status", "workerName"]
+      "required": ["id", "name", "createdAt"]
     }
   },
   "firestore": {
@@ -255,17 +230,9 @@
       "schema": "AuditLog",
       "description": "Audit logs collection"
     },
-    "/hotel_victoria_halls/{hallId}": {
-      "schema": "Hall",
-      "description": "Halls collection"
-    },
-    "/hotel_victoria_hall_setups/{setupId}": {
-      "schema": "HallSetup",
-      "description": "Hall setups collection"
-    },
-    "/hotel_victoria_hall_executions/{execId}": {
-      "schema": "HallExecution",
-      "description": "Hall executions collection"
+    "/hotel_victoria_event_halls/{hallId}": {
+      "schema": "EventHall",
+      "description": "Event halls collection"
     },
     "/hotel_victoria_system/{docId}": {
       "schema": "object",

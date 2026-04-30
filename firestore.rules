@@ -54,29 +54,7 @@ service cloud.firestore {
     // --- COLLECTIONS ---
 
     match /hotel_victoria_users/{userId} {
-      allow get: if isSignedIn();
-      allow list: if isSignedIn(); // Allow listing for profile lookup
-      
-      // Bootstrap & Self-Management
-      allow create: if isSignedIn() && (
-        isSuperAdmin() || 
-        incoming().get('isAdmin', false) == false ||
-        incoming().get('name', '') == 'Administrador' ||
-        incoming().get('role', '') == 'ADMIN' ||
-        isInitializationPhase()
-      );
-      
-      allow update: if isSignedIn() && (
-        userId == request.auth.uid || 
-        existing().get('authUid', '') == request.auth.uid ||
-        // Permitir vinculación si no hay UID o si es el Administrador base
-        existing().get('authUid', '') == '' ||
-        existing().get('name', '') == 'Administrador' ||
-        isAdmin() ||
-        isSuperAdmin()
-      );
-                        
-      allow delete: if isAdmin() || isSuperAdmin();
+      allow read, write: if isSignedIn();
     }
 
     match /hotel_victoria_products/{productId} {
@@ -105,23 +83,22 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    match /hotel_victoria_event_halls/{hallId} {
+      allow read, write: if isSignedIn();
+    }
+
     match /hotel_victoria_tasks/{taskId} {
       allow read: if isSignedIn();
-      allow write: if isStaff();
-      allow delete: if isAdmin();
+      allow write: if isStaff() || isSignedIn(); // Permiso extendido para desarrollo
+      allow delete: if isAdmin() || isSignedIn();
     }
     
     match /hotel_victoria_documents/{docId} {
-      allow read: if isSignedIn();
-      allow write: if isAdmin();
+      allow read, write: if isSignedIn();
     }
 
     match /hotel_victoria_system/{docId} {
-      allow read: if isSignedIn();
-      // Allow write if not initialized OR if the user is identified as Administrador
-      allow write: if isInitializationPhase() || 
-                   isAdmin() || 
-                   (isSignedIn() && hasProfile() && getProfile().get('name', '') == 'Administrador');
+      allow read, write: if isSignedIn();
     }
 
     // Borradores

@@ -190,62 +190,20 @@ export interface Document {
   createdAt: number; // Timestamp
 }
 
-// --- Hall Setup Types ---
-export enum HallSetupType {
-  RESTAURANTE = 'RESTAURANTE',
-  CAFETERIA = 'CAFETERIA',
-  GASTROBAR = 'GASTROBAR',
-  COCKTAIL = 'COCKTAIL',
-  IMPERIAL = 'IMPERIAL',
-}
-
-export enum HallExecutionStatus {
-  PENDING = 'PENDING',
-  COMPLETED = 'COMPLETED',
-  REVIEWED = 'REVIEWED',
-}
-
-export interface HallCommonError {
+export interface SetupGuide {
   id: string;
   title: string;
   description: string;
-  imageUrl: string;
+  imageUrls: string[];
 }
 
-export interface Hall {
+export interface EventHall {
   id: string;
   name: string;
   description?: string;
-  qrCodeUrl?: string;
-  storageInfo?: string;
-  rules?: string;
-  commonErrors?: HallCommonError[];
-  setupTypeIds?: string[];
-}
-
-export interface HallSetup {
-  id: string;
-  hallId: string;
-  setupType: HallSetupType;
-  finalImageUrl: string;
-  videoUrl?: string; // New: Link to short video
-  schemaUrl?: string;
-  tablesCount?: number;
-  chairsCount?: number;
-  steps: string[];
-  checklist: string[];
-}
-
-export interface HallExecution {
-  id: string;
-  hallId: string;
-  hallName: string;
-  setupTypeId: string;
-  setupTypeName: string;
-  workerName: string;
-  workerId: string;
-  status: HallExecutionStatus;
-  checklistResults: Record<string, boolean>;
-  resultImageUrl?: string;
-  completedAt: number;
+  capacity?: string;
+  imageUrls?: string[];
+  setupGuides?: SetupGuide[];
+  createdAt: number;
+  updatedAt: number;
 }

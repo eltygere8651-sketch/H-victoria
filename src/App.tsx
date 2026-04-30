@@ -4,7 +4,6 @@ import Inventory from './pages/Inventory';
 import Replenishment from './pages/Replenishment';
 import Admin from './pages/Admin';
 import Tasks from './pages/Tasks';
-import HallSetupPage from './pages/HallSetup';
 import { PublicTaskViewer } from './components/PublicTaskViewer';
 import * as storageService from './services/storageService';
 import { Logo } from './components/Logo';
@@ -27,13 +26,13 @@ const App: React.FC = () => {
   const [shareData, setShareData] = useState({ url: '', title: '' });
   const [showGuideModal, setShowGuideModal] = useState(false);
 
-  const [view, setView] = useState<'inventory' | 'replenish' | 'admin' | 'tasks' | 'hall_setup'>(() => {
+  const [view, setView] = useState<'inventory' | 'replenish' | 'admin' | 'tasks'>(() => {
     const lastView = storageService.getLastView();
     const sessionUser = storageService.getSession();
-    let defaultView: 'inventory' | 'replenish' | 'tasks' | 'hall_setup' = 'replenish';
+    let defaultView: 'inventory' | 'replenish' | 'tasks' = 'replenish';
     if (sessionUser?.role === UserRole.ADMIN) defaultView = 'inventory';
     if (sessionUser?.role === UserRole.GUEST) defaultView = 'tasks';
-    if (lastView && (['inventory', 'replenish', 'admin', 'tasks', 'hall_setup'] as string[]).includes(lastView)) return lastView as any;
+    if (lastView && (['inventory', 'replenish', 'admin', 'tasks'] as string[]).includes(lastView)) return lastView as any;
     return defaultView;
   });
 
@@ -503,7 +502,6 @@ const App: React.FC = () => {
         {view === 'replenish' && user.role !== UserRole.GUEST && user.role !== UserRole.PROVIDER && <Replenishment currentUser={user} cart={cart} setCart={setCart} showMobileCart={showMobileCart} setShowMobileCart={setShowMobileCart} notificationVolume={notificationVolume} soundType={soundType} />}
         {view === 'admin' && user.role === UserRole.ADMIN && <Admin currentUser={user} unreadNotificationsCount={unreadAdminNotifications.length} initialTab={initialAdminTab} />}
         {view === 'tasks' && <Tasks currentUser={user} initialTaskId={sharedTaskId} />}
-        {view === 'hall_setup' && <HallSetupPage currentUser={user} />}
         {(view as any) === 'provider' && <ProviderDelivery currentUser={user} />}
       </MainLayout>
     );
