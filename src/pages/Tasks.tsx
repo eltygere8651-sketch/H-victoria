@@ -136,6 +136,39 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
     };
   }, []);
 
+  // --- HALL INITIALIZATION ENFORCEMENT ---
+  useEffect(() => {
+    let attempt = 0;
+    const enforceHallsExistence = async () => {
+      if (halls.length > 0) return;
+      
+      await new Promise(r => setTimeout(r, 2000));
+      
+      if (halls.length === 0 && attempt < 3) {
+        attempt++;
+        console.log("No se detectan salones, forzando creación (Intento " + attempt + ")...");
+        const hallsToCreate = [
+          { name: "Restaurante", createdAt: Date.now(), updatedAt: Date.now() },
+          { name: "Salon C", createdAt: Date.now(), updatedAt: Date.now() },
+          { name: "Terraza", createdAt: Date.now(), updatedAt: Date.now() }
+        ];
+        try {
+          for (const hall of hallsToCreate) {
+             await storageService.saveEventHall(hall);
+          }
+          console.log("Salones creados exitosamente");
+        } catch (e: any) {
+          console.error("Error crítico forzando creación de salones:", e);
+        }
+        
+        // Check again after a bit if still missing
+        setTimeout(enforceHallsExistence, 3000);
+      }
+    };
+    
+    enforceHallsExistence();
+  }, [halls.length]);
+
   const handleSaveTask = async () => {
     // New requirement: Department is optional for Montaje tasks (if isPublishedToMontaje is true)
     if (!editingTask?.title || (!editingTask?.departmentId && !editingTask?.isPublishedToMontaje)) {
@@ -871,7 +904,17 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
                   </button>
                 ))}
               </div>
-              
+              {canManageTasks && (
+                <button
+                  onClick={() => {
+                    setEditingHall({});
+                    setShowHallModal(true);
+                  }}
+                  className="shrink-0 flex items-center gap-1 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-200 transition-colors"
+                >
+                  <Plus size={14} /> Nuevo Salón
+                </button>
+              )}
             </div>
           </div>
         )}

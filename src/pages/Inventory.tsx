@@ -181,7 +181,7 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser, notificationVolume =
     } catch (e) { console.error(e); }
   };
 
-  const isDeveloper = storageService.auth.currentUser?.email === storageService.SUPER_ADMIN_EMAIL || !!currentUser.isSuperAdmin;
+  const isDeveloper = storageService.auth.currentUser?.email === storageService.SUPER_ADMIN_EMAIL || !!currentUser.isSuperAdmin || currentUser.role === 'ADMIN';
 
   const handleSaveProduct = async () => {
     if (!isDeveloper && !editProductForm.id) {

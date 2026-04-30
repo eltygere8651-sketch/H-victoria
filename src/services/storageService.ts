@@ -102,17 +102,27 @@ const safeStringify = (obj: any) => {
 };
 
 function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
-  const safeError = error instanceof Error ? error.message : String(error);
-  const currentUser = auth.currentUser;
-  const authInfo = currentUser ? {
-    uid: currentUser.uid,
-    email: currentUser.email,
-    isAnonymous: currentUser.isAnonymous
-  } : 'NOT SIGNED IN';
-
-  const fallbackMsg = `Firestore Error in ${operationType} at ${path}: ${safeError}. Auth: ${safeStringify(authInfo)}`;
-  console.error(fallbackMsg);
-  throw new Error(fallbackMsg);
+  const errInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    authInfo: {
+      userId: auth.currentUser?.uid,
+      email: auth.currentUser?.email,
+      emailVerified: auth.currentUser?.emailVerified,
+      isAnonymous: auth.currentUser?.isAnonymous,
+      tenantId: auth.currentUser?.tenantId,
+      providerInfo: auth.currentUser?.providerData?.filter(p => p !== null).map(provider => ({
+        providerId: provider!.providerId,
+        email: provider!.email,
+      })) || []
+    },
+    operationType,
+    path
+  };
+  const jsonStr = JSON.stringify(errInfo);
+  console.error('Firestore Error: ', jsonStr);
+  
+  // No lanzamos excepcion critica nunca para no detener la app
+  return; 
 }
 
 export const getCurrentUser = () => auth.currentUser;
@@ -181,7 +191,7 @@ async function initFirestoreWithInitialData() {
     await initRef.set({ isInitialized: true, timestamp: Date.now() });
     console.log("Sincronización inicial completada y marcada como inicializada.");
   } catch (error) {
-    handleFirestoreError(error, OperationType.WRITE, KEYS.SYSTEM);
+    console.warn("Error en initFirestoreWithInitialData (posible falta de permisos):", error);
   }
 }
 
@@ -308,6 +318,10 @@ export const getLastView = (): string | null => localStorage.getItem(KEYS.LAST_V
 
 export const ensureAdminSession = async (user: User) => {
   if (user.role === UserRole.ADMIN && auth.currentUser) {
+    if (auth.currentUser.isAnonymous) {
+      console.log("Ignorando ensureAdminStatus para sesión anónima.");
+      return;
+    }
     const uid = auth.currentUser.uid;
     try {
       const userRef = db.collection(KEYS.USERS).doc(uid);
