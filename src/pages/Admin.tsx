@@ -290,7 +290,7 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
               <button
                 onClick={() => setShowClearHistoryConfirm(true)}
                 disabled={orders.length === 0}
-                className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-black transition-all shadow-lg text-[10px] uppercase tracking-wider border ${
+                className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-black transition-all shadow-lg text-xs uppercase tracking-wider border ${
                   orders.length > 0 
                   ? 'bg-red-600 hover:bg-black text-white border-red-500 shadow-red-600/20 active:scale-95 animate-pulse-slow' 
                   : 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed opacity-50'

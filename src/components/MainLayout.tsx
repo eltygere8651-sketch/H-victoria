@@ -69,7 +69,7 @@ const NavButton = ({ icon: Icon, label, isActive, onClick, hasAlert = false }: a
       overflow-hidden transition-all duration-500 ease-out flex items-center justify-center
       ${isActive ? 'max-w-[80px] sm:max-w-[100px] opacity-100' : 'max-w-0 opacity-0'}
     `}>
-      <span className="text-[9px] sm:text-[10px] font-black leading-tight whitespace-nowrap uppercase tracking-widest pt-0.5">
+      <span className="text-[10px] sm:text-xs font-black leading-tight whitespace-nowrap uppercase tracking-widest pt-0.5">
         {label}
       </span>
     </div>
@@ -141,7 +141,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
             </div>
             <div className="flex flex-col">
               <span className="font-black text-lg sm:text-xl text-slate-900 dark:text-white uppercase tracking-tighter italic leading-none">Hub</span>
-              <span className="text-[6px] font-black text-red-600 dark:text-red-400 uppercase tracking-widest leading-none mt-0.5 sm:mt-1">Ecosystem</span>
+              <span className="text-[8px] font-black text-red-600 dark:text-red-400 uppercase tracking-widest leading-none mt-0.5 sm:mt-1">Ecosystem</span>
             </div>
           </div>
 

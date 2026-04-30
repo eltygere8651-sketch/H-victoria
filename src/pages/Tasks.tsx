@@ -604,13 +604,13 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
             <div className="flex bg-gray-100 dark:bg-slate-800 rounded-xl p-1 mx-4">
               <button
                 onClick={() => setActiveTab('ACTIVE')}
-                className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'ACTIVE' ? 'bg-white dark:bg-slate-700 shadow-sm text-red-600' : 'text-gray-500 dark:text-gray-400'}`}
+                className={`px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'ACTIVE' ? 'bg-white dark:bg-slate-700 shadow-sm text-red-600' : 'text-gray-500 dark:text-gray-400'}`}
               >
                 Activas
               </button>
               <button
                 onClick={() => setActiveTab('DAILY')}
-                className={`relative px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all overflow-hidden group ${
+                className={`relative px-4 py-1.5 rounded-lg text-xs font-black uppercase tracking-widest transition-all overflow-hidden group ${
                   activeTab === 'DAILY' 
                     ? 'bg-gradient-to-r from-red-600 to-orange-600 shadow-lg shadow-red-600/30 text-white' 
                     : 'text-gray-500 dark:text-gray-400 hover:bg-white/50 dark:hover:bg-slate-700/50'
@@ -683,7 +683,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
                     setPreviews([]);
                     setShowTaskModal(true);
                   }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold uppercase tracking-wider rounded-full transition-all active:scale-95 shadow-lg shadow-red-600/20"
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold uppercase tracking-wider rounded-full transition-all active:scale-95 shadow-lg shadow-red-600/20"
                 >
                   <Plus size={14} strokeWidth={3} />
                   <span>Nueva Tarea</span>
@@ -699,7 +699,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
               <select 
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value as TaskStatus | 'ALL')}
-                className="flex-1 min-w-0 px-2 sm:px-4 py-2 rounded-xl font-bold text-[10px] sm:text-xs bg-gray-100 dark:bg-slate-800 border-2 border-transparent focus:border-red-500 outline-none dark:text-white shadow-sm appearance-none text-center"
+                className="flex-1 min-w-0 px-2 sm:px-4 py-2 rounded-xl font-bold text-xs bg-gray-100 dark:bg-slate-800 border-2 border-transparent focus:border-red-500 outline-none dark:text-white shadow-sm appearance-none text-center"
               >
                 <option value="ALL">Estados</option>
                 <option value={TaskStatus.PENDING}>Pendientes</option>
@@ -710,7 +710,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
               <select 
                 value={departmentFilter}
                 onChange={(e) => setDepartmentFilter(e.target.value)}
-                className="flex-1 min-w-0 px-2 sm:px-4 py-2 rounded-xl font-bold text-[10px] sm:text-xs bg-gray-100 dark:bg-slate-800 border-2 border-transparent focus:border-red-500 outline-none dark:text-white shadow-sm appearance-none text-center"
+                className="flex-1 min-w-0 px-2 sm:px-4 py-2 rounded-xl font-bold text-xs bg-gray-100 dark:bg-slate-800 border-2 border-transparent focus:border-red-500 outline-none dark:text-white shadow-sm appearance-none text-center"
               >
                 <option value="ALL">Dptos.</option>
                 {departments.map(d => (
