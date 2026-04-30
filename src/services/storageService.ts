@@ -32,7 +32,7 @@ const KEYS = {
 };
 
 const INITIAL_USERS: User[] = [
-  { id: '1', name: 'Administrador', role: UserRole.ADMIN, contraseña: '1234', permissions: ['CAN_MANAGE_TASKS'], isSuperAdmin: true },
+  { id: '1', name: 'Administrador', role: UserRole.ADMIN, contraseña: '1234', permissions: ['CAN_MANAGE_TASKS'] },
   { id: '2', name: 'Camarero Bar', role: UserRole.STAFF, contraseña: '1234' },
   { id: '3', name: 'Chef Restaurante', role: UserRole.STAFF, contraseña: '1234' }
 ];
@@ -993,20 +993,10 @@ export const deleteDocument = async (doc: Document) => {
 };
 
 // --- NEW: EVENT HALLS SETUP ---
-export const subscribeToEventHalls = (callback: (data: EventHall[]) => void, onError?: (error: any) => void) => {
-  return db.collection(KEYS.EVENT_HALLS).onSnapshot(snapshot => {
-    const halls = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as EventHall));
-    console.log('storageService: Event halls snapshot received, count:', halls.length);
-    // Sort in memory to be safer
-    halls.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-    callback(halls);
-  }, error => {
-    if (onError) {
-      onError(error);
-    } else {
-      handleFirestoreError(error, OperationType.GET, KEYS.EVENT_HALLS);
-    }
-  });
+export const subscribeToEventHalls = (callback: (data: EventHall[]) => void) => {
+  return db.collection(KEYS.EVENT_HALLS).orderBy('createdAt', 'desc').onSnapshot(snapshot => {
+    callback(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as EventHall)));
+  }, error => handleFirestoreError(error, OperationType.GET, KEYS.EVENT_HALLS));
 };
 
 export const saveEventHall = async (hall: Partial<EventHall>) => {
@@ -1038,38 +1028,4 @@ export const deleteEventHall = async (id: string, imageUrls: string[] = []) => {
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, KEYS.EVENT_HALLS);
   }
-};
-
-export const subscribeToCurrentUser = (callback: (user: User | null) => void) => {
-  let unsubFirestore: (() => void) | null = null;
-  
-  const unsubAuth = auth.onAuthStateChanged((user) => {
-    if (unsubFirestore) {
-      unsubFirestore();
-      unsubFirestore = null;
-    }
-
-    if (!user) {
-      callback(null);
-      return;
-    }
-    
-    unsubFirestore = db.collection(KEYS.USERS).doc(user.uid).onSnapshot((docSnap) => {
-      if (docSnap.exists) {
-        callback({ id: docSnap.id, ...docSnap.data() } as User);
-      } else {
-        const session = getSession();
-        if (session && session.id === user.uid) {
-           callback(session);
-        } else {
-           callback(null);
-        }
-      }
-    }, (error) => handleFirestoreError(error, OperationType.GET, `${KEYS.USERS}/${user.uid}`));
-  });
-
-  return () => {
-    unsubAuth();
-    if (unsubFirestore) unsubFirestore();
-  };
 };
