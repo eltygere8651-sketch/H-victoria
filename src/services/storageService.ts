@@ -43,12 +43,6 @@ const INITIAL_DEPARTMENTS: Department[] = [
   { id: 'd-restaurante', name: 'Restaurante' }
 ];
 
-const INITIAL_EVENT_HALLS: EventHall[] = [
-  { id: 't-restaurante', name: 'Restaurante', createdAt: Date.now(), updatedAt: Date.now() },
-  { id: 't-salon-c', name: 'Salon C', createdAt: Date.now(), updatedAt: Date.now() },
-  { id: 't-terraza', name: 'Terraza', createdAt: Date.now(), updatedAt: Date.now() }
-];
-
 // Productos de ejemplo optimizados para los nuevos departamentos
 const INITIAL_PRODUCTS: Product[] = [
   { id: 'p1', name: 'Coca Cola', category: 'Bebidas', quantity: 24, unit: 'latas', minThreshold: 12, departmentId: 'd-bar', departmentName: 'Bar', departmentIds: ['d-bar', 'd-restaurante'], departmentNames: ['Bar', 'Restaurante'] },
@@ -102,27 +96,17 @@ const safeStringify = (obj: any) => {
 };
 
 function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
-  const errInfo = {
-    error: error instanceof Error ? error.message : String(error),
-    authInfo: {
-      userId: auth.currentUser?.uid,
-      email: auth.currentUser?.email,
-      emailVerified: auth.currentUser?.emailVerified,
-      isAnonymous: auth.currentUser?.isAnonymous,
-      tenantId: auth.currentUser?.tenantId,
-      providerInfo: auth.currentUser?.providerData?.filter(p => p !== null).map(provider => ({
-        providerId: provider!.providerId,
-        email: provider!.email,
-      })) || []
-    },
-    operationType,
-    path
-  };
-  const jsonStr = JSON.stringify(errInfo);
-  console.error('Firestore Error: ', jsonStr);
-  
-  // No lanzamos excepcion critica nunca para no detener la app
-  return; 
+  const safeError = error instanceof Error ? error.message : String(error);
+  const currentUser = auth.currentUser;
+  const authInfo = currentUser ? {
+    uid: currentUser.uid,
+    email: currentUser.email,
+    isAnonymous: currentUser.isAnonymous
+  } : 'NOT SIGNED IN';
+
+  const fallbackMsg = `Firestore Error in ${operationType} at ${path}: ${safeError}. Auth: ${safeStringify(authInfo)}`;
+  console.error(fallbackMsg);
+  throw new Error(fallbackMsg);
 }
 
 export const getCurrentUser = () => auth.currentUser;
@@ -137,12 +121,8 @@ async function initFirestoreWithInitialData() {
     // Comprobamos si hay productos. Si no hay nada, forzamos re-inicialización básica
     const productsCheck = await db.collection(KEYS.PRODUCTS).limit(1).get();
     const hasProducts = !productsCheck.empty;
-    
-    // Comprobamos si hay salones.
-    const hallsCheck = await db.collection(KEYS.EVENT_HALLS).limit(1).get();
-    const hasHalls = !hallsCheck.empty;
 
-    if (initDoc.exists && initDoc.data()?.isInitialized && hasProducts && hasHalls) {
+    if (initDoc.exists && initDoc.data()?.isInitialized && hasProducts) {
       return;
     }
 
@@ -163,7 +143,6 @@ async function initFirestoreWithInitialData() {
       { name: KEYS.USERS, data: INITIAL_USERS },
       { name: KEYS.PRODUCTS, data: INITIAL_PRODUCTS },
       { name: KEYS.DEPARTMENTS, data: INITIAL_DEPARTMENTS },
-      { name: KEYS.EVENT_HALLS, data: INITIAL_EVENT_HALLS },
     ];
 
     for (const { name, data } of collectionsToInit) {
@@ -191,7 +170,7 @@ async function initFirestoreWithInitialData() {
     await initRef.set({ isInitialized: true, timestamp: Date.now() });
     console.log("Sincronización inicial completada y marcada como inicializada.");
   } catch (error) {
-    console.warn("Error en initFirestoreWithInitialData (posible falta de permisos):", error);
+    handleFirestoreError(error, OperationType.WRITE, KEYS.SYSTEM);
   }
 }
 
@@ -318,10 +297,6 @@ export const getLastView = (): string | null => localStorage.getItem(KEYS.LAST_V
 
 export const ensureAdminSession = async (user: User) => {
   if (user.role === UserRole.ADMIN && auth.currentUser) {
-    if (auth.currentUser.isAnonymous) {
-      console.log("Ignorando ensureAdminStatus para sesión anónima.");
-      return;
-    }
     const uid = auth.currentUser.uid;
     try {
       const userRef = db.collection(KEYS.USERS).doc(uid);

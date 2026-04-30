@@ -39,7 +39,7 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
   const [showClearHistoryConfirm, setShowClearHistoryConfirm] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
 
-  const isSuperAdmin = storageService.auth.currentUser?.email === storageService.SUPER_ADMIN_EMAIL || storageService.getSession()?.role === 'ADMIN';
+  const isSuperAdmin = storageService.auth.currentUser?.email === storageService.SUPER_ADMIN_EMAIL;
 
   useEffect(() => {
     setActiveTab(initialTab);
