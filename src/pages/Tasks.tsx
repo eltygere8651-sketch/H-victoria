@@ -442,40 +442,41 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
     if (!editingGuide?.title || !activeHallForGuide) return;
     setIsSaving(true);
     try {
-      let finalImageUrls = editingGuide.imageUrls || [];
-      
-      // Upload new images
-      if (selectedImages.length > 0) {
-        const uploadPromises = selectedImages.map(file => storageService.uploadImage(file, 'halls'));
-        const uploadedUrls = await Promise.all(uploadPromises);
-        finalImageUrls = [...finalImageUrls, ...uploadedUrls];
-      }
+      // 1. Upload new media
+      const uploadedImageUrls = await Promise.all(selectedImages.map(f => storageService.uploadImage(f, 'halls')));
+      const uploadedVideoUrls = await Promise.all(selectedVideos.map(f => storageService.uploadVideoToCloudinary(f, 'halls')));
 
+      // 2. Prepare guide with new media
       const currentGuides = [...(activeHallForGuide.setupGuides || [])];
-      let updatedGuides;
       
-      if (editingGuide.id) {
-        updatedGuides = currentGuides.map(g => g.id === editingGuide.id ? { ...g, ...editingGuide, imageUrls: finalImageUrls } as SetupGuide : g);
-      } else {
-        const newGuide: SetupGuide = {
-          ...editingGuide as SetupGuide,
-          id: Date.now().toString(),
-          imageUrls: finalImageUrls
-        };
-        updatedGuides = [...currentGuides, newGuide];
-      }
+      const newGuide: SetupGuide = {
+        ...(editingGuide as SetupGuide),
+        id: editingGuide.id || Date.now().toString(),
+        imageUrls: [...(editingGuide.imageUrls || []), ...uploadedImageUrls],
+        videoUrls: [...(editingGuide.videoUrls || []), ...uploadedVideoUrls]
+      };
 
+      // 3. Update the list of guides
+      const updatedGuides = editingGuide.id 
+        ? currentGuides.map(g => g.id === editingGuide.id ? newGuide : g)
+        : [...currentGuides, newGuide];
+
+      // 4. Save to Firestore
       await storageService.saveEventHall({
-        id: activeHallForGuide.id,
+        ...activeHallForGuide,
         setupGuides: updatedGuides
       });
+
       setShowGuideModal(false);
       setEditingGuide(null);
       setActiveHallForGuide(null);
       setPreviews([]);
+      setVideoPreviews([]);
       setSelectedImages([]);
+      setSelectedVideos([]);
     } catch (error) {
       console.error(error);
+      alert('Error al guardar la guía.');
     } finally {
       setIsSaving(false);
     }
@@ -1016,6 +1017,15 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
                                          <button onClick={() => handleDeleteGuide(hall, guide.id)} className="p-1.5 text-slate-400 hover:text-red-600"><Trash2 size={14} /></button>
                                        </div>
                                      )}
+                                    {guide.videoUrls && guide.videoUrls.length > 0 && (
+                                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-4">
+                                            {guide.videoUrls.map((url, idx) => (
+                                              <div key={`vid-${idx}`} className="relative aspect-video rounded-xl overflow-hidden shadow-sm">
+                                                <video src={url} className="w-full h-full object-cover" controls playsInline muted />
+                                              </div>
+                                            ))}
+                                        </div>
+                                    )}
                                    </div>
                                    
                                    {guide.imageUrls && guide.imageUrls.length > 0 && (

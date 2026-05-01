@@ -198,6 +198,7 @@ export interface SetupGuide {
   title: string;
   description: string;
   imageUrls: string[];
+  videoUrls?: string[];
 }
 
 export interface EventHall {
@@ -206,6 +207,7 @@ export interface EventHall {
   description?: string;
   capacity?: string;
   imageUrls?: string[];
+  videoUrls?: string[];
   setupGuides?: SetupGuide[];
   createdAt: number;
   updatedAt: number;

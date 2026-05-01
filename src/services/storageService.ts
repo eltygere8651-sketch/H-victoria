@@ -89,20 +89,36 @@ interface FirestoreErrorInfo {
 
 // Helper to safely stringify objects that might have circular references
 const safeStringify = (obj: any) => {
-  const cache = new Set();
-  return JSON.stringify(obj, (key, value) => {
-    if (typeof value === 'object' && value !== null) {
-      if (cache.has(value)) {
-        return '[Circular]';
-      }
-      cache.add(value);
-    }
-    return value;
-  });
+  try {
+      const cache = new Set();
+      return JSON.stringify(obj, (key, value) => {
+        if (typeof value === 'object' && value !== null) {
+          if (cache.has(value)) {
+            return '[Circular]';
+          }
+          cache.add(value);
+        }
+        return value;
+      });
+  } catch (e) {
+      return `[Error stringifying: ${e}]`;
+  }
 };
 
 function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
-  const safeError = error instanceof Error ? error.message : String(error);
+  let safeError: string;
+  try {
+    if (error instanceof Error) {
+       safeError = error.message;
+    } else if (typeof error === 'object' && error !== null && 'message' in (error as any)) {
+       safeError = (error as any).message;
+    } else {
+       safeError = safeStringify(error);
+    }
+  } catch (e) {
+      safeError = "Unknown error (could not be stringified)";
+  }
+  
   const currentUser = auth.currentUser;
   const authInfo = currentUser ? {
     uid: currentUser.uid,
@@ -112,6 +128,7 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
 
   const fallbackMsg = `Firestore Error in ${operationType} at ${path}: ${safeError}. Auth: ${safeStringify(authInfo)}`;
   console.error(fallbackMsg);
+  // Important: throw an error that doesn't trigger circular stringification itself
   throw new Error(fallbackMsg);
 }
 
@@ -322,7 +339,11 @@ export const ensureAdminSession = async (user: User) => {
         }, { merge: true });
       }
     } catch (e: any) {
-      console.error(`Error asegurando status admin para UID ${uid}:`, e.message);
+      if (e.message.includes('Missing or insufficient permissions')) {
+        console.warn(`Aviso de permisos para UID ${uid}: Usuario no autorizado para escritura de sistema.`);
+      } else {
+        console.error(`Error asegurando status admin para UID ${uid}:`, e.message);
+      }
     }
   }
 };
@@ -708,15 +729,15 @@ export const subscribeToTasks = (callback: (data: Task[]) => void) => {
     }, error => handleFirestoreError(error, OperationType.GET, KEYS.TASKS));
 };
 // --- IMAGES ---
+import { uploadVideoToCloudinary as uploadVideoToCloudinaryRaw, uploadImageToCloudinary, uploadMediaToCloudinary } from './cloudinaryService';
+
 export const uploadImage = async (file: File, folder: string = 'tasks'): Promise<string> => {
-  const path = `${folder}/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
-  const snapshot = await storage.ref().child(path).put(file, { contentType: file.type || 'image/jpeg' });
-  return await snapshot.ref.getDownloadURL();
+  return uploadImageToCloudinary(file, folder);
 };
 
-import { uploadVideoToCloudinary } from './cloudinaryService';
+export const uploadVideoToCloudinary = uploadVideoToCloudinaryRaw;
 
-export const saveTask = async (task: Partial<Task>, newFiles: File[] = [], newVideos: File[] = []) => {
+export const saveTask = async (task: Partial<Task>, newFiles: File[] = [], newVideos: File[] = [], folder: string = 'tasks') => {
   const isNew = !task.id;
   const docRef = isNew ? db.collection(KEYS.TASKS).doc() : db.collection(KEYS.TASKS).doc(task.id!);
   
@@ -724,7 +745,7 @@ export const saveTask = async (task: Partial<Task>, newFiles: File[] = [], newVi
 
   // Handle Images
   if (newFiles.length > 0) {
-      const uploadPromises = newFiles.map(file => uploadImage(file, 'tasks'));
+      const uploadPromises = newFiles.map(file => uploadImage(file, folder));
       const newImageUrls = await Promise.all(uploadPromises);
       const existingUrls = Array.isArray(task.imageUrls) ? task.imageUrls : [];
       const finalImageUrls = [...existingUrls, ...newImageUrls];
@@ -735,7 +756,7 @@ export const saveTask = async (task: Partial<Task>, newFiles: File[] = [], newVi
 
   // Handle Videos (Cloudinary)
   if (newVideos.length > 0) {
-      const videoPromises = newVideos.map(file => uploadVideoToCloudinary(file));
+      const videoPromises = newVideos.map(file => uploadVideoToCloudinary(file, folder));
       const newVideoUrls = await Promise.all(videoPromises);
       const existingVideoUrls = Array.isArray(task.videoUrls) ? task.videoUrls : [];
       const finalVideoUrls = [...existingVideoUrls, ...newVideoUrls];
@@ -985,9 +1006,7 @@ export const checkAutoCleanup = async () => {
 
 // --- NEW: DOCUMENT MANAGEMENT ---
 export const uploadDocumentFile = async (file: File): Promise<string> => {
-  const path = `documents/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
-  const snapshot = await storage.ref().child(path).put(file, { contentType: file.type || 'application/octet-stream' });
-  return await snapshot.ref.getDownloadURL();
+  return uploadMediaToCloudinary(file, 'hotel_victoria_documents');
 };
 export const subscribeToDocuments = (callback: (data: Document[]) => void) => {
   return db.collection(KEYS.DOCUMENTS).orderBy('createdAt', 'desc').onSnapshot(snapshot => {
@@ -1026,6 +1045,25 @@ export const saveEventHall = async (hall: Partial<EventHall>) => {
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, KEYS.EVENT_HALLS);
   }
+};
+
+export const saveEventHallWithMedia = async (hall: Partial<EventHall>, newFiles: File[] = [], newVideos: File[] = []) => {
+    let finalImageUrls = hall.imageUrls || [];
+    let finalVideoUrls = hall.videoUrls || [];
+
+    if (newFiles.length > 0) {
+      const uploadPromises = newFiles.map(file => uploadImage(file, 'halls'));
+      const uploadedUrls = await Promise.all(uploadPromises);
+      finalImageUrls = [...finalImageUrls, ...uploadedUrls];
+    }
+
+    if (newVideos.length > 0) {
+      const videoPromises = newVideos.map(file => uploadVideoToCloudinary(file));
+      const uploadedUrls = await Promise.all(videoPromises);
+      finalVideoUrls = [...finalVideoUrls, ...uploadedUrls];
+    }
+    
+    return await saveEventHall({ ...hall, imageUrls: finalImageUrls, videoUrls: finalVideoUrls });
 };
 
 export const deleteEventHall = async (id: string, imageUrls: string[] = []) => {
