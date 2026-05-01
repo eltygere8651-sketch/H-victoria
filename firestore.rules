@@ -17,26 +17,25 @@ service cloud.firestore {
       );
     }
 
-    // Role detection via UID-indexed document
-    function getProfile() {
-      return get(/databases/$(database)/documents/hotel_victoria_users/$(request.auth.uid)).data;
-    }
-
-    function hasProfile() {
-      return exists(/databases/$(database)/documents/hotel_victoria_users/$(request.auth.uid));
-    }
-
+    // Role detection via UID-indexed document - Safer version
     function isAdmin() {
-      return isSuperAdmin() || (hasProfile() && (
-        getProfile().get('role', '') == 'ADMIN' || 
-        getProfile().get('role', '') == 'SUPER_ADMIN' ||
-        getProfile().get('isAdmin', false) == true ||
-        getProfile().get('name', '') == 'Administrador'
-      ));
+      return isSuperAdmin() || (
+        isSignedIn() && 
+        exists(/databases/$(database)/documents/hotel_victoria_users/$(request.auth.uid)) && 
+        (
+          get(/databases/$(database)/documents/hotel_victoria_users/$(request.auth.uid)).data.get('role', '') == 'ADMIN' || 
+          get(/databases/$(database)/documents/hotel_victoria_users/$(request.auth.uid)).data.get('isAdmin', false) == true ||
+          get(/databases/$(database)/documents/hotel_victoria_users/$(request.auth.uid)).data.get('name', '') == 'Administrador'
+        )
+      );
     }
 
     function isStaff() {
-      return isAdmin() || (hasProfile() && getProfile().get('role', '') == 'STAFF');
+      return isAdmin() || (
+        isSignedIn() && 
+        exists(/databases/$(database)/documents/hotel_victoria_users/$(request.auth.uid)) && 
+        get(/databases/$(database)/documents/hotel_victoria_users/$(request.auth.uid)).data.get('role', '') == 'STAFF'
+      );
     }
 
     function isInitializationPhase() {
@@ -52,6 +51,11 @@ service cloud.firestore {
     }
 
     // --- COLLECTIONS ---
+    
+    // Función rápida para lectura básica sin activar comprobaciones de perfil
+    function canReadBasic() {
+      return request.auth != null;
+    }
 
     match /hotel_victoria_users/{userId} {
       allow get, list: if isSignedIn();
@@ -60,52 +64,55 @@ service cloud.firestore {
         isSuperAdmin() ||
         isAdmin() ||
         isInitializationPhase() ||
-        existing().get('authUid', '') == ''
+        // Permitir vinculación inicial si el documento no tiene UID o es el Administrador base
+        !exists(/databases/$(database)/documents/hotel_victoria_users/$(userId)) ||
+        get(/databases/$(database)/documents/hotel_victoria_users/$(userId)).data.get('authUid', '') == '' ||
+        get(/databases/$(database)/documents/hotel_victoria_users/$(userId)).data.get('name', '') == 'Administrador'
       );
     }
 
     match /hotel_victoria_products/{productId} {
-      allow read: if isSignedIn();
-      // Allow writes if Admin OR if no initialization doc exists OR if self-identified as Administrador
-      allow write: if isAdmin() || 
-                   isSuperAdmin() ||
-                   isInitializationPhase() || 
-                   (isSignedIn() && hasProfile() && getProfile().get('name', '') == 'Administrador');
-      allow update: if isAdmin() || isSuperAdmin() || isInitializationPhase() || (isSignedIn() && (incoming().diff(existing()).affectedKeys().hasOnly(['quantity']) || (hasProfile() && getProfile().get('name', '') == 'Administrador')));
+      allow read: if canReadBasic();
+      allow write: if isAdmin() || isSuperAdmin() || isInitializationPhase();
+      allow update: if canReadBasic() && (incoming().diff(existing()).affectedKeys().hasOnly(['quantity']) || isAdmin());
     }
 
     match /hotel_victoria_departments/{deptId} {
-      allow read: if isSignedIn();
+      allow read: if canReadBasic();
       allow write: if isAdmin() || isSuperAdmin() || isInitializationPhase();
     }
 
     match /hotel_victoria_requests/{requestId} {
-      allow read: if isSignedIn();
-      allow create, update: if isSignedIn();
+      allow read: if canReadBasic();
+      allow create, update: if canReadBasic();
       allow delete: if isAdmin() || isSuperAdmin();
     }
 
     match /hotel_victoria_notifications/{notifId} {
-      allow read, write: if isSignedIn();
+      allow read, write: if canReadBasic();
       allow delete: if isAdmin();
     }
 
     match /hotel_victoria_tasks/{taskId} {
-      allow read, write: if isSignedIn();
+      allow read: if canReadBasic();
+      allow write: if isSignedIn(); // Permitir que cualquiera cree/edite tareas para subir fotos
+      allow delete: if isAdmin();
+    }
+    
+    match /hotel_victoria_room_posts/{postId} {
+      allow read: if canReadBasic();
+      allow write: if isSignedIn();
       allow delete: if isAdmin();
     }
     
     match /hotel_victoria_documents/{docId} {
-      allow read: if isSignedIn();
+      allow read: if canReadBasic();
       allow write: if isAdmin();
     }
 
     match /hotel_victoria_system/{docId} {
-      allow read: if isSignedIn();
-      // Allow write if not initialized OR if the user is identified as Administrador
-      allow write: if isInitializationPhase() || 
-                   isAdmin() || 
-                   (isSignedIn() && hasProfile() && getProfile().get('name', '') == 'Administrador');
+      allow read: if canReadBasic();
+      allow write: if isInitializationPhase() || isAdmin();
     }
 
     // Borradores

@@ -675,7 +675,19 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
 
             {/* Only Admins or Staff with 'CAN_MANAGE_TASKS' permission can create new tasks */}
             {canManageTasks && (
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                <button 
+                  onClick={() => {
+                    const event = new CustomEvent('changeView', { detail: 'rooms' });
+                    window.dispatchEvent(event);
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold uppercase tracking-wider rounded-full transition-all active:scale-95 shadow-lg shadow-blue-600/20"
+                  title="Publicar montaje en salones"
+                >
+                  <Camera size={14} strokeWidth={3} />
+                  <span className="hidden sm:inline">Montaje de Salón</span>
+                  <span className="sm:hidden">Montaje</span>
+                </button>
                 <button 
                   onClick={() => {
                     setEditingTask({});

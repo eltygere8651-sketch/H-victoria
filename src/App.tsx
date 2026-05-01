@@ -4,6 +4,7 @@ import Inventory from './pages/Inventory';
 import Replenishment from './pages/Replenishment';
 import Admin from './pages/Admin';
 import Tasks from './pages/Tasks';
+import Rooms from './pages/Rooms';
 import { PublicTaskViewer } from './components/PublicTaskViewer';
 import * as storageService from './services/storageService';
 import { Logo } from './components/Logo';
@@ -26,13 +27,14 @@ const App: React.FC = () => {
   const [shareData, setShareData] = useState({ url: '', title: '' });
   const [showGuideModal, setShowGuideModal] = useState(false);
 
-  const [view, setView] = useState<'inventory' | 'replenish' | 'admin' | 'tasks'>(() => {
+  const [view, setView] = useState<'inventory' | 'replenish' | 'admin' | 'tasks' | 'rooms' | 'provider'>(() => {
     const lastView = storageService.getLastView();
     const sessionUser = storageService.getSession();
-    let defaultView: 'inventory' | 'replenish' | 'tasks' = 'replenish';
+    let defaultView: 'inventory' | 'replenish' | 'tasks' | 'rooms' | 'provider' = 'replenish';
     if (sessionUser?.role === UserRole.ADMIN) defaultView = 'inventory';
     if (sessionUser?.role === UserRole.GUEST) defaultView = 'tasks';
-    if (lastView && (['inventory', 'replenish', 'admin', 'tasks'] as string[]).includes(lastView)) return lastView as any;
+    if (sessionUser?.role === UserRole.PROVIDER) defaultView = 'provider';
+    if (lastView && (['inventory', 'replenish', 'admin', 'tasks', 'rooms', 'provider'] as string[]).includes(lastView)) return lastView as any;
     return defaultView;
   });
 
@@ -56,6 +58,16 @@ const App: React.FC = () => {
   const soundTypeRef = useRef(soundType);
   volumeRef.current = notificationVolume;
   soundTypeRef.current = soundType;
+
+  useEffect(() => {
+    const handleViewChange = (e: any) => {
+      if (e.detail && typeof e.detail === 'string') {
+        setView(e.detail as any);
+      }
+    };
+    window.addEventListener('changeView', handleViewChange);
+    return () => window.removeEventListener('changeView', handleViewChange);
+  }, []);
 
   useEffect(() => {
     localStorage.setItem('hub_notification_volume', notificationVolume.toString());
@@ -502,6 +514,7 @@ const App: React.FC = () => {
         {view === 'replenish' && user.role !== UserRole.GUEST && user.role !== UserRole.PROVIDER && <Replenishment currentUser={user} cart={cart} setCart={setCart} showMobileCart={showMobileCart} setShowMobileCart={setShowMobileCart} notificationVolume={notificationVolume} soundType={soundType} />}
         {view === 'admin' && user.role === UserRole.ADMIN && <Admin currentUser={user} unreadNotificationsCount={unreadAdminNotifications.length} initialTab={initialAdminTab} />}
         {view === 'tasks' && <Tasks currentUser={user} initialTaskId={sharedTaskId} />}
+        {view === 'rooms' && <Rooms currentUser={user} />}
         {(view as any) === 'provider' && <ProviderDelivery currentUser={user} />}
       </MainLayout>
     );

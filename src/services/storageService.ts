@@ -1,4 +1,4 @@
-import { Product, User, ReplenishmentRequest, UserRole, Department, CartItem, AppNotification, NotificationType, NotificationPayload, OrderBatch, Task, TaskStatus, TaskPriority, TaskType, TaskComment, Document, TaskRecurrence } from '../types';
+import { Product, User, ReplenishmentRequest, UserRole, Department, CartItem, AppNotification, NotificationType, NotificationPayload, OrderBatch, Task, TaskStatus, TaskPriority, TaskType, TaskComment, Document, TaskRecurrence, RoomPost, RoomName } from '../types';
 import { db, auth, storage } from '../firebaseConfig';
 export { auth, db, storage };
 import firebase from 'firebase/compat/app';
@@ -28,6 +28,7 @@ const KEYS = {
   TASKS: 'hotel_victoria_tasks',
   DOCUMENTS: 'hotel_victoria_documents',
   SYSTEM: 'hotel_victoria_system',
+  ROOM_POSTS: 'hotel_victoria_room_posts',
 };
 
 const INITIAL_USERS: User[] = [
@@ -295,22 +296,33 @@ export const saveLastView = (view: string) => localStorage.setItem(KEYS.LAST_VIE
 export const getLastView = (): string | null => localStorage.getItem(KEYS.LAST_VIEW);
 
 export const ensureAdminSession = async (user: User) => {
+  // Solo intentar si es Admin y NO es anónimo (o si queremos forzar el vínculo del admin inicial)
   if (user.role === UserRole.ADMIN && auth.currentUser) {
     const uid = auth.currentUser.uid;
+    const isAnonymous = auth.currentUser.isAnonymous;
+    
     try {
       const userRef = db.collection(KEYS.USERS).doc(uid);
       const userDoc = await userRef.get();
+      
       if (!userDoc.exists || userDoc.data()?.role !== UserRole.ADMIN) {
-        console.log(`Asegurando rol ADMIN para UID: ${uid}...`);
-        await userRef.set({
-          ...user,
-          authUid: uid,
-          lastLogin: Date.now(),
-          reason: 'ensure-admin-status'
-        }, { merge: true });
+        // Si somos el admin configurado o si es el usuario Administrador base
+        if (user.name === 'Administrador' || !isAnonymous) {
+          console.log(`Intentando asegurar rol ADMIN para UID: ${uid}...`);
+          await userRef.set({
+            ...user,
+            authUid: uid,
+            lastLogin: Date.now(),
+            updatedAt: Date.now(),
+            reason: 'ensure-admin-status'
+          }, { merge: true });
+        }
       }
     } catch (e: any) {
-      console.error(`Error asegurando status admin para UID ${uid}:`, e.message);
+      // Ignorar errores de permisos aquí para no ensuciar la consola en bucle
+      if (!e.message?.includes('permissions')) {
+        console.warn(`Aviso asegurando status admin (esperado en algunos casos):`, e.message);
+      }
     }
   }
 };
@@ -993,4 +1005,52 @@ export const saveDocument = async (document: Omit<Document, 'id'>) => {
 export const deleteDocument = async (doc: Document) => {
   try { await storage.refFromURL(doc.url).delete(); } catch(e) {}
   await db.collection(KEYS.DOCUMENTS).doc(doc.id).delete();
+};
+
+// --- NEW: ROOM POSTS MANAGEMENT ---
+export const subscribeToRoomPosts = (callback: (data: RoomPost[]) => void) => {
+  return db.collection(KEYS.ROOM_POSTS).orderBy('createdAt', 'desc').onSnapshot(snapshot => {
+    callback(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as RoomPost)));
+  }, error => handleFirestoreError(error, OperationType.GET, KEYS.ROOM_POSTS));
+};
+
+export const saveRoomPost = async (post: Partial<RoomPost>, newFiles: File[] = [], newVideos: File[] = []) => {
+  const isNew = !post.id;
+  const dbRef = isNew 
+    ? db.collection(KEYS.ROOM_POSTS).doc() 
+    : db.collection(KEYS.ROOM_POSTS).doc(post.id);
+
+  try {
+    // Handle Images
+    if (newFiles.length > 0) {
+      const uploadPromises = newFiles.map(file => uploadImage(file, 'room-images'));
+      const newImageUrls = await Promise.all(uploadPromises);
+      const existingUrls = Array.isArray(post.imageUrls) ? post.imageUrls : [];
+      post.imageUrls = [...existingUrls, ...newImageUrls];
+    }
+
+    // Handle Videos
+    if (newVideos.length > 0) {
+      const uploadPromises = newVideos.map(file => uploadVideoToCloudinary(file));
+      const newVideoUrls = await Promise.all(uploadPromises);
+      const existingVideoUrls = Array.isArray(post.videoUrls) ? post.videoUrls : [];
+      post.videoUrls = [...existingVideoUrls, ...newVideoUrls];
+    }
+  } catch (error) {
+    console.error("Error al subir medios del salón:", error);
+    throw new Error('Error al subir archivos. Por favor, inténtelo de nuevo.');
+  }
+
+  const finalPost = sanitizeData({
+    ...post,
+    id: dbRef.id,
+    createdAt: isNew ? Date.now() : post.createdAt,
+  });
+
+  await dbRef.set(finalPost, { merge: true });
+  return dbRef.id;
+};
+
+export const deleteRoomPost = async (postId: string) => {
+  await db.collection(KEYS.ROOM_POSTS).doc(postId).delete();
 };

@@ -179,7 +179,25 @@ export interface AppNotification {
   payload: NotificationPayload;
 }
 
-// --- New Document Management Types ---
+// --- New Room Assembly Types ---
+export enum RoomName {
+  RESTAURANTE = 'Restaurante',
+  SALON_C = 'Salon C',
+  TERRAZA = 'Terraza'
+}
+
+export interface RoomPost {
+  id: string;
+  roomName: RoomName | string;
+  title: string;
+  description?: string;
+  imageUrls?: string[];
+  videoUrls?: string[];
+  createdBy: string;
+  createdById: string;
+  createdAt: number;
+}
+
 export interface Document {
   id: string;
   name: string;

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Logo } from './Logo';
-import { Download, Share2, Sun, Moon, LogOut, ClipboardCheck, ClipboardList, LayoutGrid, ShieldCheck, ShoppingCart, X, Volume2, VolumeX, Pause, Play, Sparkles, Bell, ChevronDown } from 'lucide-react';
+import { Download, Share2, Sun, Moon, LogOut, ClipboardCheck, ClipboardList, LayoutGrid, ShieldCheck, ShoppingCart, X, Volume2, VolumeX, Pause, Play, Sparkles, Bell, ChevronDown, LayoutTemplate } from 'lucide-react';
 import { User, UserRole, CartItem } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -286,6 +286,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
         <div className="fixed bottom-6 inset-x-0 z-[45] flex justify-center px-4 sm:px-6 pointer-events-none pb-safe">
           <nav className="pointer-events-auto bg-white/85 dark:bg-slate-900/85 backdrop-blur-3xl border border-white/20 dark:border-slate-800 shadow-[0_20px_50px_rgba(0,0,0,0.3)] rounded-[2.5rem] p-1.5 flex items-center justify-between gap-1 w-full max-w-md ring-1 ring-black/5">
               <NavButton icon={ClipboardCheck} label="Tareas" isActive={view === 'tasks'} onClick={() => setView('tasks')} hasAlert={hasUnreadTasks || hasPendingDailyTasks}/>
+              <NavButton icon={LayoutTemplate} label="Salones" isActive={view === 'rooms'} onClick={() => setView('rooms')} />
               {user.role !== UserRole.GUEST && <NavButton icon={ClipboardList} label="Pedidos" isActive={view === 'replenish'} onClick={() => setView('replenish')} />}
               {user.role === UserRole.ADMIN && <NavButton icon={LayoutGrid} label="Almacén" isActive={view === 'inventory'} onClick={() => setView('inventory')} />}
               {user.role === UserRole.ADMIN && <NavButton icon={ShieldCheck} label="Admin" isActive={view === 'admin'} onClick={() => setView('admin')} hasAlert={unreadAdminNotificationsCount > 0} />}
