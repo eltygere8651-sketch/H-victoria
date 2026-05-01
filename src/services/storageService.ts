@@ -695,14 +695,18 @@ export const subscribeToTasks = (callback: (data: Task[]) => void) => {
         callback(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Task)));
     }, error => handleFirestoreError(error, OperationType.GET, KEYS.TASKS));
 };
-// --- IMAGES ---
-export const uploadImage = async (file: File, folder: string = 'tasks'): Promise<string> => {
-  const path = `${folder}/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
-  const snapshot = await storage.ref().child(path).put(file, { contentType: file.type || 'image/jpeg' });
-  return await snapshot.ref.getDownloadURL();
-};
+import { uploadVideoToCloudinary, uploadImageToCloudinary } from './cloudinaryService';
 
-import { uploadVideoToCloudinary } from './cloudinaryService';
+// --- IMAGES ---
+export const uploadImage = async (file: File, folder: string = 'task-images'): Promise<string> => {
+  try {
+    return await uploadImageToCloudinary(file);
+  } catch (error) {
+    console.warn("Cloudinary upload failed, falling back to base64", error);
+    // Fallback to base64 if Cloudinary is not configured or fails
+    return await fileToBase64(file);
+  }
+};
 
 export const saveTask = async (task: Partial<Task>, newFiles: File[] = [], newVideos: File[] = []) => {
   const isNew = !task.id;
@@ -712,7 +716,7 @@ export const saveTask = async (task: Partial<Task>, newFiles: File[] = [], newVi
 
   // Handle Images
   if (newFiles.length > 0) {
-      const uploadPromises = newFiles.map(file => uploadImage(file, 'tasks'));
+      const uploadPromises = newFiles.map(file => uploadImage(file, 'task-images'));
       const newImageUrls = await Promise.all(uploadPromises);
       const existingUrls = Array.isArray(task.imageUrls) ? task.imageUrls : [];
       const finalImageUrls = [...existingUrls, ...newImageUrls];

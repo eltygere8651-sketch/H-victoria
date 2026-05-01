@@ -11,8 +11,16 @@ const CLOUDINARY_CLOUD_NAME = (import.meta as any).env.VITE_CLOUDINARY_CLOUD_NAM
 const CLOUDINARY_UPLOAD_PRESET = (import.meta as any).env.VITE_CLOUDINARY_UPLOAD_PRESET;
 
 export const uploadVideoToCloudinary = async (file: File): Promise<string> => {
+  return uploadToCloudinary(file, 'video');
+};
+
+export const uploadImageToCloudinary = async (file: File): Promise<string> => {
+  return uploadToCloudinary(file, 'image');
+};
+
+const uploadToCloudinary = async (file: File, resourceType: 'video' | 'image'): Promise<string> => {
   if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_UPLOAD_PRESET) {
-    throw new Error('Configuración de Cloudinary incompleta. Asegúrate de poner VITE_CLOUDINARY_CLOUD_NAME y VITE_CLOUDINARY_UPLOAD_PRESET en Settings -> Environment Variables.');
+    throw new Error('Configuración de Cloudinary incompleta. Pídele al usuario que agregue VITE_CLOUDINARY_CLOUD_NAME y VITE_CLOUDINARY_UPLOAD_PRESET.');
   }
 
   const formData = new FormData();
@@ -22,7 +30,7 @@ export const uploadVideoToCloudinary = async (file: File): Promise<string> => {
 
   try {
     const response = await fetch(
-      `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/video/upload`,
+      `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/${resourceType}/upload`,
       {
         method: 'POST',
         body: formData,
@@ -32,12 +40,7 @@ export const uploadVideoToCloudinary = async (file: File): Promise<string> => {
     if (!response.ok) {
       const errorData = await response.json();
       const msg = errorData.error?.message || '';
-      
-      if (msg.includes('Unknown API key')) {
-        throw new Error('Cloudinary dice "Unknown API Key". SOLUCIÓN: Ve a Cloudinary -> Settings -> Upload -> Presets y edita tu preset para que sea "Unsigned".');
-      }
-      
-      throw new Error(msg || 'Error al subir video a Cloudinary');
+      throw new Error(msg || `Error al subir ${resourceType} a Cloudinary`);
     }
 
     const data = await response.json();

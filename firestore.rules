@@ -54,29 +54,14 @@ service cloud.firestore {
     // --- COLLECTIONS ---
 
     match /hotel_victoria_users/{userId} {
-      allow get: if isSignedIn();
-      allow list: if isSignedIn(); // Allow listing for profile lookup
-      
-      // Bootstrap & Self-Management
-      allow create: if isSignedIn() && (
-        isSuperAdmin() || 
-        incoming().get('isAdmin', false) == false ||
-        incoming().get('name', '') == 'Administrador' ||
-        incoming().get('role', '') == 'ADMIN' ||
-        isInitializationPhase()
-      );
-      
-      allow update: if isSignedIn() && (
-        userId == request.auth.uid || 
-        existing().get('authUid', '') == request.auth.uid ||
-        // Permitir vinculación si no hay UID o si es el Administrador base
-        existing().get('authUid', '') == '' ||
-        existing().get('name', '') == 'Administrador' ||
+      allow get, list: if isSignedIn();
+      allow write: if isSignedIn() && (
+        userId == request.auth.uid ||
+        isSuperAdmin() ||
         isAdmin() ||
-        isSuperAdmin()
+        isInitializationPhase() ||
+        existing().get('authUid', '') == ''
       );
-                        
-      allow delete: if isAdmin() || isSuperAdmin();
     }
 
     match /hotel_victoria_products/{productId} {
@@ -106,8 +91,7 @@ service cloud.firestore {
     }
 
     match /hotel_victoria_tasks/{taskId} {
-      allow read: if isSignedIn();
-      allow write: if isStaff();
+      allow read, write: if isSignedIn();
       allow delete: if isAdmin();
     }
     
