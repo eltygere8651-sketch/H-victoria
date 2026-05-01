@@ -122,12 +122,12 @@ export interface Task {
   description?: string;
   status: TaskStatus;
   priority: TaskPriority;
-  departmentId: string | undefined; // The department this task is assigned to
-  departmentName: string | undefined;
+  location?: string;
+  departmentId: string; // The department this task is assigned to
+  departmentName: string;
   createdBy: string; // User's name
   createdById: string; // User's ID
   createdAt: number; // Timestamp
-  location?: 'General' | 'Restaurante' | 'Salon C' | 'Terraza'; // New field for task location
   startDate?: number; // New: Task start date/time
   dueDate?: number; // New: Task end/due date/time
   completedBy?: string;
@@ -140,9 +140,6 @@ export interface Task {
   seenBy?: string[]; // New: Array of user IDs who have seen the latest update
   checklist?: TaskChecklistItem[]; // New: Interactive checklist for tasks
   recurrence?: TaskRecurrence; // New: Recurrence for scheduled tasks
-  isPublishedToMontaje?: boolean; // New: Whether task is published to Montaje tab
-  hallId?: string; // New: Link to a specific event hall
-  locationLabel?: string; // To be able to set explicitly
 }
 
 // --- Notification System Types ---
@@ -191,24 +188,4 @@ export interface Document {
   fileType: string; // e.g., 'application/pdf'
   uploadedBy: string; // User's name
   createdAt: number; // Timestamp
-}
-
-export interface SetupGuide {
-  id: string;
-  title: string;
-  description: string;
-  imageUrls: string[];
-  videoUrls?: string[];
-}
-
-export interface EventHall {
-  id: string;
-  name: string;
-  description?: string;
-  capacity?: string;
-  imageUrls?: string[];
-  videoUrls?: string[];
-  setupGuides?: SetupGuide[];
-  createdAt: number;
-  updatedAt: number;
 }

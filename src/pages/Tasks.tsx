@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
-import { Task, User, Department, TaskStatus, TaskPriority, UserRole, TaskType, TaskComment, TaskChecklistItem, TaskRecurrence, EventHall, SetupGuide } from '../types';
+import { Task, User, Department, TaskStatus, TaskPriority, UserRole, TaskType, TaskComment, TaskChecklistItem, TaskRecurrence } from '../types';
 import * as storageService from '../services/storageService';
-import { ClipboardCheck, Plus, X, Save, Loader2, Edit2, Trash2, ChevronDown, MessagesSquare, Check, Camera, AlertTriangle, Share2, Send, Image, Info, Flame, Bold, Calendar, Clock, List, FileText, Users, Phone, Hash, ChevronRight, User as UserIcon, Video, LayoutDashboard, Map, Images } from 'lucide-react';
+import { ClipboardCheck, Plus, X, Save, Loader2, Edit2, Trash2, ChevronDown, MessagesSquare, Check, Camera, AlertTriangle, Share2, Send, Image, Info, Flame, Bold, Calendar, Clock, List, FileText, Users, Phone, Hash, ChevronRight, User as UserIcon, Video } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { compressImage } from '../utils/imageCompressor';
 import { ImageViewer } from '../components/ImageViewer';
@@ -24,17 +24,8 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
   const [saveError, setSaveError] = useState<string | null>(null);
   
   const [statusFilter, setStatusFilter] = useState<TaskStatus | 'ALL'>('ALL');
-  const [activeTab, setActiveTab] = useState<'ACTIVE' | 'DAILY' | 'HALLS'>('ACTIVE');
+  const [activeTab, setActiveTab] = useState<'ACTIVE' | 'DAILY'>('ACTIVE');
   
-  const [halls, setHalls] = useState<EventHall[]>([]);
-  const [selectedHall, setSelectedHall] = useState<EventHall | null>(null);
-  const [showHallModal, setShowHallModal] = useState(false);
-  const [editingHall, setEditingHall] = useState<Partial<EventHall> | null>(null);
-  const [hallToDelete, setHallToDelete] = useState<EventHall | null>(null);
-
-  const [showGuideModal, setShowGuideModal] = useState(false);
-  const [editingGuide, setEditingGuide] = useState<Partial<SetupGuide> | null>(null);
-  const [activeHallForGuide, setActiveHallForGuide] = useState<EventHall | null>(null);
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [editingTask, setEditingTask] = useState<Partial<Task> | null>(null);
   const [taskToDelete, setTaskToDelete] = useState<Task | null>(null);
@@ -127,19 +118,16 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
       setLoading(false);
     });
     const unsubscribeDepartments = storageService.subscribeToDepartments(setDepartments);
-    const unsubscribeHalls = storageService.subscribeToEventHalls(setHalls);
 
     return () => {
       unsubscribeTasks();
       unsubscribeDepartments();
-      unsubscribeHalls();
     };
   }, []);
 
   const handleSaveTask = async () => {
-    // New requirement: Department is optional for Montaje tasks (if isPublishedToMontaje is true)
-    if (!editingTask?.title || (!editingTask?.departmentId && !editingTask?.isPublishedToMontaje)) {
-      setSaveError('Título es obligatorio, y debes asignar un Departamento o seleccionar un Salón (Montaje)');
+    if (!editingTask?.title || !editingTask?.departmentId) {
+      setSaveError('Título y Departamento son obligatorios');
       return;
     }
 
@@ -416,81 +404,6 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
     }
   }, []);
 
-  // --- HALL MANAGEMENT ---
-  const handleSaveHall = async () => {
-    if (!editingHall?.name) return;
-    setIsSaving(true);
-    try {
-      await storageService.saveEventHall(editingHall);
-      setShowHallModal(false);
-      setEditingHall(null);
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleDeleteHall = async () => {
-    if (hallToDelete) {
-      await storageService.deleteEventHall(hallToDelete.id, hallToDelete.imageUrls);
-      setHallToDelete(null);
-    }
-  };
-
-  const handleSaveGuide = async () => {
-    if (!editingGuide?.title || !activeHallForGuide) return;
-    setIsSaving(true);
-    try {
-      // 1. Upload new media
-      const uploadedImageUrls = await Promise.all(selectedImages.map(f => storageService.uploadImage(f, 'halls')));
-      const uploadedVideoUrls = await Promise.all(selectedVideos.map(f => storageService.uploadVideoToCloudinary(f, 'halls')));
-
-      // 2. Prepare guide with new media
-      const currentGuides = [...(activeHallForGuide.setupGuides || [])];
-      
-      const newGuide: SetupGuide = {
-        ...(editingGuide as SetupGuide),
-        id: editingGuide.id || Date.now().toString(),
-        imageUrls: [...(editingGuide.imageUrls || []), ...uploadedImageUrls],
-        videoUrls: [...(editingGuide.videoUrls || []), ...uploadedVideoUrls]
-      };
-
-      // 3. Update the list of guides
-      const updatedGuides = editingGuide.id 
-        ? currentGuides.map(g => g.id === editingGuide.id ? newGuide : g)
-        : [...currentGuides, newGuide];
-
-      // 4. Save to Firestore
-      await storageService.saveEventHall({
-        ...activeHallForGuide,
-        setupGuides: updatedGuides
-      });
-
-      setShowGuideModal(false);
-      setEditingGuide(null);
-      setActiveHallForGuide(null);
-      setPreviews([]);
-      setVideoPreviews([]);
-      setSelectedImages([]);
-      setSelectedVideos([]);
-    } catch (error) {
-      console.error(error);
-      alert('Error al guardar la guía.');
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleDeleteGuide = async (hall: EventHall, guideId: string) => {
-    if (!window.confirm('¿Eliminar esta guía de montaje?')) return;
-    const updatedGuides = (hall.setupGuides || []).filter(g => g.id !== guideId);
-    await storageService.saveEventHall({
-      id: hall.id,
-      setupGuides: updatedGuides
-    });
-  };
-
   // Helper to insert *bold* syntax in textarea
   const insertUrgentMarker = () => {
     if (!descriptionInputRef.current) return;
@@ -528,7 +441,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
       if (activeTab === 'DAILY') {
         return statusMatch && deptMatch && task.recurrence === TaskRecurrence.DAILY;
       } else if (activeTab === 'ACTIVE') {
-        return statusMatch && deptMatch && task.recurrence !== TaskRecurrence.DAILY && !task.isPublishedToMontaje;
+        return statusMatch && deptMatch && task.recurrence !== TaskRecurrence.DAILY;
       }
       
       return statusMatch && deptMatch;
@@ -688,23 +601,16 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
               </h2>
             </div>
             
-            <div className="flex bg-gray-100 dark:bg-slate-800 rounded-xl p-1 mx-4 overflow-x-auto no-scrollbar">
-              <button
-                onClick={() => setActiveTab('HALLS')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap flex items-center gap-1.5 ${activeTab === 'HALLS' ? 'bg-white dark:bg-slate-700 shadow-sm text-red-600' : 'text-gray-500 dark:text-gray-400'}`}
-              >
-                <Bold size={14} className={activeTab === 'HALLS' ? 'text-red-600' : ''} strokeWidth={3} />
-                <span>Montajes Salones</span>
-              </button>
+            <div className="flex bg-gray-100 dark:bg-slate-800 rounded-xl p-1 mx-4">
               <button
                 onClick={() => setActiveTab('ACTIVE')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === 'ACTIVE' ? 'bg-white dark:bg-slate-700 shadow-sm text-red-600' : 'text-gray-500 dark:text-gray-400'}`}
+                className={`px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'ACTIVE' ? 'bg-white dark:bg-slate-700 shadow-sm text-red-600' : 'text-gray-500 dark:text-gray-400'}`}
               >
                 Activas
               </button>
               <button
                 onClick={() => setActiveTab('DAILY')}
-                className={`relative px-4 py-1.5 rounded-lg text-xs font-black uppercase tracking-widest transition-all overflow-hidden group whitespace-nowrap ${
+                className={`relative px-4 py-1.5 rounded-lg text-xs font-black uppercase tracking-widest transition-all overflow-hidden group ${
                   activeTab === 'DAILY' 
                     ? 'bg-gradient-to-r from-red-600 to-orange-600 shadow-lg shadow-red-600/30 text-white' 
                     : 'text-gray-500 dark:text-gray-400 hover:bg-white/50 dark:hover:bg-slate-700/50'
@@ -772,21 +678,14 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
               <div className="flex items-center gap-1.5">
                 <button 
                   onClick={() => {
-                    const defaultNewTask: Partial<Task> = {};
-                    if (activeTab === 'HALLS') {
-                      defaultNewTask.isPublishedToMontaje = true;
-                      if (selectedHall) defaultNewTask.hallId = selectedHall.id;
-                    } else if (activeTab === 'DAILY') {
-                      defaultNewTask.recurrence = TaskRecurrence.DAILY;
-                    }
-                    setEditingTask(defaultNewTask);
+                    setEditingTask({});
                     setSelectedImages([]);
                     setPreviews([]);
                     setShowTaskModal(true);
                   }}
-                  className="min-h-[44px] flex items-center justify-center gap-2 px-6 bg-red-600 hover:bg-red-700 text-white text-sm font-black uppercase tracking-widest rounded-full transition-all active:scale-95 shadow-lg shadow-red-600/20"
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold uppercase tracking-wider rounded-full transition-all active:scale-95 shadow-lg shadow-red-600/20"
                 >
-                  <Plus size={16} strokeWidth={3} />
+                  <Plus size={14} strokeWidth={3} />
                   <span>Nueva Tarea</span>
                 </button>
               </div>
@@ -795,8 +694,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
         </div>
 
         {/* Filters and Week Navigation inside sticky header */}
-        {activeTab !== 'HALLS' && (
-          <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-2">
             <div className="flex gap-2">
               <select 
                 value={statusFilter}
@@ -850,251 +748,11 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
               </div>
             )}
           </div>
-        )}
-
-        {activeTab === 'HALLS' && (
-          <div className="flex flex-col gap-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
-                <button
-                  onClick={() => setSelectedHall(null)}
-                  className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap ${!selectedHall ? 'bg-red-600 text-white shadow-lg shadow-red-600/20' : 'bg-gray-100 dark:bg-slate-800 text-gray-500 hover:bg-gray-200'}`}
-                >
-                  General
-                </button>
-                {halls.map(h => (
-                  <button
-                    key={h.id}
-                    onClick={() => setSelectedHall(h)}
-                    className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap ${selectedHall?.id === h.id ? 'bg-red-600 text-white shadow-lg shadow-red-600/20' : 'bg-gray-100 dark:bg-slate-800 text-gray-500 hover:bg-gray-200'}`}
-                  >
-                    {h.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
       </div>
 
       <div className="p-4 md:p-6 space-y-10">
-        {activeTab === 'HALLS' ? (
-          <div className="space-y-8">
-            {/* General Montaje Tasks (Not assigned to a specific hall) */}
-            {allTasks.some(t => t.isPublishedToMontaje && !t.hallId) && (
-              <motion.div 
-                layout
-                className="bg-white dark:bg-slate-900 rounded-[2.5rem] border-2 border-gray-100 dark:border-slate-800 overflow-hidden shadow-xl"
-              >
-                <div className="p-6 md:p-8">
-                  <div className="flex flex-col mb-6">
-                    <span className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-[0.3em] mb-1">Coordinación General</span>
-                    <h3 className="text-3xl font-black text-slate-950 dark:text-white uppercase tracking-tighter leading-none italic text-blue-600">Tareas Generales</h3>
-                  </div>
-                  
-                  <div className="space-y-4">
-                    {allTasks.filter(t => t.isPublishedToMontaje && !t.hallId).map(task => (
-                      <TaskCard 
-                        key={task.id}
-                        task={task}
-                        currentUser={currentUser}
-                        onToggleChecklist={handleToggleChecklistItem}
-                        onStart={handleStartTask}
-                        onComplete={handleCompleteTask}
-                        onEdit={handleEditTask}
-                        onDelete={handleDeleteTaskConfirm}
-                        onComment={handleCommentTask}
-                        onShare={handleShareTaskAction}
-                        onSharePdf={handleSharePdfAction}
-                        onViewImages={handleViewImagesAction}
-                        compact={true}
-                      />
-                    ))}
-                  </div>
-                </div>
-              </motion.div>
-            )}
-
-            {halls.length === 0 ? (
-              <div className="py-24 text-center bg-white dark:bg-slate-900 rounded-[2.5rem] border-4 border-dashed border-gray-200 dark:border-slate-800 shadow-inner flex flex-col items-center">
-                <LayoutDashboard size={80} className="mx-auto mb-6 text-gray-300 dark:text-slate-700" />
-                <p className="text-3xl font-black text-gray-400 dark:text-slate-600 uppercase tracking-tighter">Sin Salones</p>
-                <p className="text-gray-400 dark:text-slate-500 font-medium mt-2 mb-6">Registra los salones para subir sus guías de montaje.</p>
-                <button
-                  onClick={async () => {
-                    const hallsToCreate = [
-                      { name: "Terraza", capacity: "0" },
-                      { name: "Restaurante", capacity: "0" },
-                      { name: "Salon C", capacity: "0" }
-                    ];
-                    for (const hall of hallsToCreate) {
-                      await storageService.saveEventHall(hall);
-                    }
-                  }}
-                  className="min-h-[44px] flex items-center justify-center px-8 bg-red-600 hover:bg-red-700 text-white text-sm font-black uppercase tracking-widest rounded-full transition-all active:scale-95 shadow-lg shadow-red-600/20 cursor-pointer"
-                >
-                  Generar Salones
-                </button>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {(selectedHall ? [selectedHall] : halls).map(hall => (
-                  <motion.div 
-                    layout
-                    key={hall.id}
-                    className="bg-white dark:bg-slate-900 rounded-[2.5rem] border-2 border-gray-100 dark:border-slate-800 overflow-hidden shadow-xl"
-                  >
-                    <div className="p-6 md:p-8">
-                       <div className="flex justify-between items-start mb-6">
-                         <div className="flex flex-col">
-                           <span className="text-[10px] font-black text-red-600 dark:text-red-400 uppercase tracking-[0.3em] mb-1">Espacio de Eventos</span>
-                           <h3 className="text-3xl font-black text-slate-950 dark:text-white uppercase tracking-tighter leading-none italic">{hall.name}</h3>
-                           {hall.capacity && (
-                             <div className="flex items-center gap-1.5 mt-2 bg-slate-100 dark:bg-slate-800 self-start px-2 py-1 rounded-lg">
-                               <Users size={12} className="text-slate-500" />
-                               <span className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase">Capacidad: {hall.capacity}</span>
-                             </div>
-                           )}
-                         </div>
-                         <div className="flex gap-2">
-                           {canManageTasks && (
-                             <>
-                               <button onClick={() => { setEditingHall(hall); setShowHallModal(true); }} className="p-2 bg-gray-100 dark:bg-slate-800 rounded-xl text-blue-600 hover:scale-110 transition-transform shadow-md"><Edit2 size={18} /></button>
-                               <button onClick={() => setHallToDelete(hall)} className="p-2 bg-gray-100 dark:bg-slate-800 rounded-xl text-red-600 hover:scale-110 transition-transform shadow-md"><Trash2 size={18} /></button>
-                             </>
-                           )}
-                         </div>
-                       </div>
-                       
-                       <div className="space-y-8">
-                         {/* Setup Guides Section */}
-                         <div className="space-y-4">
-                           <div className="flex items-center justify-between border-b border-gray-100 dark:border-slate-800 pb-2">
-                             <h4 className="text-sm font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 flex items-center gap-2">
-                               <List size={16} /> Guías de Montaje
-                             </h4>
-                             {canManageTasks && (
-                               <button 
-                                 onClick={() => {
-                                   setActiveHallForGuide(hall);
-                                   setEditingGuide({});
-                                   setPreviews([]);
-                                   setSelectedImages([]);
-                                   setShowGuideModal(true);
-                                 }}
-                                 className="text-[10px] font-black text-red-600 dark:text-red-400 uppercase tracking-widest hover:underline"
-                               >
-                                 + Nueva Guía
-                               </button>
-                             )}
-                           </div>
-                           
-                           {(!hall.setupGuides || hall.setupGuides.length === 0) ? (
-                             <p className="text-[10px] text-slate-400 italic text-center py-6 bg-gray-50/50 dark:bg-slate-950/30 rounded-2xl border border-dashed border-gray-100 dark:border-slate-800">No hay guías publicadas para este salón.</p>
-                           ) : (
-                             <div className="grid grid-cols-1 gap-4">
-                               {hall.setupGuides.map(guide => (
-                                 <div key={guide.id} className="group bg-gray-50 dark:bg-slate-950/50 rounded-2xl p-4 border border-gray-200 dark:border-slate-800 transition-all hover:shadow-lg">
-                                   <div className="flex justify-between items-start mb-3">
-                                     <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center shadow-md">
-                                          <Map size={20} />
-                                        </div>
-                                        <div>
-                                          <h5 className="font-black text-slate-900 dark:text-white uppercase leading-none text-sm">{guide.title}</h5>
-                                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">{guide.description}</p>
-                                        </div>
-                                     </div>
-                                     {canManageTasks && (
-                                       <div className="flex gap-1">
-                                         <button onClick={() => { 
-                                           setActiveHallForGuide(hall); 
-                                           setEditingGuide(guide); 
-                                           setPreviews([]);
-                                           setSelectedImages([]);
-                                           setShowGuideModal(true); 
-                                         }} className="p-1.5 text-slate-400 hover:text-blue-600"><Edit2 size={14} /></button>
-                                         <button onClick={() => handleDeleteGuide(hall, guide.id)} className="p-1.5 text-slate-400 hover:text-red-600"><Trash2 size={14} /></button>
-                                       </div>
-                                     )}
-                                    {guide.videoUrls && guide.videoUrls.length > 0 && (
-                                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-4">
-                                            {guide.videoUrls.map((url, idx) => (
-                                              <div key={`vid-${idx}`} className="relative aspect-video rounded-xl overflow-hidden shadow-sm">
-                                                <video src={url} className="w-full h-full object-cover" controls playsInline muted />
-                                              </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                   </div>
-                                   
-                                   {guide.imageUrls && guide.imageUrls.length > 0 && (
-                                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-4">
-                                       {guide.imageUrls.map((url, idx) => (
-                                         <div 
-                                           key={idx} 
-                                           onClick={() => handleViewImagesAction(guide.imageUrls, idx)}
-                                           className="relative aspect-video rounded-xl overflow-hidden cursor-zoom-in group/img shadow-sm"
-                                         >
-                                           <img src={url} alt="Montaje" className="w-full h-full object-cover transition-transform duration-500 group-hover/img:scale-110" />
-                                           <div className="absolute inset-0 bg-black/20 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center">
-                                             <Images size={20} className="text-white" />
-                                           </div>
-                                         </div>
-                                       ))}
-                                     </div>
-                                   )}
-                                 </div>
-                               ))}
-                             </div>
-                           )}
-                         </div>
-
-                         {/* Tasks Section for this Hall */}
-                         <div className="space-y-4 pt-6 border-t border-gray-100 dark:border-slate-800">
-                           <h4 className="text-sm font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 flex items-center gap-2">
-                             <ClipboardCheck size={16} /> Tareas de Montaje
-                           </h4>
-                           
-                           {(() => {
-                             const hallTasks = allTasks.filter(t => t.isPublishedToMontaje && t.hallId === hall.id);
-                             if (hallTasks.length === 0) return (
-                               <p className="text-[10px] text-slate-400 italic text-center py-6 bg-gray-50/50 dark:bg-slate-950/30 rounded-2xl border border-dashed border-gray-200 dark:border-slate-800">
-                                 No hay tareas activas asignadas a este salón.
-                               </p>
-                             );
-                             
-                             return (
-                               <div className="space-y-4">
-                                 {hallTasks.map(task => (
-                                   <TaskCard 
-                                     key={task.id}
-                                     task={task}
-                                     currentUser={currentUser}
-                                     onToggleChecklist={handleToggleChecklistItem}
-                                     onStart={handleStartTask}
-                                     onComplete={handleCompleteTask}
-                                     onEdit={handleEditTask}
-                                     onDelete={handleDeleteTaskConfirm}
-                                     onComment={handleCommentTask}
-                                     onShare={handleShareTaskAction}
-                                     onSharePdf={handleSharePdfAction}
-                                     onViewImages={handleViewImagesAction}
-                                     compact={true}
-                                   />
-                                 ))}
-                               </div>
-                             );
-                           })()}
-                         </div>
-                       </div>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-            )}
-          </div>
-        ) : viewMode === 'LIST' ? (
+        {/* SECTION: TASKS (HIGH IMPACT ACTION STYLE) */}
+        {viewMode === 'LIST' ? (
           <div className="space-y-6">
             {listTasks.length === 0 ? (
               <div className="py-24 text-center bg-white dark:bg-slate-900 rounded-[2.5rem] border-4 border-dashed border-gray-200 dark:border-slate-800 shadow-inner">
@@ -1347,54 +1005,6 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
                   </div>
                 )}
 
-                {/* Montaje de Salones Option */}
-                {canManageTasks && (
-                  <div className="bg-slate-50 dark:bg-slate-800/30 p-4 rounded-2xl border-2 border-slate-200 dark:border-slate-700 space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Map size={18} className="text-red-600" />
-                        <label className="text-sm font-black text-gray-700 dark:text-white uppercase tracking-tight">Publicar en Montaje</label>
-                      </div>
-                      <button 
-                        type="button"
-                        onClick={() => setEditingTask({ ...editingTask, isPublishedToMontaje: !editingTask?.isPublishedToMontaje })}
-                        className={`w-12 h-6 rounded-full transition-all relative ${editingTask?.isPublishedToMontaje ? 'bg-red-600' : 'bg-gray-300 dark:bg-slate-600'}`}
-                      >
-                        <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${editingTask?.isPublishedToMontaje ? 'left-7' : 'left-1'}`} />
-                      </button>
-                    </div>
-
-                    <AnimatePresence>
-                      {editingTask?.isPublishedToMontaje && (
-                        <motion.div 
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: 'auto' }}
-                          exit={{ opacity: 0, height: 0 }}
-                          className="space-y-3 overflow-hidden"
-                        >
-                          <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Ubicación / Salón</label>
-                          <div className="relative">
-                            <select 
-                              value={editingTask?.location || 'General'}
-                              onChange={e => setEditingTask({ ...editingTask, location: e.target.value as any })}
-                              className="w-full pl-4 pr-10 py-3 font-bold bg-white dark:bg-slate-900 border-2 border-gray-200 dark:border-slate-700 rounded-xl focus:border-red-500 outline-none appearance-none dark:text-white text-sm"
-                            >
-                              <option value="General">General</option>
-                              {halls.map(hall => (
-                                <option key={hall.id} value={hall.name}>{hall.name}</option>
-                              ))}
-                            </select>
-                            <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={18} />
-                          </div>
-                          <p className="text-[10px] font-bold text-gray-400 italic">
-                            * Al activar esta opción, la tarea aparecerá en la sección correspondiente de Montaje.
-                          </p>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-                )}
-
                 <div>
                    <div className="flex justify-between items-center mb-2">
                       <label className="block text-xs font-black text-gray-400 uppercase tracking-widest ml-1">Descripción (Opcional)</label>
@@ -1606,169 +1216,6 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
       )}
 
       {/* Delete Confirmation Modal */}
-
-      {/* Hall Management Modal */}
-      {showHallModal && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 animate-fade-in overflow-y-auto">
-          <div className="bg-white dark:bg-slate-900 rounded-[3rem] w-full max-w-lg my-auto shadow-2xl border-4 border-slate-100 dark:border-slate-800 flex flex-col max-h-[90vh]">
-             <div className="p-8 border-b border-gray-100 dark:border-slate-800 flex justify-between items-center bg-gray-50 dark:bg-slate-900 sticky top-0 z-10 rounded-t-[3rem]">
-                <div>
-                   <span className="text-[10px] font-black text-red-600 dark:text-red-400 uppercase tracking-[0.4em] mb-1 block">Administración</span>
-                   <h3 className="text-2xl font-black text-slate-950 dark:text-white uppercase tracking-tighter italic">
-                     {editingHall?.id ? 'Editar Salón' : 'Nuevo Salón'}
-                   </h3>
-                </div>
-                <button onClick={() => setShowHallModal(false)} className="p-3 bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-500 rounded-full shadow-lg hover:scale-110 shadow-black/5 transition-transform">
-                   <X size={24} strokeWidth={3} />
-                </button>
-             </div>
-             
-             <div className="flex-1 overflow-y-auto p-8 space-y-6">
-                <div>
-                   <label className="block text-xs font-black text-gray-400 dark:text-slate-500 uppercase tracking-widest mb-3 ml-1">Nombre del Salón</label>
-                   <input 
-                     value={editingHall?.name || ''}
-                     onChange={e => setEditingHall({ ...editingHall, name: e.target.value })}
-                     className="w-full px-6 py-5 font-black text-2xl bg-gray-50 dark:bg-slate-800/50 border-4 border-transparent focus:border-red-600 dark:focus:border-red-500/50 outline-none rounded-[2rem] transition-all dark:text-white italic placeholder-gray-300 dark:placeholder-slate-700"
-                     placeholder="Ej: Salón Real..."
-                   />
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                     <label className="block text-xs font-black text-gray-400 dark:text-slate-500 uppercase tracking-widest mb-3 ml-1">Capacidad Máx.</label>
-                     <input 
-                        value={editingHall?.capacity || ''}
-                        onChange={e => setEditingHall({ ...editingHall, capacity: e.target.value })}
-                        className="w-full px-5 py-4 font-bold bg-gray-50 dark:bg-slate-800/50 border-2 border-slate-200 dark:border-slate-800 rounded-2xl focus:border-red-500 outline-none dark:text-white"
-                        placeholder="Ej: 200 Personas"
-                     />
-                  </div>
-                </div>
-             </div>
-             
-             <div className="p-8 border-t border-gray-100 dark:border-slate-800 flex gap-4 bg-gray-50 dark:bg-slate-900 sticky bottom-0 z-10 rounded-b-[3rem]">
-                <button onClick={() => setShowHallModal(false)} className="flex-1 py-5 font-black text-slate-500 uppercase tracking-widest hover:bg-gray-200 dark:hover:bg-slate-800 rounded-[1.5rem] transition-colors">Cancelar</button>
-                <button 
-                  onClick={handleSaveHall} 
-                  disabled={isSaving || !editingHall?.name}
-                  className="flex-[2] py-5 bg-red-600 text-white font-black uppercase tracking-widest rounded-[1.5rem] shadow-xl shadow-red-600/30 active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                >
-                  {isSaving ? <Loader2 className="animate-spin" /> : <Save size={20} />}
-                  {editingHall?.id ? 'GUARDAR CAMBIOS' : 'CREAR SALÓN'}
-                </button>
-             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Guide Management Modal */}
-      {showGuideModal && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/95 backdrop-blur-lg p-4 animate-fade-in overflow-y-auto">
-          <div className="bg-white dark:bg-slate-900 rounded-[3rem] w-full max-w-2xl my-auto shadow-2xl border-4 border-slate-100 dark:border-slate-800 flex flex-col max-h-[95vh]">
-             <div className="p-8 border-b border-gray-100 dark:border-slate-800 flex justify-between items-center bg-gray-50 dark:bg-slate-900 sticky top-0 z-10 rounded-t-[3rem]">
-                <div>
-                   <span className="text-[10px] font-black text-red-600 dark:text-red-400 uppercase tracking-[0.4em] mb-1 block">Guía de Montaje</span>
-                   <h3 className="text-2xl font-black text-slate-950 dark:text-white uppercase tracking-tighter italic">
-                     {activeHallForGuide?.name}
-                   </h3>
-                </div>
-                <button onClick={() => setShowGuideModal(false)} className="p-3 bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-500 rounded-full shadow-lg hover:scale-110 shadow-black/5 transition-transform">
-                   <X size={24} strokeWidth={3} />
-                </button>
-             </div>
-             
-             <div className="flex-1 overflow-y-auto p-8 space-y-6">
-                <div>
-                   <label className="block text-xs font-black text-gray-400 dark:text-slate-500 uppercase tracking-widest mb-3 ml-1">Título de la Guía</label>
-                   <input 
-                     value={editingGuide?.title || ''}
-                     onChange={e => setEditingGuide({ ...editingGuide, title: e.target.value })}
-                     className="w-full px-6 py-4 font-black text-xl bg-gray-50 dark:bg-slate-800/50 border-2 border-slate-200 dark:border-slate-800 focus:border-red-600 rounded-2xl outline-none transition-all dark:text-white uppercase placeholder-gray-300"
-                     placeholder="Ej: Montaje Tipo Boda..."
-                   />
-                </div>
-                
-                <div>
-                   <label className="block text-xs font-black text-gray-400 dark:text-slate-500 uppercase tracking-widest mb-3 ml-1">Instrucciones y Detalles</label>
-                   <textarea 
-                     value={editingGuide?.description || ''}
-                     onChange={e => setEditingGuide({ ...editingGuide, description: e.target.value })}
-                     className="w-full px-6 py-4 font-bold text-base bg-gray-50 dark:bg-slate-800/50 border-2 border-slate-200 dark:border-slate-800 focus:border-red-600 rounded-2xl outline-none transition-all dark:text-white min-h-[150px] resize-none"
-                     placeholder="Detalla cómo debe ir todo montado..."
-                   />
-                </div>
-
-                <div>
-                   <label className="block text-xs font-black text-gray-400 dark:text-slate-500 uppercase tracking-widest mb-3 ml-1">Fotos de Referencia (Guía Visual)</label>
-                   <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar">
-                      <button 
-                        onClick={() => fileInputRef.current?.click()}
-                        className="w-32 h-32 rounded-3xl border-4 border-dashed border-slate-200 dark:border-slate-700 flex flex-col items-center justify-center text-slate-300 hover:text-red-500 hover:border-red-500 hover:bg-red-50 dark:hover:bg-slate-800 transition-all flex-shrink-0 group"
-                      >
-                        <Images size={40} className="group-hover:scale-110 transition-transform"/>
-                        <span className="text-[10px] font-black mt-2">AÑADIR FOTOS</span>
-                      </button>
-                      
-                      {/* Existing Images */}
-                      {editingGuide?.imageUrls?.map((url, i) => (
-                        <div key={`existing-${i}`} className="relative w-32 h-32 flex-shrink-0 group">
-                           <img src={url} className="w-full h-full object-cover rounded-3xl ring-4 ring-slate-100 dark:ring-slate-800 shadow-xl opacity-80" />
-                           <button 
-                            onClick={() => {
-                              const newUrls = (editingGuide.imageUrls || []).filter((_, idx) => idx !== i);
-                              setEditingGuide({ ...editingGuide, imageUrls: newUrls });
-                            }} 
-                            className="absolute -top-2 -right-2 bg-slate-900 text-white p-2 rounded-full shadow-lg hover:scale-110 transition-transform"
-                           >
-                            <Trash2 size={16} />
-                           </button>
-                        </div>
-                      ))}
-
-                      {/* New Previews */}
-                      {previews.map((url, i) => (
-                        <div key={`new-${i}`} className="relative w-32 h-32 flex-shrink-0 group">
-                           <img src={url} className="w-full h-full object-cover rounded-3xl ring-4 ring-red-100 dark:ring-red-900 shadow-xl" />
-                           <button onClick={() => removeImage(i)} className="absolute -top-2 -right-2 bg-red-600 text-white p-2 rounded-full shadow-lg hover:scale-110 transition-transform"><X size={16} strokeWidth={3} /></button>
-                        </div>
-                      ))}
-                   </div>
-                </div>
-             </div>
-             
-             <div className="p-8 border-t border-gray-100 dark:border-slate-800 flex gap-4 bg-gray-50 dark:bg-slate-900 sticky bottom-0 z-10 rounded-b-[3rem]">
-                <button onClick={() => setShowGuideModal(false)} className="flex-1 py-5 font-black text-slate-500 uppercase tracking-widest hover:bg-gray-200 dark:hover:bg-slate-800 rounded-[1.5rem] transition-colors">Cancelar</button>
-                <button 
-                  onClick={handleSaveGuide} 
-                  disabled={isSaving || !editingGuide?.title}
-                  className="flex-[2] py-5 bg-red-600 text-white font-black uppercase tracking-widest rounded-[1.5rem] shadow-xl shadow-red-600/30 active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                >
-                  {isSaving ? <Loader2 className="animate-spin" /> : <Save size={20} />}
-                  {editingGuide?.id ? 'ACTUALIZAR GUÍA' : 'PUBLICAR GUÍA'}
-                </button>
-             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Hall Delete Confirmation Modal */}
-      {hallToDelete && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 animate-fade-in">
-          <div className="bg-white dark:bg-slate-900 rounded-[3rem] w-full max-w-sm p-10 text-center shadow-2xl border-4 border-slate-100 dark:border-slate-800">
-            <div className="w-24 h-24 bg-red-50 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-8 text-red-600 dark:text-red-500 shadow-inner">
-               <Trash2 size={48} />
-            </div>
-            <h3 className="text-3xl font-black text-slate-950 dark:text-white uppercase mb-3 tracking-tighter leading-none italic">¿Eliminar Salón?</h3>
-            <p className="text-slate-500 dark:text-slate-400 mb-10 font-bold text-lg leading-snug">Se borrará el salón <span className="text-red-600">"{hallToDelete.name}"</span> y todas sus guías de montaje asociadas.</p>
-            <div className="flex flex-col gap-3">
-              <button onClick={handleDeleteHall} className="w-full py-5 font-black text-white bg-red-600 rounded-[1.5rem] hover:bg-red-700 shadow-xl shadow-red-600/30 transition-all uppercase tracking-widest">SÍ, ELIMINAR TODO</button>
-              <button onClick={() => setHallToDelete(null)} className="w-full py-5 font-black text-slate-400 uppercase tracking-widest hover:text-slate-600 transition-colors">Cancelar</button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {taskToDelete && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in">
           <div className="bg-white dark:bg-slate-800 rounded-[2.5rem] w-full max-w-sm p-8 text-center shadow-2xl border-2 border-gray-100 dark:border-slate-700">

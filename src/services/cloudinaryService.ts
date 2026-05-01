@@ -10,7 +10,7 @@
 const CLOUDINARY_CLOUD_NAME = (import.meta as any).env.VITE_CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = (import.meta as any).env.VITE_CLOUDINARY_UPLOAD_PRESET;
 
-export const uploadMediaToCloudinary = async (file: File, folder: string = 'hotel_victoria_media'): Promise<string> => {
+export const uploadVideoToCloudinary = async (file: File): Promise<string> => {
   if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_UPLOAD_PRESET) {
     throw new Error('Configuración de Cloudinary incompleta. Asegúrate de poner VITE_CLOUDINARY_CLOUD_NAME y VITE_CLOUDINARY_UPLOAD_PRESET en Settings -> Environment Variables.');
   }
@@ -18,18 +18,11 @@ export const uploadMediaToCloudinary = async (file: File, folder: string = 'hote
   const formData = new FormData();
   formData.append('file', file);
   formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
-  formData.append('folder', folder);
-
-  let resourceType = 'raw';
-  if (file.type.startsWith('image/')) {
-      resourceType = 'image';
-  } else if (file.type.startsWith('video/')) {
-      resourceType = 'video';
-  }
+  formData.append('folder', 'hotel_victoria_tasks');
 
   try {
     const response = await fetch(
-      `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/${resourceType}/upload`,
+      `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/video/upload`,
       {
         method: 'POST',
         body: formData,
@@ -41,10 +34,10 @@ export const uploadMediaToCloudinary = async (file: File, folder: string = 'hote
       const msg = errorData.error?.message || '';
       
       if (msg.includes('Unknown API key')) {
-        throw new Error(`Cloudinary error (API Key/Preset). Cloud Name: ${CLOUDINARY_CLOUD_NAME}, Preset: ${CLOUDINARY_UPLOAD_PRESET}. Revisa que el preset sea Unsigned.`);
+        throw new Error('Cloudinary dice "Unknown API Key". SOLUCIÓN: Ve a Cloudinary -> Settings -> Upload -> Presets y edita tu preset para que sea "Unsigned".');
       }
       
-      throw new Error(msg || `Error al subir ${resourceType} a Cloudinary`);
+      throw new Error(msg || 'Error al subir video a Cloudinary');
     }
 
     const data = await response.json();
@@ -54,6 +47,3 @@ export const uploadMediaToCloudinary = async (file: File, folder: string = 'hote
     throw error;
   }
 };
-
-export const uploadVideoToCloudinary = uploadMediaToCloudinary;
-export const uploadImageToCloudinary = uploadMediaToCloudinary;

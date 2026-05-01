@@ -1,4 +1,4 @@
-import { Product, User, ReplenishmentRequest, UserRole, Department, CartItem, AppNotification, NotificationType, NotificationPayload, OrderBatch, Task, TaskStatus, TaskPriority, TaskType, TaskComment, Document, TaskRecurrence, EventHall, SetupGuide } from '../types';
+import { Product, User, ReplenishmentRequest, UserRole, Department, CartItem, AppNotification, NotificationType, NotificationPayload, OrderBatch, Task, TaskStatus, TaskPriority, TaskType, TaskComment, Document, TaskRecurrence } from '../types';
 import { db, auth, storage } from '../firebaseConfig';
 export { auth, db, storage };
 import firebase from 'firebase/compat/app';
@@ -27,7 +27,6 @@ const KEYS = {
   NOTIFICATIONS: 'hotel_victoria_notifications',
   TASKS: 'hotel_victoria_tasks',
   DOCUMENTS: 'hotel_victoria_documents',
-  EVENT_HALLS: 'hotel_victoria_event_halls',
   SYSTEM: 'hotel_victoria_system',
 };
 
@@ -51,12 +50,6 @@ const INITIAL_PRODUCTS: Product[] = [
   { id: 'p4', name: 'Harina de Trigo', category: 'Despensa', quantity: 15, unit: 'kg', minThreshold: 5, departmentId: 'd-restaurante', departmentName: 'Restaurante', departmentIds: ['d-restaurante'], departmentNames: ['Restaurante'] },
   { id: 'p5', name: 'Aceite de Oliva', category: 'Cocina', quantity: 10, unit: 'litros', minThreshold: 4, departmentId: 'd-restaurante', departmentName: 'Restaurante', departmentIds: ['d-restaurante'], departmentNames: ['Restaurante'] },
   { id: 'p6', name: 'Servilletas', category: 'Suministros', quantity: 100, unit: 'paquetes', minThreshold: 20, departmentId: 'd-restaurante', departmentName: 'Restaurante', departmentIds: ['d-restaurante'], departmentNames: ['Restaurante'] },
-];
-
-const INITIAL_HALLS: any[] = [
-  { name: "Terraza", capacity: "0" },
-  { name: "Restaurante", capacity: "0" },
-  { name: "Salon C", capacity: "0" }
 ];
 
 enum OperationType {
@@ -89,36 +82,20 @@ interface FirestoreErrorInfo {
 
 // Helper to safely stringify objects that might have circular references
 const safeStringify = (obj: any) => {
-  try {
-      const cache = new Set();
-      return JSON.stringify(obj, (key, value) => {
-        if (typeof value === 'object' && value !== null) {
-          if (cache.has(value)) {
-            return '[Circular]';
-          }
-          cache.add(value);
-        }
-        return value;
-      });
-  } catch (e) {
-      return `[Error stringifying: ${e}]`;
-  }
+  const cache = new Set();
+  return JSON.stringify(obj, (key, value) => {
+    if (typeof value === 'object' && value !== null) {
+      if (cache.has(value)) {
+        return '[Circular]';
+      }
+      cache.add(value);
+    }
+    return value;
+  });
 };
 
 function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
-  let safeError: string;
-  try {
-    if (error instanceof Error) {
-       safeError = error.message;
-    } else if (typeof error === 'object' && error !== null && 'message' in (error as any)) {
-       safeError = (error as any).message;
-    } else {
-       safeError = safeStringify(error);
-    }
-  } catch (e) {
-      safeError = "Unknown error (could not be stringified)";
-  }
-  
+  const safeError = error instanceof Error ? error.message : String(error);
   const currentUser = auth.currentUser;
   const authInfo = currentUser ? {
     uid: currentUser.uid,
@@ -128,7 +105,6 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
 
   const fallbackMsg = `Firestore Error in ${operationType} at ${path}: ${safeError}. Auth: ${safeStringify(authInfo)}`;
   console.error(fallbackMsg);
-  // Important: throw an error that doesn't trigger circular stringification itself
   throw new Error(fallbackMsg);
 }
 
@@ -144,12 +120,8 @@ async function initFirestoreWithInitialData() {
     // Comprobamos si hay productos. Si no hay nada, forzamos re-inicialización básica
     const productsCheck = await db.collection(KEYS.PRODUCTS).limit(1).get();
     const hasProducts = !productsCheck.empty;
-    
-    // Comprobamos si hay salones.
-    const hallsCheck = await db.collection(KEYS.EVENT_HALLS).limit(1).get();
-    const hasHalls = !hallsCheck.empty;
 
-    if (initDoc.exists && initDoc.data()?.isInitialized && hasProducts && hasHalls) {
+    if (initDoc.exists && initDoc.data()?.isInitialized && hasProducts) {
       return;
     }
 
@@ -170,7 +142,6 @@ async function initFirestoreWithInitialData() {
       { name: KEYS.USERS, data: INITIAL_USERS },
       { name: KEYS.PRODUCTS, data: INITIAL_PRODUCTS },
       { name: KEYS.DEPARTMENTS, data: INITIAL_DEPARTMENTS },
-      { name: KEYS.EVENT_HALLS, data: INITIAL_HALLS },
     ];
 
     for (const { name, data } of collectionsToInit) {
@@ -339,11 +310,7 @@ export const ensureAdminSession = async (user: User) => {
         }, { merge: true });
       }
     } catch (e: any) {
-      if (e.message.includes('Missing or insufficient permissions')) {
-        console.warn(`Aviso de permisos para UID ${uid}: Usuario no autorizado para escritura de sistema.`);
-      } else {
-        console.error(`Error asegurando status admin para UID ${uid}:`, e.message);
-      }
+      console.error(`Error asegurando status admin para UID ${uid}:`, e.message);
     }
   }
 };
@@ -729,15 +696,15 @@ export const subscribeToTasks = (callback: (data: Task[]) => void) => {
     }, error => handleFirestoreError(error, OperationType.GET, KEYS.TASKS));
 };
 // --- IMAGES ---
-import { uploadVideoToCloudinary as uploadVideoToCloudinaryRaw, uploadImageToCloudinary, uploadMediaToCloudinary } from './cloudinaryService';
-
 export const uploadImage = async (file: File, folder: string = 'tasks'): Promise<string> => {
-  return uploadImageToCloudinary(file, folder);
+  const path = `${folder}/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
+  const snapshot = await storage.ref().child(path).put(file, { contentType: file.type || 'image/jpeg' });
+  return await snapshot.ref.getDownloadURL();
 };
 
-export const uploadVideoToCloudinary = uploadVideoToCloudinaryRaw;
+import { uploadVideoToCloudinary } from './cloudinaryService';
 
-export const saveTask = async (task: Partial<Task>, newFiles: File[] = [], newVideos: File[] = [], folder: string = 'tasks') => {
+export const saveTask = async (task: Partial<Task>, newFiles: File[] = [], newVideos: File[] = []) => {
   const isNew = !task.id;
   const docRef = isNew ? db.collection(KEYS.TASKS).doc() : db.collection(KEYS.TASKS).doc(task.id!);
   
@@ -745,7 +712,7 @@ export const saveTask = async (task: Partial<Task>, newFiles: File[] = [], newVi
 
   // Handle Images
   if (newFiles.length > 0) {
-      const uploadPromises = newFiles.map(file => uploadImage(file, folder));
+      const uploadPromises = newFiles.map(file => uploadImage(file, 'tasks'));
       const newImageUrls = await Promise.all(uploadPromises);
       const existingUrls = Array.isArray(task.imageUrls) ? task.imageUrls : [];
       const finalImageUrls = [...existingUrls, ...newImageUrls];
@@ -756,7 +723,7 @@ export const saveTask = async (task: Partial<Task>, newFiles: File[] = [], newVi
 
   // Handle Videos (Cloudinary)
   if (newVideos.length > 0) {
-      const videoPromises = newVideos.map(file => uploadVideoToCloudinary(file, folder));
+      const videoPromises = newVideos.map(file => uploadVideoToCloudinary(file));
       const newVideoUrls = await Promise.all(videoPromises);
       const existingVideoUrls = Array.isArray(task.videoUrls) ? task.videoUrls : [];
       const finalVideoUrls = [...existingVideoUrls, ...newVideoUrls];
@@ -1006,7 +973,9 @@ export const checkAutoCleanup = async () => {
 
 // --- NEW: DOCUMENT MANAGEMENT ---
 export const uploadDocumentFile = async (file: File): Promise<string> => {
-  return uploadMediaToCloudinary(file, 'hotel_victoria_documents');
+  const path = `documents/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
+  const snapshot = await storage.ref().child(path).put(file, { contentType: file.type || 'application/octet-stream' });
+  return await snapshot.ref.getDownloadURL();
 };
 export const subscribeToDocuments = (callback: (data: Document[]) => void) => {
   return db.collection(KEYS.DOCUMENTS).orderBy('createdAt', 'desc').onSnapshot(snapshot => {
@@ -1020,61 +989,4 @@ export const saveDocument = async (document: Omit<Document, 'id'>) => {
 export const deleteDocument = async (doc: Document) => {
   try { await storage.refFromURL(doc.url).delete(); } catch(e) {}
   await db.collection(KEYS.DOCUMENTS).doc(doc.id).delete();
-};
-
-// --- NEW: EVENT HALLS SETUP ---
-export const subscribeToEventHalls = (callback: (data: EventHall[]) => void) => {
-  return db.collection(KEYS.EVENT_HALLS).orderBy('createdAt', 'desc').onSnapshot(snapshot => {
-    callback(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as EventHall)));
-  }, error => handleFirestoreError(error, OperationType.GET, KEYS.EVENT_HALLS));
-};
-
-export const saveEventHall = async (hall: Partial<EventHall>) => {
-  try {
-    const isNew = !hall.id;
-    const docRef = isNew ? db.collection(KEYS.EVENT_HALLS).doc() : db.collection(KEYS.EVENT_HALLS).doc(hall.id!);
-    const id = docRef.id;
-    const finalData = sanitizeData({
-      ...hall,
-      id,
-      updatedAt: Date.now(),
-      createdAt: hall.createdAt || Date.now()
-    });
-    await docRef.set(finalData, { merge: true });
-    return id;
-  } catch (error) {
-    handleFirestoreError(error, OperationType.WRITE, KEYS.EVENT_HALLS);
-  }
-};
-
-export const saveEventHallWithMedia = async (hall: Partial<EventHall>, newFiles: File[] = [], newVideos: File[] = []) => {
-    let finalImageUrls = hall.imageUrls || [];
-    let finalVideoUrls = hall.videoUrls || [];
-
-    if (newFiles.length > 0) {
-      const uploadPromises = newFiles.map(file => uploadImage(file, 'halls'));
-      const uploadedUrls = await Promise.all(uploadPromises);
-      finalImageUrls = [...finalImageUrls, ...uploadedUrls];
-    }
-
-    if (newVideos.length > 0) {
-      const videoPromises = newVideos.map(file => uploadVideoToCloudinary(file));
-      const uploadedUrls = await Promise.all(videoPromises);
-      finalVideoUrls = [...finalVideoUrls, ...uploadedUrls];
-    }
-    
-    return await saveEventHall({ ...hall, imageUrls: finalImageUrls, videoUrls: finalVideoUrls });
-};
-
-export const deleteEventHall = async (id: string, imageUrls: string[] = []) => {
-  try {
-    if (imageUrls && imageUrls.length > 0) {
-      for (const url of imageUrls) {
-        try { await storage.refFromURL(url).delete(); } catch(e) {}
-      }
-    }
-    await db.collection(KEYS.EVENT_HALLS).doc(id).delete();
-  } catch (error) {
-    handleFirestoreError(error, OperationType.DELETE, KEYS.EVENT_HALLS);
-  }
 };

@@ -164,33 +164,6 @@
         "metadata": { "type": "object" }
       },
       "required": ["id", "action", "details", "userName", "userId", "timestamp"]
-    },
-    "EventHall": {
-      "title": "EventHall",
-      "description": "Event hall setup configuration",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "name": { "type": "string" },
-        "description": { "type": "string" },
-        "capacity": { "type": "string" },
-        "imageUrls": { "type": "array", "items": { "type": "string" } },
-        "setupGuides": { 
-          "type": "array", 
-          "items": { 
-            "type": "object",
-            "properties": {
-              "id": { "type": "string" },
-              "title": { "type": "string" },
-              "description": { "type": "string" },
-              "imageUrls": { "type": "array", "items": { "type": "string" } }
-            }
-          }
-        },
-        "createdAt": { "type": "number" },
-        "updatedAt": { "type": "number" }
-      },
-      "required": ["id", "name", "createdAt"]
     }
   },
   "firestore": {
@@ -229,10 +202,6 @@
     "/hotel_victoria_audit_logs/{logId}": {
       "schema": "AuditLog",
       "description": "Audit logs collection"
-    },
-    "/hotel_victoria_event_halls/{hallId}": {
-      "schema": "EventHall",
-      "description": "Event halls collection"
     },
     "/hotel_victoria_system/{docId}": {
       "schema": "object",
