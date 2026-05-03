@@ -121,7 +121,6 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
 
   // Premium reservation background style - Heritage Hospitality Edition
   const reservationStyle = isReservation ? {
-    background: '#FCFAF7',
     border: '1px solid rgba(6, 78, 59, 0.1)',
     boxShadow: '0 20px 40px -15px rgba(0, 0, 0, 0.05)',
   } : {};
@@ -167,7 +166,7 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
       onClick={isReservation ? (e) => onView?.(task) : undefined}
       style={reservationStyle}
       className={`
-        relative bg-white dark:bg-slate-900 rounded-[1.5rem] md:rounded-[2rem] shadow-xl dark:shadow-black/50 
+        relative bg-[#FCFAF7] dark:bg-slate-900 rounded-[1.5rem] md:rounded-[2rem] shadow-xl dark:shadow-black/50 
         border border-gray-100 dark:border-slate-800
         ${isReservation ? 'cursor-pointer hover:shadow-2xl hover:scale-[1.01]' : 'hover:shadow-2xl hover:-translate-y-1'} transition-all duration-500 group
         overflow-hidden w-full

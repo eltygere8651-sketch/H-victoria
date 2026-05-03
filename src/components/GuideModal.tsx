@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Package, ClipboardCheck, ShieldCheck, Smartphone, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { X, Package, ClipboardCheck, ShieldCheck, Smartphone, ArrowRight, CheckCircle2, ConciergeBell } from 'lucide-react';
 import { Logo } from './Logo';
 
 interface GuideModalProps {
@@ -14,97 +14,100 @@ export const GuideModal: React.FC<GuideModalProps> = ({ isOpen, onClose }) => {
     {
       icon: Package,
       title: "Gestión de Existencias",
-      desc: "Monitorización precisa de inventario con analítica de consumo y automatización de pedidos internos.",
-      colorClass: "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20",
+      desc: "Monitorización precisa de inventario con analítica de consumo y automatización avanzada de pedidos.",
+      colorClass: "text-blue-500 bg-blue-50 dark:bg-blue-900/10",
+    },
+    {
+      icon: ConciergeBell,
+      title: "Reservas Premium",
+      desc: "Gestión inteligente de reservas, asignación de mesas y seguimiento de comensales en tiempo real.",
+      colorClass: "text-emerald-500 bg-emerald-50 dark:bg-emerald-900/10",
     },
     {
       icon: ClipboardCheck,
       title: "Flujos de Trabajo",
-      desc: "Asignación y seguimiento de protocolos operativos con verificación de cumplimiento y auditoría de procesos.",
-      colorClass: "text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20",
+      desc: "Auditoría de protocolos operativos con verificación de cumplimiento y trazabilidad completa.",
+      colorClass: "text-amber-500 bg-amber-50 dark:bg-amber-900/10",
     },
     {
       icon: ShieldCheck,
-      title: "Documentación Digital",
-      desc: "Gestión integral de albaranes y registros con exportación certificada a PDF para una logística sin papel.",
-      colorClass: "text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20",
+      title: "Logística Digitalizada",
+      desc: "Gestión integral de albaranes y registros con exportación certificada a PDF para una operativa de élite.",
+      colorClass: "text-rose-500 bg-rose-50 dark:bg-rose-900/10",
     }
   ];
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-md animate-fade-in" onClick={onClose}>
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xl animate-fade-in" onClick={onClose}>
       <div 
-        className="bg-white dark:bg-slate-900 w-full max-w-lg max-h-[90dvh] rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col animate-pop-in border border-slate-200 dark:border-slate-800"
+        className="bg-white dark:bg-slate-950 w-full max-w-xl max-h-[90dvh] rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col animate-pop-in border border-slate-200 dark:border-slate-800"
         onClick={e => e.stopPropagation()}
       >
         {/* Header - Fixed */}
-        <div className="relative bg-slate-900 p-6 sm:p-8 text-white overflow-hidden shrink-0 border-b border-slate-800">
-          <div className="absolute -top-10 -right-10 opacity-10 rotate-12 scale-150 pointer-events-none">
-            <Logo size="xl" solid />
+        <div className="relative bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900 p-8 text-white overflow-hidden shrink-0 border-b border-white/10 flex justify-between items-center">
+          <div className="relative z-10 flex-1">
+            <h2 className="text-2xl font-black tracking-tighter uppercase italic mb-2">
+              Hub Intelligence
+            </h2>
+            <p className="text-slate-200 font-medium text-sm leading-relaxed max-w-sm">
+              Plataforma de gestión operativa de élite. Centraliza, audita y eleva cada detalle de tu establecimiento.
+            </p>
+          </div>
+          
+          <div className="relative z-10 shrink-0 ml-6 p-3 bg-white/10 rounded-2xl backdrop-blur-sm border border-white/10 shadow-lg">
+             <Logo size="md" strokeColor="#ffffff" />
           </div>
           
           <button 
             onClick={onClose}
-            className="absolute top-4 right-4 sm:top-6 sm:right-6 text-slate-500 hover:text-white transition-colors p-2"
+            className="absolute top-6 right-6 text-slate-300 hover:text-white transition-colors z-20"
             aria-label="Cerrar"
           >
             <X size={24} />
           </button>
-
-          <div className="relative z-10">
-            <div className="flex items-center gap-3 mb-3 sm:mb-4">
-               <Logo size="sm" />
-               <h2 className="text-xl sm:text-2xl font-black tracking-tighter uppercase italic">
-                 Hub
-               </h2>
-            </div>
-            <p className="text-slate-400 font-medium text-xs sm:text-sm leading-relaxed">
-              Centraliza y eleva cada operación en una plataforma única, con visibilidad en tiempo real, para ofrecer una experiencia superior en cada detalle.
-            </p>
-          </div>
         </div>
 
         {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto p-6 sm:p-8 space-y-6 bg-white dark:bg-slate-900 custom-scrollbar">
-          <div className="space-y-4">
+        <div className="flex-1 overflow-y-auto p-8 space-y-8 bg-white dark:bg-slate-950 custom-scrollbar">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {features.map((item, idx) => (
-              <div key={idx} className="flex gap-4 sm:gap-5 items-start p-3 sm:p-4 rounded-3xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group">
-                <div className={`p-3 rounded-2xl shrink-0 ${item.colorClass} shadow-sm group-hover:scale-110 transition-transform`}>
+              <div key={idx} className="flex gap-4 items-start p-4 rounded-3xl bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 transition-colors group">
+                <div className={`p-3 rounded-2xl shrink-0 ${item.colorClass} shadow-sm`}>
                   <item.icon size={22} />
                 </div>
                 <div>
-                  <h4 className="font-bold text-slate-900 dark:text-white text-sm sm:text-base mb-1">{item.title}</h4>
-                  <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-medium">{item.desc}</p>
+                  <h4 className="font-black text-slate-900 dark:text-white text-sm mb-1 uppercase tracking-tight">{item.title}</h4>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">{item.desc}</p>
                 </div>
               </div>
             ))}
           </div>
 
           {/* QR Section - Enhanced visibility */}
-          <div className="bg-slate-50 dark:bg-slate-800/40 rounded-[2.5rem] p-6 border border-slate-100 dark:border-slate-700/50 flex flex-col items-center text-center gap-4">
-             <div className="bg-white p-4 rounded-[2rem] shadow-xl border border-slate-100 ring-4 ring-slate-50 dark:ring-slate-800/10 transition-transform hover:rotate-3">
+          <div className="bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900 rounded-[2.5rem] p-8 flex flex-row items-center justify-between text-left gap-6 shadow-xl">
+             <div className="bg-white p-3 rounded-[1.5rem]">
                 <img 
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(window.location.origin)}&margin=10&color=dc2626`} 
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(window.location.origin)}&margin=10&color=0f172a`} 
                   alt="QR" 
-                  className="w-32 h-32 sm:w-40 sm:h-40"
+                  className="w-24 h-24"
                 />
              </div>
-             <div>
-                <h5 className="text-sm sm:text-base font-black text-slate-900 dark:text-white uppercase tracking-tight mb-1">Descarga Hub en tu Móvil</h5>
-                <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 font-medium leading-relaxed max-w-[200px]">
-                  Escanea con tu cámara para instalar la aplicación y recibir notificaciones críticas.
+             <div className="flex-1">
+                <h5 className="text-base font-black text-white uppercase tracking-tight mb-2">Instala en tu móvil</h5>
+                <p className="text-xs text-slate-400 font-medium leading-relaxed max-w-[200px]">
+                  Acceso directo a la plataforma desde tu dispositivo.
                 </p>
              </div>
           </div>
         </div>
 
         {/* Footer - Fixed */}
-        <div className="p-6 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
+        <div className="p-6 border-t border-slate-100 dark:border-slate-900 bg-slate-50 dark:bg-slate-900 shrink-0">
           <button 
             onClick={onClose}
-            className="w-full bg-red-600 hover:bg-red-700 text-white font-black py-4 rounded-2xl shadow-lg shadow-red-600/20 transition-all active:scale-[0.98] text-sm uppercase tracking-widest"
+            className="w-full bg-red-600 hover:bg-red-700 text-white font-black py-4 rounded-2xl shadow-xl transition-all active:scale-[0.98] text-sm uppercase tracking-widest"
           >
-            Continuar
+            Entendido
           </button>
         </div>
       </div>

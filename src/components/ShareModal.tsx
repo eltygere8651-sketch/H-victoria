@@ -58,24 +58,24 @@ export const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, url, ti
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in" onClick={onClose}>
       <div 
-        className="bg-white dark:bg-slate-800 w-full max-w-sm rounded-[2rem] shadow-pop-in p-6 animate-pop-in border border-gray-100 dark:border-slate-700 overflow-hidden flex flex-col"
+        className="bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900 w-full max-w-sm rounded-[2rem] shadow-pop-in p-6 animate-pop-in border border-slate-700 overflow-hidden flex flex-col text-white"
         onClick={e => e.stopPropagation()}
       >
         <div className="flex justify-between items-center mb-6">
-          <h3 className="text-xl font-black text-gray-900 dark:text-white">Compartir</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-white p-1 rounded-full transition-colors">
+          <h3 className="text-xl font-black text-white">Compartir</h3>
+          <button onClick={onClose} className="text-slate-400 hover:text-white p-1 rounded-full transition-colors">
             <X size={24} />
           </button>
         </div>
 
         {/* Tabs Switcher */}
-        <div className="flex p-1 bg-gray-100 dark:bg-slate-700/50 rounded-xl mb-6">
+        <div className="flex p-1 bg-slate-900/50 rounded-xl mb-6">
           <button 
             onClick={() => setActiveTab('links')}
             className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-bold transition-all ${
               activeTab === 'links' 
-                ? 'bg-white dark:bg-slate-700 text-gray-900 dark:text-white shadow-sm' 
-                : 'text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200'
+                ? 'bg-slate-700 text-white shadow-sm' 
+                : 'text-slate-400 hover:text-slate-200'
             }`}
           >
             <LinkIcon size={16} strokeWidth={2.5} /> Enlace
@@ -84,8 +84,8 @@ export const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, url, ti
             onClick={() => setActiveTab('qr')}
             className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-bold transition-all ${
               activeTab === 'qr' 
-                ? 'bg-white dark:bg-slate-700 text-gray-900 dark:text-white shadow-sm' 
-                : 'text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200'
+                ? 'bg-slate-700 text-white shadow-sm' 
+                : 'text-slate-400 hover:text-slate-200'
             }`}
           >
             <QrCode size={16} strokeWidth={2.5} /> Código QR

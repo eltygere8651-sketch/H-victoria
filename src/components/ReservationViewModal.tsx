@@ -24,32 +24,32 @@ export const ReservationViewModal: React.FC<ReservationViewModalProps> = ({ task
         {/* Close Button */}
         <button 
           onClick={onClose}
-          className="absolute top-4 right-4 z-50 p-3 bg-white/50 hover:bg-white rounded-full text-[#064E3B] transition-colors shadow-sm"
+          className="absolute top-4 right-4 z-50 p-3 bg-[#FCFAF7]/50 dark:bg-slate-800/50 hover:bg-[#FCFAF7] dark:hover:bg-slate-800 rounded-full text-[#064E3B] dark:text-emerald-400 transition-colors shadow-sm"
         >
           <X size={24} />
         </button>
 
         {/* Header */}
-        <div className="p-8 pb-6 relative z-10 border-b border-[#064E3B]/10">
+        <div className="p-8 pb-6 relative z-10 border-b border-[#064E3B]/10 dark:border-slate-700">
           <div className="flex items-center gap-3 mb-4">
-            <div className="bg-[#064E3B] px-3 py-1 rounded-sm">
+            <div className="bg-[#064E3B] dark:bg-emerald-900 px-3 py-1 rounded-sm">
               <span className="text-xs font-black text-[#FCFAF7] uppercase tracking-[0.25em]">{task.location}</span>
             </div>
             {task.eventType && (
-              <div className="border border-[#064E3B]/20 bg-white/50 px-3 py-1 rounded-sm flex items-center gap-1.5 font-sans">
-                <Sparkles size={12} className="text-[#064E3B]" />
-                <span className="text-xs font-black text-[#064E3B] uppercase tracking-widest">{task.eventType}</span>
+              <div className="border border-[#064E3B]/20 dark:border-emerald-900/50 bg-[#FCFAF7]/50 dark:bg-slate-800 px-3 py-1 rounded-sm flex items-center gap-1.5 font-sans">
+                <Sparkles size={12} className="text-[#064E3B] dark:text-emerald-400" />
+                <span className="text-xs font-black text-[#064E3B] dark:text-emerald-300 uppercase tracking-widest">{task.eventType}</span>
               </div>
             )}
             {task.clientArrived && (
               <div className="flex items-center gap-1.5 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20 ml-auto mr-12">
-                <Check size={14} className="text-emerald-600" />
-                <span className="text-xs font-black text-emerald-700 uppercase tracking-widest">EN MESA</span>
+                <Check size={14} className="text-emerald-600 dark:text-emerald-400" />
+                <span className="text-xs font-black text-emerald-700 dark:text-emerald-300 uppercase tracking-widest">EN MESA</span>
               </div>
             )}
           </div>
 
-          <h2 className="text-4xl md:text-5xl font-black text-[#064E3B] uppercase tracking-tighter leading-[0.9]">
+          <h2 className="text-4xl md:text-5xl font-black text-[#064E3B] dark:text-white uppercase tracking-tighter leading-[0.9]">
             {task.title}
           </h2>
         </div>
@@ -62,19 +62,19 @@ export const ReservationViewModal: React.FC<ReservationViewModalProps> = ({ task
             <div className="flex flex-col gap-6">
               
               <div className="flex flex-col">
-                <span className="text-xs font-black text-[#064E3B]/40 uppercase tracking-[0.3em] mb-1">DETALLES DE RESERVA</span>
-                <div className="bg-white rounded-xl py-4 px-5 border border-[#064E3B]/10 shadow-sm flex items-center justify-between">
+                <span className="text-xs font-black text-[#064E3B]/40 dark:text-slate-500 uppercase tracking-[0.3em] mb-1">DETALLES DE RESERVA</span>
+                <div className="bg-[#FCFAF7] dark:bg-slate-900 rounded-xl py-4 px-5 border border-[#064E3B]/10 dark:border-slate-800 shadow-sm flex items-center justify-between">
                    <div className="flex flex-col">
-                     <span className="text-[10px] font-black text-[#064E3B]/50 uppercase tracking-widest mb-1">AGENDA</span>
-                     <span className="text-3xl font-black text-[#064E3B] tracking-tighter leading-none">{task.reservationTime}</span>
-                     <span className="text-xs font-black text-[#064E3B]/60 uppercase tracking-tighter mt-1">{task.reservationDate}</span>
+                     <span className="text-[10px] font-black text-[#064E3B]/50 dark:text-slate-500 uppercase tracking-widest mb-1">AGENDA</span>
+                     <span className="text-3xl font-black text-[#064E3B] dark:text-slate-200 tracking-tighter leading-none">{task.reservationTime}</span>
+                     <span className="text-xs font-black text-[#064E3B]/60 dark:text-slate-400 uppercase tracking-tighter mt-1">{task.reservationDate}</span>
                    </div>
-                   <div className="w-[1px] h-12 bg-[#064E3B]/10"></div>
+                   <div className="w-[1px] h-12 bg-[#064E3B]/10 dark:bg-slate-800"></div>
                    <div className="flex flex-col text-right">
-                     <span className="text-[10px] font-black text-[#064E3B]/50 uppercase tracking-widest mb-1">PERSONAS</span>
+                     <span className="text-[10px] font-black text-[#064E3B]/50 dark:text-slate-500 uppercase tracking-widest mb-1">PERSONAS</span>
                      <div className="flex items-center justify-end gap-2">
-                       <Users size={16} className="text-[#064E3B]" />
-                       <span className="text-3xl font-black text-[#064E3B] tracking-tighter leading-none">{task.guests}</span>
+                       <Users size={16} className="text-[#064E3B] dark:text-emerald-400" />
+                       <span className="text-3xl font-black text-[#064E3B] dark:text-slate-200 tracking-tighter leading-none">{task.guests}</span>
                      </div>
                    </div>
                 </div>
@@ -82,12 +82,12 @@ export const ReservationViewModal: React.FC<ReservationViewModalProps> = ({ task
 
               {task.clientPhone && (
                 <div className="flex flex-col">
-                  <span className="text-xs font-black text-[#064E3B]/40 uppercase tracking-[0.3em] mb-1">CONTACTO</span>
-                  <div className="flex items-center gap-3 bg-white px-5 py-4 rounded-xl border border-[#064E3B]/10 shadow-sm">
-                    <div className="w-10 h-10 rounded-full bg-[#064E3B]/5 flex items-center justify-center">
-                      <Phone size={18} className="text-[#064E3B]" />
+                  <span className="text-xs font-black text-[#064E3B]/40 dark:text-slate-500 uppercase tracking-[0.3em] mb-1">CONTACTO</span>
+                  <div className="flex items-center gap-3 bg-[#FCFAF7] dark:bg-slate-900 px-5 py-4 rounded-xl border border-[#064E3B]/10 dark:border-slate-800 shadow-sm">
+                    <div className="w-10 h-10 rounded-full bg-[#064E3B]/5 dark:bg-slate-800 flex items-center justify-center">
+                      <Phone size={18} className="text-[#064E3B] dark:text-emerald-400" />
                     </div>
-                    <span className="text-xl font-black text-[#064E3B] tracking-tight">{task.clientPhone}</span>
+                    <span className="text-xl font-black text-[#064E3B] dark:text-slate-200 tracking-tight">{task.clientPhone}</span>
                   </div>
                 </div>
               )}
@@ -98,21 +98,21 @@ export const ReservationViewModal: React.FC<ReservationViewModalProps> = ({ task
             <div className="flex flex-col gap-6">
               
               <div className="flex flex-col">
-                <span className="text-xs font-black text-[#064E3B]/40 uppercase tracking-[0.3em] mb-1">ASIGNACIÓN</span>
-                <div className="bg-[#064E3B] rounded-xl flex items-center p-6 justify-center relative overflow-hidden shadow-md">
+                <span className="text-xs font-black text-[#064E3B]/40 dark:text-slate-500 uppercase tracking-[0.3em] mb-1">ASIGNACIÓN</span>
+                <div className="bg-[#064E3B] dark:bg-emerald-950 rounded-xl flex items-center p-6 justify-center relative overflow-hidden shadow-md">
                    <div className="absolute inset-0 opacity-[0.1] bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] mix-blend-overlay"></div>
                    <div className="relative z-10 flex flex-col items-center justify-center pb-2">
-                      <span className="text-xs font-black text-[#FCFAF7]/50 uppercase tracking-[0.4em] mb-1">MESA ASIGNADA</span>
-                      <span className="text-6xl font-black text-white italic tracking-tighter drop-shadow-md leading-none">{task.tableNumber}</span>
+                      <span className="text-xs font-black text-[#FCFAF7]/50 dark:text-emerald-200/50 uppercase tracking-[0.4em] mb-1">MESA ASIGNADA</span>
+                      <span className="text-6xl font-black text-white dark:text-emerald-50 italic tracking-tighter drop-shadow-md leading-none">{task.tableNumber}</span>
                    </div>
                 </div>
               </div>
 
               {task.description && (
                 <div className="flex flex-col">
-                  <span className="text-xs font-black text-[#064E3B]/40 uppercase tracking-[0.3em] mb-1">NOTAS / AVISOS</span>
-                  <div className="bg-[#064E3B]/5 rounded-xl p-5 border border-[#064E3B]/10">
-                    <p className="text-sm font-medium text-[#064E3B]/80 leading-relaxed whitespace-pre-wrap">
+                  <span className="text-xs font-black text-[#064E3B]/40 dark:text-slate-500 uppercase tracking-[0.3em] mb-1">NOTAS / AVISOS</span>
+                  <div className="bg-[#064E3B]/5 dark:bg-slate-800 rounded-xl p-5 border border-[#064E3B]/10 dark:border-slate-800">
+                    <p className="text-sm font-medium text-[#064E3B]/80 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">
                       {task.description}
                     </p>
                   </div>
@@ -125,15 +125,15 @@ export const ReservationViewModal: React.FC<ReservationViewModalProps> = ({ task
         </div>
 
         {/* Footer */}
-        <div className="p-6 bg-[#064E3B]/5 border-t border-[#064E3B]/10 flex items-center justify-between relative z-10">
+        <div className="p-6 bg-[#064E3B]/5 dark:bg-slate-950 border-t border-[#064E3B]/10 dark:border-slate-800 flex items-center justify-between relative z-10">
           <div className="flex flex-col">
-             <span className="text-[10px] font-black text-[#064E3B]/40 uppercase tracking-[0.3em] mb-1 italic">TICKET DE RESERVA</span>
-             <span className="text-xs font-black text-[#064E3B] uppercase tracking-[0.3em]">RES-{task.id?.slice(-6) || 'VIP-000'}</span>
+             <span className="text-[10px] font-black text-[#064E3B]/40 dark:text-slate-500 uppercase tracking-[0.3em] mb-1 italic">TICKET DE RESERVA</span>
+             <span className="text-xs font-black text-[#064E3B] dark:text-slate-200 uppercase tracking-[0.3em]">RES-{task.id?.slice(-6) || 'VIP-000'}</span>
           </div>
           {task.takenBy && (
             <div className="flex flex-col items-end">
-               <span className="text-[10px] font-black text-[#064E3B]/40 uppercase tracking-[0.3em] mb-1 italic">TOMADA POR</span>
-               <span className="text-sm font-black text-[#064E3B] tracking-tighter uppercase leading-none">
+               <span className="text-[10px] font-black text-[#064E3B]/40 dark:text-slate-500 uppercase tracking-[0.3em] mb-1 italic">TOMADA POR</span>
+               <span className="text-sm font-black text-[#064E3B] dark:text-emerald-400 tracking-tighter uppercase leading-none">
                   {task.takenBy}
                </span>
             </div>

@@ -98,22 +98,22 @@ const Login: React.FC<LoginProps> = ({ onLogin, setShowGuideModal }) => {
   };
 
   return (
-    <div className="min-h-[100dvh] bg-slate-50 dark:bg-[#060812] flex flex-col items-center justify-center p-4 font-sans relative overflow-hidden transition-colors duration-700">
+    <div className="min-h-[100dvh] bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900 flex flex-col items-center justify-center p-4 font-sans relative overflow-hidden transition-colors duration-700">
       {/* Background Decor */}
-      <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-red-600/5 rounded-full blur-[120px] pointer-events-none animate-pulse"></div>
-      <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-blue-600/5 rounded-full blur-[120px] pointer-events-none animate-pulse" style={{ animationDelay: '2s' }}></div>
+      <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-red-400/20 rounded-full blur-[120px] pointer-events-none animate-pulse"></div>
+      <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-blue-400/20 rounded-full blur-[120px] pointer-events-none animate-pulse" style={{ animationDelay: '2s' }}></div>
 
-      <div className="w-full max-w-md bg-white dark:bg-slate-900/90 backdrop-blur-xl rounded-3xl shadow-xl overflow-hidden border border-slate-100 dark:border-slate-800 transition-all duration-500 animate-pop-in relative z-10">
+      <div className="w-full max-w-md bg-slate-900/90 backdrop-blur-xl rounded-3xl shadow-2xl overflow-hidden border border-slate-700 transition-all duration-500 animate-pop-in relative z-10">
         
         {/* Header Section */}
         <div className="pt-10 pb-6 px-8 flex flex-col items-center justify-center relative">
           <div className="flex flex-col items-center">
             <div className="mb-6 cursor-pointer active:scale-95 transition-transform" onClick={() => setShowGuideModal(true)}>
-              <Logo size="lg" />
+              <Logo size="lg" strokeColor="#ffffff" />
             </div>
-            <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white mb-2">Bienvenido a Hub</h1>
-            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-xs font-medium text-slate-600 dark:text-slate-400">
-              <ShieldCheck size={14} className="text-emerald-500" /> Acceso Seguro
+            <h1 className="text-3xl font-bold tracking-tight text-white mb-2">Bienvenido a Hub</h1>
+            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-800 text-xs font-medium text-slate-200">
+              <ShieldCheck size={14} className="text-emerald-400" /> Acceso Seguro
             </div>
           </div>
         </div>
@@ -122,12 +122,12 @@ const Login: React.FC<LoginProps> = ({ onLogin, setShowGuideModal }) => {
         <div className="p-8 pt-2">
           <form onSubmit={handleLogin} className="space-y-5">
             <div className="space-y-1.5 group">
-              <label className="block text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.2em] ml-1 group-focus-within:text-red-500 transition-colors">Usuario único</label>
+              <label className="block text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] ml-1 group-focus-within:text-red-400 transition-colors">Usuario único</label>
               <input
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="w-full px-5 py-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:bg-white dark:focus:bg-slate-900 focus:border-red-600 focus:ring-4 focus:ring-red-600/10 outline-none transition-all font-bold"
+                className="w-full px-5 py-4 rounded-2xl border border-slate-700 bg-slate-800 text-white placeholder-slate-500 focus:bg-slate-900 focus:border-red-500 focus:ring-4 focus:ring-red-500/10 outline-none transition-all font-bold"
                 placeholder="Nombre de usuario"
                 required
                 disabled={loading}
@@ -135,12 +135,12 @@ const Login: React.FC<LoginProps> = ({ onLogin, setShowGuideModal }) => {
             </div>
             
             <div className="space-y-1.5 group">
-              <label className="block text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.2em] ml-1 group-focus-within:text-red-500 transition-colors">Contraseña Personal</label>
+              <label className="block text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] ml-1 group-focus-within:text-red-400 transition-colors">Contraseña Personal</label>
               <input
                 type="password"
                 value={contraseña}
                 onChange={(e) => setContraseña(e.target.value)}
-                className="w-full px-5 py-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-white placeholder-slate-400 focus:bg-white dark:focus:bg-slate-900 focus:border-red-600 focus:ring-4 focus:ring-red-600/10 outline-none transition-all tracking-[0.5em] font-black"
+                className="w-full px-5 py-4 rounded-2xl border border-slate-700 bg-slate-800 text-white placeholder-slate-500 focus:bg-slate-900 focus:border-red-500 focus:ring-4 focus:ring-red-500/10 outline-none transition-all tracking-[0.5em] font-black"
                 placeholder="••••••••"
                 required
                 disabled={loading}
@@ -148,16 +148,16 @@ const Login: React.FC<LoginProps> = ({ onLogin, setShowGuideModal }) => {
             </div>
 
             {error && (
-              <div className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 p-3 rounded-xl text-sm font-medium text-center animate-shake border border-red-100 dark:border-red-900/30 flex flex-col items-center justify-center gap-2">
+              <div className="bg-red-950/20 text-red-400 p-3 rounded-xl text-sm font-medium text-center animate-shake border border-red-900/30 flex flex-col items-center justify-center gap-2">
                  <div className="flex items-center gap-2">
                    <AlertCircle size={16} /> {error}
                  </div>
                  
                  {unauthorizedDomain && (
-                   <div className="mt-2 p-3 bg-white dark:bg-slate-900 rounded-lg text-[11px] text-left border border-red-200 dark:border-red-800 space-y-2 w-full shadow-sm">
-                     <p className="font-bold text-red-700 dark:text-red-300 mb-1 uppercase tracking-tighter">Solución Crítica (Firebase Admin):</p>
+                   <div className="mt-2 p-3 bg-slate-900 rounded-lg text-[11px] text-left border border-red-800 space-y-2 w-full shadow-sm">
+                     <p className="font-bold text-red-300 mb-1 uppercase tracking-tighter">Solución Crítica (Firebase Admin):</p>
                      <p>Debes añadir este dominio a la lista blanca de Firebase para permitir el acceso:</p>
-                     <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 p-2 rounded border border-slate-200 dark:border-slate-700">
+                     <div className="flex items-center gap-2 bg-slate-800 p-2 rounded border border-slate-700">
                        <code className="text-[10px] break-all flex-1">{unauthorizedDomain}</code>
                        <button 
                          type="button"
@@ -183,8 +183,8 @@ const Login: React.FC<LoginProps> = ({ onLogin, setShowGuideModal }) => {
                  )}
 
                  {providerDisabled && (
-                   <div className="mt-2 p-3 bg-white dark:bg-slate-900 rounded-lg text-[11px] text-left border border-amber-200 dark:border-amber-800 space-y-2 w-full shadow-sm">
-                     <p className="font-bold text-amber-700 dark:text-amber-300 mb-1 uppercase tracking-tighter">Acción Necesaria (Activar Google):</p>
+                   <div className="mt-2 p-3 bg-white rounded-lg text-[11px] text-left border border-amber-200 space-y-2 w-full shadow-sm">
+                     <p className="font-bold text-amber-700 mb-1 uppercase tracking-tighter">Acción Necesaria (Activar Google):</p>
                      <p>El método de inicio de sesión con Google está desactivado en tu consola.</p>
                      <a 
                        href={`https://console.firebase.google.com/project/bm-contigo-a8ca6/authentication/providers`}
@@ -221,10 +221,10 @@ const Login: React.FC<LoginProps> = ({ onLogin, setShowGuideModal }) => {
 
             <div className="relative py-2">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-slate-100 dark:border-slate-800"></div>
+                <div className="w-full border-t border-slate-700"></div>
               </div>
               <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-white dark:bg-slate-900 px-2 text-slate-400">O accede como dueño</span>
+                <span className="bg-slate-900 px-2 text-slate-400">O accede como dueño</span>
               </div>
             </div>
 
@@ -232,7 +232,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, setShowGuideModal }) => {
               type="button"
               onClick={handleGoogleLogin}
               disabled={loading || googleLoading}
-              className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50 text-slate-700 dark:text-slate-200 font-semibold py-3 rounded-xl transition-all flex items-center justify-center gap-3 disabled:opacity-70"
+              className="w-full bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-200 font-semibold py-3 rounded-xl transition-all flex items-center justify-center gap-3 disabled:opacity-70"
             >
               {googleLoading ? (
                 <Loader2 className="animate-spin" size={20} />
@@ -250,8 +250,8 @@ const Login: React.FC<LoginProps> = ({ onLogin, setShowGuideModal }) => {
             </button>
           </form>
 
-          <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-800 text-center">
-             <p className="text-[10px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+          <div className="mt-8 pt-6 border-t border-slate-100 text-center">
+             <p className="text-[10px] font-medium text-slate-400 uppercase tracking-widest">
                Hub Operational Intelligence
              </p>
           </div>

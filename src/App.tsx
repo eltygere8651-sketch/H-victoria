@@ -451,17 +451,17 @@ const App: React.FC = () => {
   // --- MAIN RENDER LOGIC ---
   if (isInitializing) {
     return (
-      <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-slate-50 dark:bg-[#060812] transition-colors duration-500 overflow-hidden">
+      <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-slate-50 transition-colors duration-500 overflow-hidden">
         {/* Background Gradients */}
-        <div className="absolute top-[-20%] left-[-20%] w-[80%] h-[80%] bg-red-600/5 dark:bg-red-600/10 rounded-full blur-[150px] animate-pulse"></div>
-        <div className="absolute bottom-[-20%] right-[-20%] w-[80%] h-[80%] bg-slate-400/5 dark:bg-slate-700/5 rounded-full blur-[150px] animate-pulse" style={{ animationDelay: '1.5s' }}></div>
+        <div className="absolute top-[-20%] left-[-20%] w-[80%] h-[80%] bg-red-400/10 rounded-full blur-[150px] animate-pulse"></div>
+        <div className="absolute bottom-[-20%] right-[-20%] w-[80%] h-[80%] bg-blue-400/10 rounded-full blur-[150px] animate-pulse" style={{ animationDelay: '1.5s' }}></div>
 
         <div className="relative z-10 flex flex-col items-center animate-pop-in">
           <div className="flex flex-col items-center justify-center">
             <div className="animate-spin" style={{ animationDuration: '3s' }}>
               <Logo size="sm" />
             </div>
-            <p className="mt-4 text-xs font-medium tracking-[0.3em] uppercase text-slate-400 dark:text-slate-500 opacity-60">
+            <p className="mt-4 text-xs font-medium tracking-[0.3em] uppercase text-slate-500 opacity-60">
               Cargando
             </p>
           </div>

@@ -1,24 +1,18 @@
 import React, { useId } from 'react';
-
-// CONFIGURACIÓN: 'v' es el diseño profesional simplificado.
-const CURRENT_VARIANT: 'v' = 'v';
+import { motion } from 'motion/react';
 
 interface LogoProps {
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl';
   className?: string;
-  solid?: boolean;
   simple?: boolean;
-  variant?: 'v';
-  animated?: boolean;
+  strokeColor?: string;
 }
 
 export const Logo: React.FC<LogoProps> = ({ 
   size = 'md', 
   className = '', 
-  solid = false, 
   simple = false,
-  variant = CURRENT_VARIANT,
-  animated = false
+  strokeColor = 'currentColor',
 }) => {
   const sizeMap = {
     xs: 24,
@@ -31,121 +25,89 @@ export const Logo: React.FC<LogoProps> = ({
 
   const pxSize = sizeMap[size];
   const uniqueId = useId();
-  const gradId = `main-grad-${uniqueId}`;
-  const shadowId = `shadow-${uniqueId}`;
-  const innerShadowId = `inner-${uniqueId}`;
 
-  // Definición del logo "V" profesional y óptimo
-  const logoPaths = {
-    v: (
-      <path 
-        d="M22 28 L50 82 L78 28 H62 L50 58 L38 28 Z" 
-        fill="white"
-      />
-    )
-  };
-
-  // Modo simple para generación de PDF
+  // Diseño Premium H-Logo: Minimalista con punto central de conexión (Hub)
+  // Contenedor circular con borde y nodo central animado
   if (simple) {
-    return (
-      <svg 
-        xmlns="http://www.w3.org/2000/svg" 
-        viewBox="0 0 100 100" 
-        width={pxSize}
-        height={pxSize}
-        className={`${className} overflow-visible`} 
-        style={{ width: pxSize, height: pxSize, display: 'block' }}
-      >
-        <rect x="5" y="5" width="90" height="90" rx="24" ry="24" fill="#dc2626" />
-        {logoPaths[variant]}
-      </svg>
-    );
+      return (
+        <svg viewBox="0 0 100 100" width={pxSize} height={pxSize} className={className}>
+          <path d="M50 5 L88 27 L88 73 L50 95 L12 73 L12 27 Z" fill="transparent" stroke={strokeColor} strokeWidth="6" />
+          <path d="M50 5 V42 M50 95 V58 M12 27 L38 43 M88 27 L62 43 M12 73 L38 57 M88 73 L62 57" stroke={strokeColor} strokeWidth="4" strokeLinecap="round" />
+          <circle cx="50" cy="50" r="10" fill="#fbbf24" />
+        </svg>
+      );
   }
 
-  // Clase de animación contenedora (flotar)
-  const containerAnimationClass = animated ? 'animate-logo-float' : '';
-  
-  // Clase de animación interna (respirar/pulsar)
-  const innerAnimationClass = animated ? 'animate-logo-breathe' : '';
-
   return (
-    <svg 
-      xmlns="http://www.w3.org/2000/svg" 
-      viewBox="0 0 100 100" 
-      width={pxSize}
-      height={pxSize}
-      className={`${className} overflow-visible ${containerAnimationClass}`} 
-      style={{ 
-        width: pxSize, 
-        height: pxSize,
-        minWidth: pxSize,
-        minHeight: pxSize,
-        display: 'block',
-      }}
+    <motion.div 
+        className={`relative ${className}`}
+        style={{ width: pxSize, height: pxSize }}
+        initial={{ opacity: 0, scale: 0.8 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.6, ease: "easeOut" }}
     >
-      <defs>
-        <linearGradient id={gradId} x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#ff5f5f" /> 
-          <stop offset="100%" stopColor="#990000" />
-        </linearGradient>
+      <motion.svg 
+        viewBox="0 0 100 100" 
+        width="100%"
+        height="100%"
+        className="overflow-visible"
+      >
+        <defs>
+          <linearGradient id={`gradient-${uniqueId}`} x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#fbbf24" />
+            <stop offset="100%" stopColor="#d97706" />
+          </linearGradient>
+          <filter id={`glow-${uniqueId}`} x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+            <feMerge>
+              <feMergeNode in="coloredBlur"/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
+          <filter id={`shadow-${uniqueId}`} x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="2" dy="4" stdDeviation="4" floodColor="#000000" floodOpacity="0.4" />
+          </filter>
+        </defs>
 
-        <filter id={shadowId} x="-50%" y="-50%" width="200%" height="200%">
-          <feDropShadow dx="0" dy="10" stdDeviation="8" floodColor="#000000" floodOpacity="0.3" />
-        </filter>
-        
-        <filter id={innerShadowId} x="-20%" y="-20%" width="140%" height="140%">
-           <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="#000000" floodOpacity="0.25" />
-        </filter>
-      </defs>
-
-      <g filter={!solid ? `url(#${shadowId})` : undefined}>
-        <rect 
-          x="5" 
-          y="5" 
-          width="90" 
-          height="90" 
-          rx="26" 
-          ry="26" 
-          fill={solid ? '#dc2626' : `url(#${gradId})`}
+        {/* Diseño Hexagonal Corporativo */}
+        <motion.path 
+            d="M50 5 L88 27 L88 73 L50 95 L12 73 L12 27 Z"
+            stroke={`url(#gradient-${uniqueId})`} 
+            strokeWidth="6" 
+            fill="transparent"
+            initial={{ pathLength: 0 }}
+            animate={{ pathLength: 1 }}
+            transition={{ duration: 1.5, ease: "easeInOut", repeat: Infinity, repeatDelay: 2 }}
+            filter={`url(#shadow-${uniqueId})`}
+        />
+        {/* Conectores internos */}
+        <motion.path
+          d="M50 5 V42 M50 95 V58 M12 27 L38 43 M88 27 L62 43 M12 73 L38 57 M88 73 L62 57"
+          stroke={strokeColor}
+          strokeWidth="4"
+          strokeLinecap="round"
+          initial={{ pathLength: 0 }}
+          animate={{ pathLength: 1 }}
+          transition={{ duration: 1, delay: 0.8, repeat: Infinity, repeatDelay: 2 }}
+          strokeOpacity="0.8"
         />
         
-        {!solid && (
-          <>
-            <path 
-              d="M31 5 H69 A26 26 0 0 1 95 31 V69 A26 26 0 0 1 69 95 H31 A26 26 0 0 1 5 69 V31 A26 26 0 0 1 31 5 Z"
-              fill="none"
-              stroke="white"
-              strokeOpacity="0.3"
-              strokeWidth="2"
-            />
-            <rect 
-              x="5" 
-              y="5" 
-              width="90" 
-              height="90" 
-              rx="26" 
-              ry="26" 
-              fill="none"
-              stroke="black"
-              strokeOpacity="0.1"
-              strokeWidth="1"
-            />
-          </>
-        )}
-      </g>
-
-      <g filter={!solid ? `url(#${innerShadowId})` : undefined} className={innerAnimationClass}>
-        {logoPaths[variant]}
-      </g>
-      
-      {!solid && (
-         <path 
-           d="M10 30 Q 50 55 90 30 V 31 A 26 26 0 0 0 69 5 H 31 A 26 26 0 0 0 10 31 Z" 
-           fill="white" 
-           fillOpacity="0.1"
-           style={{ mixBlendMode: 'overlay' }} 
-         />
-      )}
-    </svg>
+        {/* Nodo Central (Hub) */}
+        <motion.circle 
+            cx="50" cy="50" r="10" 
+            fill="#fbbf24"
+            filter={`url(#glow-${uniqueId})`}
+            animate={{ 
+                scale: [1, 1.1, 1],
+                opacity: [0.9, 1, 0.9]
+            }}
+            transition={{ 
+                duration: 2, 
+                repeat: Infinity, 
+                ease: "easeInOut" 
+            }}
+        />
+      </motion.svg>
+    </motion.div>
   );
 };

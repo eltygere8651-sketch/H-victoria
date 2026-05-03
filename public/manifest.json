@@ -1,12 +1,12 @@
 
 {
-  "name": "V pedidos internos",
-  "short_name": "V pedidos internos",
+  "name": "Hub-system",
+  "short_name": "Hub-system",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
+  "background_color": "#0f172a",
   "theme_color": "#dc2626",
-  "description": "V pedidos internos",
+  "description": "Hub-system",
   "orientation": "portrait",
   "gcm_sender_id": "103953800507",
   "icons": [

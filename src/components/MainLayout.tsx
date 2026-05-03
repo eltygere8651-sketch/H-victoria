@@ -137,7 +137,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
         <div className="max-w-7xl mx-auto w-full flex justify-between items-center">
           <div className="flex items-center gap-2 sm:gap-3 group cursor-pointer shrink-0" onClick={() => setShowGuideModal(true)}>
             <div className="relative group-hover:scale-105 transition-transform active:scale-95">
-              <Logo size="sm" solid />
+              <Logo size="sm" />
             </div>
             <div className="flex flex-col">
               <span className="font-black text-lg sm:text-xl text-slate-900 dark:text-white uppercase tracking-tighter italic leading-none">Hub</span>
@@ -329,7 +329,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
               </p>
               <button 
                 onClick={() => setShowIOSPrompt(false)}
-                className="w-full mt-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold py-3 rounded-xl hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors"
+                className="w-full mt-2 bg-red-600 text-white font-bold py-3 rounded-xl hover:bg-red-700 transition-all"
               >
                 Entendido
               </button>
@@ -386,7 +386,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
               ) : (
                 <button 
                   onClick={() => setShowAndroidPrompt(false)}
-                  className="w-full mt-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold py-3 rounded-xl hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors"
+                  className="w-full mt-2 bg-red-600 text-white font-bold py-3 rounded-xl hover:bg-red-700 transition-all"
                 >
                   Entendido
                 </button>

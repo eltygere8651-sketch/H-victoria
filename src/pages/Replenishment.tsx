@@ -623,7 +623,7 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCar
                  </div>
                  <button 
                     onClick={resetOrderState}
-                    className="w-full py-5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-black rounded-[1.5rem] hover:bg-black dark:hover:bg-gray-200 transition-all active:scale-[0.97] shadow-xl shadow-gray-900/20 dark:shadow-none uppercase tracking-widest text-sm"
+                    className="w-full py-5 bg-red-600 text-white font-black rounded-[1.5rem] hover:bg-red-700 transition-all active:scale-[0.97] shadow-xl shadow-red-900/20 uppercase tracking-widest text-sm"
                  >
                     Entendido, Aceptar
                  </button>
