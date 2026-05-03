@@ -89,6 +89,7 @@ export enum TaskPriority {
 export enum TaskType {
   TASK = 'TASK',
   ANNOUNCEMENT = 'ANNOUNCEMENT',
+  RESERVATION = 'RESERVATION',
 }
 
 export enum TaskRecurrence {
@@ -140,6 +141,17 @@ export interface Task {
   seenBy?: string[]; // New: Array of user IDs who have seen the latest update
   checklist?: TaskChecklistItem[]; // New: Interactive checklist for tasks
   recurrence?: TaskRecurrence; // New: Recurrence for scheduled tasks
+  // New: Reservation specific fields
+  guests?: number;
+  reservationTime?: string;
+  reservationDate?: string;
+  clientNote?: string;
+  clientPhone?: string;
+  eventType?: string; 
+  tableNumber?: string;
+  takenBy?: string;
+  clientArrived?: boolean;
+  arrivedAt?: number;
 }
 
 // --- Notification System Types ---
@@ -179,25 +191,7 @@ export interface AppNotification {
   payload: NotificationPayload;
 }
 
-// --- New Room Assembly Types ---
-export enum RoomName {
-  RESTAURANTE = 'Restaurante',
-  SALON_C = 'Salon C',
-  TERRAZA = 'Terraza'
-}
-
-export interface RoomPost {
-  id: string;
-  roomName: RoomName | string;
-  title: string;
-  description?: string;
-  imageUrls?: string[];
-  videoUrls?: string[];
-  createdBy: string;
-  createdById: string;
-  createdAt: number;
-}
-
+// --- New Document Management Types ---
 export interface Document {
   id: string;
   name: string;

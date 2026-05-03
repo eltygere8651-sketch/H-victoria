@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { Task, User, Department, TaskStatus, TaskPriority, UserRole, TaskType, TaskComment, TaskChecklistItem, TaskRecurrence } from '../types';
 import * as storageService from '../services/storageService';
-import { ClipboardCheck, Plus, X, Save, Loader2, Edit2, Trash2, ChevronDown, MessagesSquare, Check, Camera, AlertTriangle, Share2, Send, Image, Info, Flame, Bold, Calendar, Clock, List, FileText, Users, Phone, Hash, ChevronRight, User as UserIcon, Video } from 'lucide-react';
+import { ClipboardCheck, Plus, X, Save, Loader2, Edit2, Trash2, ChevronDown, MessagesSquare, Check, Camera, AlertTriangle, Share2, Send, Image, Info, Flame, Bold, Calendar, Clock, List, FileText, ConciergeBell, Users, Phone, Hash, ChevronRight, User as UserIcon, Video, Megaphone, LayoutDashboard } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { compressImage } from '../utils/imageCompressor';
 import { ImageViewer } from '../components/ImageViewer';
@@ -10,13 +10,15 @@ import { ShareModal } from '../components/ShareModal';
 import { sharePdfFromReactComponent } from '../utils/pdfGenerator';
 import { TaskPdfDocument } from '../components/TaskPdfDocument';
 import { TaskCard } from '../components/TaskCard';
+import { ReservationViewModal } from '../components/ReservationViewModal';
 
 interface TasksProps {
   currentUser: User;
   initialTaskId?: string | null;
+  initialTab?: 'ACTIVE' | 'DAILY' | 'RESERVATIONS' | 'ANNOUNCEMENTS' | 'ARRIVED';
 }
 
-const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
+const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId, initialTab }) => {
   const [allTasks, setAllTasks] = useState<Task[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
@@ -24,11 +26,21 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
   const [saveError, setSaveError] = useState<string | null>(null);
   
   const [statusFilter, setStatusFilter] = useState<TaskStatus | 'ALL'>('ALL');
-  const [activeTab, setActiveTab] = useState<'ACTIVE' | 'DAILY'>('ACTIVE');
+  const [activeTab, setActiveTab] = useState<'ACTIVE' | 'DAILY' | 'RESERVATIONS' | 'ANNOUNCEMENTS' | 'ARRIVED' | 'ALL_RESERVATIONS'>(initialTab || 'ACTIVE');
+
+  // Update active tab when prop changes
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
+  const [activeLocation, setActiveLocation] = useState<string>('restaurante');
+  const [reservationSearchTerm, setReservationSearchTerm] = useState('');
   
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [editingTask, setEditingTask] = useState<Partial<Task> | null>(null);
   const [taskToDelete, setTaskToDelete] = useState<Task | null>(null);
+  const [viewingTask, setViewingTask] = useState<Task | null>(null);
   
   const [isCompressing, setIsCompressing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -93,18 +105,6 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
 
   const [newChecklistItemText, setNewChecklistItemText] = useState('');
 
-  const formatDateTimeLocal = (timestamp?: number) => {
-    if (!timestamp) return '';
-    const d = new Date(timestamp);
-    const tzOffset = d.getTimezoneOffset() * 60000;
-    return new Date(d.getTime() - tzOffset).toISOString().slice(0, 16);
-  };
-
-  const parseDateTimeLocal = (val: string) => {
-    if (!val) return undefined;
-    return new Date(val).getTime();
-  };
-
   // Derived state for the task currently being commented on
   const activeTaskForComments = allTasks.find(t => t.id === activeCommentTaskId);
 
@@ -126,8 +126,17 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
   }, []);
 
   const handleSaveTask = async () => {
-    if (!editingTask?.title || !editingTask?.departmentId) {
-      setSaveError('Título y Departamento son obligatorios');
+    const isAnnouncement = editingTask?.type === TaskType.ANNOUNCEMENT;
+    const isReservation = editingTask?.type === TaskType.RESERVATION;
+    const isSpecialType = isAnnouncement || isReservation;
+    
+    if (!editingTask?.title) {
+      setSaveError(isReservation ? 'El nombre del cliente es obligatorio' : 'El título es obligatorio');
+      return;
+    }
+
+    if (!isSpecialType && !editingTask?.departmentId) {
+      setSaveError('El departamento es obligatorio');
       return;
     }
 
@@ -139,10 +148,15 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
       
       const taskData: Partial<Task> = {
         ...editingTask,
-        departmentName: department?.name || 'General',
+        type: editingTask.type || TaskType.TASK,
+        location: isSpecialType ? (editingTask.location || 'restaurante') : undefined,
+        departmentName: isSpecialType ? `Salón: ${editingTask.location || 'restaurante'}` : (department?.name || 'General'),
+        departmentId: isSpecialType ? `salon-${editingTask.location || 'restaurante'}` : (editingTask.departmentId || 'general'),
+        reservationDate: isReservation && !editingTask.reservationDate 
+          ? new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' })
+          : editingTask.reservationDate,
         priority: editingTask.priority || TaskPriority.MEDIUM,
         status: editingTask.status || TaskStatus.PENDING,
-        type: TaskType.TASK,
         createdBy: editingTask.createdBy || currentUser.name,
         createdById: editingTask.createdById || currentUser.id,
         createdAt: editingTask.createdAt || Date.now(),
@@ -172,13 +186,22 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
     }
   };
 
-  // Auto-deletion logic for completed tasks
+  // Auto-deletion logic for completed tasks and arrived reservations
   useEffect(() => {
     const RECURRING_DELETION_WINDOW_MS = 12 * 60 * 60 * 1000; // 12 hours for recurring tasks (non-daily)
+    const ARRIVED_DELETION_WINDOW_MS = 4 * 60 * 60 * 1000; // 4 hours for arrived reservations
 
     const interval = setInterval(() => {
       const now = Date.now();
       const tasksToDelete = allTasks.filter(task => {
+        // Handle deletion of reservations marked as "arrived" -> delete after 4 hours
+        if (task.type === TaskType.RESERVATION && task.clientArrived && task.arrivedAt) {
+          if ((now - task.arrivedAt) > ARRIVED_DELETION_WINDOW_MS) {
+            return true;
+          }
+        }
+        
+        if (task.type === TaskType.ANNOUNCEMENT) return false;
         if (task.recurrence === TaskRecurrence.DAILY) return false;
         if (task.status !== TaskStatus.COMPLETED || !task.completedAt) return false;
         
@@ -310,7 +333,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
     const updateData: any = { id: task.id, checklist: updatedChecklist };
     
     if (allCompleted && updatedChecklist.length > 0) {
-      if (task.recurrence && task.recurrence !== TaskRecurrence.NONE && task.recurrence !== TaskRecurrence.DAILY) {
+      if (task.type !== TaskType.ANNOUNCEMENT && task.recurrence && task.recurrence !== TaskRecurrence.NONE && task.recurrence !== TaskRecurrence.DAILY) {
         // Recurring task completed (Weekly/Monthly): delete it so it "disappears" until the next one
         await storageService.deleteTask(task.id);
         return;
@@ -328,7 +351,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
   }, []);
 
   const handleCompleteTask = useCallback(async (task: Task) => {
-    if (task.recurrence && task.recurrence !== TaskRecurrence.NONE && task.recurrence !== TaskRecurrence.DAILY) {
+    if (task.type !== TaskType.ANNOUNCEMENT && task.recurrence && task.recurrence !== TaskRecurrence.NONE && task.recurrence !== TaskRecurrence.DAILY) {
       // Recurring task completed (Weekly/Monthly): delete it so it "disappears" until the next one
       await storageService.deleteTask(task.id);
       return;
@@ -389,15 +412,55 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
     }
   }, []);
 
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [reservationCount, setReservationCount] = useState(0);
+
+  const [isCounting, setIsCounting] = useState(false);
+
+  const handleClearAllReservations = async () => {
+    try {
+      setLoading(true);
+      await storageService.clearAllReservations();
+      setShowClearConfirm(false);
+      // Local update is handled by the subscription
+    } catch (error) {
+      console.error("Error clearing reservations:", error);
+      alert('Error al intentar limpiar las reservas.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const prepareClearReservations = async () => {
+    setIsCounting(true);
+    try {
+      // Get actual count from DB before confirming
+      const count = await storageService.getReservationCount();
+      setReservationCount(count);
+      setShowClearConfirm(true);
+    } catch (error) {
+      console.error("Error getting reservation count:", error);
+    } finally {
+      setIsCounting(false);
+    }
+  };
+
   const handleShareTaskAction = useCallback((task: Task) => {
     handleShareTask(task);
   }, [handleShareTask]);
 
   const handleSharePdfAction = useCallback(async (task: Task) => {
     try {
-      const filename = `Tarea_${task.id}_${task.departmentName}.pdf`;
-      const text = 'Aquí tienes los detalles de la tarea en formato PDF.';
-      await sharePdfFromReactComponent(<TaskPdfDocument task={task} preview={false} />, filename, `Tarea: ${task.title}`, text);
+      const isReservation = task.type === TaskType.RESERVATION;
+      const filename = isReservation 
+        ? `Reserva_${(task.title || 'Sin_Titulo').replace(/\s+/g, '_')}_${(task.reservationDate || '').replace(/\//g, '-')}.pdf`
+        : `Tarea_${task.id}_${task.departmentName || 'General'}.pdf`;
+      const text = isReservation
+        ? `Aquí tienes los detalles de la reserva de ${task.title} para el ${task.reservationDate}.`
+        : 'Aquí tienes los detalles de la tarea en formato PDF.';
+      const title = isReservation ? `Reserva: ${task.title}` : `Tarea: ${task.title}`;
+
+      await sharePdfFromReactComponent(<TaskPdfDocument task={task} preview={false} />, filename, title, text);
     } catch (error) {
       console.error("PDF Share Failed:", error);
       alert('Hubo un error al compartir el PDF.');
@@ -432,19 +495,62 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
     }
   };
 
+  const handleToggleArrival = useCallback(async (task: Task) => {
+    // Only admins or someone who can manage tasks
+    if (!canManageTasks) return;
+    
+    const clientArrived = !task.clientArrived;
+    await storageService.saveTask({ 
+      id: task.id, 
+      clientArrived,
+      arrivedAt: clientArrived ? Date.now() : undefined 
+    });
+  }, [canManageTasks]);
+
   const filteredTasks = useMemo(() => {
     return allTasks.filter(task => {
       const statusMatch = statusFilter === 'ALL' || task.status === statusFilter;
       const deptMatch = departmentFilter === 'ALL' || task.departmentId === departmentFilter;
       
       // Tab filtering
+      if (activeTab === 'RESERVATIONS') {
+        const itemLocation = task.location || 'restaurante';
+        const todayStr = new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        return task.type === TaskType.RESERVATION && itemLocation === activeLocation && !task.clientArrived && task.reservationDate === todayStr;
+      }
+
+      if (activeTab === 'ALL_RESERVATIONS') {
+        const itemLocation = task.location || 'restaurante';
+        if (task.type !== TaskType.RESERVATION || itemLocation !== activeLocation) return false;
+        if (!reservationSearchTerm) return true;
+        const searchLower = reservationSearchTerm.toLowerCase();
+        return (
+          (task.title || '').toLowerCase().includes(searchLower) ||
+          (task.reservationDate || '').toLowerCase().includes(searchLower) ||
+          (task.clientPhone || '').toLowerCase().includes(searchLower) ||
+          (task.tableNumber || '').toLowerCase().includes(searchLower)
+        );
+      }
+
+      if (activeTab === 'ARRIVED') {
+        const todayStr = new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        return task.type === TaskType.RESERVATION && task.clientArrived === true && task.reservationDate === todayStr;
+      }
+
+      if (activeTab === 'ANNOUNCEMENTS') {
+        const itemLocation = task.location || 'restaurante';
+        return task.type === TaskType.ANNOUNCEMENT && itemLocation === activeLocation;
+      }
+
+      const isNotSpecial = task.type !== TaskType.ANNOUNCEMENT && task.type !== TaskType.RESERVATION;
+      
       if (activeTab === 'DAILY') {
-        return statusMatch && deptMatch && task.recurrence === TaskRecurrence.DAILY;
+        return isNotSpecial && statusMatch && deptMatch && task.recurrence === TaskRecurrence.DAILY;
       } else if (activeTab === 'ACTIVE') {
-        return statusMatch && deptMatch && task.recurrence !== TaskRecurrence.DAILY;
+        return isNotSpecial && statusMatch && deptMatch && task.recurrence !== TaskRecurrence.DAILY;
       }
       
-      return statusMatch && deptMatch;
+      return isNotSpecial && statusMatch && deptMatch;
     }).sort((a, b) => {
       // 1. Completed tasks go to the bottom
       if (a.status !== TaskStatus.COMPLETED && b.status === TaskStatus.COMPLETED) return -1;
@@ -463,7 +569,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
       // 4. Fallback to createdAt (descending - newest first)
       return b.createdAt - a.createdAt;
     });
-  }, [allTasks, statusFilter, departmentFilter, activeTab]);
+  }, [allTasks, statusFilter, departmentFilter, activeTab, activeLocation, reservationSearchTerm]);
 
   const currentWeekEnd = useMemo(() => {
     const end = new Date(currentWeekStart);
@@ -474,8 +580,8 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
 
   const listTasks = useMemo(() => {
     return filteredTasks.filter(t => {
-      // Daily tasks should always be visible in the DAILY tab regardless of the week filter
-      if (activeTab === 'DAILY') return true;
+      // Daily, Announcements, and Reservations should always be visible regardless of the week filter
+      if (activeTab === 'DAILY' || activeTab === 'ANNOUNCEMENTS' || activeTab === 'RESERVATIONS' || activeTab === 'ARRIVED' || activeTab === 'ALL_RESERVATIONS') return true;
       
       // Assign each task to exactly one week based on its most relevant date
       const taskDate = t.startDate ? new Date(t.startDate) : t.dueDate ? new Date(t.dueDate) : new Date(t.createdAt);
@@ -592,105 +698,130 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
     <div className="font-sans pb-24 bg-gray-50 dark:bg-slate-950 min-h-screen">
       {/* Header */}
       <div className="sticky top-[var(--header-h)] z-30 bg-white/95 dark:bg-slate-950/95 backdrop-blur-xl border-b border-gray-200 dark:border-slate-800 px-4 pt-4 pb-3 md:px-6 shadow-md transition-all duration-300">
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-2">
-          <div className="flex items-center justify-between w-full sm:w-auto">
-            <div className="flex flex-col">
-              <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.3em] leading-none mb-1">Servicios</span>
-              <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tighter leading-none drop-shadow-sm">
-                Tareas <span className="text-red-600 dark:text-red-500 italic">{activeTab === 'ACTIVE' ? 'Activas' : activeTab === 'DAILY' ? 'Diarias' : 'Programadas'}</span>
-              </h2>
-            </div>
-            
-            <div className="flex bg-gray-100 dark:bg-slate-800 rounded-xl p-1 mx-4">
-              <button
-                onClick={() => setActiveTab('ACTIVE')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'ACTIVE' ? 'bg-white dark:bg-slate-700 shadow-sm text-red-600' : 'text-gray-500 dark:text-gray-400'}`}
-              >
-                Activas
-              </button>
-              <button
-                onClick={() => setActiveTab('DAILY')}
-                className={`relative px-4 py-1.5 rounded-lg text-xs font-black uppercase tracking-widest transition-all overflow-hidden group ${
-                  activeTab === 'DAILY' 
-                    ? 'bg-gradient-to-r from-red-600 to-orange-600 shadow-lg shadow-red-600/30 text-white' 
-                    : 'text-gray-500 dark:text-gray-400 hover:bg-white/50 dark:hover:bg-slate-700/50'
-                }`}
-              >
-                <div className="relative z-10 flex items-center gap-1.5">
-                  <span>Diarias</span>
-                  {allTasks.some(t => t.recurrence === TaskRecurrence.DAILY && t.status !== TaskStatus.COMPLETED) && (
-                    <motion.div
-                      animate={{ scale: [1, 1.2, 1] }}
-                      transition={{ repeat: Infinity, duration: 1.5 }}
-                      className={`flex items-center justify-center w-4 h-4 rounded-full ${activeTab === 'DAILY' ? 'bg-white text-red-600' : 'bg-red-600 text-white shadow-lg shadow-red-600/40'}`}
-                    >
-                      <AlertTriangle size={10} fill="currentColor" strokeWidth={3} />
-                    </motion.div>
-                  )}
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4 w-full sm:w-auto">
+            <div className="flex items-center justify-between w-full sm:w-auto gap-4">
+              <div className="flex flex-col">
+                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.3em] leading-none mb-1">Servicios</span>
+                <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tighter leading-none drop-shadow-sm">
+                  {activeTab === 'ANNOUNCEMENTS' ? 'Sección' : (activeTab === 'RESERVATIONS' || activeTab === 'ALL_RESERVATIONS' || activeTab === 'ARRIVED') ? 'Agenda' : 'Tareas'} <span className={`${(activeTab === 'RESERVATIONS' || activeTab === 'ALL_RESERVATIONS' || activeTab === 'ARRIVED') ? 'text-emerald-600 dark:text-emerald-500' : 'text-red-600 dark:text-red-500'} italic`}>{activeTab === 'ACTIVE' ? 'Activas' : activeTab === 'DAILY' ? 'Diarias' : activeTab === 'ALL_RESERVATIONS' ? 'Buscador' : activeTab === 'ARRIVED' ? 'Asistieron' : activeTab === 'RESERVATIONS' ? 'Reservas Hoy' : 'Salones Manager'}</span>
+                </h2>
+              </div>
+              
+              {/* Mobile View Mode Toggle */}
+              {activeTab !== 'ANNOUNCEMENTS' && (
+                <div className="flex sm:hidden bg-gray-100 dark:bg-slate-800 rounded-xl p-0.5">
+                  <button
+                    onClick={() => setViewMode('LIST')}
+                    className={`p-2 rounded-lg flex items-center justify-center transition-colors ${viewMode === 'LIST' ? 'bg-white dark:bg-slate-700 shadow-sm text-red-600' : 'text-gray-500 dark:text-gray-400'}`}
+                  >
+                    <List size={18} />
+                  </button>
+                  <button
+                    onClick={() => setViewMode(viewMode === 'CALENDAR' ? 'LIST' : 'CALENDAR')}
+                    className={`p-2 rounded-lg flex items-center justify-center transition-colors ${viewMode === 'CALENDAR' ? 'bg-white dark:bg-slate-700 shadow-sm text-red-600' : 'text-gray-500 dark:text-gray-400'}`}
+                  >
+                    <Calendar size={18} />
+                  </button>
                 </div>
-                {activeTab === 'DAILY' && (
-                  <motion.div 
-                    layoutId="daily-glow"
-                    className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000"
-                  />
-                )}
-              </button>
+              )}
             </div>
-            
-            {/* Mobile View Mode Toggle */}
-            <div className="flex sm:hidden bg-gray-100 dark:bg-slate-800 rounded-xl p-1">
-              <button
-                onClick={() => setViewMode('LIST')}
-                className={`p-1.5 rounded-lg flex items-center justify-center transition-colors ${viewMode === 'LIST' ? 'bg-white dark:bg-slate-700 shadow-sm text-red-600' : 'text-gray-500 dark:text-gray-400'}`}
-              >
-                <List size={16} />
-              </button>
-              <button
-                onClick={() => setViewMode(viewMode === 'CALENDAR' ? 'LIST' : 'CALENDAR')}
-                className={`p-1.5 rounded-lg flex items-center justify-center transition-colors ${viewMode === 'CALENDAR' ? 'bg-white dark:bg-slate-700 shadow-sm text-red-600' : 'text-gray-500 dark:text-gray-400'}`}
-              >
-                <Calendar size={16} />
-              </button>
-            </div>
+
+            {(activeTab === 'ACTIVE' || activeTab === 'DAILY') && (
+              <div className="flex bg-gray-100 dark:bg-slate-900/50 border border-gray-200/50 dark:border-slate-800 rounded-2xl p-1 gap-1 w-full sm:w-auto overflow-x-auto no-scrollbar">
+                <button
+                  onClick={() => setActiveTab('ACTIVE')}
+                  className={`flex-1 sm:px-4 py-2.5 rounded-xl text-[9px] sm:text-xs font-black uppercase tracking-widest transition-all text-center whitespace-nowrap min-w-[70px] ${
+                    activeTab === 'ACTIVE' 
+                      ? 'bg-white dark:bg-slate-700 shadow-md text-red-600 scale-[1.02]' 
+                      : 'text-gray-500 dark:text-gray-400 hover:bg-white/50'
+                  }`}
+                >
+                  Activas
+                </button>
+                <button
+                  onClick={() => setActiveTab('DAILY')}
+                  className={`flex-1 sm:px-4 py-2.5 rounded-xl text-[9px] sm:text-xs font-black uppercase tracking-widest transition-all text-center whitespace-nowrap min-w-[70px] ${
+                    activeTab === 'DAILY' 
+                      ? 'bg-white dark:bg-slate-700 shadow-md text-orange-600 scale-[1.02]' 
+                      : 'text-gray-500 dark:text-gray-400 hover:bg-white/50'
+                  }`}
+                >
+                  Diarias
+                </button>
+              </div>
+            )}
+
+            {(activeTab === 'RESERVATIONS' || activeTab === 'ARRIVED' || activeTab === 'ALL_RESERVATIONS') && (
+              <div className="flex bg-gray-100 dark:bg-slate-900/50 border border-gray-200/50 dark:border-slate-800 rounded-2xl p-1 gap-1 w-full sm:w-auto overflow-x-auto no-scrollbar">
+                <button
+                  onClick={() => setActiveTab('RESERVATIONS')}
+                  className={`flex-1 px-3 sm:px-4 py-2.5 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all text-center whitespace-nowrap ${
+                    activeTab === 'RESERVATIONS' 
+                      ? 'bg-white dark:bg-slate-700 shadow-md text-emerald-600 scale-[1.02]' 
+                      : 'text-gray-500 dark:text-gray-400 hover:bg-white/50'
+                  }`}
+                >
+                  Hoy
+                </button>
+                <button
+                  onClick={() => setActiveTab('ARRIVED')}
+                  className={`flex-1 px-3 sm:px-4 py-2.5 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all text-center whitespace-nowrap ${
+                    activeTab === 'ARRIVED' 
+                      ? 'bg-white dark:bg-slate-700 shadow-md text-blue-600 scale-[1.02]' 
+                      : 'text-gray-500 dark:text-gray-400 hover:bg-white/50'
+                  }`}
+                >
+                  Llegaron
+                </button>
+                <button
+                  onClick={() => setActiveTab('ALL_RESERVATIONS')}
+                  className={`flex-1 px-3 sm:px-4 py-2.5 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all text-center whitespace-nowrap ${
+                    activeTab === 'ALL_RESERVATIONS' 
+                      ? 'bg-white dark:bg-slate-700 shadow-md text-purple-600 scale-[1.02]' 
+                      : 'text-gray-500 dark:text-gray-400 hover:bg-white/50'
+                  }`}
+                >
+                  Todas
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="flex items-center justify-between sm:justify-end gap-1.5 w-full sm:w-auto">
             {/* Desktop View Mode Toggle */}
-            <div className="hidden sm:flex bg-gray-100 dark:bg-slate-800 rounded-xl p-1">
-              <button
-                onClick={() => setViewMode('LIST')}
-                className={`p-1.5 rounded-lg flex items-center justify-center transition-colors ${viewMode === 'LIST' ? 'bg-white dark:bg-slate-700 shadow-sm text-red-600' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'}`}
-                title="Vista de Lista"
-              >
-                <List size={18} />
-              </button>
-              <button
-                onClick={() => setViewMode(viewMode === 'CALENDAR' ? 'LIST' : 'CALENDAR')}
-                className={`p-1.5 rounded-lg flex items-center justify-center transition-colors ${viewMode === 'CALENDAR' ? 'bg-white dark:bg-slate-700 shadow-sm text-red-600' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'}`}
-                title="Vista de Calendario"
-              >
-                <Calendar size={18} />
-              </button>
-            </div>
+            {activeTab !== 'ANNOUNCEMENTS' && (
+              <div className="hidden sm:flex bg-gray-100 dark:bg-slate-800 rounded-xl p-1">
+                <button
+                  onClick={() => setViewMode('LIST')}
+                  className={`p-1.5 rounded-lg flex items-center justify-center transition-colors ${viewMode === 'LIST' ? 'bg-white dark:bg-slate-700 shadow-sm text-red-600' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'}`}
+                  title="Vista de Lista"
+                >
+                  <List size={18} />
+                </button>
+                <button
+                  onClick={() => setViewMode(viewMode === 'CALENDAR' ? 'LIST' : 'CALENDAR')}
+                  className={`p-1.5 rounded-lg flex items-center justify-center transition-colors ${viewMode === 'CALENDAR' ? 'bg-white dark:bg-slate-700 shadow-sm text-red-600' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'}`}
+                  title="Vista de Calendario"
+                >
+                  <Calendar size={18} />
+                </button>
+              </div>
+            )}
 
             {/* Only Admins or Staff with 'CAN_MANAGE_TASKS' permission can create new tasks */}
             {canManageTasks && (
-              <div className="flex items-center gap-1.5 flex-wrap justify-end">
+              <div className="flex items-center gap-1.5">
                 <button 
                   onClick={() => {
-                    const event = new CustomEvent('changeView', { detail: 'rooms' });
-                    window.dispatchEvent(event);
-                  }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold uppercase tracking-wider rounded-full transition-all active:scale-95 shadow-lg shadow-blue-600/20"
-                  title="Publicar montaje en salones"
-                >
-                  <Camera size={14} strokeWidth={3} />
-                  <span className="hidden sm:inline">Montaje de Salón</span>
-                  <span className="sm:hidden">Montaje</span>
-                </button>
-                <button 
-                  onClick={() => {
-                    setEditingTask({});
+                    const isNews = activeTab === 'ANNOUNCEMENTS';
+                    const isRes = activeTab === 'RESERVATIONS' || activeTab === 'ALL_RESERVATIONS';
+                    setEditingTask({
+                      type: isNews ? TaskType.ANNOUNCEMENT : isRes ? TaskType.RESERVATION : TaskType.TASK,
+                      location: (isNews || isRes) ? activeLocation : undefined,
+                      recurrence: activeTab === 'DAILY' ? TaskRecurrence.DAILY : TaskRecurrence.NONE,
+                      priority: TaskPriority.MEDIUM
+                    });
                     setSelectedImages([]);
                     setPreviews([]);
                     setShowTaskModal(true);
@@ -698,82 +829,262 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
                   className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold uppercase tracking-wider rounded-full transition-all active:scale-95 shadow-lg shadow-red-600/20"
                 >
                   <Plus size={14} strokeWidth={3} />
-                  <span>Nueva Tarea</span>
+                  <span>{activeTab === 'ANNOUNCEMENTS' ? 'Publicar' : (activeTab === 'RESERVATIONS' || activeTab === 'ALL_RESERVATIONS') ? 'Nueva Reserva' : 'Nueva Tarea'}</span>
                 </button>
+
+                {activeTab === 'RESERVATIONS' && currentUser.role === UserRole.ADMIN && allTasks.some(t => t.type === TaskType.RESERVATION) && (
+                    <button 
+                      onClick={prepareClearReservations}
+                      disabled={isCounting}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 text-[10px] font-black uppercase tracking-wider rounded-full transition-all active:scale-95 border border-slate-200 dark:border-slate-700 disabled:opacity-50"
+                    >
+                      {isCounting ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} className="text-red-500" />}
+                      <span>Limpieza General</span>
+                    </button>
+                )}
               </div>
             )}
           </div>
         </div>
 
         {/* Filters and Week Navigation inside sticky header */}
-        <div className="flex flex-col gap-2">
-            <div className="flex gap-2">
-              <select 
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value as TaskStatus | 'ALL')}
-                className="flex-1 min-w-0 px-2 sm:px-4 py-2 rounded-xl font-bold text-xs bg-gray-100 dark:bg-slate-800 border-2 border-transparent focus:border-red-500 outline-none dark:text-white shadow-sm appearance-none text-center"
-              >
-                <option value="ALL">Estados</option>
-                <option value={TaskStatus.PENDING}>Pendientes</option>
-                <option value={TaskStatus.IN_PROGRESS}>En Curso</option>
-                <option value={TaskStatus.COMPLETED}>Completadas</option>
-              </select>
-
-              <select 
-                value={departmentFilter}
-                onChange={(e) => setDepartmentFilter(e.target.value)}
-                className="flex-1 min-w-0 px-2 sm:px-4 py-2 rounded-xl font-bold text-xs bg-gray-100 dark:bg-slate-800 border-2 border-transparent focus:border-red-500 outline-none dark:text-white shadow-sm appearance-none text-center"
-              >
-                <option value="ALL">Dptos.</option>
-                {departments.map(d => (
-                  <option key={d.id} value={d.id}>{d.name}</option>
-                ))}
-              </select>
-            </div>
-
-            {viewMode === 'LIST' && (
-              <div className="flex justify-between items-center bg-gray-50 dark:bg-slate-900/50 p-2 rounded-xl border border-gray-100 dark:border-slate-800/50">
-                <button 
-                  onClick={() => setCurrentWeekStart(new Date(currentWeekStart.getTime() - 7 * 24 * 60 * 60 * 1000))}
-                  className="p-1.5 bg-white dark:bg-slate-800 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors shadow-sm"
+        {activeTab !== 'ANNOUNCEMENTS' && activeTab !== 'RESERVATIONS' && activeTab !== 'ARRIVED' && activeTab !== 'ALL_RESERVATIONS' && (
+          <div className="flex flex-col gap-2">
+              <div className="flex gap-2">
+                <select 
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value as TaskStatus | 'ALL')}
+                  className="flex-1 min-w-0 px-2 sm:px-4 py-2 rounded-xl font-bold text-xs bg-gray-100 dark:bg-slate-800 border-2 border-transparent focus:border-red-500 outline-none dark:text-white shadow-sm appearance-none text-center"
                 >
-                  <ChevronDown size={16} className="rotate-90" />
-                </button>
-                <div className="text-center flex items-center gap-2">
-                  <p className="text-[9px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-widest">Semana:</p>
-                  <p className="text-[11px] font-bold text-gray-900 dark:text-white">
-                    {currentWeekStart.getDate()} {currentWeekStart.toLocaleString('es-ES', { month: 'short' })} - {currentWeekEnd.getDate()} {currentWeekEnd.toLocaleString('es-ES', { month: 'short' })}
-                  </p>
+                  <option value="ALL">Estados</option>
+                  <option value={TaskStatus.PENDING}>Pendientes</option>
+                  <option value={TaskStatus.IN_PROGRESS}>En Curso</option>
+                  <option value={TaskStatus.COMPLETED}>Completadas</option>
+                </select>
+
+                <select 
+                  value={departmentFilter}
+                  onChange={(e) => setDepartmentFilter(e.target.value)}
+                  className="flex-1 min-w-0 px-2 sm:px-4 py-2 rounded-xl font-bold text-xs bg-gray-100 dark:bg-slate-800 border-2 border-transparent focus:border-red-500 outline-none dark:text-white shadow-sm appearance-none text-center"
+                >
+                  <option value="ALL">Dptos.</option>
+                  {departments.map(d => (
+                    <option key={d.id} value={d.id}>{d.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              {viewMode === 'LIST' && (
+                <div className="flex justify-between items-center bg-gray-50 dark:bg-slate-900/50 p-2 rounded-xl border border-gray-100 dark:border-slate-800/50">
                   <button 
-                    onClick={() => setCurrentWeekStart(getStartOfWeek(new Date()))}
-                    className="text-[9px] font-bold text-red-600 dark:text-red-400 hover:underline"
+                    onClick={() => setCurrentWeekStart(new Date(currentWeekStart.getTime() - 7 * 24 * 60 * 60 * 1000))}
+                    className="p-1.5 bg-white dark:bg-slate-800 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors shadow-sm"
                   >
-                    Hoy
+                    <ChevronDown size={16} className="rotate-90" />
+                  </button>
+                  <div className="text-center flex items-center gap-2">
+                    <p className="text-[9px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-widest">Semana:</p>
+                    <p className="text-[11px] font-bold text-gray-900 dark:text-white">
+                      {currentWeekStart.getDate()} {currentWeekStart.toLocaleString('es-ES', { month: 'short' })} - {currentWeekEnd.getDate()} {currentWeekEnd.toLocaleString('es-ES', { month: 'short' })}
+                    </p>
+                    <button 
+                      onClick={() => setCurrentWeekStart(getStartOfWeek(new Date()))}
+                      className="text-[9px] font-bold text-red-600 dark:text-red-400 hover:underline"
+                    >
+                      Hoy
+                    </button>
+                  </div>
+                  <button 
+                    onClick={() => setCurrentWeekStart(new Date(currentWeekStart.getTime() + 7 * 24 * 60 * 60 * 1000))}
+                    className="p-1.5 bg-white dark:bg-slate-800 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors shadow-sm"
+                  >
+                    <ChevronDown size={16} className="-rotate-90" />
                   </button>
                 </div>
-                <button 
-                  onClick={() => setCurrentWeekStart(new Date(currentWeekStart.getTime() + 7 * 24 * 60 * 60 * 1000))}
-                  className="p-1.5 bg-white dark:bg-slate-800 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors shadow-sm"
-                >
-                  <ChevronDown size={16} className="-rotate-90" />
-                </button>
-              </div>
-            )}
+              )}
           </div>
+        )}
+
+        {/* Global Reservations Search inside sticky header */}
+        {activeTab === 'ALL_RESERVATIONS' && (
+          <div className="flex mt-2">
+            <div className="relative flex-1">
+              <input
+                type="text"
+                placeholder="Buscar por cliente, mesa o fecha (DD/MM/AAAA)..."
+                value={reservationSearchTerm}
+                onChange={(e) => setReservationSearchTerm(e.target.value)}
+                className="w-full pl-4 pr-10 py-3 rounded-xl font-bold bg-gray-100 dark:bg-slate-800 border-2 border-transparent focus:border-indigo-500 outline-none dark:text-white shadow-sm"
+              />
+              {reservationSearchTerm && (
+                <button
+                  onClick={() => setReservationSearchTerm('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 bg-gray-200 dark:bg-slate-700 text-gray-500 rounded-full hover:bg-gray-300 transition-colors"
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="p-4 md:p-6 space-y-10">
+        {/* Reservas Banner */}
+        {(activeTab === 'RESERVATIONS' || activeTab === 'ARRIVED' || activeTab === 'ALL_RESERVATIONS') && (
+          <motion.div 
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex flex-col gap-6"
+          >
+            <div className="flex bg-slate-100 dark:bg-slate-900/50 p-1.5 rounded-[2rem] border border-slate-200/50 dark:border-slate-800 self-center mb-2 overflow-x-auto no-scrollbar max-w-full">
+              {[
+                { id: 'restaurante', label: 'Restaurante', color: 'bg-emerald-500' },
+                { id: 'gastro_bar', label: 'Gastro Bar', color: 'bg-rose-500' },
+                { id: 'cafeteria', label: 'Cafetería', color: 'bg-orange-500' },
+                { id: 'salon_c', label: 'Salón C', color: 'bg-purple-500' },
+                { id: 'terraza', label: 'Terraza', color: 'bg-blue-500' },
+                { id: 'eventos', label: 'Eventos', color: 'bg-amber-500' },
+                { id: 'piscina', label: 'Piscina', color: 'bg-cyan-500' }
+              ].map((loc) => (
+                <button
+                  key={loc.id}
+                  onClick={() => setActiveLocation(loc.id)}
+                  className={`px-5 py-2.5 rounded-[1.5rem] text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 whitespace-nowrap ${
+                    activeLocation === loc.id 
+                      ? 'bg-white dark:bg-slate-700 shadow-md text-slate-900 dark:text-white' 
+                      : 'text-slate-400 hover:text-slate-600'
+                  }`}
+                >
+                  <span className={`w-2 h-2 rounded-full ${loc.color}`}></span>
+                  {loc.label}
+                </button>
+              ))}
+            </div>
+
+            <div className={`bg-gradient-to-br ${
+              activeLocation === 'terraza' ? 'from-blue-600 via-blue-700 to-blue-900' :
+              activeLocation === 'salon_c' ? 'from-purple-600 via-purple-700 to-purple-900' :
+              activeLocation === 'gastro_bar' ? 'from-rose-600 via-rose-700 to-rose-900' :
+              activeLocation === 'cafeteria' ? 'from-orange-600 via-orange-700 to-orange-900' :
+              activeLocation === 'eventos' ? 'from-amber-600 via-amber-700 to-amber-900' :
+              activeLocation === 'piscina' ? 'from-cyan-600 via-cyan-700 to-cyan-900' :
+              'from-emerald-600 via-teal-700 to-emerald-900'
+            } rounded-[1.5rem] md:rounded-[2.5rem] p-4 md:p-8 text-white shadow-xl relative overflow-hidden group border border-white/10`}>
+              <div className="absolute top-0 right-0 w-32 md:w-80 h-32 md:h-80 bg-white/10 rounded-full blur-2xl transform translate-x-16 -translate-y-16 group-hover:scale-110 transition-transform duration-700"></div>
+              
+              <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-3 md:gap-6">
+                <div className="max-w-2xl">
+                  <div className="flex items-center gap-2 md:gap-3 mb-1 md:mb-4">
+                    <div className="p-2 md:p-4 bg-white/20 rounded-xl md:rounded-3xl backdrop-blur-xl shadow-xl border border-white/30 rotate-3 group-hover:rotate-0 transition-transform">
+                      <ConciergeBell size={18} className="md:w-8 md:h-8 text-white" />
+                    </div>
+                    <h3 className="text-lg md:text-3xl font-black uppercase tracking-tighter drop-shadow-lg leading-tight">
+                      Agenda de Reservas <br/>
+                      <span className="text-white/70 text-sm md:text-2xl italic tracking-normal capitalize">{activeLocation}</span>
+                    </h3>
+                  </div>
+                  <p className="text-white/80 text-[8px] md:text-sm font-bold uppercase tracking-[0.2em]">
+                    Mesas • Horarios • Contactos
+                  </p>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Gestor de Salones Sub-tabs */}
+        {activeTab === 'ANNOUNCEMENTS' && (
+          <motion.div 
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex flex-col gap-6"
+          >
+            <div className="bg-gradient-to-br from-indigo-600 via-purple-700 to-indigo-900 rounded-[1.5rem] md:rounded-[2.5rem] p-4 md:p-8 text-white shadow-xl relative overflow-hidden group border border-white/10">
+              <div className="absolute top-0 right-0 w-32 md:w-80 h-32 md:h-80 bg-white/10 rounded-full blur-2xl transform translate-x-16 -translate-y-16 group-hover:scale-110 transition-transform duration-700"></div>
+              
+              <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-3 md:gap-6">
+                <div className="max-w-2xl">
+                  <div className="flex items-center gap-2 md:gap-3 mb-1 md:mb-4">
+                    <div className="p-2 md:p-4 bg-white/20 rounded-xl md:rounded-3xl backdrop-blur-xl shadow-xl border border-white/30 rotate-3 group-hover:rotate-0 transition-transform">
+                      <LayoutDashboard size={18} className="md:w-8 md:h-8 text-white" />
+                    </div>
+                    <h3 className="text-lg md:text-4xl font-black uppercase tracking-tighter drop-shadow-lg">Gestor de Salones</h3>
+                  </div>
+                  <p className="text-indigo-100 text-xs md:text-xl font-medium leading-[1.1] md:leading-relaxed mb-0.5 md:mb-2">
+                    Comunicación de montajes y eventos.
+                  </p>
+                  <p className="text-indigo-200/80 text-[8px] md:text-sm font-bold uppercase tracking-widest">
+                    Espacios • Información • Montajes
+                  </p>
+                </div>
+                
+                <div className="hidden lg:block">
+                  <div className="grid grid-cols-2 gap-3 opacity-40 group-hover:opacity-100 transition-opacity duration-500 scale-90 group-hover:scale-100 origin-right">
+                    <div className="p-3 bg-white/10 rounded-2xl backdrop-blur-md border border-white/20 flex items-center justify-center">
+                       <Calendar size={24} />
+                    </div>
+                    <div className="p-3 bg-white/10 rounded-2xl backdrop-blur-md border border-white/20 flex items-center justify-center">
+                       <Users size={24} />
+                    </div>
+                    <div className="p-3 bg-white/10 rounded-2xl backdrop-blur-md border border-white/20 flex items-center justify-center">
+                       <Megaphone size={24} />
+                    </div>
+                    <div className="p-3 bg-white/10 rounded-2xl backdrop-blur-md border border-white/20 flex items-center justify-center">
+                       <Image size={24} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex bg-gray-100 dark:bg-slate-900/50 p-1.5 rounded-[2rem] border border-slate-200/50 dark:border-slate-800 self-center mb-2 overflow-x-auto no-scrollbar max-w-full">
+              {[
+                { id: 'restaurante', label: 'Restaurante' },
+                { id: 'gastro_bar', label: 'Gastro Bar' },
+                { id: 'cafeteria', label: 'Cafetería' },
+                { id: 'salon_c', label: 'Salón C' },
+                { id: 'terraza', label: 'Terraza' },
+                { id: 'eventos', label: 'Eventos' },
+                { id: 'piscina', label: 'Piscina' }
+              ].map((loc) => (
+                <button
+                  key={loc.id}
+                  onClick={() => setActiveLocation(loc.id)}
+                  className={`px-5 py-2.5 rounded-[1.5rem] text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 whitespace-nowrap ${
+                    activeLocation === loc.id 
+                      ? 'bg-white dark:bg-slate-700 shadow-md text-indigo-600 dark:text-white' 
+                      : 'text-slate-400 hover:text-slate-600'
+                  }`}
+                >
+                  {loc.label}
+                </button>
+              ))}
+            </div>
+          </motion.div>
+        )}
+
         {/* SECTION: TASKS (HIGH IMPACT ACTION STYLE) */}
         {viewMode === 'LIST' ? (
-          <div className="space-y-6">
+          <div className={activeTab === 'RESERVATIONS' || activeTab === 'ALL_RESERVATIONS' || activeTab === 'ARRIVED' ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4' : 'space-y-6'}>
             {listTasks.length === 0 ? (
               <div className="py-24 text-center bg-white dark:bg-slate-900 rounded-[2.5rem] border-4 border-dashed border-gray-200 dark:border-slate-800 shadow-inner">
-                <ClipboardCheck size={80} className="mx-auto mb-6 text-gray-300 dark:text-slate-700" />
+                {activeTab === 'ANNOUNCEMENTS' ? <Megaphone size={80} className="mx-auto mb-6 text-indigo-200 dark:text-indigo-900/30" /> : <ClipboardCheck size={80} className="mx-auto mb-6 text-gray-300 dark:text-slate-700" />}
                 <p className="text-3xl font-black text-gray-400 dark:text-slate-600 uppercase tracking-tighter">
-                  {activeTab === 'ACTIVE' ? 'Sin Tareas Activas' : 'Sin Tareas Diarias'}
+                  {activeTab === 'ACTIVE' ? 'Sin Tareas Activas' : 
+                   activeTab === 'DAILY' ? 'Sin Tareas Diarias' : 
+                   activeTab === 'ARRIVED' ? 'Nadie ha llegado todavía' : 
+                   activeTab === 'RESERVATIONS' ? 'Agenda de hoy completada' :
+                   activeTab === 'ALL_RESERVATIONS' ? 'No hay reservas' :
+                   `Sin Publicaciones en ${activeLocation}`}
                 </p>
                 <p className="text-gray-400 dark:text-slate-500 font-medium mt-2">
-                  {activeTab === 'ACTIVE' ? '¡Todo al día en esta semana!' : 'No hay rutinas diarias configuradas.'}
+                  {activeTab === 'ACTIVE' ? '¡Todo al día en esta semana!' : 
+                   activeTab === 'DAILY' ? 'No hay rutinas diarias configuradas.' : 
+                   activeTab === 'ARRIVED' ? 'Las reservas marcadas como "Llegó" aparecerán aquí.' : 
+                   activeTab === 'RESERVATIONS' ? `No hay reservas próximas para ${activeLocation}.` :
+                   activeTab === 'ALL_RESERVATIONS' ? 'Intenta usar el buscador integrado.' :
+                   'Aquí aparecerán los anuncios importantes.'}
                 </p>
                 {(statusFilter !== 'ALL' || departmentFilter !== 'ALL') && (
                   <button 
@@ -803,6 +1114,8 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
                     onShare={handleShareTaskAction}
                     onSharePdf={handleSharePdfAction}
                     onViewImages={handleViewImagesAction}
+                    onToggleArrival={handleToggleArrival}
+                    onView={(t) => setViewingTask(t)}
                   />
                 </div>
               ))
@@ -914,7 +1227,10 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
              {/* Modal Header */}
              <div className="px-6 py-5 border-b border-gray-100 dark:border-slate-800 flex justify-between items-center bg-white dark:bg-slate-900 sticky top-0 z-10">
                 <h3 className="text-2xl font-black text-gray-900 dark:text-white uppercase tracking-tight">
-                  {editingTask?.id ? 'Editar Tarea' : 'Nueva Tarea'}
+                  {editingTask?.id 
+                    ? (editingTask.type === TaskType.ANNOUNCEMENT ? 'Editar Anuncio' : editingTask.type === TaskType.RESERVATION ? 'Editar Reserva' : 'Editar Tarea')
+                    : (editingTask?.type === TaskType.ANNOUNCEMENT ? 'Publicar' : editingTask?.type === TaskType.RESERVATION ? 'Nueva Reserva' : 'Nueva Tarea')
+                  }
                 </h3>
                 <button onClick={() => setShowTaskModal(false)} className="bg-gray-100 dark:bg-slate-800 p-2 rounded-full text-gray-500 hover:bg-gray-200 dark:hover:bg-slate-700 hover:text-red-600 transition-colors">
                   <X size={24} strokeWidth={2.5} />
@@ -925,101 +1241,271 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
              <div className="flex-1 overflow-y-auto p-6 space-y-6">
                 
                 <div>
-                   <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Título de la Tarea</label>
+                   <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">
+                      {editingTask?.type === TaskType.RESERVATION ? 'Nombre de la Reserva / Cliente' : 'Título de la Publicación'}
+                    </label>
                    <input 
                      disabled={!canManageTasks}
                      value={editingTask?.title || ''}
                      onChange={e => setEditingTask({ ...editingTask, title: e.target.value })}
                      className="w-full px-5 py-4 text-xl font-black bg-gray-50 dark:bg-slate-800/50 border-2 border-gray-200 dark:border-slate-700 rounded-2xl focus:border-red-500 focus:bg-white dark:focus:bg-slate-900 outline-none transition-all dark:text-white placeholder-gray-400"
-                     placeholder="¿QUÉ HAY QUE HACER?"
+                     placeholder={editingTask?.type === TaskType.RESERVATION ? "EJ. FAMILIA GARCÍA" : "¿QUÉ HAY QUE HACER?"}
                      autoFocus
                    />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                   <div>
-                      <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Inicio (Opcional)</label>
-                      <input 
-                        disabled={!canManageTasks}
-                        type="datetime-local"
-                        value={formatDateTimeLocal(editingTask?.startDate)}
-                        onChange={e => setEditingTask({ ...editingTask, startDate: parseDateTimeLocal(e.target.value) })}
-                        className="w-full px-4 py-4 font-bold bg-gray-50 dark:bg-slate-800/50 border-2 border-gray-200 dark:border-slate-700 rounded-2xl focus:border-red-500 outline-none appearance-none dark:text-white text-sm"
-                      />
-                   </div>
-                   <div>
-                      <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Fin / Límite (Opcional)</label>
-                      <input 
-                        disabled={!canManageTasks}
-                        type="datetime-local"
-                        value={formatDateTimeLocal(editingTask?.dueDate)}
-                        onChange={e => setEditingTask({ ...editingTask, dueDate: parseDateTimeLocal(e.target.value) })}
-                        className="w-full px-4 py-4 font-bold bg-gray-50 dark:bg-slate-800/50 border-2 border-gray-200 dark:border-slate-700 rounded-2xl focus:border-red-500 outline-none appearance-none dark:text-white text-sm"
-                      />
-                   </div>
-                </div>
+                {/* Type Switcher for Gestor de Salones Tab */}
+                {activeTab === 'ANNOUNCEMENTS' && (
+                  <div>
+                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Categoría de Registro (Gestor)</label>
+                    <div className="flex bg-gray-50 dark:bg-slate-800/50 border-2 border-gray-200 dark:border-slate-700 rounded-2xl p-1.5 gap-1 shadow-sm">
+                      {[
+                        { val: TaskType.ANNOUNCEMENT, label: 'Showcase / Montaje', icon: Megaphone }
+                      ].map((t) => (
+                        <button
+                          key={t.val}
+                          type="button"
+                          onClick={() => setEditingTask({ ...editingTask, type: t.val })}
+                          className={`flex-1 py-3 px-1 rounded-xl transition-all flex flex-col items-center gap-1 ${
+                            (editingTask?.type || TaskType.ANNOUNCEMENT) === t.val 
+                              ? 'bg-indigo-600 shadow-lg shadow-indigo-600/30 text-white scale-105 z-10' 
+                              : 'text-gray-400 dark:text-gray-500 hover:bg-white/20'
+                          }`}
+                        >
+                          <t.icon size={16} />
+                          <span className="text-[10px] font-black uppercase tracking-widest">{t.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
-                <div className="grid grid-cols-2 gap-4">
-                   <div>
-                      <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Departamento</label>
+                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                       <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">
+                         {editingTask?.type === TaskType.ANNOUNCEMENT || editingTask?.type === TaskType.RESERVATION ? 'Espacio Seleccionado' : 'Departamento'}
+                       </label>
+                       {editingTask?.type === TaskType.ANNOUNCEMENT || editingTask?.type === TaskType.RESERVATION ? (
+                         <div className="relative">
+                           <select 
+                             disabled={!canManageTasks}
+                             value={editingTask?.location || 'restaurante'}
+                             onChange={e => setEditingTask({ ...editingTask as any, location: e.target.value })}
+                             className="w-full pl-4 pr-10 py-4 font-bold bg-gray-50 dark:bg-slate-800/50 border-2 border-gray-200 dark:border-slate-700 rounded-2xl focus:border-red-500 outline-none appearance-none dark:text-white text-sm uppercase tracking-wider"
+                           >
+                             {[
+                               { id: 'restaurante', label: 'Restaurante' },
+                               { id: 'gastro_bar', label: 'Gastro Bar' },
+                               { id: 'cafeteria', label: 'Cafetería' },
+                               { id: 'salon_c', label: 'Salón C' },
+                               { id: 'terraza', label: 'Terraza' },
+                               { id: 'eventos', label: 'Eventos' },
+                               { id: 'piscina', label: 'Piscina' }
+                             ].map((loc) => (
+                               <option key={loc.id} value={loc.id}>{loc.label}</option>
+                             ))}
+                           </select>
+                           <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={18} />
+                         </div>
+                       ) : (
+                         <div className="relative">
+                           <select 
+                             disabled={!canManageTasks}
+                             value={editingTask?.departmentId || ''}
+                             onChange={e => setEditingTask({ ...editingTask, departmentId: e.target.value })}
+                             className="w-full pl-4 pr-10 py-4 font-bold bg-gray-50 dark:bg-slate-800/50 border-2 border-gray-200 dark:border-slate-700 rounded-2xl focus:border-red-500 outline-none appearance-none dark:text-white text-sm"
+                           >
+                             <option value="" disabled>Seleccionar</option>
+                             {departments.map(d => (
+                               <option key={d.id} value={d.id}>{d.name}</option>
+                             ))}
+                           </select>
+                           <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={18} />
+                         </div>
+                       )}
+                    </div>
+                    {editingTask?.type !== TaskType.RESERVATION && (
+                      <div>
+                         <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Prioridad</label>
+                       <div className="flex bg-gray-50 dark:bg-slate-800/50 border-2 border-gray-200 dark:border-slate-700 rounded-2xl p-1.5 gap-1">
+                         {[
+                           { val: TaskPriority.LOW, label: 'Baja', color: 'bg-blue-600 text-white' },
+                           { val: TaskPriority.MEDIUM, label: 'Normal', color: 'bg-indigo-600 text-white' },
+                           { val: TaskPriority.HIGH, label: 'Urgente', color: 'bg-red-600 text-white' }
+                         ].map((p) => (
+                           <button
+                             key={p.val}
+                             type="button"
+                             onClick={() => setEditingTask({ ...editingTask, priority: p.val })}
+                             className={`flex-1 py-4 px-1 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${
+                               (editingTask?.priority || TaskPriority.MEDIUM) === p.val 
+                                 ? p.color + ' shadow-lg scale-[1.05] z-10' 
+                                 : 'text-gray-400 dark:text-gray-500 hover:bg-white/20'
+                             }`}
+                           >
+                             {p.label}
+                           </button>
+                         ))}
+                       </div>
+                      </div>
+                    )}
+                 </div>
+
+
+
+                {/* Recurrence Field - Hide for announcements and reservations */}
+                {currentUser.role === UserRole.ADMIN && editingTask?.type !== TaskType.ANNOUNCEMENT && editingTask?.type !== TaskType.RESERVATION && (
+                  <div>
+                     <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Frecuencia / Repetición</label>
+                     <div className="flex bg-gray-50 dark:bg-slate-800/50 border-2 border-gray-200 dark:border-slate-700 rounded-2xl p-1.5 gap-1 shadow-sm">
+                       {[
+                         { val: TaskRecurrence.NONE, label: 'Única', desc: 'Una vez' },
+                         { val: TaskRecurrence.DAILY, label: 'Diaria', desc: 'Se reinicia' }
+                       ].map((r) => (
+                         <button
+                           key={r.val}
+                           type="button"
+                           onClick={() => setEditingTask({ ...editingTask, recurrence: r.val })}
+                           className={`flex-1 py-3 px-1 rounded-xl transition-all flex flex-col items-center ${
+                             (editingTask?.recurrence || TaskRecurrence.NONE) === r.val 
+                               ? 'bg-red-600 shadow-lg shadow-red-600/30 text-white scale-105 z-10' 
+                               : 'text-gray-400 dark:text-gray-500 hover:bg-white/30'
+                           }`}
+                         >
+                           <span className="text-[10px] font-black uppercase tracking-widest">{r.label}</span>
+                           <span className="text-[8px] font-bold opacity-60">{r.desc}</span>
+                         </button>
+                       ))}
+                     </div>
+                  </div>
+                )}
+
+                {/* Compact Reservation Form */}
+                {editingTask?.type === TaskType.RESERVATION && (
+                  <div className="grid grid-cols-2 gap-2 p-3 bg-indigo-50/20 dark:bg-indigo-900/10 rounded-2xl border border-indigo-100/50 dark:border-indigo-900/30">
+                    <div className="col-span-2">
+                      <label className="block text-[8px] font-black text-indigo-400 dark:text-indigo-500 uppercase tracking-[0.2em] mb-1 ml-1">Cliente</label>
+                      <div className="relative">
+                        <Users className="absolute left-2.5 top-1/2 -translate-y-1/2 text-indigo-400" size={12} />
+                        <input 
+                          type="text"
+                          value={editingTask?.title || ''}
+                          onChange={e => setEditingTask({ ...editingTask as any, title: e.target.value })}
+                          className="w-full pl-8 pr-3 py-2 font-bold text-xs bg-white dark:bg-slate-800 border border-indigo-100 dark:border-indigo-900 focus:border-indigo-500 outline-none rounded-lg dark:text-white"
+                          placeholder="Nombre completo"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="col-span-1">
+                      <label className="block text-[8px] font-black text-indigo-400 dark:text-indigo-500 uppercase tracking-[0.2em] mb-1 ml-1">Teléfono</label>
+                      <div className="relative">
+                        <Phone className="absolute left-2.5 top-1/2 -translate-y-1/2 text-indigo-400" size={12} />
+                        <input 
+                          type="tel"
+                          value={editingTask?.clientPhone || ''}
+                          onChange={e => setEditingTask({ ...editingTask as any, clientPhone: e.target.value })}
+                          className="w-full pl-8 pr-3 py-2 font-bold text-xs bg-white dark:bg-slate-800 border border-indigo-100 dark:border-indigo-900 focus:border-indigo-500 outline-none rounded-lg dark:text-white"
+                          placeholder="Móvil"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="col-span-1">
+                      <label className="block text-[8px] font-black text-indigo-400 dark:text-indigo-500 uppercase tracking-[0.2em] mb-1 ml-1">Comensales</label>
+                      <div className="relative">
+                        <ConciergeBell className="absolute left-2.5 top-1/2 -translate-y-1/2 text-indigo-400" size={12} />
+                        <input 
+                          type="number"
+                          value={editingTask?.guests ?? ''}
+                          onChange={e => {
+                            const val = e.target.value;
+                            setEditingTask({ ...editingTask as any, guests: val === '' ? undefined : parseInt(val) || 0 });
+                          }}
+                          className="w-full pl-8 pr-3 py-2 font-bold text-xs bg-white dark:bg-slate-800 border border-indigo-100 dark:border-indigo-900 focus:border-indigo-500 outline-none rounded-lg dark:text-white"
+                          placeholder="Nº"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="col-span-1">
+                      <label className="block text-[8px] font-black text-indigo-400 dark:text-indigo-500 uppercase tracking-[0.2em] mb-1 ml-1">Fecha</label>
+                      <div className="relative">
+                        <Calendar className="absolute left-2.5 top-1/2 -translate-y-1/2 text-indigo-400" size={12} />
+                        <input 
+                          type="text"
+                          placeholder="DD/MM/AAAA"
+                          value={editingTask?.reservationDate || ''}
+                          onChange={e => setEditingTask({ ...editingTask as any, reservationDate: e.target.value })}
+                          className="w-full pl-8 pr-3 py-2 font-bold text-xs bg-white dark:bg-slate-800 border border-indigo-100 dark:border-indigo-900 focus:border-indigo-500 outline-none rounded-lg dark:text-white"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="col-span-1">
+                      <label className="block text-[8px] font-black text-indigo-400 dark:text-indigo-500 uppercase tracking-[0.2em] mb-1 ml-1">Hora</label>
+                      <div className="relative">
+                        <Clock className="absolute left-2.5 top-1/2 -translate-y-1/2 text-indigo-400" size={12} />
+                        <input 
+                          type="time"
+                          value={editingTask?.reservationTime || ''}
+                          onChange={e => setEditingTask({ ...editingTask as any, reservationTime: e.target.value })}
+                          className="w-full pl-8 pr-3 py-2 font-bold text-xs bg-white dark:bg-slate-800 border border-indigo-100 dark:border-indigo-900 focus:border-indigo-500 outline-none rounded-lg dark:text-white"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="col-span-1">
+                      <label className="block text-[8px] font-black text-indigo-400 dark:text-indigo-500 uppercase tracking-[0.2em] mb-1 ml-1">Mesa</label>
+                      <div className="relative">
+                        <Hash className="absolute left-2.5 top-1/2 -translate-y-1/2 text-indigo-400" size={12} />
+                        <input 
+                          type="text"
+                          value={editingTask?.tableNumber || ''}
+                          onChange={e => setEditingTask({ ...editingTask as any, tableNumber: e.target.value })}
+                          className="w-full pl-8 pr-3 py-2 font-bold text-xs bg-white dark:bg-slate-800 border border-indigo-100 dark:border-indigo-900 focus:border-indigo-500 outline-none rounded-lg dark:text-white"
+                          placeholder="Ej: 12"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="col-span-1">
+                      <label className="block text-[8px] font-black text-indigo-400 dark:text-indigo-500 uppercase tracking-[0.2em] mb-1 ml-1">Evento</label>
                       <div className="relative">
                         <select 
-                          disabled={!canManageTasks}
-                          value={editingTask?.departmentId || ''}
-                          onChange={e => setEditingTask({ ...editingTask, departmentId: e.target.value })}
-                          className="w-full pl-4 pr-10 py-4 font-bold bg-gray-50 dark:bg-slate-800/50 border-2 border-gray-200 dark:border-slate-700 rounded-2xl focus:border-red-500 outline-none appearance-none dark:text-white text-sm"
+                          value={editingTask?.eventType || 'COMIDA'}
+                          onChange={e => setEditingTask({ ...editingTask as any, eventType: e.target.value })}
+                          className="w-full pl-2 pr-6 py-2 font-bold bg-white dark:bg-slate-800 border border-indigo-100 dark:border-indigo-900 focus:border-indigo-500 outline-none rounded-lg appearance-none dark:text-white text-[10px]"
                         >
-                          <option value="" disabled>Seleccionar</option>
-                          {departments.map(d => (
-                            <option key={d.id} value={d.id}>{d.name}</option>
+                          {['COMIDA', 'CENA', 'CUMPLE', 'COMUNION', 'BODA', 'OTRO'].map(opt => (
+                            <option key={opt} value={opt}>{opt}</option>
                           ))}
                         </select>
-                        <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={18} />
+                        <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 text-indigo-400 pointer-events-none" size={12} />
                       </div>
-                   </div>
-                   <div>
-                      <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Prioridad</label>
-                      <div className="relative">
-                        <select 
-                          disabled={!canManageTasks}
-                          value={editingTask?.priority || TaskPriority.MEDIUM}
-                          onChange={e => setEditingTask({ ...editingTask, priority: e.target.value as TaskPriority })}
-                          className="w-full pl-4 pr-10 py-4 font-bold bg-gray-50 dark:bg-slate-800/50 border-2 border-gray-200 dark:border-slate-700 rounded-2xl focus:border-red-500 outline-none appearance-none dark:text-white text-sm"
-                        >
-                          <option value={TaskPriority.LOW}>Baja</option>
-                          <option value={TaskPriority.MEDIUM}>Normal</option>
-                          <option value={TaskPriority.HIGH}>Alta / Urgente</option>
-                        </select>
-                        <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={18} />
-                      </div>
-                   </div>
-                </div>
+                    </div>
 
-                {/* Recurrence Field */}
-                {currentUser.role === UserRole.ADMIN && (
-                  <div>
-                     <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Recurrencia (Programar)</label>
-                     <div className="relative">
-                       <select 
-                         disabled={!canManageTasks}
-                         value={editingTask?.recurrence || TaskRecurrence.NONE}
-                         onChange={e => setEditingTask({ ...editingTask, recurrence: e.target.value as TaskRecurrence })}
-                         className="w-full pl-4 pr-10 py-4 font-bold bg-gray-50 dark:bg-slate-800/50 border-2 border-gray-200 dark:border-slate-700 rounded-2xl focus:border-red-500 outline-none appearance-none dark:text-white text-sm"
-                       >
-                         <option value={TaskRecurrence.NONE}>Ninguna (Tarea Única)</option>
-                         <option value={TaskRecurrence.DAILY}>Diaria (Permanente con reinicio cada 4h)</option>
-                        </select>
-                       <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={18} />
-                     </div>
-                     <p className="text-[10px] font-bold text-gray-400 dark:text-slate-500 mt-2 ml-1 italic">
-                       * Las tareas diarias son permanentes y se reinician automáticamente 4 horas después de completarse.
-                     </p>
+                    <div className="col-span-1">
+                      <label className="block text-[8px] font-black text-indigo-400 dark:text-indigo-500 uppercase tracking-[0.2em] mb-1 ml-1">Reserva tomada por</label>
+                      <div className="relative">
+                        <UserIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 text-indigo-400" size={12} />
+                        <input 
+                          type="text"
+                          value={editingTask?.takenBy || ''}
+                          onChange={e => setEditingTask({ ...editingTask as any, takenBy: e.target.value })}
+                          className="w-full pl-8 pr-3 py-2 font-bold text-xs bg-white dark:bg-slate-800 border border-indigo-100 dark:border-indigo-900 focus:border-indigo-500 outline-none rounded-lg dark:text-white"
+                          placeholder="Firma / Nombre"
+                        />
+                      </div>
+                    </div>
                   </div>
                 )}
 
                 <div>
                    <div className="flex justify-between items-center mb-2">
-                      <label className="block text-xs font-black text-gray-400 uppercase tracking-widest ml-1">Descripción (Opcional)</label>
+                      <label className="block text-xs font-black text-gray-400 uppercase tracking-widest ml-1">
+                        {editingTask?.type === TaskType.RESERVATION ? 'Notas / Intolerancias / Alergias' : 'Descripción (Opcional)'}
+                      </label>
                       
                       {/* Editor Toolbar */}
                       <button 
@@ -1037,7 +1523,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
                      disabled={!canManageTasks}
                      ref={descriptionInputRef}
                      value={editingTask?.description || ''}
-                     onChange={e => setEditingTask({ ...editingTask, description: e.target.value })}
+                     onChange={e => setEditingTask({ ...editingTask as any, description: e.target.value })}
                      className="w-full px-5 py-4 font-bold text-base bg-gray-50 dark:bg-slate-800/50 border-2 border-gray-200 dark:border-slate-700 rounded-2xl focus:border-red-500 focus:bg-white dark:focus:bg-slate-900 outline-none transition-all min-h-[140px] dark:text-white placeholder-gray-400 resize-none"
                      placeholder="Instrucciones detalladas..."
                    />
@@ -1048,157 +1534,151 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
                 </div>
 
                 {/* Checklist Input */}
-                <div>
-                   <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Lista de Tareas (Checklist)</label>
-                   
-                   {/* Existing Checklist Items */}
-                   {editingTask?.checklist && editingTask.checklist.length > 0 && (
-                     <div className="space-y-2 mb-3">
-                       {editingTask.checklist.map((item, index) => (
-                         <div key={item.id} className="flex items-center gap-2 bg-gray-50 dark:bg-slate-800/50 p-2 rounded-xl border border-gray-200 dark:border-slate-700">
-                           <div className="w-5 h-5 rounded border-2 border-gray-300 dark:border-slate-600 flex-shrink-0"></div>
-                           <span className="flex-1 text-sm font-bold text-gray-700 dark:text-slate-300">{item.text}</span>
-                           <button 
-                             onClick={() => handleRemoveChecklistItem(index)}
-                             className="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-                           >
-                             <X size={16} strokeWidth={3} />
-                           </button>
-                         </div>
-                       ))}
+                {editingTask?.type !== TaskType.ANNOUNCEMENT && editingTask?.type !== TaskType.RESERVATION && (
+                  <div>
+                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Lista de Tareas (Checklist)</label>
+                    
+                    {/* Existing Checklist Items */}
+                    {editingTask?.checklist && editingTask.checklist.length > 0 && (
+                      <div className="space-y-2 mb-3">
+                        {editingTask.checklist.map((item, index) => (
+                          <div key={item.id} className="flex items-center gap-2 bg-gray-50 dark:bg-slate-800/50 p-2 rounded-xl border border-gray-200 dark:border-slate-700">
+                            <div className="w-5 h-5 rounded border-2 border-gray-300 dark:border-slate-600 flex-shrink-0"></div>
+                            <span className="flex-1 text-sm font-bold text-gray-700 dark:text-slate-300">{item.text}</span>
+                            <button 
+                              onClick={() => handleRemoveChecklistItem(index)}
+                              className="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                            >
+                              <X size={16} strokeWidth={3} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Add New Item */}
+                    <div className="flex gap-2">
+                      <input 
+                        value={newChecklistItemText}
+                        onChange={e => setNewChecklistItemText(e.target.value)}
+                        onKeyDown={e => e.key === 'Enter' && handleAddChecklistItem()}
+                        className="flex-1 px-4 py-3 font-bold text-sm bg-gray-50 dark:bg-slate-800/50 border-2 border-gray-200 dark:border-slate-700 rounded-xl focus:border-red-500 focus:bg-white dark:focus:bg-slate-900 outline-none transition-all dark:text-white placeholder-gray-400"
+                        placeholder="Añadir elemento a la lista..."
+                      />
+                      <button 
+                        onClick={handleAddChecklistItem}
+                        disabled={!newChecklistItemText.trim()}
+                        className="px-4 py-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-black uppercase tracking-wider rounded-xl disabled:opacity-50 transition-all active:scale-95"
+                      >
+                        Añadir
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                 {/* Images and Videos - Hide for reservations */}
+                 {editingTask?.type !== TaskType.RESERVATION && (
+                   <div>
+                     <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Imágenes y Videos</label>
+                     <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar">
+                        {/* BUTTON 1: CAMERA (Forced Environment Capture) */}
+                        <button 
+                          onClick={() => cameraInputRef.current?.click()}
+                          className="w-24 h-24 rounded-2xl border-2 border-dashed border-gray-300 dark:border-slate-600 flex flex-col items-center justify-center text-gray-400 hover:text-red-500 hover:border-red-500 hover:bg-red-50 dark:hover:bg-slate-800 transition-all flex-shrink-0 group"
+                        >
+                          <Camera size={28} className="group-hover:scale-110 transition-transform"/>
+                          <span className="text-[10px] font-black mt-1 uppercase tracking-wide">FOTO</span>
+                        </button>
+
+                        {/* BUTTON 2: GALLERY (File Picker) */}
+                        <button 
+                          onClick={() => fileInputRef.current?.click()}
+                          className="w-24 h-24 rounded-2xl border-2 border-dashed border-gray-300 dark:border-slate-600 flex flex-col items-center justify-center text-gray-400 hover:text-blue-500 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-slate-800 transition-all flex-shrink-0 group"
+                        >
+                          <Image size={28} className="group-hover:scale-110 transition-transform"/>
+                          <span className="text-[10px] font-black mt-1 uppercase tracking-wide">GALERÍA</span>
+                        </button>
+
+                        {/* BUTTON 3: VIDEO (Cloudinary) */}
+                        <button 
+                          onClick={() => videoInputRef.current?.click()}
+                          className="w-24 h-24 rounded-2xl border-2 border-dashed border-gray-300 dark:border-slate-600 flex flex-col items-center justify-center text-gray-400 hover:text-indigo-500 hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-slate-800 transition-all flex-shrink-0 group"
+                        >
+                          <Video size={28} className="group-hover:scale-110 transition-transform"/>
+                          <span className="text-[10px] font-black mt-1 uppercase tracking-wide">VIDEO</span>
+                        </button>
+
+                        {/* Hidden Input for CAMERA */}
+                        <input 
+                          type="file" 
+                          ref={cameraInputRef} 
+                          onChange={handleImageSelect} 
+                          className="hidden" 
+                          accept="image/*" 
+                          capture="environment"
+                        />
+
+                        {/* Hidden Input for GALLERY */}
+                        <input 
+                          type="file" 
+                          ref={fileInputRef} 
+                          onChange={handleImageSelect} 
+                          className="hidden" 
+                          accept="image/*" 
+                          multiple
+                        />
+
+                        {/* Hidden Input for VIDEO */}
+                        <input 
+                          type="file" 
+                          ref={videoInputRef} 
+                          onChange={handleVideoSelect} 
+                          className="hidden" 
+                          accept="video/*,video/quicktime,.mov"
+                        />
+                        
+                        {/* Existing Images (Edit Mode) */}
+                        {editingTask?.imageUrls?.map((url, i) => (
+                          <div key={`existing-${i}`} className="relative w-24 h-24 flex-shrink-0">
+                             <img src={url} className="w-full h-full object-cover rounded-2xl border-2 border-gray-200 dark:border-slate-700" />
+                             <span className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[9px] font-bold text-center py-1 rounded-b-[14px]">Ima.</span>
+                          </div>
+                        ))}
+
+                        {/* Existing Videos (Cloudinary) */}
+                        {editingTask?.videoUrls?.map((url, i) => (
+                          <div key={`existing-video-${i}`} className="relative w-24 h-24 flex-shrink-0">
+                             <video src={url} className="w-full h-full object-cover rounded-2xl border-2 border-indigo-500" />
+                             <div className="absolute inset-0 flex items-center justify-center">
+                                <Video size={20} className="text-white drop-shadow-md" />
+                             </div>
+                             <span className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[9px] font-bold text-center py-1 rounded-b-[14px]">Vid.</span>
+                          </div>
+                        ))}
+
+                        {/* New Preview Images */}
+                        {previews.map((url, i) => (
+                          <div key={`new-${i}`} className="relative w-24 h-24 flex-shrink-0 group">
+                             <img src={url} className="w-full h-full object-cover rounded-2xl border-2 border-red-500 shadow-md" />
+                             <button onClick={() => removeImage(i)} className="absolute top-1 right-1 bg-red-600 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-md hover:scale-110"><X size={14} strokeWidth={3} /></button>
+                          </div>
+                        ))}
+
+                        {/* New Preview Videos */}
+                        {videoPreviews.map((url, i) => (
+                          <div key={`new-video-${i}`} className="relative w-24 h-24 flex-shrink-0 group">
+                             <video 
+                               src={url} 
+                               className="w-full h-full object-cover rounded-2xl border-2 border-orange-500 shadow-md" 
+                               playsInline
+                               muted
+                             />
+                             <button onClick={() => removeVideo(i)} className="absolute top-1 right-1 bg-red-600 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-md hover:scale-110"><X size={14} strokeWidth={3} /></button>
+                          </div>
+                        ))}
                      </div>
-                   )}
-
-                   {/* Add New Item */}
-                   <div className="flex gap-2">
-                     <input 
-                       value={newChecklistItemText}
-                       onChange={e => setNewChecklistItemText(e.target.value)}
-                       onKeyDown={e => e.key === 'Enter' && handleAddChecklistItem()}
-                       className="flex-1 px-4 py-3 font-bold text-sm bg-gray-50 dark:bg-slate-800/50 border-2 border-gray-200 dark:border-slate-700 rounded-xl focus:border-red-500 focus:bg-white dark:focus:bg-slate-900 outline-none transition-all dark:text-white placeholder-gray-400"
-                       placeholder="Añadir elemento a la lista..."
-                     />
-                     <button 
-                       onClick={handleAddChecklistItem}
-                       disabled={!newChecklistItemText.trim()}
-                       className="px-4 py-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-black uppercase tracking-wider rounded-xl disabled:opacity-50 transition-all active:scale-95"
-                     >
-                       Añadir
-                     </button>
                    </div>
-                </div>
-
-                <div>
-                   <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Título para las Imágenes (Opcional)</label>
-                   <input 
-                     disabled={!canManageTasks}
-                     value={editingTask?.imagesTitle || ''}
-                     onChange={e => setEditingTask({ ...editingTask, imagesTitle: e.target.value })}
-                     className="w-full px-5 py-3 font-bold bg-gray-50 dark:bg-slate-800/50 border-2 border-gray-200 dark:border-slate-700 rounded-2xl focus:border-red-500 outline-none transition-all dark:text-white placeholder-gray-400 text-sm"
-                     placeholder="Ej: Así es como debe quedar..."
-                   />
-                </div>
-
-                <div>
-                   <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Imágenes y Videos</label>
-                   <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar">
-                      {/* BUTTON 1: CAMERA (Forced Environment Capture) */}
-                      <button 
-                        onClick={() => cameraInputRef.current?.click()}
-                        className="w-24 h-24 rounded-2xl border-2 border-dashed border-gray-300 dark:border-slate-600 flex flex-col items-center justify-center text-gray-400 hover:text-red-500 hover:border-red-500 hover:bg-red-50 dark:hover:bg-slate-800 transition-all flex-shrink-0 group"
-                      >
-                        <Camera size={28} className="group-hover:scale-110 transition-transform"/>
-                        <span className="text-[10px] font-black mt-1 uppercase tracking-wide">FOTO</span>
-                      </button>
-
-                      {/* BUTTON 2: GALLERY (File Picker) */}
-                      <button 
-                        onClick={() => fileInputRef.current?.click()}
-                        className="w-24 h-24 rounded-2xl border-2 border-dashed border-gray-300 dark:border-slate-600 flex flex-col items-center justify-center text-gray-400 hover:text-blue-500 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-slate-800 transition-all flex-shrink-0 group"
-                      >
-                        <Image size={28} className="group-hover:scale-110 transition-transform"/>
-                        <span className="text-[10px] font-black mt-1 uppercase tracking-wide">GALERÍA</span>
-                      </button>
-
-                      {/* BUTTON 3: VIDEO (Cloudinary) */}
-                      <button 
-                        onClick={() => videoInputRef.current?.click()}
-                        className="w-24 h-24 rounded-2xl border-2 border-dashed border-gray-300 dark:border-slate-600 flex flex-col items-center justify-center text-gray-400 hover:text-indigo-500 hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-slate-800 transition-all flex-shrink-0 group"
-                      >
-                        <Video size={28} className="group-hover:scale-110 transition-transform"/>
-                        <span className="text-[10px] font-black mt-1 uppercase tracking-wide">VIDEO</span>
-                      </button>
-
-                      {/* Hidden Input for CAMERA */}
-                      <input 
-                        type="file" 
-                        ref={cameraInputRef} 
-                        onChange={handleImageSelect} 
-                        className="hidden" 
-                        accept="image/*" 
-                        capture="environment"
-                      />
-
-                      {/* Hidden Input for GALLERY */}
-                      <input 
-                        type="file" 
-                        ref={fileInputRef} 
-                        onChange={handleImageSelect} 
-                        className="hidden" 
-                        accept="image/*" 
-                        multiple
-                      />
-
-                      {/* Hidden Input for VIDEO */}
-                      <input 
-                        type="file" 
-                        ref={videoInputRef} 
-                        onChange={handleVideoSelect} 
-                        className="hidden" 
-                        accept="video/*,video/quicktime,.mov"
-                      />
-                      
-                      {/* Existing Images (Edit Mode) */}
-                      {editingTask?.imageUrls?.map((url, i) => (
-                        <div key={`existing-${i}`} className="relative w-24 h-24 flex-shrink-0">
-                           <img src={url} className="w-full h-full object-cover rounded-2xl border-2 border-gray-200 dark:border-slate-700" />
-                           <span className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[9px] font-bold text-center py-1 rounded-b-[14px]">Ima.</span>
-                        </div>
-                      ))}
-
-                      {/* Existing Videos (Cloudinary) */}
-                      {editingTask?.videoUrls?.map((url, i) => (
-                        <div key={`existing-video-${i}`} className="relative w-24 h-24 flex-shrink-0">
-                           <video src={url} className="w-full h-full object-cover rounded-2xl border-2 border-indigo-500" />
-                           <div className="absolute inset-0 flex items-center justify-center">
-                              <Video size={20} className="text-white drop-shadow-md" />
-                           </div>
-                           <span className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[9px] font-bold text-center py-1 rounded-b-[14px]">Vid.</span>
-                        </div>
-                      ))}
-
-                      {/* New Preview Images */}
-                      {previews.map((url, i) => (
-                        <div key={`new-${i}`} className="relative w-24 h-24 flex-shrink-0 group">
-                           <img src={url} className="w-full h-full object-cover rounded-2xl border-2 border-red-500 shadow-md" />
-                           <button onClick={() => removeImage(i)} className="absolute top-1 right-1 bg-red-600 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-md hover:scale-110"><X size={14} strokeWidth={3} /></button>
-                        </div>
-                      ))}
-
-                      {/* New Preview Videos */}
-                      {videoPreviews.map((url, i) => (
-                        <div key={`new-video-${i}`} className="relative w-24 h-24 flex-shrink-0 group">
-                           <video 
-                             src={url} 
-                             className="w-full h-full object-cover rounded-2xl border-2 border-orange-500 shadow-md" 
-                             playsInline
-                             muted
-                           />
-                           <button onClick={() => removeVideo(i)} className="absolute top-1 right-1 bg-red-600 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-md hover:scale-110"><X size={14} strokeWidth={3} /></button>
-                        </div>
-                      ))}
-                   </div>
-                </div>
+                 )}
 
                 {saveError && (
                   <div className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 p-4 rounded-2xl text-center font-bold text-sm border-2 border-red-100 dark:border-red-900/30 flex items-center justify-center gap-2">
@@ -1219,7 +1699,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
                     className="flex-[2] py-4 bg-red-600 hover:bg-red-700 text-white font-black uppercase tracking-wider rounded-2xl shadow-xl shadow-button-red active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:scale-100"
                   >
                     {isSaving || isCompressing ? <Loader2 className="animate-spin" strokeWidth={3} /> : <Save size={22} strokeWidth={3} />}
-                    {isSaving ? 'Guardando...' : isCompressing ? 'Procesando...' : 'PUBLICAR TAREA'}
+                    {isSaving ? 'Guardando...' : isCompressing ? 'Procesando...' : editingTask?.type === TaskType.ANNOUNCEMENT ? 'PUBLICAR ANUNCIO' : editingTask?.type === TaskType.RESERVATION ? 'PUBLICAR RESERVA' : 'PUBLICAR TAREA'}
                   </button>
                 )}
              </div>
@@ -1244,6 +1724,30 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
         </div>
       )}
 
+      {showClearConfirm && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-fade-in">
+          <div className="bg-white dark:bg-slate-800 rounded-[2.5rem] w-full max-w-sm p-8 text-center shadow-2xl border-2 border-gray-100 dark:border-slate-700">
+            <div className="w-20 h-20 bg-red-50 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-6 text-red-600 dark:text-red-500 shadow-inner">
+               <Trash2 size={40} />
+            </div>
+            <h3 className="text-2xl font-black text-gray-900 dark:text-white uppercase mb-2 tracking-tight">¿Limpiar Todo?</h3>
+            <p className="text-gray-500 dark:text-slate-400 mb-8 font-bold text-lg">
+              Vas a eliminar <span className="text-red-600 dark:text-red-400 font-black">{reservationCount}</span> reservas permanentemente. 
+              Esta acción no se puede deshacer.
+            </p>
+            <div className="flex gap-4">
+              <button onClick={() => setShowClearConfirm(false)} className="flex-1 py-4 font-bold text-gray-600 dark:text-slate-400 bg-gray-100 dark:bg-slate-700 rounded-2xl hover:bg-gray-200 transition-colors">CANCELAR</button>
+              <button 
+                onClick={handleClearAllReservations} 
+                className="flex-1 py-4 font-bold text-white bg-red-600 rounded-2xl hover:bg-red-700 shadow-lg shadow-red-600/20 transition-all flex items-center justify-center gap-2"
+              >
+                {loading ? <Loader2 size={18} className="animate-spin" /> : 'LIMPIAR'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {viewingImages && (
         <ImageViewer 
           images={viewingImages.images}
@@ -1258,6 +1762,10 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId }) => {
         url={shareData.url} 
         title={shareData.title} 
       />
+
+      {viewingTask && viewingTask.type === TaskType.RESERVATION && (
+        <ReservationViewModal task={viewingTask} onClose={() => setViewingTask(null)} />
+      )}
 
       {/* Floating Action Button for Mobile removed for cleaner UI */}
 

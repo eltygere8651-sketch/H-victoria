@@ -12,6 +12,7 @@ interface AnnouncementsProps {
 const Announcements: React.FC<AnnouncementsProps> = ({ currentUser }) => {
   const [announcements, setAnnouncements] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<string>('restaurante');
   const [viewingImages, setViewingImages] = useState<{ images: string[], startIndex: number } | null>(null);
 
   const [showShareModal, setShowShareModal] = useState(false);
@@ -28,6 +29,8 @@ const Announcements: React.FC<AnnouncementsProps> = ({ currentUser }) => {
 
     return () => unsubscribeTasks();
   }, []);
+
+  const filteredAnnouncements = announcements.filter(a => (a.location || 'restaurante') === activeTab);
 
   const handleSharePublicAccess = () => {
     try {
@@ -78,6 +81,11 @@ const Announcements: React.FC<AnnouncementsProps> = ({ currentUser }) => {
         <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-gray-500 dark:text-slate-400 border-t border-gray-100 dark:border-slate-800 pt-3">
           <span className="flex items-center gap-1.5 font-semibold"><UserIcon size={14} /> {announcement.createdBy}</span>
           <span className="flex items-center gap-1.5"><MapPin size={14} /> {announcement.departmentName}</span>
+          {announcement.location && (
+            <span className="flex items-center gap-1.5 text-red-600 dark:text-red-400 font-bold uppercase tracking-wider">
+              <Megaphone size={14} /> {announcement.location}
+            </span>
+          )}
           <span className="flex items-center gap-1.5"><Clock size={14} /> {new Date(announcement.createdAt).toLocaleString()}</span>
         </div>
       </div>
@@ -87,13 +95,13 @@ const Announcements: React.FC<AnnouncementsProps> = ({ currentUser }) => {
   return (
     <div className="font-sans">
       <div className="sticky top-0 z-10 bg-white/80 dark:bg-slate-950/80 backdrop-blur-lg pt-6 pb-4 px-4 md:px-6 border-b border-gray-100 dark:border-slate-800">
-        <div className="flex justify-between items-center">
+        <div className="flex justify-between items-center mb-6">
             <h2 className="text-4xl font-extrabold text-gray-900 dark:text-white tracking-tighter">Anuncios</h2>
             
              {currentUser.role === UserRole.ADMIN && (
                 <button
                   onClick={handleSharePublicAccess}
-                  className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-xl font-bold shadow-lg shadow-indigo-200 dark:shadow-none transition-all active:scale-95 mr-2"
+                  className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-xl font-bold shadow-lg shadow-indigo-200 dark:shadow-none transition-all active:scale-95"
                   title="Compartir enlace de acceso público para personal"
                 >
                   <Share2 size={18} />
@@ -101,16 +109,33 @@ const Announcements: React.FC<AnnouncementsProps> = ({ currentUser }) => {
                 </button>
              )}
         </div>
+
+        {/* Tabs Selector */}
+        <div className="flex bg-gray-100 dark:bg-slate-900/50 p-1.5 rounded-2xl gap-1.5">
+          {['restaurante', 'salon c', 'terraza'].map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`flex-1 py-3 px-4 rounded-xl text-xs font-black uppercase tracking-widest transition-all duration-200 ${
+                activeTab === tab
+                  ? 'bg-white dark:bg-slate-800 text-red-600 shadow-sm'
+                  : 'text-gray-500 hover:bg-white/50 dark:hover:bg-slate-800/50'
+              }`}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="p-4 md:p-6 space-y-4">
-        {announcements.length === 0 ? (
+        {filteredAnnouncements.length === 0 ? (
           <div className="col-span-full py-20 text-center text-gray-400 dark:text-slate-600">
             <Megaphone size={40} className="mx-auto mb-2 opacity-50" />
-            <p>No hay anuncios publicados.</p>
+            <p className="font-bold uppercase tracking-tight text-sm">No hay anuncios en {activeTab}.</p>
           </div>
         ) : (
-          announcements.map(announcement => <AnnouncementCard key={announcement.id} announcement={announcement} />)
+          filteredAnnouncements.map(announcement => <AnnouncementCard key={announcement.id} announcement={announcement} />)
         )}
       </div>
       

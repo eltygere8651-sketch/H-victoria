@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Logo } from './Logo';
-import { Download, Share2, Sun, Moon, LogOut, ClipboardCheck, ClipboardList, LayoutGrid, ShieldCheck, ShoppingCart, X, Volume2, VolumeX, Pause, Play, Sparkles, Bell, ChevronDown, LayoutTemplate } from 'lucide-react';
+import { Download, Share2, Sun, Moon, LogOut, ClipboardCheck, ClipboardList, LayoutGrid, ShieldCheck, ShoppingCart, X, Volume2, VolumeX, Pause, Play, Sparkles, Bell, ChevronDown, ConciergeBell, LayoutDashboard } from 'lucide-react';
 import { User, UserRole, CartItem } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -37,7 +37,7 @@ interface MainLayoutProps {
   unreadAdminNotificationsCount: number;
 }
 
-const NavButton = ({ icon: Icon, label, isActive, onClick, hasAlert = false }: any) => (
+const NavButton = ({ icon: Icon, label, isActive, onClick, hasAlert = false, activeColor = 'bg-red-600', shadowColor = 'shadow-red-600/30' }: any) => (
   <button 
     onClick={onClick} 
     className={`
@@ -45,7 +45,7 @@ const NavButton = ({ icon: Icon, label, isActive, onClick, hasAlert = false }: a
       outline-none select-none touch-manipulation active:scale-90 group
       ${isActive ? 'px-3 sm:px-4 py-2.5 sm:py-3 gap-1.5 sm:gap-2' : 'px-1 sm:px-2 py-2.5 sm:py-3'} 
       ${isActive 
-        ? 'flex-[5] sm:flex-[6] bg-red-600 text-white shadow-lg shadow-red-600/30' 
+        ? `flex-[5] sm:flex-[6] ${activeColor} text-white shadow-lg ${shadowColor}` 
         : 'flex-[1] bg-transparent hover:bg-slate-100 dark:hover:bg-slate-800/50 text-slate-400 dark:text-slate-500'
       }
     `}
@@ -284,9 +284,24 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
       {/* DOCK INFERIOR - Optimized for spacing and touch */}
       {user.role !== UserRole.PROVIDER && (
         <div className="fixed bottom-6 inset-x-0 z-[45] flex justify-center px-4 sm:px-6 pointer-events-none pb-safe">
-          <nav className="pointer-events-auto bg-white/85 dark:bg-slate-900/85 backdrop-blur-3xl border border-white/20 dark:border-slate-800 shadow-[0_20px_50px_rgba(0,0,0,0.3)] rounded-[2.5rem] p-1.5 flex items-center justify-between gap-1 w-full max-w-md ring-1 ring-black/5">
+          <nav className="pointer-events-auto bg-white/85 dark:bg-slate-900/85 backdrop-blur-3xl border border-white/20 dark:border-slate-800 shadow-[0_20px_50px_rgba(0,0,0,0.3)] rounded-[2.5rem] p-1.5 flex items-center justify-between gap-1 w-full max-w-lg ring-1 ring-black/5">
+              <NavButton 
+                icon={ConciergeBell} 
+                label="Reservas" 
+                isActive={view === 'reservations'} 
+                onClick={() => setView('reservations')} 
+                activeColor="bg-emerald-600"
+                shadowColor="shadow-emerald-600/30"
+              />
+              <NavButton 
+                icon={LayoutDashboard} 
+                label="Salones" 
+                isActive={view === 'salones'} 
+                onClick={() => setView('salones')} 
+                activeColor="bg-indigo-600"
+                shadowColor="shadow-indigo-600/30"
+              />
               <NavButton icon={ClipboardCheck} label="Tareas" isActive={view === 'tasks'} onClick={() => setView('tasks')} hasAlert={hasUnreadTasks || hasPendingDailyTasks}/>
-              <NavButton icon={LayoutTemplate} label="Salones" isActive={view === 'rooms'} onClick={() => setView('rooms')} />
               {user.role !== UserRole.GUEST && <NavButton icon={ClipboardList} label="Pedidos" isActive={view === 'replenish'} onClick={() => setView('replenish')} />}
               {user.role === UserRole.ADMIN && <NavButton icon={LayoutGrid} label="Almacén" isActive={view === 'inventory'} onClick={() => setView('inventory')} />}
               {user.role === UserRole.ADMIN && <NavButton icon={ShieldCheck} label="Admin" isActive={view === 'admin'} onClick={() => setView('admin')} hasAlert={unreadAdminNotificationsCount > 0} />}
