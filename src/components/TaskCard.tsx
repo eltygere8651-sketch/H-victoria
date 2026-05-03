@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Task, User, TaskStatus, TaskPriority, TaskChecklistItem, UserRole, TaskRecurrence, TaskType } from '../types';
-import { AlertTriangle, Edit2, Trash2, Share2, FileText, MessagesSquare, Check, Clock, Calendar, RotateCcw, Camera, Play, Video, Megaphone, Info, ConciergeBell, Users, Hash, Phone, Sparkles, MapPin, Utensils } from 'lucide-react';
+import { AlertTriangle, Edit2, Trash2, Share2, FileText, MessagesSquare, Check, Clock, Calendar, RotateCcw, Camera, Play, Video, Megaphone, Info, ConciergeBell, Users, Hash, Phone, Sparkles, MapPin, Utensils, X } from 'lucide-react';
 import { DeletionTimer } from './DeletionTimer';
 import { DailyResetTimer } from './DailyResetTimer';
 
@@ -17,6 +17,7 @@ interface TaskCardProps {
   onSharePdf: (task: Task) => void;
   onViewImages: (images: string[], index: number) => void;
   onToggleArrival?: (task: Task) => void;
+  onNoShow?: (task: Task) => void;
   onView?: (task: Task) => void;
 }
 
@@ -112,6 +113,7 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
   onSharePdf,
   onViewImages,
   onToggleArrival,
+  onNoShow,
   onView
 }) => {
   const isUrgent = task.priority === TaskPriority.HIGH;
@@ -163,7 +165,13 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
 
   return (
     <div 
-      onClick={isReservation ? (e) => onView?.(task) : undefined}
+      onClick={isReservation ? (e) => {
+        // Only trigger if not clicking on a button
+        if ((e.target as HTMLElement).closest('button')) {
+          return;
+        }
+        onView?.(task);
+      } : undefined}
       style={reservationStyle}
       className={`
         relative bg-[#FCFAF7] dark:bg-slate-900 rounded-[1.5rem] md:rounded-[2rem] shadow-xl dark:shadow-black/50 
@@ -221,13 +229,20 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
 
              {/* Main Info Row */}
              <div className="flex items-center gap-3 border-y border-[#064E3B]/10 py-2">
-                {/* Table Jewel */}
-               <div className="relative w-12 h-12 md:w-14 md:h-14 flex items-center justify-center flex-shrink-0">
-                  <div className="absolute inset-0 rounded-full border-[2px] border-[#064E3B] shadow-sm bg-white" />
-                  <div className="absolute inset-[1.5px] bg-[#064E3B] rounded-full shadow-inner" />
-                  <div className="relative z-10 flex flex-col items-center -space-y-0.5">
-                     <span className="text-[5px] md:text-[6px] font-black text-white/50 uppercase tracking-[0.2em] mt-0.5">MESA</span>
-                     <span className="text-xl md:text-2xl font-black text-white italic tracking-tighter shadow-sm leading-none">{task.tableNumber}</span>
+                {/* Smart Table Visual */}
+               <div className="relative w-14 h-14 md:w-16 md:h-16 flex items-center justify-center flex-shrink-0">
+                  {/* Chairs around the table */}
+                  {Array.from({ length: Math.min(task.guests || 2, 8) }).map((_, i, arr) => (
+                    <div 
+                      key={i} 
+                      className="absolute w-2.5 h-1.5 bg-[#064E3B]/40 rounded-full border border-[#064E3B]/20"
+                      style={{ transform: `rotate(${(360 / arr.length) * i}deg) translateY(-28px)` }}
+                    />
+                  ))}
+                  <div className="absolute inset-0 rounded-full border-2 border-[#064E3B] bg-white shadow-sm" />
+                  <div className="absolute inset-[2px] bg-gradient-to-br from-[#064E3B] to-[#042F2E] rounded-full shadow-inner flex flex-col items-center justify-center -space-y-0.5">
+                     <span className="text-[6px] font-black text-white/40 uppercase tracking-[0.2em] mt-0.5">MESA</span>
+                     <span className="text-xl md:text-2xl font-black text-white italic tracking-tighter leading-none">{task.tableNumber}</span>
                   </div>
                </div>
                
@@ -339,33 +354,24 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
                       </div>
                    </div>
 
-                   {/* Guest & Table Jewel */}
+                    {/* Smart Table Visual */}
                    <div className="flex flex-col items-center justify-center p-1.5 relative group">
-                      {/* The Table Jewel */}
-                      <div className="relative w-12 h-12 flex items-center justify-center">
-                         {/* Golden Rim */}
-                         <div className="absolute inset-0 rounded-full border-[3px] border-[#064E3B] shadow-sm" />
-                         <div className="absolute inset-[1.5px] rounded-full border border-[#FCFAF7]/20" />
-                         
-                         {/* Centered Content */}
-                         <div className="relative z-10 flex flex-col items-center justify-center -space-y-0.5">
-                            <span className="text-[6px] font-black text-[#FCFAF7]/50 uppercase tracking-[0.2em] mt-0.5">MESA</span>
-                            <span className="text-2xl font-black text-white italic tracking-tighter shadow-sm leading-none">{task.tableNumber}</span>
-                         </div>
-
-                         {/* Background Plate */}
-                         <div className="absolute inset-0 bg-[#064E3B] rounded-full -z-10 shadow-inner" />
-                         
-                         {/* Refined Chairs - Compact & Clean */}
-                         {[0, 60, 120, 180, 240, 300].map((angle, i) => (
+                      <div className="relative w-14 h-14 flex items-center justify-center">
+                         {/* Chairs */}
+                         {Array.from({ length: Math.min(task.guests || 2, 8) }).map((_, i, arr) => (
                            <div 
                              key={i} 
-                             className="absolute top-1/2 left-1/2 transition-all duration-1000"
-                             style={{ transform: `translate(-50%, -50%) rotate(${angle}deg) translateY(-22px)` }}
-                           >
-                              <div className="w-2 h-1 bg-[#064E3B]/20 rounded-full border border-[#064E3B]/10" />
-                           </div>
+                             className="absolute w-3 h-2 bg-[#064E3B]/30 rounded-full border border-[#064E3B]/10 transition-transform duration-700"
+                             style={{ transform: `rotate(${(360 / arr.length) * i}deg) translateY(-32px)` }}
+                           />
                          ))}
+                         
+                         {/* Table Surface */}
+                         <div className="absolute inset-0 rounded-full border-[3px] border-[#064E3B] bg-[#FCFAF7] shadow-xl" />
+                         <div className="absolute inset-[3px] rounded-full bg-gradient-to-br from-[#064E3B] to-[#042F2E] shadow-inner flex flex-col items-center justify-center -space-y-0.5">
+                            <span className="text-[6px] font-black text-white/50 uppercase tracking-[0.2em]">MESA</span>
+                            <span className="text-2xl font-black text-white italic tracking-tighter leading-none">{task.tableNumber}</span>
+                         </div>
                       </div>
                       <div className="mt-2 flex items-center gap-1">
                          <span className="text-lg font-black text-[#064E3B] leading-none tracking-tighter">{task.guests}</span>
@@ -751,30 +757,33 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
                   )}
                 </div>
                 {!isCompleted && (
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); onToggleArrival?.(task); }}
-                    className={`px-3 py-1.5 rounded-lg flex items-center gap-2 shadow-sm border transition-all active:scale-95 ${
-                      task.clientArrived 
-                        ? 'bg-emerald-100 border-emerald-200 text-emerald-700 shadow-inner' 
-                        : 'bg-white border-[#064E3B]/20 text-[#064E3B] hover:bg-[#064E3B]/5'
-                    }`}
-                  >
-                    <Check size={12} strokeWidth={4} className={task.clientArrived ? 'text-emerald-600' : 'text-[#064E3B]/40'} />
-                    <span className="text-[9px] font-black uppercase tracking-widest leading-none">
-                      {task.clientArrived ? 'En Mesa' : 'Llegó'}
-                    </span>
-                  </button>
+                  <div className="flex flex-wrap gap-1.5 sm:gap-2">
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); onToggleArrival?.(task); }}
+                      className={`px-2 sm:px-3 py-1.5 rounded-lg flex items-center gap-1.5 sm:gap-2 shadow-sm border transition-all active:scale-95 ${
+                        task.clientArrived 
+                          ? 'bg-emerald-100 border-emerald-200 text-emerald-700 shadow-inner' 
+                          : 'bg-white border-[#064E3B]/20 text-[#064E3B] hover:bg-[#064E3B]/5'
+                      }`}
+                    >
+                      <Check size={12} strokeWidth={4} className={task.clientArrived ? 'text-emerald-600' : 'text-[#064E3B]/40'} />
+                      <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-widest leading-none">
+                        {task.clientArrived ? 'En Mesa' : 'Llegó'}
+                      </span>
+                    </button>
+                    {!task.clientArrived && (
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); onNoShow?.(task); }}
+                        className="px-2 sm:px-3 py-1.5 rounded-lg flex items-center gap-1.5 sm:gap-2 shadow-sm border border-red-200 bg-white text-red-600 hover:bg-red-50 transition-all active:scale-95"
+                      >
+                        <X size={12} strokeWidth={4} />
+                        <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-widest leading-none">
+                          No llegó
+                        </span>
+                      </button>
+                    )}
+                  </div>
                 )}
-                <div className={`px-3 py-1.5 rounded-lg flex items-center gap-2 shadow-sm border ${
-                  task.status === TaskStatus.COMPLETED 
-                    ? 'bg-gray-100 border-gray-200 text-gray-500' 
-                    : 'bg-[#064E3B] border-[#064E3B] text-white'
-                }`}>
-                  <ConciergeBell size={12} className={task.status === TaskStatus.COMPLETED ? 'text-gray-400' : 'text-[#FCFAF7]/80'} />
-                  <span className="text-[9px] font-black uppercase tracking-widest leading-none">
-                    {task.status === TaskStatus.COMPLETED ? 'Finalizada' : 'Activa'}
-                  </span>
-                </div>
               </div>
             )}
             

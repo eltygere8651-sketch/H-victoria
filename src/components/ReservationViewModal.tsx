@@ -99,11 +99,29 @@ export const ReservationViewModal: React.FC<ReservationViewModalProps> = ({ task
               
               <div className="flex flex-col">
                 <span className="text-xs font-black text-[#064E3B]/40 dark:text-slate-500 uppercase tracking-[0.3em] mb-1">ASIGNACIÓN</span>
-                <div className="bg-[#064E3B] dark:bg-emerald-950 rounded-xl flex items-center p-6 justify-center relative overflow-hidden shadow-md">
+                <div className="bg-[#064E3B] dark:bg-emerald-950 rounded-xl flex items-center p-8 justify-center relative overflow-hidden shadow-md">
                    <div className="absolute inset-0 opacity-[0.1] bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] mix-blend-overlay"></div>
-                   <div className="relative z-10 flex flex-col items-center justify-center pb-2">
-                      <span className="text-xs font-black text-[#FCFAF7]/50 dark:text-emerald-200/50 uppercase tracking-[0.4em] mb-1">MESA ASIGNADA</span>
-                      <span className="text-6xl font-black text-white dark:text-emerald-50 italic tracking-tighter drop-shadow-md leading-none">{task.tableNumber}</span>
+                   
+                   {/* Smart Table Visual for Modal */}
+                   <div className="relative z-10 flex flex-col items-center justify-center">
+                      <div className="relative w-24 h-24 flex items-center justify-center mb-2">
+                         {/* Chairs around the table */}
+                         {Array.from({ length: Math.min(task.guests || 2, 8) }).map((_, i, arr) => (
+                           <div 
+                             key={i} 
+                             className="absolute w-5 h-3 bg-white/20 rounded-full border border-white/10"
+                             style={{ transform: `rotate(${(360 / arr.length) * i}deg) translateY(-54px)` }}
+                           />
+                         ))}
+                         
+                         {/* Table Surface */}
+                         <div className="absolute inset-0 rounded-full border-[6px] border-white/20 bg-white/10 backdrop-blur-sm shadow-2xl" />
+                         <div className="absolute inset-[6px] rounded-full bg-gradient-to-br from-white/20 to-transparent flex flex-col items-center justify-center -space-y-1">
+                            <span className="text-[10px] font-black text-white/50 uppercase tracking-[0.4em] mb-1">MESA</span>
+                            <span className="text-6xl font-black text-white italic tracking-tighter drop-shadow-md leading-none">{task.tableNumber}</span>
+                         </div>
+                      </div>
+                      <span className="text-xs font-black text-[#FCFAF7]/50 dark:text-emerald-200/50 uppercase tracking-[0.4em]">SALA PREPARADA</span>
                    </div>
                 </div>
               </div>

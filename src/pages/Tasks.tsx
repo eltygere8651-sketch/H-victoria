@@ -186,6 +186,22 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId, initialTab })
     }
   };
 
+  const handleMarkAsNoShow = useCallback(async (task: Task) => {
+    if (!canManageTasks) return;
+    await storageService.deleteTask(task.id);
+  }, [canManageTasks]);
+
+  // Helper to get reservation count for a specific location for today
+  const getReservationCount = (location: string) => {
+    const todayStr = new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    return allTasks.filter(t => 
+      t.type === TaskType.RESERVATION && 
+      (t.location || 'restaurante') === location && 
+      t.reservationDate === todayStr &&
+      !t.clientArrived
+    ).length;
+  };
+
   // Auto-deletion logic for completed tasks and arrived reservations
   useEffect(() => {
     const RECURRING_DELETION_WINDOW_MS = 12 * 60 * 60 * 1000; // 12 hours for recurring tasks (non-daily)
@@ -516,12 +532,16 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId, initialTab })
       if (activeTab === 'RESERVATIONS') {
         const itemLocation = task.location || 'restaurante';
         const todayStr = new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
-        return task.type === TaskType.RESERVATION && itemLocation === activeLocation && !task.clientArrived && task.reservationDate === todayStr;
+        // In calendar mode, show all reservations for that location. In list mode, only today.
+        const dateMatch = viewMode === 'CALENDAR' ? true : task.reservationDate === todayStr;
+        return task.type === TaskType.RESERVATION && itemLocation === activeLocation && !task.clientArrived && dateMatch;
       }
 
       if (activeTab === 'ALL_RESERVATIONS') {
         const itemLocation = task.location || 'restaurante';
-        if (task.type !== TaskType.RESERVATION || itemLocation !== activeLocation) return false;
+        // If there is a search term, search across ALL locations for better UX
+        const locationMatch = reservationSearchTerm ? true : itemLocation === activeLocation;
+        if (task.type !== TaskType.RESERVATION || !locationMatch) return false;
         if (!reservationSearchTerm) return true;
         const searchLower = reservationSearchTerm.toLowerCase();
         return (
@@ -534,7 +554,8 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId, initialTab })
 
       if (activeTab === 'ARRIVED') {
         const todayStr = new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
-        return task.type === TaskType.RESERVATION && task.clientArrived === true && task.reservationDate === todayStr;
+        const dateMatch = viewMode === 'CALENDAR' ? true : task.reservationDate === todayStr;
+        return task.type === TaskType.RESERVATION && task.clientArrived === true && dateMatch;
       }
 
       if (activeTab === 'ANNOUNCEMENTS') {
@@ -569,7 +590,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId, initialTab })
       // 4. Fallback to createdAt (descending - newest first)
       return b.createdAt - a.createdAt;
     });
-  }, [allTasks, statusFilter, departmentFilter, activeTab, activeLocation, reservationSearchTerm]);
+  }, [allTasks, statusFilter, departmentFilter, activeTab, activeLocation, reservationSearchTerm, viewMode]);
 
   const currentWeekEnd = useMemo(() => {
     const end = new Date(currentWeekStart);
@@ -591,6 +612,16 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId, initialTab })
 
   const handleDayClick = (date: Date) => {
     if (!canManageTasks) return;
+    
+    // If we are in reservation tabs, navigate to the list filtered by that date
+    if (activeTab === 'RESERVATIONS' || activeTab === 'ALL_RESERVATIONS' || activeTab === 'ARRIVED') {
+      const dateStr = date.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      setReservationSearchTerm(dateStr);
+      setActiveTab('ALL_RESERVATIONS');
+      setViewMode('LIST');
+      return;
+    }
+
     const start = new Date(date);
     start.setHours(9, 0, 0, 0);
     const end = new Date(date);
@@ -652,6 +683,12 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId, initialTab })
             const dayTasks = filteredTasks.filter(t => {
               if (activeTab === 'DAILY') return true; // Show daily routines on every day in the calendar
               
+              if (t.type === TaskType.RESERVATION && t.reservationDate) {
+                const [d, m, y] = t.reservationDate.split('/').map(Number);
+                const resDate = new Date(y, m - 1, d);
+                return resDate.toDateString() === date.toDateString();
+              }
+
               if (t.startDate && t.dueDate) {
                 const start = new Date(t.startDate);
                 start.setHours(0, 0, 0, 0);
@@ -816,9 +853,11 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId, initialTab })
                   onClick={() => {
                     const isNews = activeTab === 'ANNOUNCEMENTS';
                     const isRes = activeTab === 'RESERVATIONS' || activeTab === 'ALL_RESERVATIONS';
+                    const currentYear = new Date().getFullYear().toString();
                     setEditingTask({
                       type: isNews ? TaskType.ANNOUNCEMENT : isRes ? TaskType.RESERVATION : TaskType.TASK,
                       location: (isNews || isRes) ? activeLocation : undefined,
+                      reservationDate: isRes ? `//${currentYear}` : undefined,
                       recurrence: activeTab === 'DAILY' ? TaskRecurrence.DAILY : TaskRecurrence.NONE,
                       priority: TaskPriority.MEDIUM
                     });
@@ -946,20 +985,28 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId, initialTab })
                 { id: 'terraza', label: 'Terraza', color: 'bg-blue-500' },
                 { id: 'eventos', label: 'Eventos', color: 'bg-amber-500' },
                 { id: 'piscina', label: 'Piscina', color: 'bg-cyan-500' }
-              ].map((loc) => (
-                <button
-                  key={loc.id}
-                  onClick={() => setActiveLocation(loc.id)}
-                  className={`px-5 py-2.5 rounded-[1.5rem] text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 whitespace-nowrap ${
-                    activeLocation === loc.id 
-                      ? 'bg-white dark:bg-slate-700 shadow-md text-slate-900 dark:text-white' 
-                      : 'text-slate-400 hover:text-slate-600'
-                  }`}
-                >
-                  <span className={`w-2 h-2 rounded-full ${loc.color}`}></span>
-                  {loc.label}
-                </button>
-              ))}
+              ].map((loc) => {
+                const count = getReservationCount(loc.id);
+                return (
+                  <button
+                    key={loc.id}
+                    onClick={() => setActiveLocation(loc.id)}
+                    className={`px-5 py-2.5 rounded-[1.5rem] text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 whitespace-nowrap relative ${
+                      activeLocation === loc.id 
+                        ? 'bg-white dark:bg-slate-700 shadow-md text-slate-900 dark:text-white' 
+                        : 'text-slate-400 hover:text-slate-600'
+                    }`}
+                  >
+                    {count > 0 && (
+                      <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] bg-red-600 text-white text-[9px] font-black rounded-full flex items-center justify-center px-1 shadow-lg shadow-red-600/40 animate-pulse border-2 border-white dark:border-slate-800 z-10">
+                        {count}
+                      </span>
+                    )}
+                    <span className={`w-2 h-2 rounded-full ${loc.color}`}></span>
+                    {loc.label}
+                  </button>
+                );
+              })}
             </div>
 
             <div className={`bg-gradient-to-br ${
@@ -1115,6 +1162,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId, initialTab })
                     onSharePdf={handleSharePdfAction}
                     onViewImages={handleViewImagesAction}
                     onToggleArrival={handleToggleArrival}
+                    onNoShow={handleMarkAsNoShow}
                     onView={(t) => setViewingTask(t)}
                   />
                 </div>
@@ -1430,15 +1478,68 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId, initialTab })
 
                     <div className="col-span-1">
                       <label className="block text-[8px] font-black text-indigo-400 dark:text-indigo-500 uppercase tracking-[0.2em] mb-1 ml-1">Fecha</label>
-                      <div className="relative">
-                        <Calendar className="absolute left-2.5 top-1/2 -translate-y-1/2 text-indigo-400" size={12} />
-                        <input 
-                          type="text"
-                          placeholder="DD/MM/AAAA"
-                          value={editingTask?.reservationDate || ''}
-                          onChange={e => setEditingTask({ ...editingTask as any, reservationDate: e.target.value })}
-                          className="w-full pl-8 pr-3 py-2 font-bold text-xs bg-white dark:bg-slate-800 border border-indigo-100 dark:border-indigo-900 focus:border-indigo-500 outline-none rounded-lg dark:text-white"
-                        />
+                      <div className="flex gap-1">
+                        <div className="relative flex-1">
+                          <input 
+                            type="text"
+                            placeholder="DD"
+                            maxLength={2}
+                            value={(editingTask?.reservationDate || '').split('/')[0] || ''}
+                            onChange={e => {
+                              const val = e.target.value.replace(/\D/g, '');
+                              const parts = (editingTask?.reservationDate || '').split('/');
+                              const d = val;
+                              const m = parts[1] || '';
+                              const y = parts[2] || '';
+                              setEditingTask({ ...editingTask as any, reservationDate: `${d}/${m}/${y}` });
+                              if (val.length === 2) {
+                                const nextDiv = e.target.closest('.relative')?.nextElementSibling?.nextElementSibling;
+                                (nextDiv?.querySelector('input') as HTMLInputElement | null)?.focus();
+                              }
+                            }}
+                            className="w-full px-2 py-2 font-bold text-xs bg-white dark:bg-slate-800 border border-indigo-100 dark:border-indigo-900 focus:border-indigo-500 outline-none rounded-lg dark:text-white text-center"
+                          />
+                        </div>
+                        <span className="text-indigo-300 dark:text-indigo-700 font-bold self-center">/</span>
+                        <div className="relative flex-1">
+                          <input 
+                            type="text"
+                            placeholder="MM"
+                            maxLength={2}
+                            value={(editingTask?.reservationDate || '').split('/')[1] || ''}
+                            onChange={e => {
+                              const val = e.target.value.replace(/\D/g, '');
+                              const parts = (editingTask?.reservationDate || '').split('/');
+                              const d = parts[0] || '';
+                              const m = val;
+                              const y = parts[2] || '';
+                              setEditingTask({ ...editingTask as any, reservationDate: `${d}/${m}/${y}` });
+                              if (val.length === 2) {
+                                const nextDiv = e.target.closest('.relative')?.nextElementSibling?.nextElementSibling;
+                                (nextDiv?.querySelector('input') as HTMLInputElement | null)?.focus();
+                              }
+                            }}
+                            className="w-full px-2 py-2 font-bold text-xs bg-white dark:bg-slate-800 border border-indigo-100 dark:border-indigo-900 focus:border-indigo-500 outline-none rounded-lg dark:text-white text-center"
+                          />
+                        </div>
+                        <span className="text-indigo-300 dark:text-indigo-700 font-bold self-center">/</span>
+                        <div className="relative flex-[1.5]">
+                          <input 
+                            type="text"
+                            placeholder="AAAA"
+                            maxLength={4}
+                            value={(editingTask?.reservationDate || '').split('/')[2] || ''}
+                            onChange={e => {
+                              const val = e.target.value.replace(/\D/g, '');
+                              const parts = (editingTask?.reservationDate || '').split('/');
+                              const d = parts[0] || '';
+                              const m = parts[1] || '';
+                              const y = val;
+                              setEditingTask({ ...editingTask as any, reservationDate: `${d}/${m}/${y}` });
+                            }}
+                            className="w-full px-2 py-2 font-bold text-xs bg-white dark:bg-slate-800 border border-indigo-100 dark:border-indigo-900 focus:border-indigo-500 outline-none rounded-lg dark:text-white text-center"
+                          />
+                        </div>
                       </div>
                     </div>
 
