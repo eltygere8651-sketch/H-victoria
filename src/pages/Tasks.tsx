@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { Task, User, Department, TaskStatus, TaskPriority, UserRole, TaskType, TaskComment, TaskChecklistItem, TaskRecurrence } from '../types';
 import * as storageService from '../services/storageService';
-import { ClipboardCheck, Plus, X, Save, Loader2, Edit2, Trash2, ChevronDown, MessagesSquare, Check, Camera, AlertTriangle, Share2, Send, Image, Info, Flame, Bold, Calendar, Clock, List, FileText, ConciergeBell, Users, Phone, Hash, ChevronRight, User as UserIcon, Video, Megaphone, LayoutDashboard } from 'lucide-react';
+import { ClipboardCheck, Plus, X, Save, Loader2, Edit2, Trash2, ChevronDown, MessagesSquare, Check, Camera, AlertTriangle, Share2, Send, Image, Info, Flame, Bold, Calendar, Clock, List, FileText, ConciergeBell, Users, Phone, Hash, ChevronRight, User as UserIcon, Video, Megaphone, LayoutDashboard, Search } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { compressImage } from '../utils/imageCompressor';
 import { ImageViewer } from '../components/ImageViewer';
@@ -758,14 +758,20 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId, initialTab })
   return (
     <div className="font-sans pb-24 bg-gray-50 dark:bg-slate-950 min-h-screen">
       {/* Header */}
-      <div className="sticky top-[var(--header-h)] z-30 bg-white/95 dark:bg-slate-950/95 backdrop-blur-xl border-b border-gray-200 dark:border-slate-800 px-4 pt-4 pb-3 md:px-6 shadow-md transition-all duration-300">
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-4">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-4 w-full sm:w-auto">
-            <div className="flex items-center justify-between w-full sm:w-auto gap-4">
+      <div className="sticky top-[var(--header-h)] z-40 bg-white/95 dark:bg-slate-950/95 backdrop-blur-xl border-b border-slate-200 dark:border-emerald-900/20 px-4 pt-5 pb-4 md:px-6 shadow-sm transition-all duration-300">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-5 transition-all">
+          <div className="flex flex-col sm:flex-row sm:items-end gap-5 w-full sm:w-auto">
+            <div className="flex items-center justify-between w-full sm:w-auto gap-6">
               <div className="flex flex-col">
-                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.3em] leading-none mb-1">Servicios</span>
-                <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tighter leading-none drop-shadow-sm">
-                  {activeTab === 'ANNOUNCEMENTS' ? 'Sección' : (activeTab === 'RESERVATIONS' || activeTab === 'ALL_RESERVATIONS' || activeTab === 'ARRIVED') ? 'Agenda' : 'Tareas'} <span className={`${(activeTab === 'RESERVATIONS' || activeTab === 'ALL_RESERVATIONS' || activeTab === 'ARRIVED') ? 'text-emerald-600 dark:text-emerald-500' : 'text-red-600 dark:text-red-500'} italic`}>{activeTab === 'ACTIVE' ? 'Activas' : activeTab === 'DAILY' ? 'Diarias' : activeTab === 'ALL_RESERVATIONS' ? 'Buscador' : activeTab === 'ARRIVED' ? 'Asistieron' : activeTab === 'RESERVATIONS' ? 'Reservas Hoy' : 'Salones Manager'}</span>
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <div className={`w-1.5 h-1.5 rounded-full ${(activeTab === 'RESERVATIONS' || activeTab === 'ALL_RESERVATIONS' || activeTab === 'ARRIVED') ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]'}`}></div>
+                  <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.4em] leading-none">Management</span>
+                </div>
+                <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tighter leading-none flex items-center gap-2">
+                  {activeTab === 'ANNOUNCEMENTS' ? 'Sección' : (activeTab === 'RESERVATIONS' || activeTab === 'ALL_RESERVATIONS' || activeTab === 'ARRIVED') ? 'Agenda' : 'Tareas'} 
+                  <span className={`text-sm font-bold px-2.5 py-0.5 rounded-full border shadow-sm ${(activeTab === 'RESERVATIONS' || activeTab === 'ALL_RESERVATIONS' || activeTab === 'ARRIVED') ? 'bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800/30' : 'bg-red-50 text-red-700 border-red-100 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800/30'}`}>
+                    {activeTab === 'ACTIVE' ? 'Activas' : activeTab === 'DAILY' ? 'Diarias' : activeTab === 'ALL_RESERVATIONS' ? 'Buscador' : activeTab === 'ARRIVED' ? 'Asistieron' : activeTab === 'RESERVATIONS' ? 'Reservas Hoy' : 'Salones'}
+                  </span>
                 </h2>
               </div>
               
@@ -814,33 +820,33 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId, initialTab })
             )}
 
             {(activeTab === 'RESERVATIONS' || activeTab === 'ARRIVED' || activeTab === 'ALL_RESERVATIONS') && (
-              <div className="flex bg-gray-100 dark:bg-slate-900/50 border border-gray-200/50 dark:border-slate-800 rounded-2xl p-1 gap-1 w-full sm:w-auto overflow-x-auto no-scrollbar">
+              <div className="flex bg-slate-100 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 rounded-[1.25rem] p-1.5 gap-1.5 w-full sm:w-auto overflow-x-auto no-scrollbar shadow-inner">
                 <button
                   onClick={() => setActiveTab('RESERVATIONS')}
-                  className={`flex-1 px-3 sm:px-4 py-2.5 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all text-center whitespace-nowrap ${
+                  className={`flex-1 px-5 py-2.5 rounded-[1rem] text-[10px] font-black uppercase tracking-[0.1em] transition-all text-center whitespace-nowrap border-2 border-transparent ${
                     activeTab === 'RESERVATIONS' 
-                      ? 'bg-white dark:bg-slate-700 shadow-md text-emerald-600 scale-[1.02]' 
-                      : 'text-gray-500 dark:text-gray-400 hover:bg-white/50'
+                      ? 'bg-white dark:bg-slate-700 shadow-[0_4px_12px_rgba(16,185,129,0.15)] text-emerald-600 dark:text-emerald-400 border-white' 
+                      : 'text-slate-500 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
                   }`}
                 >
                   Hoy
                 </button>
                 <button
                   onClick={() => setActiveTab('ARRIVED')}
-                  className={`flex-1 px-3 sm:px-4 py-2.5 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all text-center whitespace-nowrap ${
+                  className={`flex-1 px-5 py-2.5 rounded-[1rem] text-[10px] font-black uppercase tracking-[0.1em] transition-all text-center whitespace-nowrap border-2 border-transparent ${
                     activeTab === 'ARRIVED' 
-                      ? 'bg-white dark:bg-slate-700 shadow-md text-blue-600 scale-[1.02]' 
-                      : 'text-gray-500 dark:text-gray-400 hover:bg-white/50'
+                      ? 'bg-white dark:bg-slate-700 shadow-[0_4px_12px_rgba(59,130,246,0.15)] text-blue-600 dark:text-blue-400 border-white' 
+                      : 'text-slate-500 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
                   }`}
                 >
                   Llegaron
                 </button>
                 <button
                   onClick={() => setActiveTab('ALL_RESERVATIONS')}
-                  className={`flex-1 px-3 sm:px-4 py-2.5 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all text-center whitespace-nowrap ${
+                  className={`flex-1 px-5 py-2.5 rounded-[1rem] text-[10px] font-black uppercase tracking-[0.1em] transition-all text-center whitespace-nowrap border-2 border-transparent ${
                     activeTab === 'ALL_RESERVATIONS' 
-                      ? 'bg-white dark:bg-slate-700 shadow-md text-purple-600 scale-[1.02]' 
-                      : 'text-gray-500 dark:text-gray-400 hover:bg-white/50'
+                      ? 'bg-white dark:bg-slate-700 shadow-[0_4px_12px_rgba(147,51,234,0.15)] text-purple-600 dark:text-purple-400 border-white' 
+                      : 'text-slate-500 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
                   }`}
                 >
                   Reservas
@@ -889,9 +895,9 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId, initialTab })
                     setPreviews([]);
                     setShowTaskModal(true);
                   }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold uppercase tracking-wider rounded-full transition-all active:scale-95 shadow-lg shadow-red-600/20"
+                  className={`flex items-center gap-2 px-5 py-2.5 ${(activeTab === 'RESERVATIONS' || activeTab === 'ALL_RESERVATIONS' || activeTab === 'ARRIVED') ? 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-500/25' : 'bg-red-600 hover:bg-red-500 shadow-red-500/25'} text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl transition-all active:scale-95 shadow-xl border border-white/10`}
                 >
-                  <Plus size={14} strokeWidth={3} />
+                  <Plus size={16} strokeWidth={3} />
                   <span>{activeTab === 'ANNOUNCEMENTS' ? 'Publicar' : (activeTab === 'RESERVATIONS' || activeTab === 'ALL_RESERVATIONS') ? 'Nueva Reserva' : 'Nueva Tarea'}</span>
                 </button>
 
@@ -978,170 +984,137 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId, initialTab })
               )}
           </div>
         )}
-
-        {/* Global Reservations Search inside sticky header */}
+         {/* Global Reservations Search inside sticky header */}
         {activeTab === 'ALL_RESERVATIONS' && (
-          <div className="flex mt-2">
-            <div className="relative flex-1">
+          <div className="flex mt-2 animate-in fade-in slide-in-from-top-1 duration-300">
+            <div className="relative flex-1 group">
+              <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-2 pointer-events-none">
+                <Search size={16} className="text-emerald-500" />
+              </div>
               <input
                 type="text"
-                placeholder="Buscar por cliente, mesa o fecha (DD/MM/AAAA)..."
+                placeholder="BUSCAR CLIENTE, MESA O FECHA..."
                 value={reservationSearchTerm}
                 onChange={(e) => setReservationSearchTerm(e.target.value)}
-                className="w-full pl-4 pr-10 py-3 rounded-xl font-bold bg-gray-100 dark:bg-slate-800 border-2 border-transparent focus:border-indigo-500 outline-none dark:text-white shadow-sm"
+                className="w-full pl-12 pr-10 py-2.5 rounded-2xl font-black text-[10px] bg-slate-100 dark:bg-slate-800 border-2 border-transparent focus:border-emerald-500 outline-none dark:text-white shadow-sm placeholder:text-slate-400 dark:placeholder:text-slate-500 uppercase tracking-tighter transition-all"
               />
               {reservationSearchTerm && (
                 <button
                   onClick={() => setReservationSearchTerm('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 bg-gray-200 dark:bg-slate-700 text-gray-500 rounded-full hover:bg-gray-300 transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 bg-slate-200 dark:bg-slate-700 text-slate-500 rounded-full hover:bg-slate-300 transition-colors"
                 >
-                  <X size={14} />
+                  <X size={12} />
                 </button>
               )}
             </div>
           </div>
         )}
+
+        {/* Sticky Location Tabs for Reservations & Announcements */}
+        {(activeTab === 'RESERVATIONS' || activeTab === 'ARRIVED' || activeTab === 'ALL_RESERVATIONS' || activeTab === 'ANNOUNCEMENTS') && (
+          <div className="flex overflow-x-auto no-scrollbar gap-2.5 mt-4 py-1">
+            {[
+              { id: 'restaurante', label: 'Restaurante', color: 'bg-emerald-500', activeClass: 'bg-emerald-600 border-emerald-400' },
+              { id: 'gastro_bar', label: 'Gastro Bar', color: 'bg-rose-500', activeClass: 'bg-rose-600 border-rose-400' },
+              { id: 'cafeteria', label: 'Cafetería', color: 'bg-orange-500', activeClass: 'bg-orange-600 border-orange-400' },
+              { id: 'salon_c', label: 'Salón C', color: 'bg-purple-500', activeClass: 'bg-purple-600 border-purple-400' },
+              { id: 'terraza', label: 'Terraza', color: 'bg-blue-500', activeClass: 'bg-blue-600 border-blue-400' },
+              { id: 'eventos', label: 'Eventos', color: 'bg-amber-500', activeClass: 'bg-amber-600 border-amber-400' },
+              { id: 'piscina', label: 'Piscina', color: 'bg-cyan-500', activeClass: 'bg-cyan-600 border-cyan-400' }
+            ].map((loc) => {
+              const count = getReservationCount(loc.id);
+              const isActive = activeLocation === loc.id;
+              
+              return (
+                <button
+                  key={loc.id}
+                  onClick={() => setActiveLocation(loc.id)}
+                  className={`flex items-center gap-2.5 px-4.5 py-2.5 rounded-[1.25rem] text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap border-2 relative shadow-sm ${
+                    isActive
+                      ? `${loc.activeClass} text-white shadow-[0_8px_20px_rgba(0,0,0,0.15)] scale-[1.03] z-10`
+                      : 'bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                  }`}
+                >
+                  {count > 0 && (
+                    <span className="absolute -top-2 -right-2 min-w-[18px] h-[18px] bg-red-600 text-white text-[9px] font-black rounded-full flex items-center justify-center px-1 border-2 border-white dark:border-slate-800 shadow-[0_2px_10px_rgba(220,38,38,0.4)] animate-pulse">
+                      {count}
+                    </span>
+                  )}
+                  <div className={`w-2 h-2 rounded-full ${isActive ? 'bg-white shadow-[0_0_10px_rgba(255,255,255,0.8)]' : loc.color}`}></div>
+                  {loc.label}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
-      <div className="p-4 md:p-6 space-y-10">
-        {/* Reservas Banner */}
+      <div className="p-4 md:p-6 space-y-6">
+        {/* Reservation Compact Banner Info */}
         {(activeTab === 'RESERVATIONS' || activeTab === 'ARRIVED' || activeTab === 'ALL_RESERVATIONS') && (
           <motion.div 
-            initial={{ opacity: 0, y: -10 }}
+            initial={{ opacity: 0, y: -5 }}
             animate={{ opacity: 1, y: 0 }}
-            className="flex flex-col gap-6"
+            className={`p-6 rounded-[2rem] text-white shadow-2xl overflow-hidden relative group border-2 border-white/10 ${
+              activeLocation === 'terraza' ? 'bg-gradient-to-br from-blue-600 via-blue-700 to-blue-900 shadow-blue-900/20' :
+              activeLocation === 'salon_c' ? 'bg-gradient-to-br from-purple-600 via-purple-700 to-purple-900 shadow-purple-900/20' :
+              activeLocation === 'gastro_bar' ? 'bg-gradient-to-br from-rose-600 via-rose-700 to-rose-900 shadow-rose-900/20' :
+              activeLocation === 'cafeteria' ? 'bg-gradient-to-br from-orange-600 via-orange-700 to-orange-900 shadow-orange-900/20' :
+              activeLocation === 'eventos' ? 'bg-gradient-to-br from-amber-600 via-amber-700 to-amber-900 shadow-amber-900/20' :
+              activeLocation === 'piscina' ? 'bg-gradient-to-br from-cyan-600 via-cyan-700 to-cyan-900 shadow-cyan-900/20' :
+              'bg-gradient-to-br from-emerald-600 via-emerald-700 to-emerald-900 shadow-emerald-900/20'
+            }`}
           >
-            <div className="flex bg-slate-100 dark:bg-slate-900/50 p-1.5 rounded-[2rem] border border-slate-200/50 dark:border-slate-800 self-center mb-2 overflow-x-auto no-scrollbar max-w-full">
-              {[
-                { id: 'restaurante', label: 'Restaurante', color: 'bg-emerald-500' },
-                { id: 'gastro_bar', label: 'Gastro Bar', color: 'bg-rose-500' },
-                { id: 'cafeteria', label: 'Cafetería', color: 'bg-orange-500' },
-                { id: 'salon_c', label: 'Salón C', color: 'bg-purple-500' },
-                { id: 'terraza', label: 'Terraza', color: 'bg-blue-500' },
-                { id: 'eventos', label: 'Eventos', color: 'bg-amber-500' },
-                { id: 'piscina', label: 'Piscina', color: 'bg-cyan-500' }
-              ].map((loc) => {
-                const count = getReservationCount(loc.id);
-                return (
-                  <button
-                    key={loc.id}
-                    onClick={() => setActiveLocation(loc.id)}
-                    className={`px-5 py-2.5 rounded-[1.5rem] text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 whitespace-nowrap relative ${
-                      activeLocation === loc.id 
-                        ? 'bg-white dark:bg-slate-700 shadow-md text-slate-900 dark:text-white' 
-                        : 'text-slate-400 hover:text-slate-600'
-                    }`}
-                  >
-                    {count > 0 && (
-                      <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] bg-red-600 text-white text-[9px] font-black rounded-full flex items-center justify-center px-1 shadow-lg shadow-red-600/40 animate-pulse border-2 border-white dark:border-slate-800 z-10">
-                        {count}
-                      </span>
-                    )}
-                    <span className={`w-2 h-2 rounded-full ${loc.color}`}></span>
-                    {loc.label}
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className={`bg-gradient-to-br ${
-              activeLocation === 'terraza' ? 'from-blue-600 via-blue-700 to-blue-900' :
-              activeLocation === 'salon_c' ? 'from-purple-600 via-purple-700 to-purple-900' :
-              activeLocation === 'gastro_bar' ? 'from-rose-600 via-rose-700 to-rose-900' :
-              activeLocation === 'cafeteria' ? 'from-orange-600 via-orange-700 to-orange-900' :
-              activeLocation === 'eventos' ? 'from-amber-600 via-amber-700 to-amber-900' :
-              activeLocation === 'piscina' ? 'from-cyan-600 via-cyan-700 to-cyan-900' :
-              'from-emerald-600 via-teal-700 to-emerald-900'
-            } rounded-[1.5rem] md:rounded-[2.5rem] p-4 md:p-8 text-white shadow-xl relative overflow-hidden group border border-white/10`}>
-              <div className="absolute top-0 right-0 w-32 md:w-80 h-32 md:h-80 bg-white/10 rounded-full blur-2xl transform translate-x-16 -translate-y-16 group-hover:scale-110 transition-transform duration-700"></div>
-              
-              <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-3 md:gap-6">
-                <div className="max-w-2xl">
-                  <div className="flex items-center gap-2 md:gap-3 mb-1 md:mb-4">
-                    <div className="p-2 md:p-4 bg-white/20 rounded-xl md:rounded-3xl backdrop-blur-xl shadow-xl border border-white/30 rotate-3 group-hover:rotate-0 transition-transform">
-                      <ConciergeBell size={18} className="md:w-8 md:h-8 text-white" />
-                    </div>
-                    <h3 className="text-lg md:text-3xl font-black uppercase tracking-tighter drop-shadow-lg leading-tight">
-                      Agenda de Reservas <br/>
-                      <span className="text-white/70 text-sm md:text-2xl italic tracking-normal capitalize">{activeLocation}</span>
-                    </h3>
-                  </div>
-                  <p className="text-white/80 text-[8px] md:text-sm font-bold uppercase tracking-[0.2em]">
-                    Mesas • Horarios • Contactos
-                  </p>
+            <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-[80px] -translate-y-1/2 translate-x-1/2"></div>
+            <div className="absolute bottom-0 left-0 w-32 h-32 bg-black/10 rounded-full blur-[40px] translate-y-1/2 -translate-x-1/2"></div>
+            
+            <div className="relative z-10 flex items-center justify-between">
+              <div className="flex items-center gap-5">
+                <div className="p-4 bg-white/10 rounded-2xl backdrop-blur-3xl border border-white/20 shadow-2xl rotate-3 group-hover:rotate-0 transition-transform duration-500">
+                  <ConciergeBell size={24} className="text-white drop-shadow-md" />
                 </div>
+                <div>
+                  <h3 className="text-xl md:text-2xl font-black uppercase tracking-tighter leading-none mb-1 shadow-sm">Agenda {activeLocation}</h3>
+                  <div className="flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span>
+                    <p className="text-[11px] text-white/80 font-black uppercase tracking-[0.25em]">Reservas & Clientes Premier</p>
+                  </div>
+                </div>
+              </div>
+              <div className="hidden sm:flex flex-col items-end gap-1">
+                <span className="text-[10px] font-black bg-white/20 px-3 py-1 rounded-lg backdrop-blur-md border border-white/10 uppercase tracking-widest">Reserva Confirmada</span>
+                <span className="text-[9px] font-bold text-white/50 uppercase tracking-widest text-right">Servicio de Excelencia</span>
               </div>
             </div>
           </motion.div>
         )}
 
-        {/* Gestor de Salones Sub-tabs */}
+        {/* Gestor de Salones Banner Compact */}
         {activeTab === 'ANNOUNCEMENTS' && (
           <motion.div 
-            initial={{ opacity: 0, y: -10 }}
+            initial={{ opacity: 0, y: -5 }}
             animate={{ opacity: 1, y: 0 }}
-            className="flex flex-col gap-6"
+            className="bg-gradient-to-br from-indigo-700 via-indigo-800 to-slate-900 rounded-[2rem] p-6 text-white shadow-2xl relative overflow-hidden group border-2 border-white/10"
           >
-            <div className="bg-gradient-to-br from-indigo-600 via-purple-700 to-indigo-900 rounded-[1.5rem] md:rounded-[2.5rem] p-4 md:p-8 text-white shadow-xl relative overflow-hidden group border border-white/10">
-              <div className="absolute top-0 right-0 w-32 md:w-80 h-32 md:h-80 bg-white/10 rounded-full blur-2xl transform translate-x-16 -translate-y-16 group-hover:scale-110 transition-transform duration-700"></div>
-              
-              <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-3 md:gap-6">
-                <div className="max-w-2xl">
-                  <div className="flex items-center gap-2 md:gap-3 mb-1 md:mb-4">
-                    <div className="p-2 md:p-4 bg-white/20 rounded-xl md:rounded-3xl backdrop-blur-xl shadow-xl border border-white/30 rotate-3 group-hover:rotate-0 transition-transform">
-                      <LayoutDashboard size={18} className="md:w-8 md:h-8 text-white" />
-                    </div>
-                    <h3 className="text-lg md:text-4xl font-black uppercase tracking-tighter drop-shadow-lg">Gestor de Salones</h3>
-                  </div>
-                  <p className="text-indigo-100 text-xs md:text-xl font-medium leading-[1.1] md:leading-relaxed mb-0.5 md:mb-2">
-                    Comunicación de montajes y eventos.
-                  </p>
-                  <p className="text-indigo-200/80 text-[8px] md:text-sm font-bold uppercase tracking-widest">
-                    Espacios • Información • Montajes
-                  </p>
+            <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-[80px] -translate-y-1/2 translate-x-1/2"></div>
+            <div className="absolute bottom-0 left-0 w-32 h-32 bg-slate-500/10 rounded-full blur-[40px] translate-y-1/2 -translate-x-1/2"></div>
+            
+            <div className="relative z-10 flex items-center justify-between">
+              <div className="flex items-center gap-5">
+                <div className="p-4 bg-white/10 rounded-2xl backdrop-blur-3xl border border-white/20 shadow-2xl scale-95 group-hover:scale-100 transition-transform duration-500 ease-out">
+                  <LayoutDashboard size={24} className="text-white drop-shadow-md" />
                 </div>
-                
-                <div className="hidden lg:block">
-                  <div className="grid grid-cols-2 gap-3 opacity-40 group-hover:opacity-100 transition-opacity duration-500 scale-90 group-hover:scale-100 origin-right">
-                    <div className="p-3 bg-white/10 rounded-2xl backdrop-blur-md border border-white/20 flex items-center justify-center">
-                       <Calendar size={24} />
-                    </div>
-                    <div className="p-3 bg-white/10 rounded-2xl backdrop-blur-md border border-white/20 flex items-center justify-center">
-                       <Users size={24} />
-                    </div>
-                    <div className="p-3 bg-white/10 rounded-2xl backdrop-blur-md border border-white/20 flex items-center justify-center">
-                       <Megaphone size={24} />
-                    </div>
-                    <div className="p-3 bg-white/10 rounded-2xl backdrop-blur-md border border-white/20 flex items-center justify-center">
-                       <Image size={24} />
-                    </div>
+                <div>
+                  <h3 className="text-xl md:text-2xl font-black uppercase tracking-tighter leading-none mb-1">Gestor de Salones</h3>
+                  <div className="flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse"></span>
+                    <p className="text-[11px] text-indigo-100/80 font-black uppercase tracking-[0.25em]">Comunicación de Montajes & Eventos</p>
                   </div>
                 </div>
               </div>
-            </div>
-
-            <div className="flex bg-gray-100 dark:bg-slate-900/50 p-1.5 rounded-[2rem] border border-slate-200/50 dark:border-slate-800 self-center mb-2 overflow-x-auto no-scrollbar max-w-full">
-              {[
-                { id: 'restaurante', label: 'Restaurante' },
-                { id: 'gastro_bar', label: 'Gastro Bar' },
-                { id: 'cafeteria', label: 'Cafetería' },
-                { id: 'salon_c', label: 'Salón C' },
-                { id: 'terraza', label: 'Terraza' },
-                { id: 'eventos', label: 'Eventos' },
-                { id: 'piscina', label: 'Piscina' }
-              ].map((loc) => (
-                <button
-                  key={loc.id}
-                  onClick={() => setActiveLocation(loc.id)}
-                  className={`px-5 py-2.5 rounded-[1.5rem] text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 whitespace-nowrap ${
-                    activeLocation === loc.id 
-                      ? 'bg-white dark:bg-slate-700 shadow-md text-indigo-600 dark:text-white' 
-                      : 'text-slate-400 hover:text-slate-600'
-                  }`}
-                >
-                  {loc.label}
-                </button>
-              ))}
+              <div className="hidden sm:flex flex-col items-end gap-1">
+                <span className="text-[10px] font-black bg-white/20 px-3 py-1 rounded-lg backdrop-blur-md border border-white/10 uppercase tracking-widest">Eventos & Protocolo</span>
+              </div>
             </div>
           </motion.div>
         )}

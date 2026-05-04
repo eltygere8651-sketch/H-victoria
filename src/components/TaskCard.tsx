@@ -123,20 +123,21 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
 
   // Premium reservation background style - Heritage Hospitality Edition
   const reservationStyle = isReservation ? {
-    border: '1px solid rgba(6, 78, 59, 0.1)',
-    boxShadow: '0 20px 40px -15px rgba(0, 0, 0, 0.05)',
+    border: '1px solid rgba(6, 78, 59, 0.12)',
+    boxShadow: '0 30px 60px -20px rgba(6, 78, 59, 0.1), 0 10px 20px -10px rgba(0, 0, 0, 0.05)',
   } : {};
 
   // Heritage Hospitality Background Pattern
   const LuxuryPattern = () => (
-    <div className="absolute inset-0 opacity-[0.04] pointer-events-none overflow-hidden select-none">
-      <div className="absolute -top-12 -right-12 transform rotate-12">
-        <ConciergeBell size={240} strokeWidth={0.5} />
+    <div className="absolute inset-0 opacity-[0.05] pointer-events-none overflow-hidden select-none">
+      <div className="absolute -top-16 -right-16 transform rotate-12 text-emerald-900">
+        <ConciergeBell size={280} strokeWidth={0.3} />
       </div>
       <div className="absolute inset-0" style={{ 
-        backgroundImage: `radial-gradient(circle at 1.5px 1.5px, #064E3B 1px, transparent 0)`, 
-        backgroundSize: '32px 32px' 
+        backgroundImage: `radial-gradient(circle at 2px 2px, #064E3B 1px, transparent 0)`, 
+        backgroundSize: '40px 40px' 
       }} />
+      <div className="absolute inset-0 bg-gradient-to-br from-transparent via-white/5 to-emerald-500/5"></div>
     </div>
   );
 
@@ -174,12 +175,12 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
       } : undefined}
       style={reservationStyle}
       className={`
-        relative bg-[#FCFAF7] dark:bg-slate-900 rounded-[1.5rem] md:rounded-[2rem] shadow-xl dark:shadow-black/50 
-        border border-gray-100 dark:border-slate-800
-        ${isReservation ? 'cursor-pointer hover:shadow-2xl hover:scale-[1.01]' : 'hover:shadow-2xl hover:-translate-y-1'} transition-all duration-500 group
+        relative bg-[#FCFAF7] dark:bg-slate-900 rounded-[2rem] md:rounded-[2.5rem] shadow-xl dark:shadow-black/50 
+        border border-slate-100 dark:border-slate-800
+        ${isReservation ? 'cursor-pointer hover:shadow-2xl hover:scale-[1.01] hover:border-emerald-200/50' : 'hover:shadow-2xl hover:-translate-y-1'} transition-all duration-700 group
         overflow-hidden w-full
         ${isAnnouncement ? 'border-l-0 bg-indigo-50/10 dark:bg-indigo-900/5' : ''}
-        ${isReservation ? 'border-l-4 border-l-emerald-500 ring-1 ring-emerald-500/10' : ''}
+        ${isReservation ? 'border-l-8 border-l-emerald-600 ring-1 ring-emerald-500/10' : ''}
       `}
     >
       {/* Visual Priority Strip (Side) - Only for tasks */}
@@ -247,13 +248,13 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
                </div>
                
                <div className="flex flex-col min-w-0 flex-1 justify-center">
-                  <h3 className="text-base md:text-xl font-black text-[#064E3B] leading-none tracking-tight uppercase mb-1 truncate">
+                  <h3 className="text-lg md:text-2xl font-black text-[#042F2E] leading-none tracking-tighter uppercase mb-1 truncate drop-shadow-sm group-hover:text-emerald-700 transition-colors">
                     {task.title}
                   </h3>
                   <div className="flex items-center gap-2 text-[#064E3B]/80 flex-wrap">
-                     <span className="text-[10px] md:text-xs font-black tracking-widest">{task.guests} PAX</span>
-                     <div className="w-1 h-1 rounded-full bg-[#064E3B]/30" />
-                     <span className="text-[10px] md:text-xs font-bold">{task.reservationTime}</span>
+                     <span className="text-[11px] md:text-xs font-black tracking-[0.2em] bg-emerald-100/50 px-1.5 py-0.5 rounded-md border border-emerald-200/30">{task.guests} PAX</span>
+                     <div className="w-1.5 h-1.5 rounded-full bg-emerald-500/20" />
+                     <span className="text-[11px] md:text-xs font-black tracking-widest">{task.reservationTime}</span>
                      {task.clientPhone && (
                         <>
                           <div className="w-1 h-1 rounded-full bg-[#064E3B]/30 hidden sm:block" />
@@ -327,7 +328,7 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
                       <div className="w-4 h-[1px] bg-[#064E3B]/30" />
                       <span className="text-[8px] font-black text-[#064E3B]/60 uppercase tracking-[0.4em]">REGISTRO CLIENTE</span>
                    </div>
-                   <h3 className="text-xl md:text-3xl font-black text-[#064E3B] leading-[0.85] tracking-tighter uppercase mb-0.5">
+                   <h3 className="text-2xl md:text-4xl font-black text-[#042F2E] leading-[0.85] tracking-tighter uppercase mb-1 drop-shadow-sm group-hover:text-emerald-700 transition-colors">
                      {task.title}
                    </h3>
                    {task.clientPhone && (
