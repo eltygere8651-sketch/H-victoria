@@ -141,7 +141,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
             </div>
             <div className="flex flex-col">
               <span className="font-black text-lg sm:text-xl text-slate-900 dark:text-white uppercase tracking-tighter italic leading-none">Hub</span>
-              <span className="text-[8px] font-black text-red-600 dark:text-red-400 uppercase tracking-widest leading-none mt-0.5 sm:mt-1">Ecosystem</span>
+              <span className="text-[8px] font-black text-amber-500 dark:text-amber-400 uppercase tracking-widest leading-none mt-0.5 sm:mt-1">Ecosystem</span>
             </div>
           </div>
 

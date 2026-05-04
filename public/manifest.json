@@ -1,15 +1,21 @@
 
 {
-  "name": "Hub-system",
-  "short_name": "Hub-system",
+  "name": "Hub System",
+  "short_name": "Hub",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0f172a",
-  "theme_color": "#dc2626",
-  "description": "Hub-system",
+  "theme_color": "#fbbf24",
+  "description": "Sistema de Gestión de Pedidos Hub",
   "orientation": "portrait",
   "gcm_sender_id": "103953800507",
   "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
     {
       "src": "/icon-192.png",
       "sizes": "192x192",
@@ -20,12 +26,6 @@
       "src": "/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "/favicon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
       "purpose": "any maskable"
     }
   ]
