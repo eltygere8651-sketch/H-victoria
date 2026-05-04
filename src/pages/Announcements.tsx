@@ -101,7 +101,7 @@ const Announcements: React.FC<AnnouncementsProps> = ({ currentUser }) => {
              {currentUser.role === UserRole.ADMIN && (
                 <button
                   onClick={handleSharePublicAccess}
-                  className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-xl font-bold shadow-lg shadow-indigo-200 dark:shadow-none transition-all active:scale-95"
+                  className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2.5 rounded-xl font-bold shadow-lg shadow-red-200 dark:shadow-none transition-all active:scale-95"
                   title="Compartir enlace de acceso público para personal"
                 >
                   <Share2 size={18} />

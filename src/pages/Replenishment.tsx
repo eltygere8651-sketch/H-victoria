@@ -387,7 +387,7 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCar
                     Disponible en Almacén: <span className="text-red-600 dark:text-red-500">{selectedProduct.quantity} {selectedProduct.unit}</span>
                   </p>
                   {selectedProduct.maxThreshold && (
-                    <p className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider mt-0.5">
+                    <p className="text-[10px] font-bold text-red-600 dark:text-red-400 uppercase tracking-wider mt-0.5">
                       Tope permitido en {selectedDepartmentNameForOrder}: <span className="font-black">{selectedProduct.maxThreshold} {selectedProduct.unit}</span>
                     </p>
                   )}
@@ -537,7 +537,7 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCar
                 <button 
                   onClick={processOrder}
                   disabled={isOrderButtonDisabled}
-                  className="flex-[2] py-4 rounded-2xl font-black text-white bg-green-600 hover:bg-green-700 shadow-xl shadow-green-500/30 flex items-center justify-center gap-2 active:scale-[0.97] transition-all disabled:opacity-50 disabled:shadow-none text-sm"
+                  className="flex-[2] py-4 rounded-2xl font-black text-white bg-red-600 hover:bg-red-700 shadow-xl shadow-red-500/30 flex items-center justify-center gap-2 active:scale-[0.97] transition-all disabled:opacity-50 disabled:shadow-none text-sm"
                 >
                   {isProcessing ? <Loader2 className="animate-spin text-white" size={20}/> : <><CheckCircle2 size={20} /> ENVIAR PEDIDO</>}
                 </button>
@@ -690,10 +690,9 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCar
 
                return (
                 <motion.div 
-                  layout
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: Math.min(index * 0.05, 0.5) }}
+                  initial={{ opacity: 0, scale: 0.98 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: Math.min(index * 0.02, 0.3), duration: 0.25 }}
                   key={product.id} 
                   className={`group relative bg-white dark:bg-slate-900 p-4 rounded-[1.5rem] shadow-sm border border-gray-100 dark:border-white/5 transition-all duration-300 min-h-[130px] flex flex-col justify-between
                     ${available <= 0 
@@ -734,8 +733,8 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCar
                       
                       {product.maxThreshold && (
                         <div className="flex items-center gap-1">
-                          <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
-                          <span className="text-[9px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-tighter">
+                          <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                          <span className="text-[9px] font-black text-red-600 dark:text-red-400 uppercase tracking-tighter">
                             Tope Área: {product.maxThreshold}
                           </span>
                         </div>

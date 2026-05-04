@@ -15,25 +15,25 @@ export const GuideModal: React.FC<GuideModalProps> = ({ isOpen, onClose }) => {
       icon: Package,
       title: "Gestión de Existencias",
       desc: "Monitorización precisa de inventario con analítica de consumo y automatización avanzada de pedidos.",
-      colorClass: "text-blue-500 bg-blue-50 dark:bg-blue-900/10",
+      colorClass: "text-red-500 bg-red-50 dark:bg-red-900/10",
     },
     {
       icon: ConciergeBell,
       title: "Reservas Premium",
       desc: "Gestión inteligente de reservas, asignación de mesas y seguimiento de comensales en tiempo real.",
-      colorClass: "text-emerald-500 bg-emerald-50 dark:bg-emerald-900/10",
+      colorClass: "text-red-500 bg-red-50 dark:bg-red-900/10",
     },
     {
       icon: ClipboardCheck,
       title: "Flujos de Trabajo",
       desc: "Auditoría de protocolos operativos con verificación de cumplimiento y trazabilidad completa.",
-      colorClass: "text-amber-500 bg-amber-50 dark:bg-amber-900/10",
+      colorClass: "text-red-500 bg-red-50 dark:bg-red-900/10",
     },
     {
       icon: ShieldCheck,
       title: "Logística Digitalizada",
       desc: "Gestión integral de albaranes y registros con exportación certificada a PDF para una operativa de élite.",
-      colorClass: "text-rose-500 bg-rose-50 dark:bg-rose-900/10",
+      colorClass: "text-red-500 bg-red-50 dark:bg-red-900/10",
     }
   ];
 

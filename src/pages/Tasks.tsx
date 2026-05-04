@@ -758,7 +758,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId, initialTab })
   return (
     <div className="font-sans pb-24 bg-gray-50 dark:bg-slate-950 min-h-screen">
       {/* Header */}
-      <div className="sticky top-[var(--header-h)] z-40 bg-white/95 dark:bg-slate-950/95 backdrop-blur-xl border-b border-slate-200 dark:border-emerald-900/20 px-4 pt-5 pb-4 md:px-6 shadow-sm transition-all duration-300">
+      <div className="sticky top-[var(--header-h)] z-40 bg-white/95 dark:bg-slate-950/95 backdrop-blur-xl border-b border-slate-200 dark:border-red-900/20 px-4 pt-5 pb-4 md:px-6 shadow-sm transition-all duration-300">
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-5 transition-all">
           <div className="flex flex-col sm:flex-row sm:items-end gap-5 w-full sm:w-auto">
             <div className="flex items-center justify-between w-full sm:w-auto gap-6">
@@ -810,7 +810,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId, initialTab })
                   onClick={() => setActiveTab('DAILY')}
                   className={`flex-1 sm:px-4 py-2.5 rounded-xl text-[9px] sm:text-xs font-black uppercase tracking-widest transition-all text-center whitespace-nowrap min-w-[70px] ${
                     activeTab === 'DAILY' 
-                      ? 'bg-white dark:bg-slate-700 shadow-md text-orange-600 scale-[1.02]' 
+                      ? 'bg-white dark:bg-slate-700 shadow-md text-red-600 scale-[1.02]' 
                       : 'text-gray-500 dark:text-gray-400 hover:bg-white/50'
                   }`}
                 >
@@ -825,7 +825,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId, initialTab })
                   onClick={() => setActiveTab('RESERVATIONS')}
                   className={`flex-1 px-5 py-2.5 rounded-[1rem] text-[10px] font-black uppercase tracking-[0.1em] transition-all text-center whitespace-nowrap border-2 border-transparent ${
                     activeTab === 'RESERVATIONS' 
-                      ? 'bg-white dark:bg-slate-700 shadow-[0_4px_12px_rgba(16,185,129,0.15)] text-emerald-600 dark:text-emerald-400 border-white' 
+                      ? 'bg-white dark:bg-slate-700 shadow-[0_4px_12px_rgba(239,68,68,0.15)] text-red-600 dark:text-red-400 border-white' 
                       : 'text-slate-500 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
                   }`}
                 >
@@ -835,7 +835,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId, initialTab })
                   onClick={() => setActiveTab('ARRIVED')}
                   className={`flex-1 px-5 py-2.5 rounded-[1rem] text-[10px] font-black uppercase tracking-[0.1em] transition-all text-center whitespace-nowrap border-2 border-transparent ${
                     activeTab === 'ARRIVED' 
-                      ? 'bg-white dark:bg-slate-700 shadow-[0_4px_12px_rgba(59,130,246,0.15)] text-blue-600 dark:text-blue-400 border-white' 
+                      ? 'bg-white dark:bg-slate-700 shadow-[0_4px_12px_rgba(239,68,68,0.15)] text-red-600 dark:text-red-400 border-white' 
                       : 'text-slate-500 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
                   }`}
                 >
@@ -845,7 +845,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId, initialTab })
                   onClick={() => setActiveTab('ALL_RESERVATIONS')}
                   className={`flex-1 px-5 py-2.5 rounded-[1rem] text-[10px] font-black uppercase tracking-[0.1em] transition-all text-center whitespace-nowrap border-2 border-transparent ${
                     activeTab === 'ALL_RESERVATIONS' 
-                      ? 'bg-white dark:bg-slate-700 shadow-[0_4px_12px_rgba(147,51,234,0.15)] text-purple-600 dark:text-purple-400 border-white' 
+                      ? 'bg-white dark:bg-slate-700 shadow-[0_4px_12px_rgba(239,68,68,0.15)] text-red-600 dark:text-red-400 border-white' 
                       : 'text-slate-500 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
                   }`}
                 >
@@ -895,7 +895,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId, initialTab })
                     setPreviews([]);
                     setShowTaskModal(true);
                   }}
-                  className={`flex items-center gap-2 px-5 py-2.5 ${(activeTab === 'RESERVATIONS' || activeTab === 'ALL_RESERVATIONS' || activeTab === 'ARRIVED') ? 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-500/25' : 'bg-red-600 hover:bg-red-500 shadow-red-500/25'} text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl transition-all active:scale-95 shadow-xl border border-white/10`}
+                  className={`flex items-center gap-2 px-5 py-2.5 ${(activeTab === 'RESERVATIONS' || activeTab === 'ALL_RESERVATIONS' || activeTab === 'ARRIVED') ? 'bg-red-600 hover:bg-red-500 shadow-red-500/25' : 'bg-red-600 hover:bg-red-500 shadow-red-500/25'} text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl transition-all active:scale-95 shadow-xl border border-white/10`}
                 >
                   <Plus size={16} strokeWidth={3} />
                   <span>{activeTab === 'ANNOUNCEMENTS' ? 'Publicar' : (activeTab === 'RESERVATIONS' || activeTab === 'ALL_RESERVATIONS') ? 'Nueva Reserva' : 'Nueva Tarea'}</span>
@@ -989,14 +989,14 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId, initialTab })
           <div className="flex mt-2 animate-in fade-in slide-in-from-top-1 duration-300">
             <div className="relative flex-1 group">
               <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-2 pointer-events-none">
-                <Search size={16} className="text-emerald-500" />
+                <Search size={16} className="text-red-500" />
               </div>
               <input
                 type="text"
                 placeholder="BUSCAR CLIENTE, MESA O FECHA..."
                 value={reservationSearchTerm}
                 onChange={(e) => setReservationSearchTerm(e.target.value)}
-                className="w-full pl-12 pr-10 py-2.5 rounded-2xl font-black text-[10px] bg-slate-100 dark:bg-slate-800 border-2 border-transparent focus:border-emerald-500 outline-none dark:text-white shadow-sm placeholder:text-slate-400 dark:placeholder:text-slate-500 uppercase tracking-tighter transition-all"
+                className="w-full pl-12 pr-10 py-2.5 rounded-2xl font-black text-[10px] bg-slate-100 dark:bg-slate-800 border-2 border-transparent focus:border-red-500 outline-none dark:text-white shadow-sm placeholder:text-slate-400 dark:placeholder:text-slate-500 uppercase tracking-tighter transition-all"
               />
               {reservationSearchTerm && (
                 <button

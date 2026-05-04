@@ -34,8 +34,8 @@ export const PWAInstallPrompt: React.FC<PWAInstallPromptProps> = ({ isOpen, onCl
             Lleva el control de tu hotel a todas partes con nuestra aplicación nativa.
           </p>
 
-          <div className="bg-slate-50 dark:bg-slate-800/50 p-8 rounded-[2.5rem] border border-slate-100 dark:border-slate-700/50 mb-8 relative overflow-hidden group">
-            <div className="absolute inset-0 bg-gradient-to-br from-red-500/5 to-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+            <div className="bg-slate-50 dark:bg-slate-800/50 p-8 rounded-[2.5rem] border border-slate-100 dark:border-slate-700/50 mb-8 relative overflow-hidden group">
+              <div className="absolute inset-0 bg-gradient-to-br from-red-500/10 to-red-600/5 opacity-0 group-hover:opacity-100 transition-opacity" />
             <div className="relative z-10 bg-white p-6 rounded-[2rem] shadow-2xl inline-block mb-4 ring-8 ring-white/50">
               <img 
                 src={`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(appUrl)}&margin=10&color=dc2626`} 
@@ -50,8 +50,8 @@ export const PWAInstallPrompt: React.FC<PWAInstallPromptProps> = ({ isOpen, onCl
 
           <div className="grid grid-cols-1 gap-3 text-left">
             <div className="flex items-start gap-3 p-4 bg-slate-50 dark:bg-slate-800/30 rounded-2xl border border-slate-100 dark:border-slate-700/50">
-              <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
-                <span className="text-blue-600 dark:text-blue-400 font-black text-xs">iOS</span>
+              <div className="w-8 h-8 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center shrink-0">
+                <span className="text-red-600 dark:text-red-400 font-black text-xs">iOS</span>
               </div>
               <div>
                 <p className="text-xs font-bold text-slate-900 dark:text-white">iPhone / iPad</p>
@@ -60,8 +60,8 @@ export const PWAInstallPrompt: React.FC<PWAInstallPromptProps> = ({ isOpen, onCl
             </div>
 
             <div className="flex items-start gap-3 p-4 bg-slate-50 dark:bg-slate-800/30 rounded-2xl border border-slate-100 dark:border-slate-700/50">
-              <div className="w-8 h-8 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center shrink-0">
-                <span className="text-green-600 dark:text-green-400 font-black text-xs">AND</span>
+              <div className="w-8 h-8 rounded-full bg-red-50 dark:bg-red-900/50 flex items-center justify-center shrink-0">
+                <span className="text-red-600 dark:text-red-400 font-black text-xs">AND</span>
               </div>
               <div>
                 <p className="text-xs font-bold text-slate-900 dark:text-white">Android</p>

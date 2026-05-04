@@ -206,7 +206,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
             <div className="relative" ref={volumeMenuRef}>
               <button 
                 onClick={() => setShowVolumeMenu(!showVolumeMenu)} 
-                className={`flex items-center justify-center h-9 w-9 sm:h-10 sm:w-10 rounded-2xl transition-all duration-300 border ${showVolumeMenu ? 'bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-600/30' : 'bg-white/80 dark:bg-slate-800/40 border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300'}`}
+                className={`flex items-center justify-center h-9 w-9 sm:h-10 sm:w-10 rounded-2xl transition-all duration-300 border ${showVolumeMenu ? 'bg-red-600 text-white border-red-600 shadow-lg shadow-red-600/30' : 'bg-white/80 dark:bg-slate-800/40 border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300'}`}
                 title="Configuración de sonido"
               >
                 {soundEnabled && notificationVolume > 0 ? <Volume2 size={18} /> : <VolumeX size={18} />}
@@ -225,7 +225,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
                         <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Sonido</span>
                         <button 
                           onClick={() => setSoundEnabled(!soundEnabled)} 
-                          className={`px-3 py-1 rounded-full text-[9px] font-black uppercase transition-colors ${soundEnabled ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-500'}`}
+                          className={`px-3 py-1 rounded-full text-[9px] font-black uppercase transition-colors ${soundEnabled ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-500'}`}
                         >
                           {soundEnabled ? 'ENCENDIDO' : 'APAGADO'}
                         </button>
@@ -246,7 +246,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
                           onChange={(e) => setNotificationVolume(Number(e.target.value))}
                           onMouseUp={() => playTestSound()}
                           onTouchEnd={() => playTestSound()}
-                          className="w-full h-2 bg-slate-100 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-blue-500 disabled:opacity-30"
+                          className="w-full h-2 bg-slate-100 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-red-500 disabled:opacity-30"
                         />
                       </div>
 
@@ -260,7 +260,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
                                   setSoundType(t);
                                   playTestSound(t);
                                 }}
-                                className={`py-2 rounded-xl text-[10px] font-bold border transition-all ${soundType === t ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-500 text-blue-600 dark:text-blue-400' : 'bg-transparent border-slate-100 dark:border-white/5 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
+                                className={`py-2 rounded-xl text-[10px] font-bold border transition-all ${soundType === t ? 'bg-red-50 dark:bg-red-900/20 border-red-500 text-red-600 dark:text-red-400' : 'bg-transparent border-slate-100 dark:border-white/5 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
                               >
                                 {t === 'Default' ? 'Básico' : t}
                               </button>
@@ -293,7 +293,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
 
             <button 
               onClick={() => setDarkMode(!darkMode)} 
-              className="btn-header-action h-9 w-9 sm:h-10 sm:w-10 text-amber-500 dark:text-yellow-400 border-none shadow-none active:scale-90"
+              className="btn-header-action h-9 w-9 sm:h-10 sm:w-10 text-red-500 dark:text-red-400 border-none shadow-none active:scale-90"
               title={darkMode ? "Modo Claro" : "Modo Oscuro"}
             >
               {darkMode ? <Sun size={18} /> : <Moon size={18} />}

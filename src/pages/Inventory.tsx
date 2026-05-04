@@ -350,7 +350,7 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser, notificationVolume =
               <div className="flex sm:hidden overflow-x-auto no-scrollbar bg-slate-100 dark:bg-slate-900/50 p-1.5 rounded-2xl gap-2 border border-slate-200 dark:border-slate-800 shadow-inner w-full">
                 <button 
                   onClick={() => setShowReceiveStockModal(true)} 
-                  className="flex-1 min-w-[100px] bg-blue-600 text-white px-3 py-3 rounded-xl flex items-center justify-center gap-1.5 active:scale-95 shadow-lg shadow-blue-600/20 text-[10px] font-black uppercase tracking-tighter whitespace-nowrap"
+                  className="flex-1 min-w-[100px] bg-red-600 text-white px-3 py-3 rounded-xl flex items-center justify-center gap-1.5 active:scale-95 shadow-lg shadow-red-600/20 text-[10px] font-black uppercase tracking-tighter whitespace-nowrap"
                 >
                   <PackagePlus size={14} className="flex-shrink-0" /> 
                   <span>Ingreso Stock</span>
@@ -376,7 +376,7 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser, notificationVolume =
 
               {/* Desktop actions row */}
               <div className="hidden sm:flex items-center gap-2">
-                <button onClick={() => setShowReceiveStockModal(true)} className="bg-blue-600 text-white px-4 py-2.5 rounded-xl flex items-center gap-2 hover:bg-blue-700 transition-all font-black text-xs uppercase tracking-wider shadow-lg shadow-blue-600/10"><PackagePlus size={16} /> Ingreso Stock</button>
+                <button onClick={() => setShowReceiveStockModal(true)} className="bg-red-600 text-white px-4 py-2.5 rounded-xl flex items-center gap-2 hover:bg-red-700 transition-all font-black text-xs uppercase tracking-wider shadow-lg shadow-red-600/10"><PackagePlus size={16} /> Ingreso Stock</button>
                 <button 
                   onClick={() => { 
                     if (!isDeveloper) { setShowDeveloperRestrictedModal(true); return; }
@@ -449,15 +449,15 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser, notificationVolume =
                 </div>
                 
                 {product.maxThreshold ? (
-                  <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md border border-dashed border-blue-200 dark:border-blue-900/30 self-start">
-                    <div className="w-1.5 h-1.5 bg-blue-500 rounded-full" />
-                    <span className="text-[11px] font-black text-blue-600 dark:text-blue-400 uppercase">Tope Área: {product.maxThreshold}</span>
+                  <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md border border-dashed border-red-200 dark:border-red-900/30 self-start">
+                    <div className="w-1.5 h-1.5 bg-red-500 rounded-full" />
+                    <span className="text-[11px] font-black text-red-600 dark:text-red-400 uppercase">Tope Área: {product.maxThreshold}</span>
                   </div>
                 ) : null}
               </div>
             </div>
             <div className="flex gap-2">
-              <button onClick={() => { setEditProductForm(product); setShowEditProductModal(true); }} className="p-3 text-blue-600 bg-blue-50 dark:bg-blue-900/20 rounded-xl active:scale-90"><Edit2 size={18} /></button>
+              <button onClick={() => { setEditProductForm(product); setShowEditProductModal(true); }} className="p-3 text-red-600 bg-red-50 dark:bg-red-900/20 rounded-xl active:scale-90"><Edit2 size={18} /></button>
               <button 
                 onClick={() => { 
                   if (!isDeveloper) {
@@ -489,7 +489,7 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser, notificationVolume =
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 max-h-[60dvh] overflow-y-auto px-1">
               {smartSuggestion && !editProductForm.id && (
-                <div className="md:col-span-2 flex items-center gap-2 text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 p-3 rounded-xl text-[10px] font-bold animate-fade-in">
+                <div className="md:col-span-2 flex items-center gap-2 text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-3 rounded-xl text-[10px] font-bold animate-fade-in">
                   <Sparkles size={14} />
                   Sugerencia Inteligente: Áreas y unidad detectadas.
                 </div>
@@ -599,7 +599,7 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser, notificationVolume =
               </div>
               <div>
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Tope por Área (Capacidad)</label>
-                <input type="number" className="w-full p-3 border-2 rounded-xl bg-slate-50 dark:bg-slate-950 font-bold text-blue-600 text-sm" value={editProductForm.maxThreshold || ''} onChange={e => setEditProductForm({...editProductForm, maxThreshold: e.target.value ? Number(e.target.value) : undefined})} placeholder="Ej: 35" />
+                <input type="number" className="w-full p-3 border-2 rounded-xl bg-slate-50 dark:bg-slate-950 font-bold text-red-600 text-sm" value={editProductForm.maxThreshold || ''} onChange={e => setEditProductForm({...editProductForm, maxThreshold: e.target.value ? Number(e.target.value) : undefined})} placeholder="Ej: 35" />
                 <p className="text-[9px] font-bold text-slate-400 mt-1 uppercase">Cantidad máxima permitida por pedido en cada área.</p>
               </div>
             </div>
@@ -678,7 +678,7 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser, notificationVolume =
                 <div key={dep.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-2xl border-2 border-slate-50 dark:border-slate-800 bg-white dark:bg-slate-900 gap-3 shadow-sm">
                   <span className="font-black text-slate-900 dark:text-white uppercase text-xs sm:text-sm break-words leading-snug">{dep.name}</span>
                   <div className="flex gap-2 justify-end pt-2 sm:pt-0 border-t sm:border-0 border-slate-50 dark:border-slate-800">
-                    <button onClick={() => { setEditingDepartment(dep); setNewDepartmentName(dep.name); }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-bold text-[10px] uppercase active:scale-90 transition-all">
+                    <button onClick={() => { setEditingDepartment(dep); setNewDepartmentName(dep.name); }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 font-bold text-[10px] uppercase active:scale-90 transition-all">
                       <Edit2 size={16} /> Editar
                     </button>
                     <button onClick={(e) => handleDeleteDepartment(dep.id, e)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 font-bold text-[10px] uppercase active:scale-90 transition-all">
@@ -724,8 +724,8 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser, notificationVolume =
           <div className="bg-white dark:bg-slate-900 w-full md:max-w-2xl h-auto max-h-[90dvh] rounded-t-[2rem] md:rounded-[2rem] shadow-2xl p-5 md:p-8 border-t md:border-2 border-white/10 flex flex-col animate-slide-up">
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-xl md:text-2xl font-black uppercase italic flex items-center gap-3">
-                <PackagePlus className="text-blue-600" size={28} />
-                Ingreso de <span className="text-blue-600">Mercancía</span>
+                <PackagePlus className="text-red-600" size={28} />
+                Ingreso de <span className="text-red-600">Mercancía</span>
               </h3>
               <button onClick={() => { setShowReceiveStockModal(false); setReceiveItems([]); setReceiveSearchTerm(''); setSelectedProductToReceive(null); }} className="p-2 bg-slate-100 dark:bg-slate-800 rounded-full text-slate-500 hover:text-slate-800 dark:hover:text-white transition-colors">
                 <X size={20} />
@@ -743,7 +743,7 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser, notificationVolume =
                     placeholder="Escribe para buscar..." 
                     value={receiveSearchTerm}
                     onChange={(e) => setReceiveSearchTerm(e.target.value)}
-                    className="w-full pl-12 pr-4 py-4 rounded-2xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 font-bold focus:border-blue-500 outline-none transition-all dark:text-white"
+                    className="w-full pl-12 pr-4 py-4 rounded-2xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 font-bold focus:border-red-500 outline-none transition-all dark:text-white"
                   />
                 </div>
 
@@ -767,8 +767,8 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser, notificationVolume =
 
                 {selectedProductToReceive && (
                   <div className="flex items-center gap-3 animate-fade-in">
-                    <div className="flex-1 bg-white dark:bg-slate-900 px-4 py-3 rounded-2xl border-2 border-blue-200 dark:border-blue-900/50 min-w-0">
-                      <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest block mb-0.5">Seleccionado</span>
+                    <div className="flex-1 bg-white dark:bg-slate-900 px-4 py-3 rounded-2xl border-2 border-red-200 dark:border-red-900/50 min-w-0">
+                      <span className="text-[10px] font-black text-red-500 uppercase tracking-widest block mb-0.5">Seleccionado</span>
                       <span className="font-bold dark:text-white truncate block text-sm">{selectedProductToReceive.name}</span>
                     </div>
                     <input 
@@ -777,12 +777,12 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser, notificationVolume =
                       value={receiveQuantityInput}
                       onChange={(e) => setReceiveQuantityInput(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && handleAddReceiveItem()}
-                      className="w-24 px-4 py-4 rounded-2xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 font-bold focus:border-blue-500 outline-none text-center dark:text-white"
+                      className="w-24 px-4 py-4 rounded-2xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 font-bold focus:border-red-500 outline-none text-center dark:text-white"
                       autoFocus
                     />
                     <button 
                       onClick={handleAddReceiveItem}
-                      className="bg-blue-600 text-white w-14 h-14 rounded-2xl flex items-center justify-center hover:bg-blue-700 transition-colors shadow-lg shadow-blue-600/30 flex-shrink-0"
+                      className="bg-red-600 text-white w-14 h-14 rounded-2xl flex items-center justify-center hover:bg-red-700 transition-colors shadow-lg shadow-red-600/30 flex-shrink-0"
                     >
                       <Plus size={24} strokeWidth={3} />
                     </button>
@@ -795,7 +795,7 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser, notificationVolume =
                 <div>
                   <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center justify-between">
                     <span>Lista de Ingreso</span>
-                    <span className="bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 px-2 py-1 rounded-lg text-xs">{receiveItems.length} items</span>
+                    <span className="bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 px-2 py-1 rounded-lg text-xs">{receiveItems.length} items</span>
                   </h4>
                   <div className="space-y-2">
                     {receiveItems.map((item, idx) => (
@@ -807,7 +807,7 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser, notificationVolume =
                           </span>
                         </div>
                         <div className="flex items-center gap-3">
-                          <span className="font-black text-lg text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/30 px-3 py-1 rounded-xl">
+                          <span className="font-black text-lg text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30 px-3 py-1 rounded-xl">
                             +{item.quantityToAdd}
                           </span>
                           <button 
@@ -828,7 +828,7 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser, notificationVolume =
               <button 
                 onClick={handleConfirmReceiveStock}
                 disabled={receiveItems.length === 0 || loading}
-                className="w-full py-4 rounded-2xl font-black text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-xl shadow-blue-600/30 transition-all flex items-center justify-center gap-2 text-lg uppercase tracking-wider"
+                className="w-full py-4 rounded-2xl font-black text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-xl shadow-red-600/30 transition-all flex items-center justify-center gap-2 text-lg uppercase tracking-wider"
               >
                 {loading ? <Loader2 className="animate-spin" size={24} /> : <CheckCircle2 size={24} />}
                 Confirmar Ingreso
