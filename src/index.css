@@ -259,7 +259,24 @@ body {
 }
 
 .animate-shine {
-  animation: shine 4s linear infinite;
+  animation: shine 8s linear infinite;
+}
+
+.premium-video-container:fullscreen {
+  width: 100vw !important;
+  height: 100vh !important;
+  border-radius: 0 !important;
+  border: none !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-shrink: 1 !important;
+}
+
+.premium-video-container:fullscreen video {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain;
 }
 
 @media screen and (max-width: 768px) {

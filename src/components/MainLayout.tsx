@@ -43,38 +43,35 @@ const NavButton = ({ icon: Icon, label, isActive, onClick, hasAlert = false }: a
   <button 
     onClick={onClick} 
     className={`
-      relative flex items-center justify-center rounded-2xl transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] overflow-hidden
-      outline-none select-none touch-manipulation active:scale-[0.92] group border border-white/5 dark:border-white/10
-      ${isActive ? 'px-3 sm:px-4 py-2.5 sm:py-3 gap-2' : 'px-1 sm:px-2 py-2.5 sm:py-3'} 
-      ${isActive 
-        ? 'flex-[6] text-white shadow-[0_10px_25px_-5px_rgba(220,38,38,0.4),inset_0_1px_1px_rgba(255,255,255,0.4)] bg-[linear-gradient(110deg,#dc2626,45%,#fbbf24,55%,#dc2626)] bg-[length:200%_100%] animate-shine ring-1 ring-white/30' 
-        : 'flex-[1] text-white/70 hover:text-white shadow-[0_4px_12px_rgba(0,0,0,0.1),inset_0_1px_0_rgba(255,255,255,0.1)] bg-[linear-gradient(110deg,#991b1b,45%,#854d0e,55%,#991b1b)] bg-[length:200%_100%] animate-shine opacity-85 hover:opacity-100 backdrop-blur-sm'
-      }
+      relative flex items-center justify-center rounded-2xl transition-all duration-500 ease-out overflow-hidden
+      outline-none select-none touch-manipulation active:scale-[0.95] group
+      border border-white/10
+      ${isActive ? 'flex-[6] px-4 py-3 gap-2' : 'flex-[1] px-2 py-3'}
+      text-white shadow-[0_0_15px_-5px_rgba(220,38,38,0.4),inset_0_1px_0_rgba(255,255,255,0.3)] bg-[linear-gradient(110deg,#dc2626,45%,#d4af37,55%,#dc2626)] bg-[length:200%_100%] animate-shine ring-1 ring-white/40
     `}
     style={{ WebkitTapHighlightColor: 'transparent' }}
   >
-    {/* Upper Reflective Glaze */}
     <div className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent pointer-events-none opacity-50" />
     
     <div className="relative z-10 flex-shrink-0 flex items-center justify-center">
       <Icon 
-        size={isActive ? 22 : 20} 
-        strokeWidth={isActive ? 3 : 2.5} 
-        className={`transition-all duration-700 ${isActive ? 'scale-110 rotate-[2deg] drop-shadow-md' : 'scale-100 group-hover:scale-110 drop-shadow-sm'}`}
+        size={isActive ? 24 : 20} 
+        strokeWidth={isActive ? 2.5 : 2} 
+        className={`transition-all duration-500 ${isActive ? 'scale-110' : 'scale-100 group-hover:scale-110'}`}
       />
       {hasAlert && !isActive && (
          <span className="absolute -top-1.5 -right-1.5 flex h-3.5 w-3.5 z-20">
            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-           <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-red-600 ring-2 ring-white dark:ring-slate-900 shadow-sm"></span>
+           <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-red-600 ring-2 ring-slate-900 shadow-sm"></span>
          </span>
       )}
     </div>
     
     <div className={`
-      overflow-hidden transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] flex items-center justify-center
-      ${isActive ? 'max-w-[100px] opacity-100 ml-1' : 'max-w-0 opacity-0'}
+      overflow-hidden transition-all duration-500 ease-out flex items-center justify-center
+      ${isActive ? 'max-w-[100px] opacity-100 ml-1.5' : 'max-w-0 opacity-0'}
     `}>
-      <span className="text-[10px] sm:text-xs font-black leading-tight whitespace-nowrap uppercase tracking-[0.15em] pt-0.5 filter drop-shadow-sm">
+      <span className="text-[11px] font-extrabold leading-tight whitespace-nowrap uppercase tracking-widest pt-0.5 text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
         {label}
       </span>
     </div>

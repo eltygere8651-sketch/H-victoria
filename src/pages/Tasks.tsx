@@ -1696,11 +1696,11 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId, initialTab })
                         {/* BUTTON 1: CAMERA (Forced Environment Capture) */}
                         <button 
                           onClick={() => cameraInputRef.current?.click()}
-                          className="relative overflow-hidden w-24 h-24 rounded-2xl border-2 border-red-500 bg-red-50 dark:bg-red-900/20 flex flex-col items-center justify-center text-red-600 dark:text-red-400 shadow-[0_0_15px_rgba(220,38,38,0.3)] hover:scale-105 active:scale-95 transition-all flex-shrink-0 group"
+                          className="relative overflow-hidden w-24 h-24 rounded-2xl border border-white/20 flex flex-col items-center justify-center text-white shadow-[0_10px_25px_-5px_rgba(220,38,38,0.4),inset_0_1px_1px_rgba(255,255,255,0.4)] hover:scale-105 active:scale-95 transition-all flex-shrink-0 group bg-[linear-gradient(110deg,#dc2626,45%,#fbbf24,55%,#dc2626)] bg-[length:200%_100%] animate-shine"
                         >
-                          <div className="absolute inset-0 bg-[linear-gradient(110deg,transparent,45%,rgba(255,255,255,0.6),55%,transparent)] dark:bg-[linear-gradient(110deg,transparent,45%,rgba(255,255,255,0.2),55%,transparent)] bg-[length:200%_100%] animate-shine opacity-80" />
-                          <Camera size={28} className="group-hover:scale-110 transition-transform relative z-10 filter drop-shadow-[0_2px_4px_rgba(220,38,38,0.4)]" />
-                          <span className="text-[10px] font-black mt-1 uppercase tracking-wide relative z-10 drop-shadow-[0_1px_2px_rgba(220,38,38,0.3)]">FOTO</span>
+                          <div className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent pointer-events-none opacity-40" />
+                          <Camera size={28} className="group-hover:scale-110 transition-transform relative z-10 filter drop-shadow-md" />
+                          <span className="text-[10px] font-black mt-1 uppercase tracking-wide relative z-10 drop-shadow-md">FOTO</span>
                         </button>
 
                         {/* BUTTON 2: GALLERY (File Picker) */}

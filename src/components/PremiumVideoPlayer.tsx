@@ -1,16 +1,17 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Play, Pause, Volume2, VolumeX, Smartphone, Monitor, Square } from 'lucide-react';
+import { Play, Pause, Volume2, VolumeX, Smartphone, Monitor, Square, Maximize } from 'lucide-react';
 
 interface PremiumVideoPlayerProps {
   url: string;
 }
 
 export const PremiumVideoPlayer: React.FC<PremiumVideoPlayerProps> = ({ url }) => {
-  const [format, setFormat] = useState<'vertical' | 'horizontal' | 'square'>('vertical');
+  const [format, setFormat] = useState<'vertical' | 'horizontal'>('vertical');
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
   const [showControls, setShowControls] = useState(true);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const togglePlay = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -32,16 +33,25 @@ export const PremiumVideoPlayer: React.FC<PremiumVideoPlayerProps> = ({ url }) =
   const toggleFormat = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (format === 'vertical') setFormat('horizontal');
-    else if (format === 'horizontal') setFormat('square');
     else setFormat('vertical');
+  };
+
+  const toggleFullscreen = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!document.fullscreenElement) {
+        containerRef.current?.requestFullscreen().catch(err => {
+            console.error(`Error attempting to enable full-screen mode: ${err.message}`);
+        });
+    } else {
+        document.exitFullscreen();
+    }
   };
 
   return (
     <div 
-      className={`relative rounded-[2rem] border-4 border-white dark:border-slate-800 overflow-hidden flex-shrink-0 shadow-2xl snap-start group bg-black transition-all duration-500 ease-[cubic-bezier(0.2,0.8,0.2,1)]
-        ${format === 'vertical' ? 'w-48 h-80 md:w-56 md:h-96' : 
-          format === 'horizontal' ? 'w-72 h-40 md:w-96 md:h-56' : 
-          'w-56 h-56 md:w-72 md:h-72'}
+      ref={containerRef}
+      className={`relative rounded-[2rem] border-4 border-white dark:border-slate-800 overflow-hidden flex-shrink-0 shadow-2xl snap-start group bg-black transition-all duration-500 ease-[cubic-bezier(0.2,0.8,0.2,1)] premium-video-container
+        ${format === 'vertical' ? 'w-48 h-80 md:w-56 md:h-96' : 'w-72 h-40 md:w-96 md:h-56'}
       `}
       onMouseEnter={() => setShowControls(true)}
       onMouseLeave={() => { if (isPlaying) setShowControls(false); }}
@@ -86,6 +96,12 @@ export const PremiumVideoPlayer: React.FC<PremiumVideoPlayerProps> = ({ url }) =
             >
               {isMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
             </button>
+            <button 
+              onClick={toggleFullscreen}
+              className="p-2 hover:bg-white/20 bg-black/40 rounded-xl backdrop-blur-md text-white transition-all active:scale-90 shadow-lg border border-white/10"
+            >
+              <Maximize size={16} />
+            </button>
           </div>
           
           <button 
@@ -95,9 +111,8 @@ export const PremiumVideoPlayer: React.FC<PremiumVideoPlayerProps> = ({ url }) =
           >
             {format === 'vertical' && <Smartphone size={16} />}
             {format === 'horizontal' && <Monitor size={16} />}
-            {format === 'square' && <Square size={16} />}
             <span className="text-[10px] uppercase font-black tracking-widest hidden sm:block">
-              {format === 'vertical' ? 'Vertical' : format === 'horizontal' ? 'Horizontal' : 'Cuadrado'}
+              {format === 'vertical' ? 'Vertical' : 'Horizontal'}
             </span>
           </button>
         </div>
