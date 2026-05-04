@@ -895,7 +895,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId, initialTab })
                     setPreviews([]);
                     setShowTaskModal(true);
                   }}
-                  className={`flex items-center gap-2 px-5 py-2.5 ${(activeTab === 'RESERVATIONS' || activeTab === 'ALL_RESERVATIONS' || activeTab === 'ARRIVED') ? 'bg-red-600 hover:bg-red-500 shadow-red-500/25' : 'bg-red-600 hover:bg-red-500 shadow-red-500/25'} text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl transition-all active:scale-95 shadow-xl border border-white/10`}
+                  className="flex items-center gap-2 px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl transition-all active:scale-95 shadow-md"
                 >
                   <Plus size={16} strokeWidth={3} />
                   <span>{activeTab === 'ANNOUNCEMENTS' ? 'Publicar' : (activeTab === 'RESERVATIONS' || activeTab === 'ALL_RESERVATIONS') ? 'Nueva Reserva' : 'Nueva Tarea'}</span>
@@ -1025,6 +1025,12 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId, initialTab })
               const count = getReservationCount(loc.id);
               const isActive = activeLocation === loc.id;
               
+              const hasShowcase = activeTab === 'ANNOUNCEMENTS' && allTasks.some(t => 
+                t.type === TaskType.ANNOUNCEMENT && 
+                t.location === loc.id &&
+                ((t.videoUrls && t.videoUrls.length > 0) || (t.imageUrls && t.imageUrls.length > 0))
+              );
+              
               return (
                 <button
                   key={loc.id}
@@ -1035,6 +1041,11 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId, initialTab })
                       : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/80 shadow-sm'
                   }`}
                 >
+                  {hasShowcase && (
+                    <div className="ml-1 bg-red-600 text-white p-1 rounded-full border border-white dark:border-slate-800 shadow-[0_2px_10px_rgba(220,38,38,0.4)] animate-bounce" title="Showcase publicado">
+                      <Video size={10} className="fill-white" />
+                    </div>
+                  )}
                   {count > 0 && (activeTab === 'RESERVATIONS' || activeTab === 'ARRIVED' || activeTab === 'ALL_RESERVATIONS') && (
                     <span className="absolute -top-2 -right-2 min-w-[18px] h-[18px] bg-red-600 text-white text-[9px] font-black rounded-full flex items-center justify-center px-1 border-2 border-white dark:border-slate-800 shadow-[0_2px_10px_rgba(220,38,38,0.4)] animate-pulse">
                       {count}
@@ -1681,14 +1692,15 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId, initialTab })
                  {editingTask?.type !== TaskType.RESERVATION && (
                    <div>
                      <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Imágenes y Videos</label>
-                     <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar">
+                     <div className="flex gap-3 overflow-x-auto pb-4 w-full snap-x no-scrollbar">
                         {/* BUTTON 1: CAMERA (Forced Environment Capture) */}
                         <button 
                           onClick={() => cameraInputRef.current?.click()}
-                          className="w-24 h-24 rounded-2xl border-2 border-dashed border-gray-300 dark:border-slate-600 flex flex-col items-center justify-center text-gray-400 hover:text-red-500 hover:border-red-500 hover:bg-red-50 dark:hover:bg-slate-800 transition-all flex-shrink-0 group"
+                          className="relative overflow-hidden w-24 h-24 rounded-2xl border-2 border-red-500 bg-red-50 dark:bg-red-900/20 flex flex-col items-center justify-center text-red-600 dark:text-red-400 shadow-[0_0_15px_rgba(220,38,38,0.3)] hover:scale-105 active:scale-95 transition-all flex-shrink-0 group"
                         >
-                          <Camera size={28} className="group-hover:scale-110 transition-transform"/>
-                          <span className="text-[10px] font-black mt-1 uppercase tracking-wide">FOTO</span>
+                          <div className="absolute inset-0 bg-[linear-gradient(110deg,transparent,45%,rgba(255,255,255,0.6),55%,transparent)] dark:bg-[linear-gradient(110deg,transparent,45%,rgba(255,255,255,0.2),55%,transparent)] bg-[length:200%_100%] animate-shine opacity-80" />
+                          <Camera size={28} className="group-hover:scale-110 transition-transform relative z-10 filter drop-shadow-[0_2px_4px_rgba(220,38,38,0.4)]" />
+                          <span className="text-[10px] font-black mt-1 uppercase tracking-wide relative z-10 drop-shadow-[0_1px_2px_rgba(220,38,38,0.3)]">FOTO</span>
                         </button>
 
                         {/* BUTTON 2: GALLERY (File Picker) */}
@@ -1748,8 +1760,8 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId, initialTab })
 
                         {/* Existing Videos (Cloudinary) */}
                         {editingTask?.videoUrls?.map((url, i) => (
-                          <div key={`existing-video-${i}`} className="relative w-24 h-24 flex-shrink-0">
-                             <video src={url} className="w-full h-full object-cover rounded-2xl border-2 border-indigo-500" />
+                          <div key={`existing-video-${i}`} className="relative w-16 h-24 flex-shrink-0">
+                             <video src={`${url}#t=0.001`} preload="metadata" playsInline className="w-full h-full object-cover rounded-2xl border-2 border-indigo-500" />
                              <div className="absolute inset-0 flex items-center justify-center">
                                 <Video size={20} className="text-white drop-shadow-md" />
                              </div>
@@ -1767,10 +1779,11 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId, initialTab })
 
                         {/* New Preview Videos */}
                         {videoPreviews.map((url, i) => (
-                          <div key={`new-video-${i}`} className="relative w-24 h-24 flex-shrink-0 group">
+                          <div key={`new-video-${i}`} className="relative w-16 h-24 flex-shrink-0 group">
                              <video 
-                               src={url} 
+                               src={`${url}#t=0.001`} 
                                className="w-full h-full object-cover rounded-2xl border-2 border-orange-500 shadow-md" 
+                               preload="metadata"
                                playsInline
                                muted
                              />

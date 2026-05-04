@@ -375,16 +375,23 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser, notificationVolume =
               </div>
 
               {/* Desktop actions row */}
-              <div className="hidden sm:flex items-center gap-2">
-                <button onClick={() => setShowReceiveStockModal(true)} className="bg-red-600 text-white px-4 py-2.5 rounded-xl flex items-center gap-2 hover:bg-red-700 transition-all font-black text-xs uppercase tracking-wider shadow-lg shadow-red-600/10"><PackagePlus size={16} /> Ingreso Stock</button>
+              <div className="hidden sm:flex items-center gap-3">
+                <button 
+                  onClick={() => setShowReceiveStockModal(true)} 
+                  className="bg-red-600 text-white px-5 py-2.5 rounded-2xl flex items-center gap-2 shadow-lg shadow-red-600/20 transition-all font-black text-xs uppercase tracking-widest hover:scale-105 active:scale-95"
+                >
+                  <PackagePlus size={18} strokeWidth={3} /> 
+                  <span>Ingreso Stock</span>
+                </button>
                 <button 
                   onClick={() => { 
                     if (!isDeveloper) { setShowDeveloperRestrictedModal(true); return; }
                     setEditProductForm({}); setShowEditProductModal(true); 
                   }}
-                  className="bg-red-600 text-white px-4 py-2.5 rounded-xl flex items-center gap-2 shadow-lg shadow-red-600/20 font-black text-xs uppercase tracking-wider"
+                  className="bg-red-600 text-white px-5 py-2.5 rounded-2xl flex items-center gap-2 shadow-lg shadow-red-600/20 transition-all font-black text-xs uppercase tracking-widest hover:scale-105 active:scale-95"
                 >
-                  <Plus size={16} strokeWidth={3} /> Nuevo Prod.
+                  <Plus size={18} strokeWidth={3} /> 
+                  <span>Nuevo Prod.</span>
                 </button>
                 <button 
                   onClick={() => setShowManageDepartmentsModal(true)} 

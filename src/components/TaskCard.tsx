@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Task, User, TaskStatus, TaskPriority, TaskChecklistItem, UserRole, TaskRecurrence, TaskType } from '../types';
 import { AlertTriangle, Edit2, Trash2, Share2, FileText, MessagesSquare, Check, Clock, Calendar, RotateCcw, Camera, Play, Video, Megaphone, Info, ConciergeBell, Users, Hash, Phone, Sparkles, MapPin, Utensils, X } from 'lucide-react';
+import { PremiumVideoPlayer } from './PremiumVideoPlayer';
 import { DeletionTimer } from './DeletionTimer';
 import { DailyResetTimer } from './DailyResetTimer';
 
@@ -619,22 +620,7 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
             >
               {/* Videos First */}
               {task.videoUrls?.map((url, i) => (
-                <div 
-                  key={`vid-${i}`} 
-                  className="relative w-56 h-36 md:w-80 md:h-48 rounded-[2rem] border-4 border-white dark:border-slate-800 overflow-hidden flex-shrink-0 shadow-2xl snap-start group/vid"
-                >
-                  <video 
-                    src={url} 
-                    className="w-full h-full object-cover" 
-                    controls
-                    preload="metadata"
-                    playsInline
-                    muted
-                  />
-                  <div className="absolute top-3 right-3 p-2 bg-black/60 rounded-xl backdrop-blur-md">
-                    <Play size={16} className="text-white fill-white" />
-                  </div>
-                </div>
+                <PremiumVideoPlayer key={`vid-${i}`} url={url} />
               ))}
 
               {/* Images */}

@@ -9,6 +9,7 @@ import { ShareModal } from './ShareModal';
 import { DeletionTimer } from './DeletionTimer';
 import { DailyResetTimer } from './DailyResetTimer';
 import { TaskRecurrence } from '../types';
+import { PremiumVideoPlayer } from './PremiumVideoPlayer';
 
 interface PublicTaskViewerProps {
   taskId: string;
@@ -426,6 +427,22 @@ export const PublicTaskViewer: React.FC<PublicTaskViewerProps> = ({ taskId, setS
                   ) : (
                     <DeletionTimer completedAt={task.completedAt} />
                   )}
+                </div>
+              )}
+
+              {task.videoUrls && task.videoUrls.length > 0 && (
+                <div>
+                  <h3 className="font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                    Videos Adjuntos ({task.videoUrls.length})
+                  </h3>
+                  <div 
+                    className="flex gap-4 overflow-x-auto pb-4 no-scrollbar touch-pan-x snap-x snap-mandatory"
+                    style={{ WebkitOverflowScrolling: 'touch' }}
+                  >
+                    {task.videoUrls.map((url, index) => (
+                      <PremiumVideoPlayer key={`vid-${index}`} url={url} />
+                    ))}
+                  </div>
                 </div>
               )}
 

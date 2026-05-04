@@ -33,43 +33,48 @@ interface MainLayoutProps {
   isIOS: boolean;
   isAndroid: boolean;
   hasUnreadTasks: boolean;
+  hasUnreadReservations: boolean;
+  hasUnreadSalones: boolean;
   hasPendingDailyTasks: boolean;
   unreadAdminNotificationsCount: number;
 }
 
-const NavButton = ({ icon: Icon, label, isActive, onClick, hasAlert = false, activeColor = 'bg-red-600', shadowColor = 'shadow-red-600/30' }: any) => (
+const NavButton = ({ icon: Icon, label, isActive, onClick, hasAlert = false }: any) => (
   <button 
     onClick={onClick} 
     className={`
-      relative flex items-center justify-center rounded-2xl transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] overflow-hidden
-      outline-none select-none touch-manipulation active:scale-90 group
-      ${isActive ? 'px-3 sm:px-4 py-2.5 sm:py-3 gap-1.5 sm:gap-2' : 'px-1 sm:px-2 py-2.5 sm:py-3'} 
+      relative flex items-center justify-center rounded-2xl transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] overflow-hidden
+      outline-none select-none touch-manipulation active:scale-[0.92] group border border-white/5 dark:border-white/10
+      ${isActive ? 'px-3 sm:px-4 py-2.5 sm:py-3 gap-2' : 'px-1 sm:px-2 py-2.5 sm:py-3'} 
       ${isActive 
-        ? `flex-[5] sm:flex-[6] ${activeColor} text-white shadow-lg ${shadowColor}` 
-        : 'flex-[1] bg-transparent hover:bg-slate-100 dark:hover:bg-slate-800/50 text-slate-400 dark:text-slate-500'
+        ? 'flex-[6] text-white shadow-[0_10px_25px_-5px_rgba(220,38,38,0.4),inset_0_1px_1px_rgba(255,255,255,0.4)] bg-[linear-gradient(110deg,#dc2626,45%,#fbbf24,55%,#dc2626)] bg-[length:200%_100%] animate-shine ring-1 ring-white/30' 
+        : 'flex-[1] text-white/70 hover:text-white shadow-[0_4px_12px_rgba(0,0,0,0.1),inset_0_1px_0_rgba(255,255,255,0.1)] bg-[linear-gradient(110deg,#991b1b,45%,#854d0e,55%,#991b1b)] bg-[length:200%_100%] animate-shine opacity-85 hover:opacity-100 backdrop-blur-sm'
       }
     `}
     style={{ WebkitTapHighlightColor: 'transparent' }}
   >
+    {/* Upper Reflective Glaze */}
+    <div className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent pointer-events-none opacity-50" />
+    
     <div className="relative z-10 flex-shrink-0 flex items-center justify-center">
       <Icon 
         size={isActive ? 22 : 20} 
-        strokeWidth={isActive ? 3 : 2} 
-        className={`transition-all duration-500 ${isActive ? 'scale-100' : 'scale-100 group-hover:scale-110'}`}
+        strokeWidth={isActive ? 3 : 2.5} 
+        className={`transition-all duration-700 ${isActive ? 'scale-110 rotate-[2deg] drop-shadow-md' : 'scale-100 group-hover:scale-110 drop-shadow-sm'}`}
       />
       {hasAlert && !isActive && (
-         <span className="absolute -top-1 -right-1 flex h-3 w-3 z-20">
+         <span className="absolute -top-1.5 -right-1.5 flex h-3.5 w-3.5 z-20">
            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-           <span className="relative inline-flex rounded-full h-3 w-3 bg-red-600 ring-2 ring-white dark:ring-slate-900"></span>
+           <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-red-600 ring-2 ring-white dark:ring-slate-900 shadow-sm"></span>
          </span>
       )}
     </div>
     
     <div className={`
-      overflow-hidden transition-all duration-500 ease-out flex items-center justify-center
-      ${isActive ? 'max-w-[80px] sm:max-w-[100px] opacity-100' : 'max-w-0 opacity-0'}
+      overflow-hidden transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] flex items-center justify-center
+      ${isActive ? 'max-w-[100px] opacity-100 ml-1' : 'max-w-0 opacity-0'}
     `}>
-      <span className="text-[10px] sm:text-xs font-black leading-tight whitespace-nowrap uppercase tracking-widest pt-0.5">
+      <span className="text-[10px] sm:text-xs font-black leading-tight whitespace-nowrap uppercase tracking-[0.15em] pt-0.5 filter drop-shadow-sm">
         {label}
       </span>
     </div>
@@ -105,6 +110,8 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
   isIOS,
   isAndroid,
   hasUnreadTasks,
+  hasUnreadReservations,
+  hasUnreadSalones,
   hasPendingDailyTasks,
   unreadAdminNotificationsCount
 }) => {
@@ -323,16 +330,14 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
                 label="Reservas" 
                 isActive={view === 'reservations'} 
                 onClick={() => setView('reservations')} 
-                activeColor="bg-red-600"
-                shadowColor="shadow-red-600/30"
+                hasAlert={hasUnreadReservations}
               />
               <NavButton 
                 icon={LayoutDashboard} 
                 label="Salones" 
                 isActive={view === 'salones'} 
                 onClick={() => setView('salones')} 
-                activeColor="bg-red-600"
-                shadowColor="shadow-red-600/30"
+                hasAlert={hasUnreadSalones}
               />
               <NavButton icon={ClipboardCheck} label="Tareas" isActive={view === 'tasks'} onClick={() => setView('tasks')} hasAlert={hasUnreadTasks || hasPendingDailyTasks}/>
               {user.role !== UserRole.GUEST && <NavButton icon={ClipboardList} label="Pedidos" isActive={view === 'replenish'} onClick={() => setView('replenish')} />}

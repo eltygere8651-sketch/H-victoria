@@ -838,10 +838,11 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCar
           <button 
             onClick={() => setShowConfirmModal(true)}
             disabled={isOrderButtonDisabled}
-            className="w-full py-5 rounded-2xl font-extrabold text-xl shadow-xl transition-all flex items-center justify-center gap-3 transform active:scale-[0.98]
-              bg-red-600 text-white hover:bg-red-700 hover:shadow-button-red disabled:bg-gray-100 dark:disabled:bg-slate-700 disabled:text-gray-400 disabled:shadow-none"
+            className="w-full py-5 rounded-2xl font-extrabold text-xl shadow-lg transition-all flex items-center justify-center gap-3 transform active:scale-[0.98]
+              bg-red-600 text-white hover:bg-red-700 disabled:bg-gray-200 dark:disabled:bg-slate-700 disabled:text-gray-400"
           >
-            <CheckCircle2 size={24} /> FINALIZAR PEDIDO
+            <CheckCircle2 size={24} /> 
+            <span className="tracking-[0.05em]">FINALIZAR PEDIDO</span>
           </button>
         </div>
       </motion.div>

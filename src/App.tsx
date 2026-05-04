@@ -7,7 +7,7 @@ import Tasks from './pages/Tasks';
 import { PublicTaskViewer } from './components/PublicTaskViewer';
 import * as storageService from './services/storageService';
 import { Logo } from './components/Logo';
-import { User, UserRole, AppNotification, CartItem, NotificationType, TaskRecurrence, TaskStatus } from './types';
+import { User, UserRole, AppNotification, CartItem, NotificationType, TaskRecurrence, TaskStatus, TaskType } from './types';
 import { NotificationToast } from './components/NotificationToast';
 import { initializePushNotifications } from './services/pushNotificationService';
 import { ShareModal } from './components/ShareModal';
@@ -81,6 +81,8 @@ const App: React.FC = () => {
   const [isCartLoaded, setIsCartLoaded] = useState(false);
   const [showMobileCart, setShowMobileCart] = useState(false);
   const [hasUnreadTasks, setHasUnreadTasks] = useState(false);
+  const [hasUnreadReservations, setHasUnreadReservations] = useState(false);
+  const [hasUnreadSalones, setHasUnreadSalones] = useState(false);
   const [hasPendingDailyTasks, setHasPendingDailyTasks] = useState(false);
   
   const displayedToastIds = useRef<Set<string>>(new Set());
@@ -387,7 +389,9 @@ const App: React.FC = () => {
     }, true);
     
     const unsubTasks = storageService.subscribeToTasks((tasks) => {
-      setHasUnreadTasks(tasks.some(task => !task.seenBy?.includes(user.id)));
+      setHasUnreadTasks(tasks.some(task => task.type !== TaskType.RESERVATION && task.type !== TaskType.ANNOUNCEMENT && !task.seenBy?.includes(user.id)));
+      setHasUnreadReservations(tasks.some(task => task.type === TaskType.RESERVATION && !task.seenBy?.includes(user.id)));
+      setHasUnreadSalones(tasks.some(task => task.type === TaskType.ANNOUNCEMENT && !task.seenBy?.includes(user.id)));
       setHasPendingDailyTasks(tasks.some(task => task.recurrence === TaskRecurrence.DAILY && task.status !== TaskStatus.COMPLETED));
     });
 
@@ -436,7 +440,13 @@ const App: React.FC = () => {
 
   const handleToastNavigation = (notif: AppNotification) => {
     if (notif.type === NotificationType.NEW_TASK || notif.type === NotificationType.DAILY_TASK_ALERT || notif.type === NotificationType.TASK_COMPLETED) {
-      setView('tasks');
+      if (notif.title?.includes('Anuncio') || notif.title?.includes('Showcase')) {
+        setView('salones');
+      } else if (notif.title?.includes('Reserva')) {
+        setView('reservations');
+      } else {
+        setView('tasks');
+      }
     } else if (user?.role === UserRole.ADMIN) { 
       setInitialAdminTab('reports'); 
       setView('admin'); 
@@ -496,6 +506,8 @@ const App: React.FC = () => {
         isInstalled={isInstalled} isIOS={isIOS} isAndroid={isAndroid}
         setShowIOSPrompt={setShowIOSPrompt} setShowAndroidPrompt={setShowAndroidPrompt}
         hasUnreadTasks={hasUnreadTasks}
+        hasUnreadReservations={hasUnreadReservations}
+        hasUnreadSalones={hasUnreadSalones}
         hasPendingDailyTasks={hasPendingDailyTasks}
         unreadAdminNotificationsCount={unreadAdminNotifications.length}
       >

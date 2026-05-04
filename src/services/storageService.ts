@@ -113,7 +113,7 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
     } : null
   };
   
-  const jsonError = JSON.stringify(errInfo);
+  const jsonError = safeStringify(errInfo);
   console.error('Firestore Error: ', jsonError);
   throw new Error(jsonError);
 }
@@ -810,7 +810,27 @@ export const saveTask = async (task: Partial<Task>, newFiles: File[] = [], newVi
      const isAnnouncement = task.type === TaskType.ANNOUNCEMENT;
      const isReservation = task.type === TaskType.RESERVATION;
 
-     if (!isAnnouncement && !isReservation) {
+     if (isAnnouncement) {
+        await db.collection(KEYS.NOTIFICATIONS).add({
+           type: NotificationType.NEW_TASK,
+           title: 'Nuevo Anuncio / Showcase',
+           message: `Se ha publicado un nuevo anuncio en ${task.location || task.departmentName}: "${task.title}".`,
+           icon: 'Megaphone',
+           timestamp: Date.now(),
+           readStatus: false,
+           payload: { taskId: docRef.id, taskTitle: task.title, location: task.location }
+        });
+     } else if (isReservation) {
+        await db.collection(KEYS.NOTIFICATIONS).add({
+           type: NotificationType.NEW_TASK,
+           title: 'Nueva Reserva Creada',
+           message: `Reserva agendada para ${task.guests || 2} pax el ${task.reservationDate || 'hoy'} a las ${task.reservationTime || '12:00'}.`,
+           icon: 'Calendar',
+           timestamp: Date.now(),
+           readStatus: false,
+           payload: { taskId: docRef.id, taskTitle: task.title }
+        });
+     } else {
         // Notify about new task
         await db.collection(KEYS.NOTIFICATIONS).add({
            type: NotificationType.NEW_TASK,
