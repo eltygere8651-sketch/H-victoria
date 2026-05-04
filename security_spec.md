@@ -1,27 +1,28 @@
 # Security Specification - Hotel Victoria
 
 ## Data Invariants
-1. **Audit Logs**: Immutable once created. Only system or admins can create. No one can update or delete (except bulk clear by super-admin).
-2. **Products**: Only admins can modify. Stock can be updated by staff during orders.
-3. **Tasks**: Only assigned department or admins can update status. Creators can delete.
-4. **Notifications**: Users can only mark as read.
-5. **Users**: Super Admin handles all user management. Users can only see their own non-sensitive data (though in this app we often show all users for assignment).
+1. **Identity Protection**: Users cannot modify their own `role` or `isAdmin` flags.
+2. **Access Control**: Staff can only update operational fields of tasks (status, arrival). Core task details (title, date, location) are protected post-creation for non-admins.
+3. **Data Integrity**: Every task creation is validated for title length, type correctness, and path safety.
+4. **Product Stock**: Only staff/admins can modify stock. Staff is restricted to quantity updates only.
+5. **System Verification**: Initialization phase is protected; only Super Admins or Admins can modify system configurations.
 
-## The Dirty Dozen Payloads (Rejection Targets)
-1. **Identity Spoofing**: Attempt to create a log with someone else's `userId`.
-2. **Action Forging**: Attempt to update a log's `action` to something else.
-3. **Privilege Escalation**: Non-admin attempting to delete a product.
-4. **Stock Injection**: Setting product quantity to a negative number or a massive value.
-5. **Orphaned Request**: Creating a replenishment request for a product that doesn't exist.
-6. **Bypassing Workflow**: Marking a task as COMPLETED without being in the assigned department.
-7. **Resource Poisoning**: Document IDs with malicious characters.
-8. **Shadow Update**: Adding an `isAdmin: true` field to a user profile.
-9. **Timestamp Spoofing**: Setting `createdAt` to a future date instead of `request.time`.
-10. **PII Leak**: A staff member reading private admin settings (if any).
-11. **Bulk Deletion**: A regular user attempting to clear audit logs.
-12. **Status Shortcutting**: Moving a task from PENDING to COMPLETED skipping IN_PROGRESS (if enforced).
+## The Dirty Dozen Payloads (Hardened)
+1. **Identity Spoofing**: Attempting to set `authUid` to a value other than `request.auth.uid`.
+2. **Privilege Escalation**: Non-admin attempting to set `role: 'ADMIN'` in their profile.
+3. **Ghost Task**: Creating a task with an ID containing malicious characters (ID Poisoning).
+4. **Value Poisoning**: Injecting a 1MB string into the `title` field.
+5. **Shadow Update**: Attempting to change the `reservationDate` of an existing reservation as a Staff member.
+6. **Status Shortcutting**: Attempting to delete a task as a non-admin.
+7. **Bypassing Validation**: Creating a task with an invalid `type` (e.g., 'SYSTEM_BREACH').
+8. **Inventory Manipulation**: Staff attempting to change a product's name or category (restricted to `quantity` ONLY).
+9. **Notification Swipe**: Attempting to delete notifications as a regular user (if restricted).
+10. **Cart Hijacking**: Reading or writing to a `draft_cart` that doesn't belong to the user's UID.
+11. **Document Theft**: Accessing `hotel_victoria_documents` without an active session.
+12. **Config Sabotage**: Modifying the `hotel_victoria_system/initialization` document as a non-admin.
 
-## Test Cases
-- `hotel_victoria_audit_logs`: Create must match `auth.uid`. Update/Delete: Denied.
-- `hotel_victoria_products`: Update must be by Admin or through controlled increments.
-- `hotel_victoria_users`: Only Super Admin can write.
+## Security Architecture
+- **Master Gate**: Access to specific features is gated by `getProfileData()` which looks up the user's role in the highly-trusted `hotel_victoria_users` collection.
+- **Update Partitioning**: Staff permissions are strictly partitioned using `affectedKeys().hasOnly()` to prevent accidental or malicious modification of master data.
+- **Size Enforcement**: All string inputs (titles, dates, locations) are bound by `.size()` checks to prevent resource exhaustion.
+

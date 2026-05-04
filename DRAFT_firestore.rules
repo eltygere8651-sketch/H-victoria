@@ -18,6 +18,7 @@ service cloud.firestore {
       return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
     }
 
+    // Super Admin detection (using hardcoded emails/UIDs as per project context)
     function isSuperAdmin() {
       return isSignedIn() && (
         request.auth.uid == 'JKkdLhni4DM3oRsTJWzgwpkSY6A3' ||
@@ -38,8 +39,7 @@ service cloud.firestore {
       return isSuperAdmin() || (hasProfile() && (
         getProfileData().get('role', '') == 'ADMIN' || 
         getProfileData().get('role', '') == 'SUPER_ADMIN' ||
-        getProfileData().get('isAdmin', false) == true ||
-        getProfileData().get('name', '') == 'Administrador'
+        getProfileData().get('isAdmin', false) == true
       ));
     }
 
@@ -50,8 +50,10 @@ service cloud.firestore {
     function incoming() { return request.resource.data; }
     function existing() { return resource.data; }
 
+    // --- VALIDATION HELPERS ---
+
     function isValidTask(data) {
-      return data.title is string && data.title.size() >= 1 && data.title.size() <= 250 &&
+      return data.title is string && data.title.size() >= 1 && data.title.size() <= 200 &&
              data.type in ['TASK', 'DAILY', 'RESERVATION', 'ANNOUNCEMENT'] &&
              (data.get('reservationDate', '') is string && data.get('reservationDate', '').size() <= 12) &&
              (data.get('location', '') is string && data.get('location', '').size() <= 50);
@@ -62,18 +64,17 @@ service cloud.firestore {
     match /hotel_victoria_users/{userId} {
       allow get, list: if isSignedIn();
       allow write: if isSuperAdmin() || isAdmin();
-      allow update: if isSignedIn() && userId == request.auth.uid && 
-                   !incoming().diff(existing()).affectedKeys().hasAny(['role', 'isAdmin', 'authUid']);
+      allow update: if isSignedIn() && userId == request.auth.uid && !incoming().diff(existing()).affectedKeys().hasAny(['role', 'isAdmin', 'authUid']);
     }
 
     match /hotel_victoria_tasks/{taskId} {
       allow read: if isSignedIn();
-      allow create: if isSignedIn() && isValidId(taskId) && isValidTask(incoming());
-      allow update: if isSignedIn() && isValidId(taskId) && isValidTask(incoming()) && (
+      allow create: if isSignedIn() && isValidTask(incoming());
+      allow update: if isSignedIn() && isValidTask(incoming()) && (
         isAdmin() || 
         (isStaff() && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'clientArrived', 'arrivedAt', 'completedBy', 'completedAt', 'comments', 'seenBy']))
       );
-      allow delete: if isAdmin() || isSuperAdmin();
+      allow delete: if isAdmin();
     }
 
     match /hotel_victoria_products/{productId} {
@@ -99,7 +100,7 @@ service cloud.firestore {
 
     match /hotel_victoria_system/{docId} {
       allow read: if isSignedIn();
-      allow write: if isSuperAdmin() || isAdmin();
+      allow write: if isAdmin();
     }
 
     match /hotel_victoria_draft_cart/{cartId} {

@@ -95,18 +95,43 @@ const safeStringify = (obj: any) => {
 };
 
 function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
-  const safeError = error instanceof Error ? error.message : String(error);
   const currentUser = auth.currentUser;
-  const authInfo = currentUser ? {
-    uid: currentUser.uid,
-    email: currentUser.email,
-    isAnonymous: currentUser.isAnonymous
-  } : 'NOT SIGNED IN';
-
-  const fallbackMsg = `Firestore Error in ${operationType} at ${path}: ${safeError}. Auth: ${safeStringify(authInfo)}`;
-  console.error(fallbackMsg);
-  throw new Error(fallbackMsg);
+  const errInfo: any = {
+    error: error instanceof Error ? error.message : String(error),
+    operationType,
+    path,
+    authInfo: currentUser ? {
+      userId: currentUser.uid,
+      email: currentUser.email,
+      emailVerified: currentUser.emailVerified,
+      isAnonymous: currentUser.isAnonymous,
+      tenantId: currentUser.tenantId,
+      providerInfo: currentUser.providerData?.filter(p => !!p).map(provider => ({
+        providerId: provider.providerId,
+        email: provider.email,
+      })) || []
+    } : null
+  };
+  
+  const jsonError = JSON.stringify(errInfo);
+  console.error('Firestore Error: ', jsonError);
+  throw new Error(jsonError);
 }
+
+// CRITICAL: Connection test for boot verification
+export const testConnection = async () => {
+  try {
+    const { doc, getDocFromCache, getDocFromServer } = await import('firebase/firestore');
+    // Using compat db but let's try to verify connection
+    await db.collection(KEYS.SYSTEM).doc('connection-test').get();
+    console.log("Conexión con Firebase verificada.");
+  } catch (error: any) {
+    if (error.message?.includes('offline') || error.message?.includes('permission')) {
+      console.error("Error de conexión o permisos en Firebase:", error.message);
+    }
+  }
+};
+
 
 export const getCurrentUser = () => auth.currentUser;
 

@@ -101,6 +101,7 @@ const App: React.FC = () => {
         // Start auth and sync
         try {
           await storageService.ensureAnonymousAuth();
+          await storageService.testConnection(); // New verification
         } catch (e) {
           console.error("Non-critical initialization error:", e);
         }

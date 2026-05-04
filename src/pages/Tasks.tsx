@@ -429,6 +429,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId, initialTab })
   }, []);
 
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [showClearServiceConfirm, setShowClearServiceConfirm] = useState(false);
   const [reservationCount, setReservationCount] = useState(0);
 
   const [isCounting, setIsCounting] = useState(false);
@@ -447,17 +448,17 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId, initialTab })
     }
   };
 
-  const prepareClearReservations = async () => {
-    setIsCounting(true);
+  const handleClearArrived = async () => {
     try {
-      // Get actual count from DB before confirming
-      const count = await storageService.getReservationCount();
-      setReservationCount(count);
-      setShowClearConfirm(true);
+      setLoading(true);
+      const arrivedTasks = allTasks.filter(t => t.type === TaskType.RESERVATION && t.clientArrived);
+      for (const t of arrivedTasks) {
+        await storageService.deleteTask(t.id);
+      }
     } catch (error) {
-      console.error("Error getting reservation count:", error);
+      console.error("Error cleaning service:", error);
     } finally {
-      setIsCounting(false);
+      setLoading(false);
     }
   };
 
@@ -532,18 +533,30 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId, initialTab })
       if (activeTab === 'RESERVATIONS') {
         const itemLocation = task.location || 'restaurante';
         const todayStr = new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
-        // In calendar mode, show all reservations for that location. In list mode, only today.
-        const dateMatch = viewMode === 'CALENDAR' ? true : task.reservationDate === todayStr;
+        
+        // Helper to normalize dates for comparison (DD/MM/YYYY)
+        const isSameDate = (d1: string, d2: string) => {
+          if (!d1 || !d2) return false;
+          const normalize = (s: string) => s.split('/').map(p => p.padStart(2, '0')).join('/');
+          return normalize(d1) === normalize(d2);
+        };
+
+        const isToday = isSameDate(task.reservationDate || '', todayStr);
+        // In list mode, only show today's pending reservations. In calendar mode, show all for that location.
+        const dateMatch = viewMode === 'CALENDAR' ? true : isToday;
         return task.type === TaskType.RESERVATION && itemLocation === activeLocation && !task.clientArrived && dateMatch;
       }
 
       if (activeTab === 'ALL_RESERVATIONS') {
         const itemLocation = task.location || 'restaurante';
-        // If there is a search term, search across ALL locations for better UX
         const locationMatch = reservationSearchTerm ? true : itemLocation === activeLocation;
-        if (task.type !== TaskType.RESERVATION || !locationMatch) return false;
+        // EXCLUSIVE: Do not show if already arrived in the general search tab
+        if (task.type !== TaskType.RESERVATION || !locationMatch || task.clientArrived) return false;
+        
         if (!reservationSearchTerm) return true;
         const searchLower = reservationSearchTerm.toLowerCase();
+        
+        // Match name, date (fuzzy), phone or table
         return (
           (task.title || '').toLowerCase().includes(searchLower) ||
           (task.reservationDate || '').toLowerCase().includes(searchLower) ||
@@ -553,9 +566,20 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId, initialTab })
       }
 
       if (activeTab === 'ARRIVED') {
+        const itemLocation = task.location || 'restaurante';
         const todayStr = new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
-        const dateMatch = viewMode === 'CALENDAR' ? true : task.reservationDate === todayStr;
-        return task.type === TaskType.RESERVATION && task.clientArrived === true && dateMatch;
+        const locationMatch = reservationSearchTerm ? true : itemLocation === activeLocation;
+        
+        const isSameDate = (d1: string, d2: string) => {
+          if (!d1 || !d2) return false;
+          const normalize = (s: string) => s.split('/').map(p => p.padStart(2, '0')).join('/');
+          return normalize(d1) === normalize(d2);
+        };
+
+        const isToday = isSameDate(task.reservationDate || '', todayStr);
+        // Show reservations that arrived today (or all arrived in calendar/search mode)
+        const dateMatch = (viewMode === 'CALENDAR' || reservationSearchTerm) ? true : isToday;
+        return task.type === TaskType.RESERVATION && task.clientArrived === true && locationMatch && dateMatch;
       }
 
       if (activeTab === 'ANNOUNCEMENTS') {
@@ -819,7 +843,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId, initialTab })
                       : 'text-gray-500 dark:text-gray-400 hover:bg-white/50'
                   }`}
                 >
-                  Todas
+                  Reservas
                 </button>
               </div>
             )}
@@ -852,12 +876,12 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId, initialTab })
                 <button 
                   onClick={() => {
                     const isNews = activeTab === 'ANNOUNCEMENTS';
-                    const isRes = activeTab === 'RESERVATIONS' || activeTab === 'ALL_RESERVATIONS';
-                    const currentYear = new Date().getFullYear().toString();
+                    const isRes = activeTab === 'RESERVATIONS' || activeTab === 'ALL_RESERVATIONS' || activeTab === 'ARRIVED';
+                    const todayStr = new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
                     setEditingTask({
                       type: isNews ? TaskType.ANNOUNCEMENT : isRes ? TaskType.RESERVATION : TaskType.TASK,
                       location: (isNews || isRes) ? activeLocation : undefined,
-                      reservationDate: isRes ? `//${currentYear}` : undefined,
+                      reservationDate: isRes ? todayStr : undefined,
                       recurrence: activeTab === 'DAILY' ? TaskRecurrence.DAILY : TaskRecurrence.NONE,
                       priority: TaskPriority.MEDIUM
                     });
@@ -871,15 +895,26 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId, initialTab })
                   <span>{activeTab === 'ANNOUNCEMENTS' ? 'Publicar' : (activeTab === 'RESERVATIONS' || activeTab === 'ALL_RESERVATIONS') ? 'Nueva Reserva' : 'Nueva Tarea'}</span>
                 </button>
 
-                {activeTab === 'RESERVATIONS' && currentUser.role === UserRole.ADMIN && allTasks.some(t => t.type === TaskType.RESERVATION) && (
-                    <button 
-                      onClick={prepareClearReservations}
-                      disabled={isCounting}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 text-[10px] font-black uppercase tracking-wider rounded-full transition-all active:scale-95 border border-slate-200 dark:border-slate-700 disabled:opacity-50"
-                    >
-                      {isCounting ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} className="text-red-500" />}
-                      <span>Limpieza General</span>
-                    </button>
+                {activeTab === 'ARRIVED' && currentUser.role === UserRole.ADMIN && allTasks.some(t => t.type === TaskType.RESERVATION && t.clientArrived) && (
+                  <button 
+                    onClick={() => {
+                      if (!showClearServiceConfirm) {
+                        setShowClearServiceConfirm(true);
+                        setTimeout(() => setShowClearServiceConfirm(false), 3000);
+                      } else {
+                        handleClearArrived();
+                        setShowClearServiceConfirm(false);
+                      }
+                    }}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all active:scale-95 border ${
+                      showClearServiceConfirm 
+                        ? 'bg-red-600 text-white border-red-700 shadow-lg' 
+                        : 'bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-900/20 dark:hover:bg-red-900/30 dark:text-red-400 border-red-200 dark:border-red-800/30'
+                    } text-[10px] font-black uppercase tracking-wider`}
+                  >
+                    {showClearServiceConfirm ? <Check size={12} strokeWidth={3} /> : <Trash2 size={12} />}
+                    <span>{showClearServiceConfirm ? '¿Confirmar?' : 'Limpieza Servicio'}</span>
+                  </button>
                 )}
               </div>
             )}
@@ -1815,7 +1850,9 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId, initialTab })
             <div className="w-20 h-20 bg-red-50 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-6 text-red-600 dark:text-red-500 shadow-inner">
                <Trash2 size={40} />
             </div>
-            <h3 className="text-2xl font-black text-gray-900 dark:text-white uppercase mb-2 tracking-tight">¿Eliminar Tarea?</h3>
+            <h3 className="text-2xl font-black text-gray-900 dark:text-white uppercase mb-2 tracking-tight">
+              ¿Eliminar {taskToDelete.type === TaskType.RESERVATION ? 'Reserva' : 'Tarea'}?
+            </h3>
             <p className="text-gray-500 dark:text-slate-400 mb-8 font-bold text-lg">Esta acción es permanente y los datos desaparecerán para siempre. ¿Estás seguro?</p>
             <div className="flex gap-4">
               <button onClick={() => setTaskToDelete(null)} className="flex-1 py-4 font-bold text-gray-600 dark:text-slate-400 bg-gray-100 dark:bg-slate-700 rounded-2xl hover:bg-gray-200 transition-colors">Cancelar</button>
