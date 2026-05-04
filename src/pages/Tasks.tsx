@@ -1029,10 +1029,10 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId, initialTab })
                 <button
                   key={loc.id}
                   onClick={() => setActiveLocation(loc.id)}
-                  className={`flex items-center gap-2.5 px-4.5 py-2.5 rounded-[1.25rem] text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap border-2 relative shadow-sm ${
+                  className={`flex items-center gap-2.5 px-4.5 py-2.5 rounded-[1.25rem] text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap border-2 relative shadow-md ${
                     isActive
-                      ? `${loc.activeClass} text-white shadow-[0_8px_20px_rgba(0,0,0,0.15)] scale-[1.03] z-10`
-                      : 'bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                      ? `${loc.activeClass} text-white shadow-[0_8px_20px_rgba(0,0,0,0.15)] scale-[1.03] z-10 border-white/20`
+                      : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/80 shadow-sm'
                   }`}
                 >
                   {count > 0 && (

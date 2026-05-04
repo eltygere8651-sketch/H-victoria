@@ -404,7 +404,7 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser, notificationVolume =
                 placeholder="Buscar artículo..." 
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 rounded-xl border-2 border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-bold focus:border-red-500 outline-none transition-all dark:text-white"
+                className="w-full pl-10 pr-4 py-3 rounded-xl border-2 border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-bold focus:border-red-500 outline-none transition-all text-slate-900 dark:text-white"
               />
             </div>
             <div className="relative">
