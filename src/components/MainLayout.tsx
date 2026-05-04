@@ -139,9 +139,42 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
             <div className="relative group-hover:scale-105 transition-transform active:scale-95">
               <Logo size="sm" />
             </div>
-            <div className="flex flex-col">
-              <span className="font-black text-lg sm:text-xl text-slate-900 dark:text-white uppercase tracking-tighter italic leading-none">Hub</span>
-              <span className="text-[8px] font-black text-amber-500 dark:text-amber-400 uppercase tracking-widest leading-none mt-0.5 sm:mt-1">Ecosystem</span>
+            <div className="flex flex-col select-none px-4 sm:px-6 overflow-visible">
+              <motion.div 
+                className="relative select-none py-2"
+                initial={{ rotateY: 0, rotateX: 0 }}
+                animate={{ 
+                  rotateY: [-15, 15, -15],
+                  rotateX: [5, -5, 5],
+                }}
+                transition={{ 
+                  rotateY: { duration: 12, repeat: Infinity, ease: "easeInOut" },
+                  rotateX: { duration: 8, repeat: Infinity, ease: "easeInOut" }
+                }}
+                style={{ 
+                  transformStyle: 'preserve-3d',
+                  perspective: '1000px'
+                }}
+              >
+                <span className="relative block font-black text-3xl sm:text-4xl uppercase tracking-tighter italic leading-none
+                  text-transparent bg-clip-text bg-[linear-gradient(110deg,#dc2626,45%,#d4af37,55%,#dc2626)] bg-[length:200%_100%]
+                  animate-shine drop-shadow-[0_1px_0_#991b1b] drop-shadow-[0_2px_0_#7f1d1d] drop-shadow-[0_4px_0_#450a0a] 
+                  drop-shadow-[0_15px_30px_rgba(220,38,38,0.3)]
+                  dark:bg-[linear-gradient(110deg,#ef4444,45%,#fbbf24,55%,#ef4444)] dark:bg-[length:200%_100%]
+                  dark:drop-shadow-[0_1px_0_#7f1d1d] dark:drop-shadow-[0_2px_0_#450a0a] dark:drop-shadow-[0_5px_20px_rgba(220,38,38,0.2)]
+                "
+                style={{ 
+                  fontFamily: '"Outfit", sans-serif',
+                  transform: 'translateZ(60px)',
+                  paddingRight: '10px'
+                }}>
+                  Hub
+                </span>
+              </motion.div>
+              <span className="text-[9px] font-black text-red-600/80 dark:text-red-400/80 uppercase tracking-[0.35em] leading-none mt-0 font-mono flex items-center gap-1.5">
+                <span className="w-1 h-1 rounded-full bg-red-600 animate-ping"></span>
+                Ecosystem
+              </span>
             </div>
           </div>
 
@@ -290,16 +323,16 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
                 label="Reservas" 
                 isActive={view === 'reservations'} 
                 onClick={() => setView('reservations')} 
-                activeColor="bg-emerald-600"
-                shadowColor="shadow-emerald-600/30"
+                activeColor="bg-red-600"
+                shadowColor="shadow-red-600/30"
               />
               <NavButton 
                 icon={LayoutDashboard} 
                 label="Salones" 
                 isActive={view === 'salones'} 
                 onClick={() => setView('salones')} 
-                activeColor="bg-indigo-600"
-                shadowColor="shadow-indigo-600/30"
+                activeColor="bg-red-600"
+                shadowColor="shadow-red-600/30"
               />
               <NavButton icon={ClipboardCheck} label="Tareas" isActive={view === 'tasks'} onClick={() => setView('tasks')} hasAlert={hasUnreadTasks || hasPendingDailyTasks}/>
               {user.role !== UserRole.GUEST && <NavButton icon={ClipboardList} label="Pedidos" isActive={view === 'replenish'} onClick={() => setView('replenish')} />}

@@ -764,12 +764,12 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId, initialTab })
             <div className="flex items-center justify-between w-full sm:w-auto gap-6">
               <div className="flex flex-col">
                 <div className="flex items-center gap-1.5 mb-1.5">
-                  <div className={`w-1.5 h-1.5 rounded-full ${(activeTab === 'RESERVATIONS' || activeTab === 'ALL_RESERVATIONS' || activeTab === 'ARRIVED') ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]'}`}></div>
+                  <div className={`w-1.5 h-1.5 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]`}></div>
                   <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.4em] leading-none">Management</span>
                 </div>
                 <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tighter leading-none flex items-center gap-2">
                   {activeTab === 'ANNOUNCEMENTS' ? 'Sección' : (activeTab === 'RESERVATIONS' || activeTab === 'ALL_RESERVATIONS' || activeTab === 'ARRIVED') ? 'Agenda' : 'Tareas'} 
-                  <span className={`text-sm font-bold px-2.5 py-0.5 rounded-full border shadow-sm ${(activeTab === 'RESERVATIONS' || activeTab === 'ALL_RESERVATIONS' || activeTab === 'ARRIVED') ? 'bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800/30' : 'bg-red-50 text-red-700 border-red-100 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800/30'}`}>
+                  <span className={`text-sm font-bold px-2.5 py-0.5 rounded-full border shadow-sm bg-red-50 text-red-700 border-red-100 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800/30`}>
                     {activeTab === 'ACTIVE' ? 'Activas' : activeTab === 'DAILY' ? 'Diarias' : activeTab === 'ALL_RESERVATIONS' ? 'Buscador' : activeTab === 'ARRIVED' ? 'Asistieron' : activeTab === 'RESERVATIONS' ? 'Reservas Hoy' : 'Salones'}
                   </span>
                 </h2>
@@ -1014,13 +1014,13 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId, initialTab })
         {(activeTab === 'RESERVATIONS' || activeTab === 'ARRIVED' || activeTab === 'ALL_RESERVATIONS' || activeTab === 'ANNOUNCEMENTS') && (
           <div className="flex overflow-x-auto no-scrollbar gap-2.5 mt-4 py-1">
             {[
-              { id: 'restaurante', label: 'Restaurante', color: 'bg-emerald-500', activeClass: 'bg-emerald-600 border-emerald-400' },
-              { id: 'gastro_bar', label: 'Gastro Bar', color: 'bg-rose-500', activeClass: 'bg-rose-600 border-rose-400' },
-              { id: 'cafeteria', label: 'Cafetería', color: 'bg-orange-500', activeClass: 'bg-orange-600 border-orange-400' },
-              { id: 'salon_c', label: 'Salón C', color: 'bg-purple-500', activeClass: 'bg-purple-600 border-purple-400' },
-              { id: 'terraza', label: 'Terraza', color: 'bg-blue-500', activeClass: 'bg-blue-600 border-blue-400' },
-              { id: 'eventos', label: 'Eventos', color: 'bg-amber-500', activeClass: 'bg-amber-600 border-amber-400' },
-              { id: 'piscina', label: 'Piscina', color: 'bg-cyan-500', activeClass: 'bg-cyan-600 border-cyan-400' }
+              { id: 'restaurante', label: 'Restaurante', color: 'bg-red-500', activeClass: 'bg-red-600 border-red-400' },
+              { id: 'gastro_bar', label: 'Gastro Bar', color: 'bg-red-500', activeClass: 'bg-red-600 border-red-400' },
+              { id: 'cafeteria', label: 'Cafetería', color: 'bg-red-500', activeClass: 'bg-red-600 border-red-400' },
+              { id: 'salon_c', label: 'Salón C', color: 'bg-red-500', activeClass: 'bg-red-600 border-red-400' },
+              { id: 'terraza', label: 'Terraza', color: 'bg-red-500', activeClass: 'bg-red-600 border-red-400' },
+              { id: 'eventos', label: 'Eventos', color: 'bg-red-500', activeClass: 'bg-red-600 border-red-400' },
+              { id: 'piscina', label: 'Piscina', color: 'bg-red-500', activeClass: 'bg-red-600 border-red-400' }
             ].map((loc) => {
               const count = getReservationCount(loc.id);
               const isActive = activeLocation === loc.id;
@@ -1035,7 +1035,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId, initialTab })
                       : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/80 shadow-sm'
                   }`}
                 >
-                  {count > 0 && (
+                  {count > 0 && (activeTab === 'RESERVATIONS' || activeTab === 'ARRIVED' || activeTab === 'ALL_RESERVATIONS') && (
                     <span className="absolute -top-2 -right-2 min-w-[18px] h-[18px] bg-red-600 text-white text-[9px] font-black rounded-full flex items-center justify-center px-1 border-2 border-white dark:border-slate-800 shadow-[0_2px_10px_rgba(220,38,38,0.4)] animate-pulse">
                       {count}
                     </span>
@@ -1055,15 +1055,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId, initialTab })
           <motion.div 
             initial={{ opacity: 0, y: -5 }}
             animate={{ opacity: 1, y: 0 }}
-            className={`p-6 rounded-[2rem] text-white shadow-2xl overflow-hidden relative group border-2 border-white/10 ${
-              activeLocation === 'terraza' ? 'bg-gradient-to-br from-blue-600 via-blue-700 to-blue-900 shadow-blue-900/20' :
-              activeLocation === 'salon_c' ? 'bg-gradient-to-br from-purple-600 via-purple-700 to-purple-900 shadow-purple-900/20' :
-              activeLocation === 'gastro_bar' ? 'bg-gradient-to-br from-rose-600 via-rose-700 to-rose-900 shadow-rose-900/20' :
-              activeLocation === 'cafeteria' ? 'bg-gradient-to-br from-orange-600 via-orange-700 to-orange-900 shadow-orange-900/20' :
-              activeLocation === 'eventos' ? 'bg-gradient-to-br from-amber-600 via-amber-700 to-amber-900 shadow-amber-900/20' :
-              activeLocation === 'piscina' ? 'bg-gradient-to-br from-cyan-600 via-cyan-700 to-cyan-900 shadow-cyan-900/20' :
-              'bg-gradient-to-br from-emerald-600 via-emerald-700 to-emerald-900 shadow-emerald-900/20'
-            }`}
+            className="p-6 rounded-[2rem] text-white shadow-2xl overflow-hidden relative group border-2 border-white/10 bg-gradient-to-br from-red-600 via-red-700 to-red-900 shadow-red-900/20"
           >
             <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-[80px] -translate-y-1/2 translate-x-1/2"></div>
             <div className="absolute bottom-0 left-0 w-32 h-32 bg-black/10 rounded-full blur-[40px] translate-y-1/2 -translate-x-1/2"></div>
@@ -1094,9 +1086,9 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId, initialTab })
           <motion.div 
             initial={{ opacity: 0, y: -5 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-gradient-to-br from-indigo-700 via-indigo-800 to-slate-900 rounded-[2rem] p-6 text-white shadow-2xl relative overflow-hidden group border-2 border-white/10"
+            className="bg-gradient-to-br from-red-700 via-red-800 to-slate-900 rounded-[2rem] p-6 text-white shadow-2xl relative overflow-hidden group border-2 border-white/10"
           >
-            <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-[80px] -translate-y-1/2 translate-x-1/2"></div>
+            <div className="absolute top-0 right-0 w-64 h-64 bg-red-500/10 rounded-full blur-[80px] -translate-y-1/2 translate-x-1/2"></div>
             <div className="absolute bottom-0 left-0 w-32 h-32 bg-slate-500/10 rounded-full blur-[40px] translate-y-1/2 -translate-x-1/2"></div>
             
             <div className="relative z-10 flex items-center justify-between">
@@ -1107,8 +1099,8 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId, initialTab })
                 <div>
                   <h3 className="text-xl md:text-2xl font-black uppercase tracking-tighter leading-none mb-1">Gestor de Salones</h3>
                   <div className="flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse"></span>
-                    <p className="text-[11px] text-indigo-100/80 font-black uppercase tracking-[0.25em]">Comunicación de Montajes & Eventos</p>
+                    <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse"></span>
+                    <p className="text-[11px] text-red-100/80 font-black uppercase tracking-[0.25em]">Comunicación de Montajes & Eventos</p>
                   </div>
                 </div>
               </div>
@@ -1124,7 +1116,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId, initialTab })
           <div className={activeTab === 'RESERVATIONS' || activeTab === 'ALL_RESERVATIONS' || activeTab === 'ARRIVED' ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4' : 'space-y-6'}>
             {listTasks.length === 0 ? (
               <div className="py-24 text-center bg-white dark:bg-slate-900 rounded-[2.5rem] border-4 border-dashed border-gray-200 dark:border-slate-800 shadow-inner">
-                {activeTab === 'ANNOUNCEMENTS' ? <Megaphone size={80} className="mx-auto mb-6 text-indigo-200 dark:text-indigo-900/30" /> : <ClipboardCheck size={80} className="mx-auto mb-6 text-gray-300 dark:text-slate-700" />}
+                {activeTab === 'ANNOUNCEMENTS' ? <Megaphone size={80} className="mx-auto mb-6 text-red-200 dark:text-red-900/30" /> : <ClipboardCheck size={80} className="mx-auto mb-6 text-gray-300 dark:text-slate-700" />}
                 <p className="text-3xl font-black text-gray-400 dark:text-slate-600 uppercase tracking-tighter">
                   {activeTab === 'ACTIVE' ? 'Sin Tareas Activas' : 
                    activeTab === 'DAILY' ? 'Sin Tareas Diarias' : 
