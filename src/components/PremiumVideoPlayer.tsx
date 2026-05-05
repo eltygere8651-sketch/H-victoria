@@ -10,7 +10,7 @@ export const PremiumVideoPlayer: React.FC<PremiumVideoPlayerProps> = ({ url, cla
   const [format, setFormat] = useState<'vertical' | 'horizontal'>('vertical');
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
-  const [showControls, setShowControls] = useState(true); // Always show for better UX in preview
+  const [showControls, setShowControls] = useState(true);
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
