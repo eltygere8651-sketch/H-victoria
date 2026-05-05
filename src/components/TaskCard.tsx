@@ -514,7 +514,7 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
           
           {task.description && (
             <div className={`rounded-[0.75rem] md:rounded-2xl border-l-[3px] md:border-l-4 
-              ${isReservation ? 'p-3 md:p-4 border-[#064E3B]/40 bg-white/50 backdrop-blur-sm' : 'p-3 md:p-6 mb-4'}
+              ${isReservation ? 'p-3 md:p-4 border-[#064E3B]/40 bg-white/50 backdrop-blur-sm' : 'p-2 md:p-4 mb-2'}
               ${isUrgent && !isCompleted && !isAnnouncement && !isReservation
                 ? 'bg-red-50 dark:bg-red-900/10 border-red-500' 
                 : isAnnouncement
@@ -522,8 +522,8 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
                   : !isReservation ? 'bg-gray-50 dark:bg-slate-800/50 border-gray-300 dark:border-slate-600' : ''
               }`}
             >
-              <p className={`whitespace-pre-wrap leading-tight
-                ${isReservation ? 'text-xs md:text-base font-bold' : 'text-sm md:text-2xl font-bold md:leading-snug'}
+              <p className={`whitespace-pre-wrap leading-tight text-xs
+                ${isReservation ? 'text-xs md:text-sm font-bold' : 'text-xs md:text-sm font-bold md:leading-snug'}
                 ${isCompleted 
                   ? 'text-gray-700 dark:text-slate-300 opacity-60' 
                   : isUrgent && !isAnnouncement && !isReservation
@@ -615,12 +615,12 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
               </div>
             )}
             <div 
-              className="flex gap-4 overflow-x-auto pb-4 no-scrollbar touch-pan-x snap-x snap-mandatory"
+              className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 pb-4"
               style={{ WebkitOverflowScrolling: 'touch' }}
             >
               {/* Videos First */}
               {task.videoUrls?.map((url, i) => (
-                <PremiumVideoPlayer key={`vid-${i}`} url={url} />
+                <PremiumVideoPlayer key={`vid-${i}`} url={url} className="w-full aspect-square rounded-2xl" />
               ))}
 
               {/* Images */}
@@ -628,12 +628,12 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
                 <button 
                   key={`img-${i}`} 
                   onClick={() => onViewImages(task.imageUrls!, i)} 
-                  className={`relative w-40 h-40 md:w-56 md:h-56 rounded-[2rem] border-4 overflow-hidden flex-shrink-0 hover:scale-[1.03] transition-all shadow-2xl snap-start group/img ${isAnnouncement ? 'border-indigo-100 dark:border-indigo-900' : 'border-white dark:border-slate-800'}`}
+                  className={`relative aspect-square w-full rounded-2xl border-4 overflow-hidden shadow-xl hover:scale-[1.02] transition-all snap-start group/img ${isAnnouncement ? 'border-indigo-100 dark:border-indigo-900' : 'border-white dark:border-slate-800'}`}
                 >
                   <img src={url} className="w-full h-full object-cover group-hover/img:scale-110 transition-transform duration-700" loading="lazy" referrerPolicy="no-referrer" />
                   <div className="absolute inset-0 bg-black/0 group-hover/img:bg-black/20 transition-colors flex items-center justify-center">
-                    <div className="bg-white/20 backdrop-blur-md p-3 rounded-full opacity-0 group-hover/img:opacity-100 transition-opacity">
-                      <Camera size={24} className="text-white" />
+                    <div className="bg-white/20 backdrop-blur-md p-2 rounded-full opacity-0 group-hover/img:opacity-100 transition-opacity">
+                      <Camera size={18} className="text-white" />
                     </div>
                   </div>
                 </button>

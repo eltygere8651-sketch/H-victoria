@@ -3,13 +3,14 @@ import { Play, Pause, Volume2, VolumeX, Smartphone, Monitor, Square, Maximize } 
 
 interface PremiumVideoPlayerProps {
   url: string;
+  className?: string;
 }
 
-export const PremiumVideoPlayer: React.FC<PremiumVideoPlayerProps> = ({ url }) => {
+export const PremiumVideoPlayer: React.FC<PremiumVideoPlayerProps> = ({ url, className }) => {
   const [format, setFormat] = useState<'vertical' | 'horizontal'>('vertical');
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
-  const [showControls, setShowControls] = useState(true);
+  const [showControls, setShowControls] = useState(true); // Always show for better UX in preview
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -67,7 +68,7 @@ export const PremiumVideoPlayer: React.FC<PremiumVideoPlayerProps> = ({ url }) =
     <div 
       ref={containerRef}
       className={`relative rounded-[2rem] border-4 border-white dark:border-slate-800 overflow-hidden flex-shrink-0 shadow-2xl snap-start group bg-black transition-all duration-500 ease-[cubic-bezier(0.2,0.8,0.2,1)] premium-video-container
-        ${format === 'vertical' ? 'w-48 h-80 md:w-56 md:h-96' : 'w-72 h-40 md:w-96 md:h-56'}
+        ${className || (format === 'vertical' ? 'w-48 h-80 md:w-56 md:h-96' : 'w-72 h-40 md:w-96 md:h-56')}
       `}
       onMouseEnter={() => setShowControls(true)}
       onMouseLeave={() => { if (isPlaying) setShowControls(false); }}

@@ -1124,9 +1124,9 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId, initialTab })
 
         {/* SECTION: TASKS (HIGH IMPACT ACTION STYLE) */}
         {viewMode === 'LIST' ? (
-          <div className={activeTab === 'RESERVATIONS' || activeTab === 'ALL_RESERVATIONS' || activeTab === 'ARRIVED' ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4' : 'space-y-6'}>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
             {listTasks.length === 0 ? (
-              <div className="py-24 text-center bg-white dark:bg-slate-900 rounded-[2.5rem] border-4 border-dashed border-gray-200 dark:border-slate-800 shadow-inner">
+              <div className="py-24 text-center bg-white dark:bg-slate-900 rounded-[2.5rem] border-4 border-dashed border-gray-200 dark:border-slate-800 shadow-inner col-span-2 md:col-span-3 lg:col-span-4">
                 {activeTab === 'ANNOUNCEMENTS' ? <Megaphone size={80} className="mx-auto mb-6 text-red-200 dark:text-red-900/30" /> : <ClipboardCheck size={80} className="mx-auto mb-6 text-gray-300 dark:text-slate-700" />}
                 <p className="text-3xl font-black text-gray-400 dark:text-slate-600 uppercase tracking-tighter">
                   {activeTab === 'ACTIVE' ? 'Sin Tareas Activas' : 
@@ -1752,19 +1752,37 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId, initialTab })
                         
                         {/* Existing Images (Edit Mode) */}
                         {editingTask?.imageUrls?.map((url, i) => (
-                          <div key={`existing-${i}`} className="relative w-24 h-24 flex-shrink-0">
+                          <div key={`existing-${i}`} className="relative w-24 h-24 flex-shrink-0 group">
                              <img src={url} className="w-full h-full object-cover rounded-2xl border-2 border-gray-200 dark:border-slate-700" />
+                             <button
+                               onClick={() => {
+                                 const newUrls = (editingTask.imageUrls || []).filter((_, index) => index !== i);
+                                 setEditingTask({ ...editingTask, imageUrls: newUrls });
+                               }}
+                               className="absolute top-1 right-1 bg-red-600 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-md hover:scale-110"
+                             >
+                                <X size={14} strokeWidth={3} />
+                             </button>
                              <span className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[9px] font-bold text-center py-1 rounded-b-[14px]">Ima.</span>
                           </div>
                         ))}
 
                         {/* Existing Videos (Cloudinary) */}
                         {editingTask?.videoUrls?.map((url, i) => (
-                          <div key={`existing-video-${i}`} className="relative w-16 h-24 flex-shrink-0">
+                          <div key={`existing-video-${i}`} className="relative w-16 h-24 flex-shrink-0 group">
                              <video src={`${url}#t=0.001`} preload="metadata" playsInline className="w-full h-full object-cover rounded-2xl border-2 border-indigo-500" />
                              <div className="absolute inset-0 flex items-center justify-center">
                                 <Video size={20} className="text-white drop-shadow-md" />
                              </div>
+                             <button
+                               onClick={() => {
+                                 const newUrls = (editingTask.videoUrls || []).filter((_, index) => index !== i);
+                                 setEditingTask({ ...editingTask, videoUrls: newUrls });
+                               }}
+                               className="absolute top-1 right-1 bg-red-600 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-md hover:scale-110"
+                             >
+                                <X size={14} strokeWidth={3} />
+                             </button>
                              <span className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[9px] font-bold text-center py-1 rounded-b-[14px]">Vid.</span>
                           </div>
                         ))}
