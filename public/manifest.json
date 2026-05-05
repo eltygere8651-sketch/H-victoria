@@ -1,7 +1,7 @@
 
 {
-  "name": "Hub System",
-  "short_name": "Hub",
+  "name": "Hub_Ecosystem",
+  "short_name": "Hub_Ecosystem",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0f172a",
@@ -24,7 +24,7 @@
     },
     {
       "src": "/icon-512.png",
-      "sizes": "192x192",
+      "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
@@ -32,7 +32,7 @@
       "src": "/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "maskable"
     }
   ]
 }

@@ -47,7 +47,7 @@ const NavButton = ({ icon: Icon, label, isActive, onClick, hasAlert = false }: a
       outline-none select-none touch-manipulation active:scale-[0.95] group
       border border-white/10
       ${isActive ? 'flex-[6] px-4 py-3 gap-2' : 'flex-[1] px-2 py-3'}
-      text-white shadow-[0_0_15px_-5px_rgba(220,38,38,0.4),inset_0_1px_0_rgba(255,255,255,0.3)] bg-[linear-gradient(110deg,#dc2626,45%,#d4af37,55%,#dc2626)] bg-[length:200%_100%] animate-shine ring-1 ring-white/40
+      text-white shadow-[0_4px_12px_-2px_rgba(220,38,38,0.3),inset_0_1px_0_rgba(255,255,255,0.2)] bg-gradient-to-br from-[#dc2626] to-[#b91c1c] ring-1 ring-white/20
     `}
     style={{ WebkitTapHighlightColor: 'transparent' }}
   >
@@ -60,9 +60,9 @@ const NavButton = ({ icon: Icon, label, isActive, onClick, hasAlert = false }: a
         className={`transition-all duration-500 ${isActive ? 'scale-110' : 'scale-100 group-hover:scale-110'}`}
       />
       {hasAlert && !isActive && (
-         <span className="absolute -top-1.5 -right-1.5 flex h-3.5 w-3.5 z-20">
-           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-           <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-red-600 ring-2 ring-slate-900 shadow-sm"></span>
+         <span className="absolute -top-1 -right-1 flex h-4 w-4 z-20">
+           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-300 opacity-75"></span>
+           <span className="relative inline-flex rounded-full h-4 w-4 bg-yellow-400 ring-2 ring-red-900 shadow-[0_0_10px_rgba(255,255,0,0.8)]"></span>
          </span>
       )}
     </div>
@@ -285,9 +285,9 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
               >
                 <Bell size={18} className={unreadAdminNotificationsCount > 0 ? 'text-red-500 animate-logo-breathe' : ''} />
                 {unreadAdminNotificationsCount > 0 && (
-                  <span className="absolute -top-1 -right-1 flex h-4 w-4 z-20">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-4 w-4 bg-red-600 text-[8px] font-black text-white flex items-center justify-center ring-2 ring-white dark:ring-slate-900">
+                  <span className="absolute -top-1 -right-1 flex h-5 w-5 z-20">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-300 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-5 w-5 bg-yellow-400 text-[9px] font-black text-red-900 flex items-center justify-center ring-2 ring-red-900 shadow-[0_0_10px_rgba(255,255,0,0.8)]">
                       {unreadAdminNotificationsCount}
                     </span>
                   </span>

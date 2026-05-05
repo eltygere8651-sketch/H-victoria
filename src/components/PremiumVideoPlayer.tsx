@@ -38,12 +38,28 @@ export const PremiumVideoPlayer: React.FC<PremiumVideoPlayerProps> = ({ url }) =
 
   const toggleFullscreen = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!document.fullscreenElement) {
-        containerRef.current?.requestFullscreen().catch(err => {
-            console.error(`Error attempting to enable full-screen mode: ${err.message}`);
-        });
+    const elem = containerRef.current as any;
+    const video = videoRef.current as any;
+    const doc = document as any;
+
+    // iOS specific approach
+    if (video && video.webkitEnterFullscreen) {
+        video.webkitEnterFullscreen();
+        return;
+    }
+
+    if (!doc.fullscreenElement && !doc.webkitFullscreenElement) {
+        if (elem.requestFullscreen) {
+            elem.requestFullscreen().catch((err: Error) => console.error(err));
+        } else if (elem.webkitRequestFullscreen) {
+            elem.webkitRequestFullscreen();
+        } 
     } else {
-        document.exitFullscreen();
+        if (doc.exitFullscreen) {
+            doc.exitFullscreen();
+        } else if (doc.webkitExitFullscreen) {
+            doc.webkitExitFullscreen();
+        }
     }
   };
 
