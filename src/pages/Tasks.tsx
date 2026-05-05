@@ -30,10 +30,10 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId, initialTab })
 
   // Update active tab when prop changes
   useEffect(() => {
-    if (initialTab) {
+    if (initialTab && !initialTaskId) {
       setActiveTab(initialTab);
     }
-  }, [initialTab]);
+  }, [initialTab, initialTaskId]);
   const [activeLocation, setActiveLocation] = useState<string>('restaurante');
   const [reservationSearchTerm, setReservationSearchTerm] = useState('');
   
@@ -70,7 +70,11 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId, initialTab })
       const task = allTasks.find(t => t.id === initialTaskId);
       if (task) {
         // Set the correct tab
-        if (task.recurrence === TaskRecurrence.DAILY) {
+        if (task.type === TaskType.ANNOUNCEMENT) {
+          setActiveTab('ANNOUNCEMENTS');
+        } else if (task.type === TaskType.RESERVATION) {
+          setActiveTab('RESERVATIONS');
+        } else if (task.recurrence === TaskRecurrence.DAILY) {
           setActiveTab('DAILY');
         } else {
           setActiveTab('ACTIVE');
