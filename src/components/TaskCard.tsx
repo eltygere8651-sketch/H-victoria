@@ -620,7 +620,7 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
             >
               {/* Videos First */}
               {task.videoUrls?.map((url, i) => (
-                <PremiumVideoPlayer key={`vid-${i}`} url={url} className="w-full aspect-square rounded-2xl" />
+                <PremiumVideoPlayer key={`vid-${i}`} url={url} />
               ))}
 
               {/* Images */}

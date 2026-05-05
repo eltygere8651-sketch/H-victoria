@@ -1124,9 +1124,9 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId, initialTab })
 
         {/* SECTION: TASKS (HIGH IMPACT ACTION STYLE) */}
         {viewMode === 'LIST' ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+          <div className={activeTab === 'RESERVATIONS' || activeTab === 'ALL_RESERVATIONS' || activeTab === 'ARRIVED' ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4' : 'space-y-6'}>
             {listTasks.length === 0 ? (
-              <div className="py-24 text-center bg-white dark:bg-slate-900 rounded-[2.5rem] border-4 border-dashed border-gray-200 dark:border-slate-800 shadow-inner col-span-2 md:col-span-3 lg:col-span-4">
+              <div className="py-24 text-center bg-white dark:bg-slate-900 rounded-[2.5rem] border-4 border-dashed border-gray-200 dark:border-slate-800 shadow-inner">
                 {activeTab === 'ANNOUNCEMENTS' ? <Megaphone size={80} className="mx-auto mb-6 text-red-200 dark:text-red-900/30" /> : <ClipboardCheck size={80} className="mx-auto mb-6 text-gray-300 dark:text-slate-700" />}
                 <p className="text-3xl font-black text-gray-400 dark:text-slate-600 uppercase tracking-tighter">
                   {activeTab === 'ACTIVE' ? 'Sin Tareas Activas' : 
