@@ -112,14 +112,16 @@ const App: React.FC = () => {
 
         if (shareId) {
           setSharedTaskId(shareId);
-          // If we have a shared ID, we should try to determine its type to set the correct view
-          // Fetch after auth to avoid permission issues
           try {
             const t = await storageService.getTaskById(shareId);
             if (t) {
-              if (t.type === TaskType.ANNOUNCEMENT) setView('salones');
-              else if (t.type === TaskType.RESERVATION) setView('reservations');
-              else setView('tasks');
+              if (t.type === TaskType.ANNOUNCEMENT) {
+                setView('salones');
+              } else if (t.type === TaskType.RESERVATION) {
+                setView('reservations');
+              } else {
+                setView('tasks');
+              }
             }
           } catch (err) {
             console.error("Error fetching shared task type:", err);

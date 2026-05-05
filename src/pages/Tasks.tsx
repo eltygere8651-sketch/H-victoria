@@ -73,8 +73,14 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId, initialTab })
         // Set the correct tab
         if (task.type === TaskType.ANNOUNCEMENT) {
           setActiveTab('ANNOUNCEMENTS');
+          if (task.location) {
+            setActiveLocation(task.location);
+          }
         } else if (task.type === TaskType.RESERVATION) {
           setActiveTab('RESERVATIONS');
+          if (task.location) {
+            setActiveLocation(task.location);
+          }
         } else if (task.recurrence === TaskRecurrence.DAILY) {
           setActiveTab('DAILY');
         } else {
@@ -191,19 +197,25 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId, initialTab })
 
   const handleDeleteTask = async () => {
     if (taskToDelete) {
-      if (deletePassword === 'bn2020') {
+      if (taskToDelete.type === TaskType.ANNOUNCEMENT) {
+        if (deletePassword === 'bn2020') {
+          await storageService.deleteTask(taskToDelete.id);
+          setTaskToDelete(null);
+          setDeletePassword('');
+        } else {
+          alert('Contraseña incorrecta');
+        }
+      } else {
+        // For tasks or reservations, no password needed
         await storageService.deleteTask(taskToDelete.id);
         setTaskToDelete(null);
-        setDeletePassword('');
-      } else {
-        alert('Contraseña incorrecta');
       }
     }
   };
 
-  const handleMarkAsNoShow = useCallback((task: Task) => {
+  const handleMarkAsNoShow = useCallback(async (task: Task) => {
     if (!canManageTasks) return;
-    setTaskToDelete(task);
+    await storageService.deleteTask(task.id);
   }, [canManageTasks]);
 
   // Helper to get reservation count for a specific location for today
@@ -450,16 +462,10 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId, initialTab })
   const [isCounting, setIsCounting] = useState(false);
 
   const handleClearAllReservations = async () => {
-    if (deletePassword !== 'bn2020') {
-      alert('Contraseña incorrecta');
-      return;
-    }
-    
     try {
       setLoading(true);
       await storageService.clearAllReservations();
       setShowClearConfirm(false);
-      setDeletePassword('');
       // Local update is handled by the subscription
     } catch (error) {
       console.error("Error clearing reservations:", error);
@@ -1868,26 +1874,28 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId, initialTab })
                <Trash2 size={40} />
             </div>
             <h3 className="text-2xl font-black text-gray-900 dark:text-white uppercase mb-2 tracking-tight">
-              ¿Eliminar {taskToDelete.type === TaskType.RESERVATION ? 'Reserva' : 'Tarea'}?
+              ¿Eliminar {taskToDelete.type === TaskType.RESERVATION ? 'Reserva' : taskToDelete.type === TaskType.ANNOUNCEMENT ? 'Publicación' : 'Tarea'}?
             </h3>
             <p className="text-gray-500 dark:text-slate-400 mb-6 font-bold text-lg">Esta acción es permanente y los datos desaparecerán para siempre. ¿Estás seguro?</p>
             
-            <div className="mb-6">
-              <input 
-                type="password" 
-                placeholder="Contraseña de seguridad" 
-                className="w-full p-4 border-2 border-red-100 dark:border-red-900/30 rounded-2xl bg-gray-50 dark:bg-slate-900 font-bold text-center text-red-600 focus:border-red-500 outline-none transition-all"
-                value={deletePassword}
-                onChange={(e) => setDeletePassword(e.target.value)}
-              />
-            </div>
+            {taskToDelete.type === TaskType.ANNOUNCEMENT && (
+              <div className="mb-6">
+                <input 
+                  type="password" 
+                  placeholder="Contraseña de seguridad" 
+                  className="w-full p-4 border-2 border-red-100 dark:border-red-900/30 rounded-2xl bg-gray-50 dark:bg-slate-900 font-bold text-center text-red-600 focus:border-red-500 outline-none transition-all"
+                  value={deletePassword}
+                  onChange={(e) => setDeletePassword(e.target.value)}
+                />
+              </div>
+            )}
 
             <div className="flex gap-4">
               <button onClick={() => { setTaskToDelete(null); setDeletePassword(''); }} className="flex-1 py-4 font-bold text-gray-600 dark:text-slate-400 bg-gray-100 dark:bg-slate-700 rounded-2xl hover:bg-gray-200 transition-colors">Cancelar</button>
               <button 
                 onClick={handleDeleteTask} 
                 className="flex-1 py-4 font-bold text-white bg-red-600 rounded-2xl hover:bg-red-700 shadow-lg shadow-button-red transition-all disabled:opacity-50"
-                disabled={!deletePassword}
+                disabled={taskToDelete.type === TaskType.ANNOUNCEMENT && !deletePassword}
               >
                 ELIMINAR
               </button>
@@ -1903,27 +1911,16 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId, initialTab })
                <Trash2 size={40} />
             </div>
             <h3 className="text-2xl font-black text-gray-900 dark:text-white uppercase mb-2 tracking-tight">¿Limpiar Todo?</h3>
-            <p className="text-gray-500 dark:text-slate-400 mb-6 font-bold text-lg">
+            <p className="text-gray-500 dark:text-slate-400 mb-8 font-bold text-lg">
               Vas a eliminar <span className="text-red-600 dark:text-red-400 font-black">{reservationCount}</span> reservas permanentemente. 
               Esta acción no se puede deshacer.
             </p>
 
-            <div className="mb-6">
-              <input 
-                type="password" 
-                placeholder="Clave de seguridad" 
-                className="w-full p-4 border-2 border-red-100 dark:border-red-900/30 rounded-2xl bg-gray-50 dark:bg-slate-900 font-bold text-center text-red-600 focus:border-red-500 outline-none transition-all"
-                value={deletePassword}
-                onChange={(e) => setDeletePassword(e.target.value)}
-              />
-            </div>
-
             <div className="flex gap-4">
-              <button onClick={() => { setShowClearConfirm(false); setDeletePassword(''); }} className="flex-1 py-4 font-bold text-gray-600 dark:text-slate-400 bg-gray-100 dark:bg-slate-700 rounded-2xl hover:bg-gray-200 transition-colors">CANCELAR</button>
+              <button onClick={() => setShowClearConfirm(false)} className="flex-1 py-4 font-bold text-gray-600 dark:text-slate-400 bg-gray-100 dark:bg-slate-700 rounded-2xl hover:bg-gray-200 transition-colors">CANCELAR</button>
               <button 
                 onClick={handleClearAllReservations} 
-                className="flex-1 py-4 font-bold text-white bg-red-600 rounded-2xl hover:bg-red-700 shadow-lg shadow-red-600/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                disabled={!deletePassword}
+                className="flex-1 py-4 font-bold text-white bg-red-600 rounded-2xl hover:bg-red-700 shadow-lg shadow-red-600/20 transition-all flex items-center justify-center gap-2"
               >
                 {loading ? <Loader2 size={18} className="animate-spin" /> : 'LIMPIAR'}
               </button>
