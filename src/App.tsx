@@ -27,6 +27,10 @@ const App: React.FC = () => {
   const [showGuideModal, setShowGuideModal] = useState(false);
 
   const [view, setView] = useState<'inventory' | 'replenish' | 'admin' | 'tasks' | 'reservations' | 'salones'>(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const shareId = searchParams.get('shareId');
+    if (shareId) return 'tasks'; // Temporary view to avoid warehouse flash
+
     const lastView = storageService.getLastView();
     const sessionUser = storageService.getSession();
     let defaultView: 'inventory' | 'replenish' | 'tasks' | 'reservations' | 'salones' = 'replenish';
@@ -95,17 +99,31 @@ const App: React.FC = () => {
         const shareId = searchParams.get('shareId');
         const publicMode = searchParams.get('public');
         const providerMode = searchParams.get('provider');
-        if (shareId) setSharedTaskId(shareId);
-        
         // Artificial delay for splash screen visibility
         const minSplashTime = new Promise(resolve => setTimeout(resolve, 800));
-        
+
         // Start auth and sync
         try {
           await storageService.ensureAnonymousAuth();
           await storageService.testConnection(); // New verification
         } catch (e) {
           console.error("Non-critical initialization error:", e);
+        }
+
+        if (shareId) {
+          setSharedTaskId(shareId);
+          // If we have a shared ID, we should try to determine its type to set the correct view
+          // Fetch after auth to avoid permission issues
+          try {
+            const t = await storageService.getTaskById(shareId);
+            if (t) {
+              if (t.type === TaskType.ANNOUNCEMENT) setView('salones');
+              else if (t.type === TaskType.RESERVATION) setView('reservations');
+              else setView('tasks');
+            }
+          } catch (err) {
+            console.error("Error fetching shared task type:", err);
+          }
         }
         
         await minSplashTime;

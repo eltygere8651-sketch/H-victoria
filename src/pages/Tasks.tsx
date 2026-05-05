@@ -76,6 +76,11 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId, initialTab })
           setActiveTab('ACTIVE');
         }
         
+        // Set viewing task or highlight
+        if (task.type === TaskType.ANNOUNCEMENT || task.type === TaskType.RESERVATION) {
+          setViewingTask(task);
+        }
+        
         // Scroll to the task after a short delay to allow tab switching and rendering
         setTimeout(() => {
           const element = taskRefs.current[initialTaskId];
@@ -87,7 +92,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId, initialTab })
               element.classList.remove('ring-4', 'ring-red-500', 'ring-opacity-50');
             }, 3000);
           }
-        }, 500);
+        }, 800);
       }
     }
   }, [initialTaskId, allTasks]);

@@ -90,11 +90,11 @@ export const GuideModal: React.FC<GuideModalProps> = ({ isOpen, onClose }) => {
           <div className="bg-gradient-to-br from-red-700 via-red-800 to-slate-900 rounded-2xl p-4 flex flex-row items-center justify-between text-left gap-4 shadow-xl border border-white/5 relative overflow-hidden group">
              <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full blur-[40px] -translate-y-1/2 translate-x-1/2 group-hover:scale-110 transition-transform duration-1000"></div>
              
-             <div className="bg-white p-1.5 rounded-xl shadow-2xl relative z-10 shrink-0">
+             <div className="bg-white p-2 rounded-2xl shadow-2xl relative z-10 shrink-0">
                 <img 
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(window.location.origin)}&margin=8&color=991b1b`} 
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(window.location.origin)}&margin=10&color=991b1b`} 
                   alt="QR" 
-                  className="w-16 h-16"
+                  className="w-20 h-20"
                 />
              </div>
              <div className="flex-1 relative z-10">
