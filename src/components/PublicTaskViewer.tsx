@@ -1,15 +1,19 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { Task, TaskStatus, TaskPriority, TaskChecklistItem, TaskComment } from '../types';
+import { Task, TaskStatus, TaskPriority, TaskChecklistItem, TaskComment, TaskType, TaskRecurrence } from '../types';
 import * as storageService from '../services/storageService';
 import { db, auth } from '../firebaseConfig';
-import { Loader2, Calendar, User, MapPin, Flag, AlertTriangle, CheckCircle2, ClipboardCheck, LogIn, Check, Clock, MessagesSquare, Send, X, Share2 } from 'lucide-react';
+import { 
+  Loader2, Calendar, User, MapPin, Flag, AlertTriangle, CheckCircle2, 
+  ClipboardCheck, LogIn, Check, Clock, MessagesSquare, Send, X, Share2,
+  Megaphone, Sparkles, Phone, Users, ConciergeBell
+} from 'lucide-react';
+
 import { Logo } from './Logo';
-import { ImageViewer } from './ImageViewer';
-import { ShareModal } from './ShareModal';
-import { DeletionTimer } from './DeletionTimer';
 import { DailyResetTimer } from './DailyResetTimer';
-import { TaskRecurrence } from '../types';
+import { DeletionTimer } from './DeletionTimer';
 import { PremiumVideoPlayer } from './PremiumVideoPlayer';
+import { ShareModal } from './ShareModal';
+import { ImageViewer } from './ImageViewer';
 
 interface PublicTaskViewerProps {
   taskId: string;
@@ -190,6 +194,9 @@ export const PublicTaskViewer: React.FC<PublicTaskViewerProps> = ({ taskId, setS
     );
   }
 
+  const isAnnouncement = task.type === TaskType.ANNOUNCEMENT;
+  const isReservation = task.type === TaskType.RESERVATION;
+
   return (
     <div className="min-h-screen w-full bg-gray-50 dark:bg-slate-950 font-sans transition-colors duration-300">
       <div className="flex flex-col">
@@ -219,35 +226,87 @@ export const PublicTaskViewer: React.FC<PublicTaskViewerProps> = ({ taskId, setS
         <main className="flex-1 max-w-3xl mx-auto w-full p-4 md:p-8 pb-safe">
           <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-card-soft dark:shadow-card-dark border border-gray-100 dark:border-slate-800 overflow-hidden animate-slide-up">
             
-            <div className="p-6 border-b border-gray-100 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-800/50">
+            <div className={`p-6 border-b border-gray-100 dark:border-slate-800 ${
+              isAnnouncement ? 'bg-indigo-50/50 dark:bg-indigo-900/30' : 
+              isReservation ? 'bg-emerald-50/50 dark:bg-emerald-900/30' :
+              'bg-gray-50/50 dark:bg-slate-800/50'
+            }`}>
               <div className="flex justify-between items-start">
-                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-black uppercase tracking-wider bg-gray-200 text-gray-700 dark:bg-slate-700 dark:text-slate-300">
-                  <ClipboardCheck size={16} />
-                  Tarea Compartida
+                <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-black uppercase tracking-wider ${
+                  isAnnouncement ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' :
+                  isReservation ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/20' :
+                  'bg-gray-200 text-gray-700 dark:bg-slate-700 dark:text-slate-300'
+                }`}>
+                  {isAnnouncement ? <Megaphone size={16} /> : isReservation ? <ConciergeBell size={16} /> : <ClipboardCheck size={16} />}
+                  {isAnnouncement ? 'Showcase Publicado' : isReservation ? 'Gestión de Reserva' : 'Tarea Compartida'}
                 </div>
                 
-                <div className={`px-3 py-1.5 rounded-lg text-sm font-bold flex items-center gap-1.5 ${
-                  task.status === TaskStatus.COMPLETED ? 'bg-green-100 text-green-700' : 
-                  task.status === TaskStatus.IN_PROGRESS ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'
-                }`}>
-                  {task.status === TaskStatus.COMPLETED && <CheckCircle2 size={16}/>}
-                  {task.status === TaskStatus.PENDING && 'Pendiente'}
-                  {task.status === TaskStatus.IN_PROGRESS && 'En Progreso'}
-                  {task.status === TaskStatus.COMPLETED && 'Completada'}
-                </div>
+                {!isAnnouncement && (
+                  <div className={`px-3 py-1.5 rounded-lg text-sm font-bold flex items-center gap-1.5 ${
+                    task.status === TaskStatus.COMPLETED ? 'bg-green-100 text-green-700' : 
+                    task.status === TaskStatus.IN_PROGRESS ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'
+                  }`}>
+                    {task.status === TaskStatus.COMPLETED && <CheckCircle2 size={16}/>}
+                    {task.status === TaskStatus.PENDING && 'Pendiente'}
+                    {task.status === TaskStatus.IN_PROGRESS && 'En Progreso'}
+                    {task.status === TaskStatus.COMPLETED && 'Completada'}
+                  </div>
+                )}
               </div>
               
-              <h1 className="text-2xl md:text-3xl font-black text-gray-900 dark:text-white mt-4 leading-tight">
+              <h1 className={`text-2xl md:text-4xl font-black mt-4 leading-tight tracking-tighter uppercase ${
+                isAnnouncement ? 'text-indigo-900 dark:text-indigo-100' :
+                isReservation ? 'text-emerald-900 dark:text-emerald-100' :
+                'text-gray-900 dark:text-white'
+              }`}>
                 {task.title}
               </h1>
             </div>
 
             <div className="p-6 md:p-8 space-y-8">
               <div className="prose dark:prose-invert max-w-none">
-                <p className="text-lg text-gray-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed">
-                  {task.description ? renderDescriptionWithHighlights(task.description, task.status === TaskStatus.COMPLETED) : 'Sin descripción adicional.'}
-                </p>
+                <div className={`rounded-2xl p-6 border-l-4 ${
+                  isAnnouncement ? 'bg-indigo-50/30 dark:bg-indigo-900/10 border-indigo-500' :
+                  isReservation ? 'bg-emerald-50/30 dark:bg-emerald-900/10 border-emerald-500' :
+                  'bg-transparent'
+                }`}>
+                  <p className={`whitespace-pre-wrap leading-relaxed font-bold ${
+                    isAnnouncement ? 'text-lg md:text-xl text-indigo-900 dark:text-indigo-100' :
+                    isReservation ? 'text-lg text-emerald-900 dark:text-emerald-100' :
+                    'text-gray-700 dark:text-slate-300'
+                  }`}>
+                    {task.description ? renderDescriptionWithHighlights(task.description, task.status === TaskStatus.COMPLETED) : 'Sin descripción adicional.'}
+                  </p>
+                </div>
               </div>
+
+              {isReservation && (
+                <div className="bg-emerald-50 dark:bg-emerald-900/20 p-6 rounded-2xl border border-emerald-100 dark:border-emerald-800 space-y-4">
+                  <h3 className="text-emerald-900 dark:text-emerald-100 font-black uppercase tracking-widest text-sm flex items-center gap-2">
+                    <Sparkles size={16} /> Detalle de Reserva
+                  </h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="bg-white dark:bg-slate-800 p-3 rounded-xl border border-emerald-100 dark:border-emerald-900/30 flex flex-col items-center">
+                      <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-1 text-center">Hora</span>
+                      <span className="text-lg font-black text-emerald-900 dark:text-emerald-100 italic">{task.reservationTime}</span>
+                    </div>
+                    <div className="bg-white dark:bg-slate-800 p-3 rounded-xl border border-emerald-100 dark:border-emerald-900/30 flex flex-col items-center">
+                      <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-1 text-center">Pax</span>
+                      <span className="text-lg font-black text-emerald-900 dark:text-emerald-100 italic">{task.guests}</span>
+                    </div>
+                    <div className="bg-white dark:bg-slate-800 p-3 rounded-xl border border-emerald-100 dark:border-emerald-900/30 flex flex-col items-center">
+                      <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-1 text-center">Mesa</span>
+                      <span className="text-lg font-black text-emerald-900 dark:text-emerald-100 italic">{task.tableNumber || '--'}</span>
+                    </div>
+                    <div className="bg-white dark:bg-slate-800 p-3 rounded-xl border border-emerald-100 dark:border-emerald-900/30 flex flex-col items-center">
+                      <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-1 text-center">Llegada</span>
+                      <span className={`text-xs font-black uppercase tracking-widest px-2 py-0.5 rounded-full mt-2 ${task.clientArrived ? 'bg-emerald-600 text-white' : 'bg-gray-200 text-gray-500'}`}>
+                        {task.clientArrived ? 'En Mesa' : 'Pendiente'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-gray-50 dark:bg-slate-800/50 p-5 rounded-2xl border border-gray-100 dark:border-slate-700/50">
                 <div className="flex items-center gap-3">
@@ -299,109 +358,115 @@ export const PublicTaskViewer: React.FC<PublicTaskViewerProps> = ({ taskId, setS
               {/* Checklist Section */}
               {task.checklist && task.checklist.length > 0 && (
                 <div className="space-y-4">
-                  <h3 className="font-bold text-gray-900 dark:text-white flex items-center gap-2 text-lg">
-                    <ClipboardCheck size={20} className="text-red-600" />
-                    Lista de Verificación
+                  <h3 className={`font-bold flex items-center gap-2 text-lg ${isAnnouncement ? 'text-indigo-900 dark:text-indigo-100' : 'text-gray-900 dark:text-white'}`}>
+                    {isAnnouncement ? <Megaphone size={20} className="text-indigo-600" /> : <ClipboardCheck size={20} className="text-red-600" />}
+                    {isAnnouncement ? 'Características / Detalles' : 'Lista de Verificación'}
                   </h3>
                   <div className="grid gap-3">
                     {task.checklist.map((item, index) => (
-                      <button
+                      <div
                         key={item.id}
-                        disabled={isUpdating}
-                        onClick={() => handleToggleChecklistItem(index)}
                         className={`flex items-start gap-4 p-4 rounded-2xl border-2 text-left transition-all ${
+                          isAnnouncement ? 'bg-indigo-50/30 dark:bg-indigo-900/10 border-indigo-100/50 dark:border-indigo-800/30' :
                           item.isCompleted 
                             ? 'bg-green-50/50 dark:bg-green-900/10 border-green-200 dark:border-green-900/30' 
-                            : 'bg-white dark:bg-slate-800 border-gray-100 dark:border-slate-700 hover:border-red-200 dark:hover:border-red-900/30'
-                        }`}
+                            : 'bg-white dark:bg-slate-800 border-gray-100 dark:border-slate-700'
+                        } ${!isAnnouncement && !isUpdating ? 'hover:border-red-200 dark:hover:border-red-900/30 cursor-pointer' : ''}`}
+                        onClick={!isAnnouncement && !isUpdating ? () => handleToggleChecklistItem(index) : undefined}
                       >
-                        <div className={`mt-0.5 w-6 h-6 rounded-lg flex items-center justify-center shrink-0 border-2 transition-colors ${
-                          item.isCompleted 
-                            ? 'bg-green-500 border-green-500 text-white' 
-                            : 'bg-gray-100 dark:bg-slate-900 border-gray-300 dark:border-slate-600 text-transparent'
-                        }`}>
-                          <Check size={16} strokeWidth={4} />
-                        </div>
+                        {isAnnouncement ? (
+                          <div className="mt-1.5 w-2.5 h-2.5 rounded-full bg-indigo-500 shrink-0 shadow-lg shadow-indigo-500/20" />
+                        ) : (
+                          <div className={`mt-0.5 w-6 h-6 rounded-lg flex items-center justify-center shrink-0 border-2 transition-colors ${
+                            item.isCompleted 
+                              ? 'bg-green-500 border-green-500 text-white' 
+                              : 'bg-gray-100 dark:bg-slate-900 border-gray-300 dark:border-slate-600 text-transparent'
+                          }`}>
+                            <Check size={16} strokeWidth={4} />
+                          </div>
+                        )}
                         <div className="flex flex-col">
                           <span className={`text-base font-bold ${
-                            item.isCompleted 
+                            !isAnnouncement && item.isCompleted 
                               ? 'text-gray-500 dark:text-slate-400 line-through decoration-2' 
-                              : 'text-gray-800 dark:text-slate-200'
+                              : isAnnouncement ? 'text-indigo-900 dark:text-indigo-200' : 'text-gray-800 dark:text-slate-200'
                           }`}>
                             {item.text}
                           </span>
-                          {item.isCompleted && item.completedBy && (
+                          {!isAnnouncement && item.isCompleted && item.completedBy && (
                             <span className="text-[10px] font-bold text-green-600 dark:text-green-400 uppercase tracking-wider mt-1">
                               ✓ Completado por {item.completedBy}
                             </span>
                           )}
                         </div>
-                      </button>
+                      </div>
                     ))}
                   </div>
                 </div>
               )}
 
               {/* Comments Section */}
-              <div className="space-y-4">
-                <h3 className="font-bold text-gray-900 dark:text-white flex items-center gap-2 text-lg">
-                  <MessagesSquare size={20} className="text-blue-600" />
-                  Comentarios ({task.comments?.length || 0})
-                </h3>
-                
-                <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 no-scrollbar">
-                  {task.comments?.map((comment) => (
-                    <div 
-                      key={comment.id} 
-                      className={`p-4 rounded-2xl shadow-sm border ${
-                        comment.userId === auth.currentUser?.uid 
-                          ? 'bg-blue-50/50 dark:bg-blue-900/10 border-blue-100 dark:border-blue-900/30 ml-4' 
-                          : 'bg-gray-50/50 dark:bg-slate-800/50 border-gray-100 dark:border-slate-700 mr-4'
-                      }`}
-                    >
-                      <div className="flex justify-between items-center mb-1">
-                        <span className="text-[10px] font-black text-gray-400 dark:text-slate-500 uppercase tracking-wider">
-                          {comment.userName}
-                        </span>
-                        <span className="text-[10px] font-bold text-gray-400 dark:text-slate-500">
-                          {new Date(comment.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                        </span>
-                      </div>
-                      <p className="text-sm font-bold text-gray-800 dark:text-slate-200">
-                        {comment.message}
-                      </p>
-                    </div>
-                  ))}
+              {!isAnnouncement && (
+                <div className="space-y-4">
+                  <h3 className="font-bold text-gray-900 dark:text-white flex items-center gap-2 text-lg">
+                    <MessagesSquare size={20} className="text-blue-600" />
+                    Comentarios ({task.comments?.length || 0})
+                  </h3>
                   
-                  {(!task.comments || task.comments.length === 0) && (
-                    <div className="text-center py-6 bg-gray-50/50 dark:bg-slate-800/50 rounded-2xl border border-dashed border-gray-200 dark:border-slate-700">
-                      <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">No hay comentarios aún</p>
-                    </div>
-                  )}
-                </div>
+                  <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 no-scrollbar">
+                    {task.comments?.map((comment) => (
+                      <div 
+                        key={comment.id} 
+                        className={`p-4 rounded-2xl shadow-sm border ${
+                          comment.userId === auth.currentUser?.uid 
+                            ? 'bg-blue-50/50 dark:bg-blue-900/10 border-blue-100 dark:border-blue-900/30 ml-4' 
+                            : 'bg-gray-50/50 dark:bg-slate-800/50 border-gray-100 dark:border-slate-700 mr-4'
+                        }`}
+                      >
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="text-[10px] font-black text-gray-400 dark:text-slate-500 uppercase tracking-wider">
+                            {comment.userName}
+                          </span>
+                          <span className="text-[10px] font-bold text-gray-400 dark:text-slate-500">
+                            {new Date(comment.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                          </span>
+                        </div>
+                        <p className="text-sm font-bold text-gray-800 dark:text-slate-200">
+                          {comment.message}
+                        </p>
+                      </div>
+                    ))}
+                    
+                    {(!task.comments || task.comments.length === 0) && (
+                      <div className="text-center py-6 bg-gray-50/50 dark:bg-slate-800/50 rounded-2xl border border-dashed border-gray-200 dark:border-slate-700">
+                        <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">No hay comentarios aún</p>
+                      </div>
+                    )}
+                  </div>
 
-                {/* Add Comment Input */}
-                <div className="flex gap-2 items-center bg-gray-100 dark:bg-slate-800 p-1.5 rounded-2xl">
-                  <input 
-                    value={newComment}
-                    onChange={(e) => setNewComment(e.target.value)}
-                    placeholder="Escribe un comentario..."
-                    className="flex-1 px-4 py-3 bg-transparent outline-none font-bold text-gray-700 dark:text-white placeholder-gray-400 text-sm"
-                    onKeyDown={e => e.key === 'Enter' && handleAddComment()}
-                    disabled={isUpdating}
-                  />
-                  <button 
-                    onClick={handleAddComment} 
-                    disabled={!newComment.trim() || isUpdating}
-                    className="bg-blue-600 text-white w-10 h-10 rounded-xl flex items-center justify-center hover:bg-blue-700 disabled:opacity-50 disabled:bg-gray-400 active:scale-95 transition-all shadow-md shrink-0"
-                  >
-                    <Send size={18} className="ml-0.5" />
-                  </button>
+                  {/* Add Comment Input */}
+                  <div className="flex gap-2 items-center bg-gray-100 dark:bg-slate-800 p-1.5 rounded-2xl">
+                    <input 
+                      value={newComment}
+                      onChange={(e) => setNewComment(e.target.value)}
+                      placeholder="Escribe un comentario..."
+                      className="flex-1 px-4 py-3 bg-transparent outline-none font-bold text-gray-700 dark:text-white placeholder-gray-400 text-sm"
+                      onKeyDown={e => e.key === 'Enter' && handleAddComment()}
+                      disabled={isUpdating}
+                    />
+                    <button 
+                      onClick={handleAddComment} 
+                      disabled={!newComment.trim() || isUpdating}
+                      className="bg-blue-600 text-white w-10 h-10 rounded-xl flex items-center justify-center hover:bg-blue-700 disabled:opacity-50 disabled:bg-gray-400 active:scale-95 transition-all shadow-md shrink-0"
+                    >
+                      <Send size={18} className="ml-0.5" />
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Complete Task Button */}
-              {task.status !== TaskStatus.COMPLETED && (
+              {!isAnnouncement && !isReservation && task.status !== TaskStatus.COMPLETED && (
                 <div className="pt-4">
                   <button
                     disabled={isUpdating}

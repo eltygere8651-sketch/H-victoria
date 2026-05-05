@@ -135,13 +135,13 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
         style={{ paddingTop: 'env(safe-area-inset-top)' }}
       >
         <div className="max-w-7xl mx-auto w-full flex justify-between items-center">
-          <div className="flex items-center gap-2 sm:gap-3 group cursor-pointer shrink-0" onClick={() => setShowGuideModal(true)}>
+          <div className="flex items-center gap-1 sm:gap-3 group cursor-pointer shrink-0" onClick={() => setShowGuideModal(true)}>
             <div className="relative group-hover:scale-105 transition-transform active:scale-95">
               <Logo size="sm" />
             </div>
-            <div className="flex flex-col select-none px-4 sm:px-6 overflow-visible">
+            <div className="flex flex-col select-none px-1 sm:px-6 overflow-visible">
               <motion.div 
-                className="relative select-none py-2"
+                className="relative select-none py-1 sm:py-2"
                 initial={{ rotateY: 0, rotateX: 0 }}
                 animate={{ 
                   rotateY: [-15, 15, -15],
@@ -156,7 +156,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
                   perspective: '1000px'
                 }}
               >
-                <span className="relative block font-black text-3xl sm:text-4xl uppercase tracking-tighter italic leading-none
+                <span className="relative block font-black text-xl sm:text-4xl uppercase tracking-tighter italic leading-none
                   text-transparent bg-clip-text bg-[linear-gradient(110deg,#dc2626,45%,#d4af37,55%,#dc2626)] bg-[length:200%_100%]
                   animate-shine drop-shadow-[0_1px_0_#991b1b] drop-shadow-[0_2px_0_#7f1d1d] drop-shadow-[0_4px_0_#450a0a] 
                   drop-shadow-[0_15px_30px_rgba(220,38,38,0.3)]
@@ -166,26 +166,26 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
                 style={{ 
                   fontFamily: '"Outfit", sans-serif',
                   transform: 'translateZ(60px)',
-                  paddingRight: '10px'
+                  paddingRight: '6px'
                 }}>
                   Hub
                 </span>
               </motion.div>
-              <span className="text-[9px] font-black text-red-600/80 dark:text-red-400/80 uppercase tracking-[0.35em] leading-none mt-0 font-mono flex items-center gap-1.5">
-                <span className="w-1 h-1 rounded-full bg-red-600 animate-ping"></span>
+              <span className="text-[7px] sm:text-[9px] font-black text-red-600/80 dark:text-red-400/80 uppercase tracking-[0.1em] sm:tracking-[0.35em] leading-none mt-0 font-mono flex items-center gap-0.5 sm:gap-1">
+                <span className="w-0.5 h-0.5 sm:w-1 sm:h-1 rounded-full bg-red-600 animate-ping"></span>
                 Ecosystem
               </span>
             </div>
           </div>
 
-          <div className="flex items-center gap-1 sm:gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 ml-auto">
             {!isInstalled && (deferredPrompt || isIOS || isAndroid) && (
               <button
                 onClick={onInstallClick}
-                className="flex items-center justify-center p-2 sm:px-2.5 sm:py-1.5 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-full sm:rounded-xl text-[10px] font-bold uppercase tracking-wider hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors"
+                className="flex items-center justify-center p-1.5 sm:px-2.5 sm:py-1.5 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-full sm:rounded-xl text-[9px] sm:text-[10px] font-bold uppercase tracking-wider hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors"
                 title="Instalar App"
               >
-                <Download size={14} />
+                <Download size={12} className="sm:w-[14px] sm:h-[14px]" />
                 <span className="hidden md:inline ml-1">Instalar</span>
               </button>
             )}
@@ -196,7 +196,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
                   onClick={() => { setView('replenish'); setShowMobileCart(true); }}
                   className={`cart-btn-core ${hasCartItems ? 'cart-core-active' : 'cart-core-empty'} group`}
                 >
-                  <ShoppingCart size={16} className={hasCartItems ? 'text-white' : 'text-slate-400'} />
+                  <ShoppingCart size={14} className={`sm:w-[16px] sm:h-[16px] ${hasCartItems ? 'text-white' : 'text-slate-400'}`} />
                   {hasCartItems && <div className="cart-status-led"></div>}
                 </button>
               </div>
@@ -206,10 +206,10 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
             <div className="relative" ref={volumeMenuRef}>
               <button 
                 onClick={() => setShowVolumeMenu(!showVolumeMenu)} 
-                className={`flex items-center justify-center h-9 w-9 sm:h-10 sm:w-10 rounded-2xl transition-all duration-300 border ${showVolumeMenu ? 'bg-red-600 text-white border-red-600 shadow-lg shadow-red-600/30' : 'bg-white/80 dark:bg-slate-800/40 border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300'}`}
+                className={`flex items-center justify-center h-9 w-9 sm:h-10 sm:w-10 rounded-xl sm:rounded-2xl transition-all duration-300 border ${showVolumeMenu ? 'bg-red-600 text-white border-red-600 shadow-lg shadow-red-600/30' : 'bg-white/80 dark:bg-slate-800/40 border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300'}`}
                 title="Configuración de sonido"
               >
-                {soundEnabled && notificationVolume > 0 ? <Volume2 size={18} /> : <VolumeX size={18} />}
+                {soundEnabled && notificationVolume > 0 ? <Volume2 size={16} className="sm:w-[18px] sm:h-[18px]" /> : <VolumeX size={16} className="sm:w-[18px] sm:h-[18px]" />}
               </button>
 
               <AnimatePresence>
@@ -277,13 +277,13 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
             {user.role === UserRole.ADMIN && (
               <button 
                 onClick={() => setView('admin')}
-                className={`relative flex items-center justify-center h-9 w-9 sm:h-10 sm:w-10 rounded-2xl transition-all duration-300 border bg-white/80 dark:bg-slate-800/40 border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 shadow-sm overflow-visible ${view === 'admin' ? 'ring-2 ring-red-500/50' : ''}`}
+                className={`relative flex items-center justify-center h-9 w-9 sm:h-10 sm:w-10 rounded-xl sm:rounded-2xl transition-all duration-300 border bg-white/80 dark:bg-slate-800/40 border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 shadow-sm overflow-visible ${view === 'admin' ? 'ring-2 ring-red-500/50' : ''}`}
               >
-                <Bell size={18} className={unreadAdminNotificationsCount > 0 ? 'text-red-500 animate-logo-breathe' : ''} />
+                <Bell size={16} className={`sm:w-[18px] sm:h-[18px] ${unreadAdminNotificationsCount > 0 ? 'text-red-500 animate-logo-breathe' : ''}`} />
                 {unreadAdminNotificationsCount > 0 && (
-                  <span className="absolute -top-1 -right-1 flex h-5 w-5 z-20">
+                  <span className="absolute -top-1 -right-1 flex h-4 w-4 sm:h-5 sm:w-5 z-20">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-300 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-5 w-5 bg-yellow-400 text-[9px] font-black text-red-900 flex items-center justify-center ring-2 ring-red-900 shadow-[0_0_10px_rgba(255,255,0,0.8)]">
+                    <span className="relative inline-flex rounded-full h-4 w-4 sm:h-5 sm:w-5 bg-yellow-400 text-[8px] sm:text-[9px] font-black text-red-900 flex items-center justify-center ring-1 sm:ring-2 ring-red-900 shadow-[0_0_8px_rgba(255,255,0,0.8)]">
                       {unreadAdminNotificationsCount}
                     </span>
                   </span>
@@ -296,28 +296,28 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
               className="btn-header-action h-9 w-9 sm:h-10 sm:w-10 text-red-500 dark:text-red-400 border-none shadow-none active:scale-90"
               title={darkMode ? "Modo Claro" : "Modo Oscuro"}
             >
-              {darkMode ? <Sun size={18} /> : <Moon size={18} />}
+              {darkMode ? <Sun size={16} className="sm:w-[18px] sm:h-[18px]" /> : <Moon size={16} className="sm:w-[18px] sm:h-[18px]" />}
             </button>
             <button 
               onClick={handleLogout} 
               className="btn-header-action h-9 w-9 sm:h-10 sm:w-10 text-red-500 dark:text-red-400 border-none shadow-none active:scale-90"
               title="Cerrar Sesión"
             >
-              <LogOut size={18} />
+              <LogOut size={16} className="sm:w-[18px] sm:h-[18px]" />
             </button>
           </div>
         </div>
       </header>
 
       {/* CONTENIDO CON PADDING PARA LA CABECERA FIJA */}
-      <main className="flex-1 w-full pt-[var(--header-h)] pb-32">
+      <main className="flex-1 w-full pt-[var(--header-h)] pb-32 pb-safe">
         {children}
       </main>
 
       {/* DOCK INFERIOR - Optimized for spacing and touch */}
       {user.role !== UserRole.PROVIDER && (
-        <div className="fixed bottom-6 inset-x-0 z-[45] flex justify-center px-4 sm:px-6 pointer-events-none pb-safe">
-          <nav className="pointer-events-auto bg-white/85 dark:bg-slate-900/85 backdrop-blur-3xl border border-white/20 dark:border-slate-800 shadow-[0_20px_50px_rgba(0,0,0,0.3)] rounded-[2.5rem] p-1.5 flex items-center justify-between gap-1 w-full max-w-lg ring-1 ring-black/5">
+        <div className="fixed bottom-4 sm:bottom-6 inset-x-0 z-[45] flex justify-center px-2 sm:px-6 pointer-events-none pb-safe">
+          <nav className="pointer-events-auto bg-white/90 dark:bg-slate-900/90 backdrop-blur-3xl border border-white/20 dark:border-slate-800 shadow-[0_15px_40px_rgba(0,0,0,0.25)] rounded-3xl sm:rounded-[2.5rem] p-1 flex items-center justify-between gap-0.5 sm:gap-1 w-full max-w-lg ring-1 ring-black/5">
               <NavButton 
                 icon={ConciergeBell} 
                 label="Reservas" 

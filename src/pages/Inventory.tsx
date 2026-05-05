@@ -367,7 +367,7 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser, notificationVolume =
                 </button>
                 <button 
                   onClick={() => setShowManageDepartmentsModal(true)} 
-                  className="flex-1 min-w-[80px] bg-gradient-to-tr from-amber-500 via-yellow-500 to-amber-600 text-white px-3 py-3 rounded-xl flex items-center justify-center gap-1.5 active:scale-95 shadow-lg shadow-amber-600/30 text-[10px] font-black uppercase tracking-widest transition-all border border-white/10"
+                  className="flex-1 min-w-[80px] bg-red-600 text-white px-3 py-3 rounded-xl flex items-center justify-center gap-1.5 active:scale-95 shadow-lg shadow-red-600/20 text-[10px] font-black uppercase tracking-widest transition-all border border-white/10"
                 >
                   <ListTree size={16} strokeWidth={2.5} className="flex-shrink-0" />
                   <span>Áreas</span>
@@ -395,7 +395,7 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser, notificationVolume =
                 </button>
                 <button 
                   onClick={() => setShowManageDepartmentsModal(true)} 
-                  className="bg-gradient-to-tr from-amber-500 via-yellow-500 to-amber-600 text-white px-6 py-3 rounded-2xl flex items-center justify-center gap-2 font-black text-xs uppercase tracking-[0.15em] shadow-xl shadow-amber-600/30 hover:scale-[1.03] active:scale-95 transition-all border border-white/10"
+                  className="bg-red-600 text-white px-6 py-3 rounded-2xl flex items-center justify-center gap-2 font-black text-xs uppercase tracking-[0.15em] shadow-xl shadow-red-600/30 hover:scale-[1.03] active:scale-95 transition-all border border-white/10"
                 >
                   <ListTree size={18} strokeWidth={2.5} /> Gestionar Áreas
                 </button>
@@ -464,8 +464,8 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser, notificationVolume =
                 
                 {product.maxThreshold ? (
                   <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md border border-dashed border-amber-200 dark:border-amber-900/40 self-start bg-amber-50/50 dark:bg-amber-900/10">
-                    <div className="w-1.5 h-1.5 bg-amber-500 rounded-full shadow-[0_0_8px_rgba(245,158,11,0.6)]" />
-                    <span className="text-[11px] font-black text-amber-600 dark:text-amber-400 uppercase">Tope Área: {product.maxThreshold}</span>
+                    <div className="w-1.5 h-1.5 bg-yellow-400 rounded-full shadow-[0_0_8px_rgba(250,204,21,0.6)]" />
+                    <span className="text-[11px] font-black text-yellow-600 dark:text-yellow-400 uppercase">Tope Área: {product.maxThreshold}</span>
                   </div>
                 ) : null}
               </div>
@@ -612,8 +612,8 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser, notificationVolume =
                 <input type="number" className="w-full p-3 border-2 rounded-xl bg-slate-50 dark:bg-slate-950 font-bold text-red-600 text-sm" value={editProductForm.minThreshold || 0} onChange={e => setEditProductForm({...editProductForm, minThreshold: Number(e.target.value)})} />
               </div>
               <div>
-                <label className="text-[10px] font-black text-amber-500 dark:text-amber-400 uppercase tracking-widest mb-1 block">Tope por Área (Capacidad)</label>
-                <input type="number" className="w-full p-3 border-2 border-amber-100 dark:border-amber-900/30 rounded-xl bg-slate-50 dark:bg-slate-950 font-bold text-amber-600 text-sm focus:border-amber-500 outline-none" value={editProductForm.maxThreshold || ''} onChange={e => setEditProductForm({...editProductForm, maxThreshold: e.target.value ? Number(e.target.value) : undefined})} placeholder="Ej: 35" />
+                <label className="text-[10px] font-black text-yellow-500 dark:text-yellow-400 uppercase tracking-widest mb-1 block">Tope por Área (Capacidad)</label>
+                <input type="number" className="w-full p-3 border-2 border-yellow-100 dark:border-yellow-900/30 rounded-xl bg-slate-50 dark:bg-slate-950 font-bold text-yellow-600 dark:text-yellow-400 focus:border-yellow-500 outline-none" value={editProductForm.maxThreshold || ''} onChange={e => setEditProductForm({...editProductForm, maxThreshold: e.target.value ? Number(e.target.value) : undefined})} placeholder="Ej: 35" />
                 <p className="text-[9px] font-bold text-slate-400 mt-1 uppercase">Cantidad máxima permitida por pedido en cada área.</p>
               </div>
             </div>

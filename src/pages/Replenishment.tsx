@@ -387,7 +387,7 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCar
                     Disponible en Almacén: <span className="text-red-600 dark:text-red-500">{selectedProduct.quantity} {selectedProduct.unit}</span>
                   </p>
                   {selectedProduct.maxThreshold && (
-                    <p className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider mt-0.5">
+                    <p className="text-[10px] font-bold text-yellow-600 dark:text-yellow-400 uppercase tracking-wider mt-0.5">
                       Tope permitido en {selectedDepartmentNameForOrder}: <span className="font-black">{selectedProduct.maxThreshold} {selectedProduct.unit}</span>
                     </p>
                   )}
@@ -426,7 +426,7 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCar
                     />
                     <button 
                       onClick={() => setQtyValue(String(selectedProduct.maxThreshold ? Math.min(selectedProduct.quantity, selectedProduct.maxThreshold) : selectedProduct.quantity))}
-                      className="text-[10px] font-black text-amber-600 dark:text-amber-500 uppercase tracking-tighter hover:underline mt-1"
+                      className="text-[10px] font-black text-yellow-600 dark:text-yellow-500 uppercase tracking-tighter hover:underline mt-1"
                     >
                       USAR LÍMITE PERMITIDO
                     </button>
@@ -741,9 +741,9 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCar
                       </div>
                       
                       {product.maxThreshold && (
-                        <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md border border-dashed border-amber-200 dark:border-amber-900/40 bg-amber-50/50 dark:bg-amber-900/10 self-start">
-                          <div className="w-1.5 h-1.5 bg-amber-500 rounded-full shadow-[0_0_8px_rgba(245,158,11,0.6)]" />
-                          <span className="text-[9px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-tighter">
+                        <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md border border-dashed border-yellow-200 dark:border-yellow-900/40 bg-yellow-50/50 dark:bg-yellow-900/10 self-start">
+                          <div className="w-1.5 h-1.5 bg-yellow-400 rounded-full shadow-[0_0_8px_rgba(250,204,21,0.6)]" />
+                          <span className="text-[9px] font-black text-yellow-600 dark:text-yellow-400 uppercase tracking-tighter">
                             Tope Área: {product.maxThreshold}
                           </span>
                         </div>
