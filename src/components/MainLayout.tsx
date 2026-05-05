@@ -39,15 +39,16 @@ interface MainLayoutProps {
   unreadAdminNotificationsCount: number;
 }
 
-const NavButton = ({ icon: Icon, label, isActive, onClick, hasAlert = false }: any) => (
+const NavButton = React.memo(({ icon: Icon, label, isActive, onClick, hasAlert = false }: any) => (
   <button 
     onClick={onClick} 
     className={`
-      relative flex items-center justify-center rounded-2xl transition-all duration-500 ease-out overflow-hidden
+      relative flex flex-col items-center justify-center rounded-2xl transition-all duration-200 ease-out overflow-hidden
       outline-none select-none touch-manipulation active:scale-[0.95] group
       border border-white/10
-      ${isActive ? 'flex-[6] px-4 py-3 gap-2' : 'flex-[1] px-2 py-3'}
+      flex-1 px-1 py-2 gap-0.5
       text-white shadow-[0_4px_12px_-2px_rgba(220,38,38,0.3),inset_0_1px_0_rgba(255,255,255,0.2)] bg-gradient-to-br from-[#dc2626] to-[#b91c1c] ring-1 ring-white/20
+      ${isActive ? 'opacity-100' : 'opacity-85'}
     `}
     style={{ WebkitTapHighlightColor: 'transparent' }}
   >
@@ -55,28 +56,23 @@ const NavButton = ({ icon: Icon, label, isActive, onClick, hasAlert = false }: a
     
     <div className="relative z-10 flex-shrink-0 flex items-center justify-center">
       <Icon 
-        size={isActive ? 24 : 20} 
+        size={20} 
         strokeWidth={isActive ? 2.5 : 2} 
-        className={`transition-all duration-500 ${isActive ? 'scale-110' : 'scale-100 group-hover:scale-110'}`}
+        className={`transition-all duration-200 ${isActive ? 'scale-110' : 'scale-100 group-hover:scale-110'}`}
       />
       {hasAlert && !isActive && (
-         <span className="absolute -top-1 -right-1 flex h-4 w-4 z-20">
+         <span className="absolute -top-0.5 -right-0.5 flex h-3 w-3 z-20">
            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-300 opacity-75"></span>
-           <span className="relative inline-flex rounded-full h-4 w-4 bg-yellow-400 ring-2 ring-red-900 shadow-[0_0_10px_rgba(255,255,0,0.8)]"></span>
+           <span className="relative inline-flex rounded-full h-3 w-3 bg-yellow-400 ring-1 ring-red-900 shadow-[0_0_5px_rgba(255,255,0,0.8)]"></span>
          </span>
       )}
     </div>
     
-    <div className={`
-      overflow-hidden transition-all duration-500 ease-out flex items-center justify-center
-      ${isActive ? 'max-w-[100px] opacity-100 ml-1.5' : 'max-w-0 opacity-0'}
-    `}>
-      <span className="text-[11px] font-extrabold leading-tight whitespace-nowrap uppercase tracking-widest pt-0.5 text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
+    <span className={`text-[9px] font-bold leading-tight whitespace-nowrap uppercase tracking-tight text-white drop-shadow-[0_2px_2px_rgba(0,0,0,0.6)] transition-all duration-200 ${isActive ? 'opacity-100' : 'opacity-100'}`}>
         {label}
-      </span>
-    </div>
+    </span>
   </button>
-);
+));
 
 export const MainLayout: React.FC<MainLayoutProps> = ({
   children,
