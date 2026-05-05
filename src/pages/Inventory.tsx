@@ -367,9 +367,9 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser, notificationVolume =
                 </button>
                 <button 
                   onClick={() => setShowManageDepartmentsModal(true)} 
-                  className="flex-1 min-w-[80px] bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-3 py-3 rounded-xl flex items-center justify-center gap-1.5 active:scale-95 shadow-md border border-slate-200 dark:border-slate-700 text-[10px] font-black uppercase tracking-tighter whitespace-nowrap"
+                  className="flex-1 min-w-[80px] bg-gradient-to-tr from-amber-500 via-yellow-500 to-amber-600 text-white px-3 py-3 rounded-xl flex items-center justify-center gap-1.5 active:scale-95 shadow-lg shadow-amber-600/30 text-[10px] font-black uppercase tracking-widest transition-all border border-white/10"
                 >
-                  <ListTree size={15} className="flex-shrink-0" />
+                  <ListTree size={16} strokeWidth={2.5} className="flex-shrink-0" />
                   <span>Áreas</span>
                 </button>
               </div>
@@ -395,9 +395,9 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser, notificationVolume =
                 </button>
                 <button 
                   onClick={() => setShowManageDepartmentsModal(true)} 
-                  className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 font-black text-xs uppercase tracking-widest shadow-sm hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors border border-slate-200 dark:border-slate-800"
+                  className="bg-gradient-to-tr from-amber-500 via-yellow-500 to-amber-600 text-white px-6 py-3 rounded-2xl flex items-center justify-center gap-2 font-black text-xs uppercase tracking-[0.15em] shadow-xl shadow-amber-600/30 hover:scale-[1.03] active:scale-95 transition-all border border-white/10"
                 >
-                  <ListTree size={18} /> Áreas
+                  <ListTree size={18} strokeWidth={2.5} /> Gestionar Áreas
                 </button>
               </div>
             </div>
@@ -432,33 +432,40 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser, notificationVolume =
       {/* LISTADO DE PRODUCTOS */}
       <div className="max-w-7xl mx-auto p-4 md:p-6 space-y-4">
         {filteredProducts.map(product => (
-          <div key={product.id} className="bg-white dark:bg-slate-900/40 rounded-2xl p-4 shadow-sm border border-slate-100 dark:border-slate-800/50 flex items-center justify-between hover:shadow-md hover:border-red-500/30 transition-all relative overflow-hidden">
-            {product.quantity <= product.minThreshold && <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-500 animate-pulse"></div>}
+          <div key={product.id} className="bg-white dark:bg-slate-900/40 rounded-2xl p-4 shadow-sm border border-slate-100 dark:border-slate-800/50 flex items-center justify-between hover:shadow-md hover:border-red-500/20 transition-all relative overflow-hidden group">
+            {product.quantity <= product.minThreshold && <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-red-500/50"></div>}
             <div className="flex-1 min-w-0 pr-4">
-              <h3 className="font-black text-slate-900 dark:text-white truncate uppercase tracking-tight text-lg">{product.name}</h3>
-              <div className="flex flex-wrap items-center gap-2 mt-1">
+              <h3 className="font-black text-slate-900 dark:text-white truncate tracking-tighter text-xl mb-1.5 group-hover:text-red-600 transition-colors">{product.name}</h3>
+              <div className="flex flex-wrap items-center gap-2 mb-3">
                 {(product.departmentNames || [product.departmentName]).map((name, idx) => (
-                  <span key={idx} className="text-[11px] font-black text-slate-400 uppercase tracking-tight md:tracking-widest bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md leading-tight">{name}</span>
+                  <span key={idx} className="text-[9px] font-black text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-800 px-2.5 py-1 rounded-lg uppercase tracking-wider">{name}</span>
                 ))}
-                <span className="text-[11px] font-bold text-red-500 uppercase tracking-tight md:tracking-widest ml-auto">{product.category}</span>
+                <span className="text-[9px] font-black text-indigo-500 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/50 bg-indigo-50 dark:bg-indigo-950/30 px-2.5 py-1 rounded-full uppercase tracking-widest ml-auto">{product.category}</span>
               </div>
-              <div className="mt-3 flex flex-col gap-2">
-                <div className={`inline-flex items-center self-start px-3 py-1 rounded-lg font-black text-sm ${product.quantity <= 0 ? 'bg-red-100 text-red-600 dark:bg-red-900/30' : 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white'}`}>
+              <div className="flex flex-col gap-2">
+                <div className={`inline-flex items-center self-start px-3 py-1.5 rounded-xl font-black text-[10px] uppercase tracking-[0.1em] shadow-sm border transition-colors ${
+                  product.quantity <= 0 
+                  ? 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border-red-100 dark:border-red-900/30' 
+                  : 'bg-slate-50 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 border-slate-100 dark:border-slate-700/50'
+                }`}>
                   {product.quantity <= 0 ? (
-                    <span className="flex items-center gap-1.5 animate-pulse">
-                      <AlertTriangle size={14} /> NO HAY STOCK
+                    <span className="flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-red-600 animate-pulse" />
+                      SIN EXISTENCIAS
                     </span>
                   ) : (
-                    <>
-                      {product.quantity} <span className="text-xs opacity-70 ml-1">{product.unit}</span>
-                    </>
+                    <div className="flex items-center">
+                      <span className="opacity-50 mr-2 font-bold">STOCK:</span>
+                      <span className="text-slate-900 dark:text-white text-xs">{product.quantity}</span>
+                      <span className="ml-1 opacity-50 lowercase font-medium">{product.unit}</span>
+                    </div>
                   )}
                 </div>
                 
                 {product.maxThreshold ? (
-                  <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md border border-dashed border-red-200 dark:border-red-900/30 self-start">
-                    <div className="w-1.5 h-1.5 bg-red-500 rounded-full" />
-                    <span className="text-[11px] font-black text-red-600 dark:text-red-400 uppercase">Tope Área: {product.maxThreshold}</span>
+                  <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md border border-dashed border-amber-200 dark:border-amber-900/40 self-start bg-amber-50/50 dark:bg-amber-900/10">
+                    <div className="w-1.5 h-1.5 bg-amber-500 rounded-full shadow-[0_0_8px_rgba(245,158,11,0.6)]" />
+                    <span className="text-[11px] font-black text-amber-600 dark:text-amber-400 uppercase">Tope Área: {product.maxThreshold}</span>
                   </div>
                 ) : null}
               </div>
@@ -605,8 +612,8 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser, notificationVolume =
                 <input type="number" className="w-full p-3 border-2 rounded-xl bg-slate-50 dark:bg-slate-950 font-bold text-red-600 text-sm" value={editProductForm.minThreshold || 0} onChange={e => setEditProductForm({...editProductForm, minThreshold: Number(e.target.value)})} />
               </div>
               <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Tope por Área (Capacidad)</label>
-                <input type="number" className="w-full p-3 border-2 rounded-xl bg-slate-50 dark:bg-slate-950 font-bold text-red-600 text-sm" value={editProductForm.maxThreshold || ''} onChange={e => setEditProductForm({...editProductForm, maxThreshold: e.target.value ? Number(e.target.value) : undefined})} placeholder="Ej: 35" />
+                <label className="text-[10px] font-black text-amber-500 dark:text-amber-400 uppercase tracking-widest mb-1 block">Tope por Área (Capacidad)</label>
+                <input type="number" className="w-full p-3 border-2 border-amber-100 dark:border-amber-900/30 rounded-xl bg-slate-50 dark:bg-slate-950 font-bold text-amber-600 text-sm focus:border-amber-500 outline-none" value={editProductForm.maxThreshold || ''} onChange={e => setEditProductForm({...editProductForm, maxThreshold: e.target.value ? Number(e.target.value) : undefined})} placeholder="Ej: 35" />
                 <p className="text-[9px] font-bold text-slate-400 mt-1 uppercase">Cantidad máxima permitida por pedido en cada área.</p>
               </div>
             </div>

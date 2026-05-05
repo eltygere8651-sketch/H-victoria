@@ -593,52 +593,85 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
 
         {/* Images & Videos */}
         {!(isReservation && task.clientArrived) && ( (task.imageUrls && task.imageUrls.length > 0) || (task.videoUrls && task.videoUrls.length > 0) ) && (
-          <div className="mb-6">
+          <div className={`${isAnnouncement ? '-mx-6 md:-mx-8 px-6 md:px-8 bg-black/5 dark:bg-black/20 py-6 md:py-8 mb-0' : 'mb-6 md:mb-8'}`}>
             {(task.imagesTitle || (task.videoUrls && task.videoUrls.length > 0)) && (
-              <div className="flex items-center mb-4 ml-1 gap-2">
+              <div className="flex items-center mb-5 ml-1 gap-3">
                 {task.imagesTitle && (
-                  <div className={`flex items-center gap-2 px-4 py-1.5 rounded-full shadow-lg transform -rotate-1 ${isAnnouncement ? 'bg-indigo-600 dark:bg-indigo-500' : 'bg-red-600 dark:bg-red-500'}`}>
-                    <Camera size={14} className="text-white" />
-                    <span className="text-[11px] font-black text-white uppercase tracking-tighter">
+                  <div className={`flex items-center gap-2 px-5 py-2 rounded-full shadow-xl transform -rotate-1 ${isAnnouncement ? 'bg-indigo-600' : 'bg-red-600 hover:scale-105 transition-transform'}`}>
+                    <Camera size={16} className="text-white" />
+                    <span className="text-xs font-black text-white uppercase tracking-tighter shadow-sm">
                       {task.imagesTitle}
                     </span>
                   </div>
                 )}
                 {task.videoUrls && task.videoUrls.length > 0 && (
-                  <div className="flex items-center gap-2 bg-slate-900 dark:bg-indigo-900 px-4 py-1.5 rounded-full shadow-lg transform rotate-1 border border-white/10">
-                    <Video size={14} className="text-white" />
-                    <span className="text-[11px] font-black text-white uppercase tracking-tighter">
-                      Videos
+                  <div className="flex items-center gap-2 bg-slate-900 border border-white/10 px-5 py-2 rounded-full shadow-xl transform rotate-1 hover:scale-105 transition-transform">
+                    <Video size={16} className="text-white" />
+                    <span className="text-xs font-black text-white uppercase tracking-tighter">
+                      Premium Gallery
                     </span>
                   </div>
                 )}
               </div>
             )}
-            <div 
-              className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 pb-4"
-              style={{ WebkitOverflowScrolling: 'touch' }}
-            >
-              {/* Videos First */}
-              {task.videoUrls?.map((url, i) => (
-                <PremiumVideoPlayer key={`vid-${i}`} url={url} />
-              ))}
-
-              {/* Images */}
-              {task.imageUrls?.map((url, i) => (
-                <button 
-                  key={`img-${i}`} 
-                  onClick={() => onViewImages(task.imageUrls!, i)} 
-                  className={`relative aspect-square w-full rounded-2xl border-4 overflow-hidden shadow-xl hover:scale-[1.02] transition-all snap-start group/img ${isAnnouncement ? 'border-indigo-100 dark:border-indigo-900' : 'border-white dark:border-slate-800'}`}
-                >
-                  <img src={url} className="w-full h-full object-cover group-hover/img:scale-110 transition-transform duration-700" loading="lazy" referrerPolicy="no-referrer" />
-                  <div className="absolute inset-0 bg-black/0 group-hover/img:bg-black/20 transition-colors flex items-center justify-center">
-                    <div className="bg-white/20 backdrop-blur-md p-2 rounded-full opacity-0 group-hover/img:opacity-100 transition-opacity">
-                      <Camera size={18} className="text-white" />
-                    </div>
+            
+            {isAnnouncement ? (
+              <div className="flex overflow-x-auto no-scrollbar gap-4 pb-4 snap-x pr-20 md:pr-40 scroll-smooth">
+                {/* Videos in horizontal scroll for Announcements */}
+                {task.videoUrls?.map((url, i) => (
+                  <div key={`vid-${i}`} className="snap-center transform hover:scale-[1.02] transition-transform duration-500">
+                    <PremiumVideoPlayer url={url} />
                   </div>
-                </button>
-              ))}
-            </div>
+                ))}
+
+                {/* Images in horizontal scroll for Announcements */}
+                {task.imageUrls?.map((url, i) => (
+                  <button 
+                    key={`img-${i}`} 
+                    onClick={() => onViewImages(task.imageUrls!, i)} 
+                    className="relative w-72 h-48 md:w-96 md:h-64 flex-shrink-0 rounded-[2rem] border-4 border-white dark:border-slate-800 overflow-hidden shadow-2xl snap-center group/img transition-all duration-500"
+                  >
+                    <img src={url} className="w-full h-full object-cover group-hover/img:scale-110 transition-transform duration-1000" loading="lazy" referrerPolicy="no-referrer" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent flex items-end p-6">
+                      <div className="bg-white/20 backdrop-blur-md p-3 rounded-2xl border border-white/30 transform translate-y-2 opacity-0 group-hover/img:translate-y-0 group-hover/img:opacity-100 transition-all duration-500">
+                        <Camera size={24} className="text-white" />
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 lg:gap-4 pb-4">
+                {/* Videos in Grid for standard Tasks */}
+                {task.videoUrls?.map((url, i) => (
+                  <div key={`vid-${i}`} className="aspect-square relative rounded-2xl border-4 border-white dark:border-slate-800 overflow-hidden shadow-xl group/vid">
+                     <video src={`${url}#t=0.001`} className="w-full h-full object-cover" muted playsInline />
+                     <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
+                        <div className="p-3 bg-white/20 backdrop-blur-md rounded-full shadow-lg group-hover/vid:scale-110 transition-transform">
+                          <Play size={24} className="text-white fill-white ml-1" />
+                        </div>
+                     </div>
+                     {/* Use full player when clicked? For now let's keep it simple or use a custom play function */}
+                  </div>
+                ))}
+
+                {/* Images in Grid for standard Tasks */}
+                {task.imageUrls?.map((url, i) => (
+                  <button 
+                    key={`img-${i}`} 
+                    onClick={() => onViewImages(task.imageUrls!, i)} 
+                    className="relative aspect-square w-full rounded-2xl border-4 border-white dark:border-slate-800 overflow-hidden shadow-xl hover:shadow-2xl hover:scale-[1.02] transition-all group/img"
+                  >
+                    <img src={url} className="w-full h-full object-cover group-hover/img:scale-110 transition-transform duration-700" loading="lazy" referrerPolicy="no-referrer" />
+                    <div className="absolute inset-0 bg-black/0 group-hover/img:bg-black/20 transition-colors flex items-center justify-center">
+                      <div className="bg-white/20 backdrop-blur-md p-2 rounded-full opacity-0 group-hover/img:opacity-100 transition-opacity">
+                        <Camera size={18} className="text-white" />
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
 

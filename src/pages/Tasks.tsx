@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { Task, User, Department, TaskStatus, TaskPriority, UserRole, TaskType, TaskComment, TaskChecklistItem, TaskRecurrence } from '../types';
 import * as storageService from '../services/storageService';
-import { ClipboardCheck, Plus, X, Save, Loader2, Edit2, Trash2, ChevronDown, MessagesSquare, Check, Camera, AlertTriangle, Share2, Send, Image, Info, Flame, Bold, Calendar, Clock, List, FileText, ConciergeBell, Users, Phone, Hash, ChevronRight, User as UserIcon, Video, Megaphone, LayoutDashboard, Search } from 'lucide-react';
+import { ClipboardCheck, Plus, X, Save, Loader2, Edit2, Trash2, ChevronDown, MessagesSquare, Check, Camera, AlertTriangle, Share2, Send, Image, Info, Flame, Bold, Calendar, Clock, List, FileText, ConciergeBell, Users, Phone, Hash, ChevronRight, User as UserIcon, Video, Megaphone, LayoutDashboard, Search, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { compressImage } from '../utils/imageCompressor';
 import { ImageViewer } from '../components/ImageViewer';
@@ -758,7 +758,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId, initialTab })
   return (
     <div className="font-sans pb-24 bg-gray-50 dark:bg-slate-950 min-h-screen">
       {/* Header */}
-      <div className="sticky top-[var(--header-h)] z-40 bg-white/95 dark:bg-slate-950/95 backdrop-blur-xl border-b border-slate-200 dark:border-red-900/20 px-4 pt-5 pb-4 md:px-6 shadow-sm transition-all duration-300">
+      <div className="sticky top-[var(--header-h)] z-40 bg-white/95 dark:bg-slate-950/95 backdrop-blur-xl border-b border-slate-200 dark:border-red-900/20 px-4 pt-5 pb-4 md:px-6 shadow-sm transition-all duration-300 touch-pan-y">
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-5 transition-all">
           <div className="flex flex-col sm:flex-row sm:items-end gap-5 w-full sm:w-auto">
             <div className="flex items-center justify-between w-full sm:w-auto gap-6">
@@ -1012,15 +1012,15 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId, initialTab })
 
         {/* Sticky Location Tabs for Reservations & Announcements */}
         {(activeTab === 'RESERVATIONS' || activeTab === 'ARRIVED' || activeTab === 'ALL_RESERVATIONS' || activeTab === 'ANNOUNCEMENTS') && (
-          <div className="flex overflow-x-auto no-scrollbar gap-2.5 mt-4 py-1">
+          <div className="flex overflow-x-auto no-scrollbar gap-3 pt-2 pb-3 px-1 scroll-smooth">
             {[
-              { id: 'restaurante', label: 'Restaurante', color: 'bg-red-500', activeClass: 'bg-red-600 border-red-400' },
-              { id: 'gastro_bar', label: 'Gastro Bar', color: 'bg-red-500', activeClass: 'bg-red-600 border-red-400' },
-              { id: 'cafeteria', label: 'Cafetería', color: 'bg-red-500', activeClass: 'bg-red-600 border-red-400' },
-              { id: 'salon_c', label: 'Salón C', color: 'bg-red-500', activeClass: 'bg-red-600 border-red-400' },
-              { id: 'terraza', label: 'Terraza', color: 'bg-red-500', activeClass: 'bg-red-600 border-red-400' },
-              { id: 'eventos', label: 'Eventos', color: 'bg-red-500', activeClass: 'bg-red-600 border-red-400' },
-              { id: 'piscina', label: 'Piscina', color: 'bg-red-500', activeClass: 'bg-red-600 border-red-400' }
+              { id: 'restaurante', label: 'Restaurante', color: 'bg-emerald-500', activeClass: 'bg-[#064E3B] border-[#064E3B]' },
+              { id: 'gastro_bar', label: 'Gastro Bar', color: 'bg-rose-500', activeClass: 'bg-rose-900 border-rose-900' },
+              { id: 'cafeteria', label: 'Cafetería', color: 'bg-orange-500', activeClass: 'bg-orange-900 border-orange-900' },
+              { id: 'salon_c', label: 'Salón C', color: 'bg-purple-500', activeClass: 'bg-purple-900 border-purple-900' },
+              { id: 'terraza', label: 'Terraza', color: 'bg-blue-500', activeClass: 'bg-blue-900 border-blue-900' },
+              { id: 'eventos', label: 'Eventos', color: 'bg-amber-500', activeClass: 'bg-amber-900 border-amber-900' },
+              { id: 'piscina', label: 'Piscina', color: 'bg-cyan-500', activeClass: 'bg-cyan-900 border-cyan-900' }
             ].map((loc) => {
               const count = getReservationCount(loc.id);
               const isActive = activeLocation === loc.id;
@@ -1035,23 +1035,23 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId, initialTab })
                 <button
                   key={loc.id}
                   onClick={() => setActiveLocation(loc.id)}
-                  className={`flex items-center gap-2.5 px-4.5 py-2.5 rounded-[1.25rem] text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap border-2 relative shadow-md ${
+                  className={`flex items-center gap-3 px-6 py-3 rounded-2xl text-[11px] font-black uppercase tracking-[0.1em] transition-all whitespace-nowrap border-2 relative shadow-lg ${
                     isActive
-                      ? `${loc.activeClass} text-white shadow-[0_8px_20px_rgba(0,0,0,0.15)] scale-[1.03] z-10 border-white/20`
-                      : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/80 shadow-sm'
+                      ? `${loc.activeClass} text-white shadow-[0_10px_20px_rgba(0,0,0,0.15)] scale-[1.03] z-10 border-white/20`
+                      : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-red-500 hover:text-red-600 transition-colors'
                   }`}
                 >
                   {hasShowcase && (
-                    <div className="ml-1 bg-red-600 text-white p-1 rounded-full border border-white dark:border-slate-800 shadow-[0_2px_10px_rgba(220,38,38,0.4)] animate-bounce" title="Showcase publicado">
-                      <Video size={10} className="fill-white" />
+                    <div className="absolute -top-1 -left-1 bg-gradient-to-br from-red-600 to-red-800 text-white p-1.5 rounded-full border border-white dark:border-slate-800 shadow-[0_4px_12px_rgba(220,38,38,0.5)] animate-bounce" title="Showcase publicado">
+                      <Sparkles size={10} className="fill-white" />
                     </div>
                   )}
                   {count > 0 && (activeTab === 'RESERVATIONS' || activeTab === 'ARRIVED' || activeTab === 'ALL_RESERVATIONS') && (
-                    <span className="absolute -top-2 -right-2 min-w-[18px] h-[18px] bg-red-600 text-white text-[9px] font-black rounded-full flex items-center justify-center px-1 border-2 border-white dark:border-slate-800 shadow-[0_2px_10px_rgba(220,38,38,0.4)] animate-pulse">
+                    <span className="absolute -top-2 -right-2 min-w-[20px] h-[20px] bg-red-600 text-white text-[10px] font-black rounded-full flex items-center justify-center px-1 border-2 border-white dark:border-slate-800 shadow-[0_4px_12px_rgba(220,38,38,0.4)] animate-pulse">
                       {count}
                     </span>
                   )}
-                  <div className={`w-2 h-2 rounded-full ${isActive ? 'bg-white shadow-[0_0_10px_rgba(255,255,255,0.8)]' : loc.color}`}></div>
+                  <div className={`w-2.5 h-2.5 rounded-full ${isActive ? 'bg-white shadow-[0_0_10px_rgba(255,255,255,0.8)]' : loc.color}`}></div>
                   {loc.label}
                 </button>
               );

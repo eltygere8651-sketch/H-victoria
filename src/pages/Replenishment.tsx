@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Product, User, CartItem, Department, OrderBatch, UserRole, ReplenishmentRequest } from '../types';
 import * as storageService from '../services/storageService';
-import { Search, ShoppingCart, Plus, Minus, Trash2, CheckCircle2, X, ArrowRight, Package, ChevronUp, AlertTriangle, Siren, Loader2, ChevronDown, ListTree, Filter, Share2, Sparkles } from 'lucide-react';
+import { Search, ShoppingCart, Plus, Minus, Trash2, CheckCircle2, X, ArrowRight, Package, ChevronUp, AlertTriangle, Siren, Loader2, ChevronDown, ListTree, Filter, Share2, Sparkles, ShieldAlert, LayoutGrid } from 'lucide-react';
 import { sharePdfFromReactComponent } from '../utils/pdfGenerator';
 import { OrderPdfDocument } from '../components/OrderPdfDocument';
 import { motion, AnimatePresence } from 'motion/react';
@@ -387,7 +387,7 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCar
                     Disponible en Almacén: <span className="text-red-600 dark:text-red-500">{selectedProduct.quantity} {selectedProduct.unit}</span>
                   </p>
                   {selectedProduct.maxThreshold && (
-                    <p className="text-[10px] font-bold text-red-600 dark:text-red-400 uppercase tracking-wider mt-0.5">
+                    <p className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider mt-0.5">
                       Tope permitido en {selectedDepartmentNameForOrder}: <span className="font-black">{selectedProduct.maxThreshold} {selectedProduct.unit}</span>
                     </p>
                   )}
@@ -426,7 +426,7 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCar
                     />
                     <button 
                       onClick={() => setQtyValue(String(selectedProduct.maxThreshold ? Math.min(selectedProduct.quantity, selectedProduct.maxThreshold) : selectedProduct.quantity))}
-                      className="text-[10px] font-black text-red-600 dark:text-red-500 uppercase tracking-tighter hover:underline mt-1"
+                      className="text-[10px] font-black text-amber-600 dark:text-amber-500 uppercase tracking-tighter hover:underline mt-1"
                     >
                       USAR LÍMITE PERMITIDO
                     </button>
@@ -586,46 +586,42 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCar
 
       <AnimatePresence>
         {showLowStockModal && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-black/80 dark:bg-slate-950/95 backdrop-blur-md"
+              className="absolute inset-0 bg-slate-950/40 backdrop-blur-sm"
+              onClick={resetOrderState}
             />
             <motion.div 
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-[2.5rem] shadow-2xl overflow-hidden border border-red-500/30 text-center relative z-10"
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-[2rem] shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800 relative z-10"
             >
-              <div className="bg-red-600 text-white p-8 flex flex-col items-center relative overflow-hidden">
-                 <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent pointer-events-none" />
-                 <motion.div
-                   animate={{ scale: [1, 1.1, 1] }}
-                   transition={{ repeat: Infinity, duration: 2 }}
-                 >
-                   <Siren size={56} className="mb-4 drop-shadow-lg" />
-                 </motion.div>
-                 <h3 className="text-3xl font-black uppercase tracking-tighter drop-shadow-sm leading-none">¡ALERTA!</h3>
-                 <p className="font-bold opacity-90 drop-shadow-sm mt-2 text-sm tracking-widest uppercase">ALMACÉN CRÍTICO</p>
-              </div>
-              <div className="p-8">
-                 <div className="bg-red-50 dark:bg-red-900/10 rounded-2xl p-5 mb-8 border border-red-100 dark:border-red-900/20">
-                    <p className="text-red-700 dark:text-red-400 font-bold text-sm mb-4">Los siguientes productos están por debajo del mínimo:</p>
+              <div className="p-8 text-center">
+                 <div className="w-16 h-16 bg-red-50 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-100 dark:border-red-900/30">
+                    <ShieldAlert size={32} className="text-red-600 dark:text-red-400" />
+                 </div>
+                 <h3 className="text-2xl font-black uppercase tracking-tighter text-slate-900 dark:text-white leading-none">Stock Crítico</h3>
+                 <p className="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-widest mt-2">Atención requerida</p>
+
+                 <div className="mt-8 bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-5 mb-8 border border-slate-100 dark:border-slate-800/50">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Productos por debajo del mínimo:</p>
                     <ul className="space-y-3">
                       {lowStockList.map((name, i) => (
-                        <li key={i} className="flex items-center justify-center gap-2 font-black text-red-600 dark:text-red-500 text-lg drop-shadow-sm">
-                          <AlertTriangle size={20} /> {name}
+                        <li key={i} className="flex items-center justify-center gap-2 font-black text-red-600 dark:text-red-400 text-base uppercase tracking-tighter italic">
+                          <div className="w-1.5 h-1.5 rounded-full bg-red-600 animate-pulse" /> {name}
                         </li>
                       ))}
                     </ul>
                  </div>
                  <button 
                     onClick={resetOrderState}
-                    className="w-full py-5 bg-red-600 text-white font-black rounded-[1.5rem] hover:bg-red-700 transition-all active:scale-[0.97] shadow-xl shadow-red-900/20 uppercase tracking-widest text-sm"
+                    className="w-full py-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black rounded-xl hover:bg-red-600 dark:hover:bg-red-500 dark:hover:text-white transition-all active:scale-[0.97] shadow-xl shadow-slate-900/20 uppercase tracking-widest text-xs"
                  >
-                    Entendido, Aceptar
+                    Entendido, Cerrar
                  </button>
               </div>
             </motion.div>
@@ -635,47 +631,51 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCar
 
       <div className="flex-1 flex flex-col lg:pb-0">
         <div className="sticky top-[calc(var(--header-h)+2px)] bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl px-4 py-4 md:px-6 border-b border-gray-200 dark:border-white/5 shadow-sm z-30 space-y-4 transition-all duration-300 ring-1 ring-black/5 dark:ring-white/5 rounded-b-2xl md:rounded-b-none">
-           <div className="flex justify-between items-end">
-             <div className="flex flex-col">
-               <motion.span 
-                 initial={{ opacity: 0, x: -10 }}
-                 animate={{ opacity: 1, x: 0 }}
-                 className="text-[10px] font-black text-red-600 dark:text-red-500 uppercase tracking-[0.4em] leading-none mb-2"
-               >
-                 Suministros
-               </motion.span>
-               <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tighter leading-none drop-shadow-sm">
-                 Crear <span className="italic opacity-80">Pedido</span>
-               </h2>
-             </div>
-           </div>
-           
-            <div className="flex flex-col sm:flex-row gap-2">
-              <div className="relative flex-1">
-                 <label htmlFor="catalog-department-select" className="sr-only">Filtrar Productos por Departamento</label>
-                 <select
-                   id="catalog-department-select"
-                   value={selectedDepartmentForOrder}
-                   onChange={(e) => setSelectedDepartmentForOrder(e.target.value)}
-                   className="w-full px-4 py-3 pl-10 rounded-2xl border-2 border-gray-100 dark:border-slate-800 focus:border-red-500 outline-none transition-all bg-gray-50 dark:bg-slate-800/60 dark:text-white shadow-sm appearance-none font-black text-xs text-gray-700 dark:text-slate-300 uppercase tracking-tighter"
-                 >
-                   {departments.map((dep) => (
-                     <option key={dep.id} value={dep.id}>{dep.name}</option>
-                   ))}
-                 </select>
-                 <Filter className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500 pointer-events-none" size={16} />
-                 <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500 pointer-events-none" size={18} />
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+              <div className="flex flex-col">
+                <motion.span 
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.3em] leading-none mb-1 ml-1"
+                >
+                  Nuevo Pedido
+                </motion.span>
+                <h2 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tighter leading-none italic">
+                  Gestión de <span className="text-red-600 drop-shadow-sm uppercase not-italic">Insumos</span>
+                </h2>
               </div>
+              
+              <div className="flex flex-col sm:flex-row gap-2">
+                <div className="relative group/dept">
+                  <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-indigo-600 dark:text-indigo-400 z-10 pointer-events-none transition-transform group-hover/dept:scale-110">
+                    <LayoutGrid size={16} strokeWidth={2.5} />
+                  </div>
+                  <select
+                    id="catalog-department-select"
+                    value={selectedDepartmentForOrder}
+                    onChange={(e) => setSelectedDepartmentForOrder(e.target.value)}
+                    className="min-w-[140px] md:min-w-[180px] pl-10 pr-10 py-3 rounded-2xl border-2 border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 dark:text-white focus:bg-white dark:focus:bg-slate-900 focus:border-indigo-500 outline-none transition-all shadow-sm appearance-none font-black text-xs text-indigo-700 dark:text-indigo-400 uppercase tracking-widest cursor-pointer hover:border-indigo-200 dark:hover:border-indigo-700"
+                  >
+                    <option value="" disabled>Seleccionar Área</option>
+                    {departments.map(dept => (
+                      <option key={dept.id} value={dept.id}>{dept.name}</option>
+                    ))}
+                  </select>
+                  <div className="absolute right-3.5 top-1/2 -translate-y-1/2 text-indigo-400 pointer-events-none">
+                    <ChevronDown size={14} strokeWidth={3} />
+                  </div>
+                </div>
 
-              <div className="relative flex-[1.5]">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" size={16} />
-                <input 
-                  type="text" 
-                  placeholder="Buscar producto..." 
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 rounded-xl border-2 border-gray-100 dark:border-slate-800 text-xs focus:border-red-500 outline-none transition-all bg-gray-50 dark:bg-slate-800/60 dark:text-white placeholder-gray-500 dark:placeholder-slate-400 shadow-sm font-bold text-gray-900"
-                />
+                <div className="relative flex-1">
+                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" size={16} />
+                  <input 
+                    type="text" 
+                    placeholder="Buscar producto..." 
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 rounded-2xl border-2 border-slate-100 dark:border-slate-800 text-xs focus:border-red-500 outline-none transition-all bg-gray-50 dark:bg-slate-800/60 dark:text-white placeholder-gray-500 dark:placeholder-slate-400 shadow-sm font-bold text-gray-900"
+                  />
+                </div>
               </div>
             </div>
         </div>
@@ -706,14 +706,14 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCar
                   >
                     <div className="flex justify-between items-start mb-1">
                       <div className="flex-1 pr-8">
-                        <h3 className="text-sm md:text-base font-black text-slate-900 dark:text-white leading-tight line-clamp-2 group-hover:text-red-600 dark:group-hover:text-red-500 transition-colors">{product.name}</h3>
-                        <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 mt-1 uppercase tracking-widest">{product.category}</p>
+                        <h3 className="text-base md:text-lg font-black text-slate-900 dark:text-white leading-tight line-clamp-2 group-hover:text-red-600 dark:group-hover:text-red-500 transition-colors tracking-tighter uppercase">{product.name}</h3>
+                        <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 mt-1 uppercase tracking-[0.2em]">{product.category}</p>
                       </div>
                       {inCart && (
                         <motion.span 
                           initial={{ scale: 0.5, opacity: 0 }}
                           animate={{ scale: 1, opacity: 1 }}
-                          className="bg-red-600 text-white text-[10px] font-black px-2 py-1 rounded-lg shadow-lg shadow-red-600/20 shrink-0"
+                          className="bg-indigo-600 text-white text-[10px] font-black px-2 py-1 rounded-lg shadow-lg shadow-indigo-600/20 shrink-0"
                         >
                           {inCart.quantity}
                         </motion.span>
@@ -721,20 +721,29 @@ const Replenishment: React.FC<ReplenishmentProps> = ({ currentUser, cart, setCar
                     </div>
                     
                     <div className="mt-auto pt-3 flex flex-col gap-2">
-                      <div className={`text-xs font-black px-2.5 py-1.5 rounded-xl border self-start shadow-2xl ${available <= 0 ? 'bg-critical-red animate-critical-blink ring-4 ring-red-600/30' : 'bg-green-50 text-green-600 border-green-100 dark:bg-green-900/20 dark:text-green-400 dark:border-green-900/30'}`}>
+                      <div className={`inline-flex items-center self-start px-3 py-1.5 rounded-xl font-black text-[10px] uppercase tracking-[0.1em] shadow-sm border transition-colors ${
+                        available <= 0 
+                        ? 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border-red-100 dark:border-red-900/30' 
+                        : 'bg-green-50 text-green-600 border-green-100 dark:bg-green-900/20 dark:text-green-400 dark:border-green-900/30'
+                      }`}>
                         {available <= 0 ? (
-                          <span className="flex items-center gap-1.5 uppercase tracking-tighter">
-                            <Siren size={14} className="animate-pulse" /> ¡AGOTADO! - PEDIR YA
+                          <span className="flex items-center gap-1.5 opacity-100">
+                            <div className="w-1.5 h-1.5 rounded-full bg-red-600 animate-pulse" />
+                            SIN EXISTENCIAS
                           </span>
                         ) : (
-                          `${available} ${product.unit}`
+                          <div className="flex items-center">
+                            <span className="opacity-50 mr-2 font-bold">STOCK:</span>
+                            <span className="text-slate-900 dark:text-white text-xs">{available}</span>
+                            <span className="ml-1 opacity-50 lowercase font-medium">{product.unit}</span>
+                          </div>
                         )}
                       </div>
                       
                       {product.maxThreshold && (
-                        <div className="flex items-center gap-1">
-                          <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-                          <span className="text-[9px] font-black text-red-600 dark:text-red-400 uppercase tracking-tighter">
+                        <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md border border-dashed border-amber-200 dark:border-amber-900/40 bg-amber-50/50 dark:bg-amber-900/10 self-start">
+                          <div className="w-1.5 h-1.5 bg-amber-500 rounded-full shadow-[0_0_8px_rgba(245,158,11,0.6)]" />
+                          <span className="text-[9px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-tighter">
                             Tope Área: {product.maxThreshold}
                           </span>
                         </div>

@@ -50,10 +50,10 @@ export const GuideModal: React.FC<GuideModalProps> = ({ isOpen, onClose }) => {
           
           <div className="relative z-10 flex-1">
             <h2 className="text-2xl font-black tracking-tighter uppercase italic mb-2 flex items-center gap-2">
-              <span className="text-transparent bg-clip-text bg-[linear-gradient(110deg,#fff,45%,#fbbf24,55%,#fff)] bg-[length:200%_100%] animate-shine">Hub Intelligence</span>
+              <span className="text-transparent bg-clip-text bg-[linear-gradient(110deg,#fff,45%,#fbbf24,55%,#fff)] bg-[length:200%_100%] animate-shine">Hub Eco System</span>
             </h2>
             <p className="text-red-50 font-medium text-sm leading-relaxed max-w-sm">
-              Plataforma de gestión operativa de élite. Centraliza, audita y eleva cada detalle de tu establecimiento.
+              Tu centro de operaciones digital. Hub conecta el control de inventario, la gestión de pedidos y la organización de tareas en un solo lugar para que tu negocio funcione sin errores y a pleno rendimiento.
             </p>
           </div>
           

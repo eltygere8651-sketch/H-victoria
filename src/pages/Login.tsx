@@ -252,7 +252,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, setShowGuideModal }) => {
 
           <div className="mt-8 pt-6 border-t border-slate-100 text-center">
              <p className="text-[10px] font-medium text-slate-400 uppercase tracking-widest">
-               Hub Operational Intelligence
+               Hub Eco System
              </p>
           </div>
         </div>
