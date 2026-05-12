@@ -4,7 +4,7 @@
   "short_name": "Hub_Ecosystem",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0f172a",
+  "background_color": "#060812",
   "theme_color": "#fbbf24",
   "description": "Sistema de Gestión de Pedidos Hub",
   "orientation": "portrait",
@@ -23,16 +23,22 @@
       "purpose": "maskable"
     },
     {
-      "src": "/icon-512.png",
+      "src": "/logo_app.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
+      "src": "/logo_app.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
       "src": "/logo_app.svg",
       "sizes": "512x512",
       "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "purpose": "any"
     }
   ]
 }
