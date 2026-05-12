@@ -1,7 +1,7 @@
 
 {
-  "name": "Hub_Ecosystem",
-  "short_name": "Hub_Ecosystem",
+  "name": "Hub",
+  "short_name": "Hub",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#060812",
@@ -11,7 +11,7 @@
   "gcm_sender_id": "103953800507",
   "icons": [
     {
-      "src": "/apple-touch-icon.png?v=9",
+      "src": "/apple-icon-180x180.png",
       "sizes": "180x180",
       "type": "image/png",
       "purpose": "any"
