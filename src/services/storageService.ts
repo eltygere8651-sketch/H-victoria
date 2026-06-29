@@ -727,7 +727,7 @@ export const receiveStockBatch = async (items: { productId: string; productName:
 };
 
 export const subscribeToBatches = (callback: (batches: OrderBatch[]) => void) => {
-  return db.collection(KEYS.REQUESTS).orderBy('timestamp', 'desc').limit(200).onSnapshot(snapshot => {
+  return db.collection(KEYS.REQUESTS).orderBy('timestamp', 'desc').limit(50).onSnapshot(snapshot => {
     const requests = snapshot.docs.map(d => ({ ...d.data(), id: d.id } as ReplenishmentRequest));
     const batches = requests.reduce((acc, req) => {
       if (!req.batchId) return acc;
@@ -883,7 +883,7 @@ export const savePushToken = async (userId: string, token: string) => await db.c
 export const subscribeToNotifications = (callback: (data: AppNotification[]) => void, unreadOnly = false) => {
   // To avoid composite index requirement, we fetch all and filter in memory if unreadOnly is true
   // or we just fetch with order and filter in memory.
-  return db.collection(KEYS.NOTIFICATIONS).orderBy('timestamp', 'desc').onSnapshot(snapshot => {
+  return db.collection(KEYS.NOTIFICATIONS).orderBy('timestamp', 'desc').limit(50).onSnapshot(snapshot => {
       let notifications = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as AppNotification));
       if (unreadOnly) {
         notifications = notifications.filter(n => n.readStatus === false);
@@ -902,7 +902,11 @@ export const markAllNotificationsAsRead = async (userId: string, userName: strin
 
 // --- TASKS ---
 export const subscribeToTasks = (callback: (data: Task[]) => void) => {
-    return db.collection(KEYS.TASKS).orderBy('createdAt', 'desc').limit(50).onSnapshot(snapshot => {
+    // Para optimizar en producción sin romper el calendario, cargamos las tareas recientes y las futuras.
+    // Limitamos las tareas completadas antiguas obteniendo solo las creadas en los últimos 30 días,
+    // pero como no podemos hacer consultas complejas (OR) fácilmente aquí sin índices,
+    // mantenemos un límite alto y ordenado para no saturar.
+    return db.collection(KEYS.TASKS).orderBy('createdAt', 'desc').limit(400).onSnapshot(snapshot => {
         callback(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Task)));
     }, error => handleFirestoreError(error, OperationType.GET, KEYS.TASKS));
 };
