@@ -347,18 +347,33 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
               <X size={20} />
             </button>
             <div className="flex flex-col items-center text-center gap-4 pt-4">
-              <div className="p-4 bg-slate-100 dark:bg-slate-800 rounded-2xl">
-                <Share2 size={32} className="text-blue-500" />
+              <div className="p-4 bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center gap-2">
+                <Share2 size={28} className="text-blue-500" />
               </div>
-              <h3 className="text-xl font-bold text-slate-900 dark:text-white">Instalar App en iOS</h3>
-              <p className="text-slate-600 dark:text-slate-400 text-sm">
-                Para instalar esta aplicación en tu iPhone o iPad, pulsa el botón <strong>Compartir</strong> en la barra de navegación y luego selecciona <strong>"Añadir a la pantalla de inicio"</strong>.
-              </p>
+              <h3 className="text-xl font-bold text-slate-900 dark:text-white">Cómo Instalar la App</h3>
+              
+              <div className="text-left w-full space-y-4 my-2 text-slate-600 dark:text-slate-300">
+                <div className="flex items-start gap-3">
+                  <div className="bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full w-6 h-6 flex items-center justify-center font-bold shrink-0 mt-0.5">1</div>
+                  <p className="text-sm">Toca el botón <strong>Compartir</strong> <Share2 size={14} className="inline mx-1 text-blue-500" /> que está en la barra de abajo de Safari.</p>
+                </div>
+                
+                <div className="flex items-start gap-3">
+                  <div className="bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full w-6 h-6 flex items-center justify-center font-bold shrink-0 mt-0.5">2</div>
+                  <p className="text-sm">Baja un poco y selecciona <strong className="bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded">Añadir a la pantalla de inicio</strong> 📱</p>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <div className="bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full w-6 h-6 flex items-center justify-center font-bold shrink-0 mt-0.5">3</div>
+                  <p className="text-sm">Toca <strong>Añadir</strong> arriba a la derecha y ¡listo! 🎉</p>
+                </div>
+              </div>
+
               <button 
                 onClick={() => setShowIOSPrompt(false)}
-                className="w-full mt-2 bg-red-600 text-white font-bold py-3 rounded-xl hover:bg-red-700 transition-all"
+                className="w-full mt-2 bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/30"
               >
-                Entendido
+                ¡Entendido, gracias!
               </button>
             </div>
           </div>
@@ -378,25 +393,25 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
               <div className="p-4 bg-slate-100 dark:bg-slate-800 rounded-2xl">
                 <Download size={32} className="text-red-500" />
               </div>
-              <h3 className="text-xl font-bold text-slate-900 dark:text-white">Instalar App en Android</h3>
+              <h3 className="text-xl font-bold text-slate-900 dark:text-white">Instalar Aplicación</h3>
               {(() => {
                 const isInAppBrowser = /FBAV|FBAN|Instagram|Line|Snapchat|WhatsApp|Viber|Twitter|TikTok/i.test(navigator.userAgent);
                 if (deferredPrompt) {
                   return (
                     <p className="text-slate-600 dark:text-slate-400 text-sm">
-                      Instala esta aplicación en tu dispositivo para un acceso más rápido y una mejor experiencia.
+                      Instala nuestra aplicación con un solo toque para acceder más rápido y recibir notificaciones. 🚀
                     </p>
                   );
                 } else if (isInAppBrowser) {
                   return (
                     <p className="text-slate-600 dark:text-slate-400 text-sm">
-                      Estás usando un navegador integrado. Para instalar la app, pulsa el menú y selecciona <strong>"Abrir en Chrome"</strong> o <strong>"Abrir en el navegador"</strong>.
+                      Estás desde otra app. Para poder instalar, toca los tres puntos del menú y selecciona <strong>"Abrir en Chrome"</strong>.
                     </p>
                   );
                 } else {
                   return (
                     <p className="text-slate-600 dark:text-slate-400 text-sm">
-                      Para instalar esta aplicación, pulsa el menú de los <strong>3 puntos</strong> en la esquina superior derecha de tu navegador y selecciona <strong>"Instalar aplicación"</strong> o <strong>"Añadir a la pantalla de inicio"</strong>.
+                      Para instalar, toca los <strong>3 puntos</strong> del menú de arriba y selecciona <strong>"Instalar aplicación"</strong> o <strong>"Añadir a la pantalla de inicio"</strong>.
                     </p>
                   );
                 }
@@ -415,7 +430,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
                   onClick={() => setShowAndroidPrompt(false)}
                   className="w-full mt-2 bg-red-600 text-white font-bold py-3 rounded-xl hover:bg-red-700 transition-all"
                 >
-                  Entendido
+                  ¡Entendido!
                 </button>
               )}
             </div>
