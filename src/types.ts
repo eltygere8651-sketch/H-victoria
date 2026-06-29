@@ -171,6 +171,7 @@ export enum NotificationType {
   DAILY_TASK_ALERT = 'DAILY_TASK_ALERT',
   INVENTORY_ADJUSTMENT = 'INVENTORY_ADJUSTMENT',
   TASK_COMPLETED = 'TASK_COMPLETED',
+  SYSTEM_ALERT = 'SYSTEM_ALERT',
 }
 
 export interface NotificationPayload {

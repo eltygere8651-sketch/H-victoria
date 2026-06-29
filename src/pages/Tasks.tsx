@@ -361,9 +361,9 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId, initialTab })
       const newPreviews: string[] = [];
 
       filesArray.forEach(file => {
-        // Limit video size roughly to 50MB for free tier stability
-        if (file.size > 50 * 1024 * 1024) {
-          alert(`El video ${file.name} es demasiado grande. Máximo 50MB.`);
+        // Límite de video ampliado a 60MB (aprox. 1 minuto de video HD)
+        if (file.size > 60 * 1024 * 1024) {
+          alert(`El video ${file.name} es demasiado grande. El máximo permitido es 60MB (aprox. 1 minuto).`);
           return;
         }
         newVideoFiles.push(file as File);

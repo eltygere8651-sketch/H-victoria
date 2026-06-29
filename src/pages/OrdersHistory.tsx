@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import * as storageService from '../services/storageService';
 import { User, UserRole, OrderBatch } from '../types';
-import { FileText, Trash2, X, Eye, Package, Download, Loader2, Share2 } from 'lucide-react';
+import { FileText, Trash2, X, Eye, Package, Download, Loader2, Share2, AlertCircle } from 'lucide-react';
 import { Logo } from '../components/Logo';
 import { generatePdfFromReactComponent, sharePdfFromReactComponent } from '../utils/pdfGenerator';
 import { OrderPdfDocument } from '../components/OrderPdfDocument';
@@ -94,7 +94,13 @@ const OrdersHistory: React.FC<OrdersHistoryProps> = ({ currentUser }) => {
             <span className="bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 p-2 rounded-xl shadow-sm"><FileText size={32} /></span>
             Historial de Albaranes
           </h2>
-          <p className="text-gray-500 dark:text-slate-400 text-base mt-2 ml-1 drop-shadow-sm">Consulta y reimprime los albaranes anteriores</p>
+          <p className="text-gray-500 dark:text-slate-400 text-base mt-2 ml-1 drop-shadow-sm">Consulta y reimprime los albaranes anteriores.</p>
+          <div className="mt-3 bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-400 p-3 rounded-r-lg flex gap-3 shadow-sm max-w-2xl">
+            <AlertCircle className="text-yellow-600 dark:text-yellow-500 shrink-0 mt-0.5" size={20} />
+            <p className="text-sm text-yellow-700 dark:text-yellow-400/90 leading-relaxed">
+              <strong className="font-bold">Aviso del Sistema:</strong> Para mantener la base de datos optimizada y rápida, los albaranes con <strong>más de 30 días</strong> de antigüedad se eliminan automáticamente. Por favor, realiza una copia de seguridad o exporta a PDF los albaranes que necesites conservar.
+            </p>
+          </div>
         </div>
 
         {currentUser.role === UserRole.ADMIN && (

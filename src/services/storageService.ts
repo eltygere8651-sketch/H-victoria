@@ -1189,6 +1189,58 @@ export const deleteAllNotifications = async () => {
   await batch.commit();
 };
 
+export const cleanupOldReplenishmentRequests = async () => {
+  const thirtyDaysInMs = 30 * 24 * 60 * 60 * 1000;
+  const thirtyDaysAgo = Date.now() - thirtyDaysInMs;
+
+  try {
+    const snapshot = await db.collection(KEYS.REQUESTS).get();
+    let deletedCount = 0;
+    const batchSize = 450;
+    let batch = db.batch();
+
+    for (const doc of snapshot.docs) {
+      const data = doc.data() as ReplenishmentRequest;
+      let time = data.timestamp;
+      
+      if (!time && data.date) {
+        const [d, m, y] = data.date.split('/').map(Number);
+        if (d && m && y) {
+          time = new Date(y, m - 1, d).getTime();
+        }
+      }
+
+      if (time && time < thirtyDaysAgo) {
+        batch.delete(doc.ref);
+        deletedCount++;
+        if (deletedCount % batchSize === 0) {
+          await batch.commit();
+          batch = db.batch();
+        }
+      }
+    }
+    if (deletedCount % batchSize !== 0) {
+      await batch.commit();
+    }
+    
+    if (deletedCount > 0) {
+      console.log(`Auto-limpieza de albaranes: eliminados ${deletedCount} registros antiguos.`);
+      
+      // Enviar notificación a los usuarios informando sobre la limpieza
+      await db.collection(KEYS.NOTIFICATIONS).add({
+        type: NotificationType.SYSTEM_ALERT,
+        title: 'Mantenimiento Mensual: Albaranes',
+        message: `Se han limpiado automáticamente ${deletedCount} albaranes/pedidos con más de 30 días de antigüedad. Recuerde hacer copias de seguridad regularmente.`,
+        icon: 'Database',
+        timestamp: Date.now(),
+        readStatus: false
+      });
+    }
+  } catch (error) {
+    console.error("Error limpiando albaranes antiguos:", error);
+  }
+};
+
 export const checkAutoCleanup = async () => {
   try {
     const cleanupRef = db.collection(KEYS.SYSTEM).doc('cleanup');
@@ -1204,6 +1256,7 @@ export const checkAutoCleanup = async () => {
     // Perform cleanup
     await deleteAllNotifications();
     await cleanupCompletedTasks();
+    await cleanupOldReplenishmentRequests();
     
     // Update the last cleanup timestamp
     await cleanupRef.set({ 
