@@ -26,7 +26,7 @@ const uploadToCloudinary = async (file: File, resourceType: 'video' | 'image'): 
   const formData = new FormData();
   formData.append('file', file);
   formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
-  formData.append('folder', 'hotel_victoria_tasks');
+  formData.append('folder', 'hub_tasks_media');
 
   try {
     const response = await fetch(

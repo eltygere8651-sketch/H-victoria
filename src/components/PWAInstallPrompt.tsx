@@ -31,7 +31,7 @@ export const PWAInstallPrompt: React.FC<PWAInstallPromptProps> = ({ isOpen, onCl
 
           <h3 className="text-2xl font-black text-slate-900 dark:text-white mb-2 tracking-tight">Instalar Hub App</h3>
           <p className="text-sm text-slate-500 dark:text-slate-400 mb-8 font-medium">
-            Lleva el control de tu hotel a todas partes con nuestra aplicación nativa.
+            Lleva el control de tu negocio a todas partes con nuestra aplicación nativa.
           </p>
 
             <div className="bg-slate-50 dark:bg-slate-800/50 p-8 rounded-[2.5rem] border border-slate-100 dark:border-slate-700/50 mb-8 relative overflow-hidden group">

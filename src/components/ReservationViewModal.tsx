@@ -1,6 +1,6 @@
 import React from 'react';
 import { Task } from '../types';
-import { X, Check, Users, Phone, Sparkles, ConciergeBell } from 'lucide-react';
+import { X, Check, Users, Phone, Sparkles, ConciergeBell, Briefcase } from 'lucide-react';
 
 interface ReservationViewModalProps {
   task: Task;
@@ -49,9 +49,15 @@ export const ReservationViewModal: React.FC<ReservationViewModalProps> = ({ task
             )}
           </div>
 
-          <h2 className="text-4xl md:text-5xl font-black text-[#064E3B] dark:text-white uppercase tracking-tighter leading-[0.9]">
+          <h2 className="text-4xl md:text-5xl font-black text-[#064E3B] dark:text-white uppercase tracking-tighter leading-[0.9] mb-2">
             {task.title}
           </h2>
+          {task.clientBusinessName && (
+            <div className="flex items-center gap-2 text-[#064E3B]/80 dark:text-emerald-200/80 mt-2 bg-white/40 dark:bg-black/20 w-fit px-3 py-1.5 rounded-full border border-white/50 dark:border-white/10 backdrop-blur-sm">
+              <Briefcase size={14} />
+              <span className="text-sm font-black uppercase tracking-widest">{task.clientBusinessName}</span>
+            </div>
+          )}
         </div>
 
         {/* Body */}

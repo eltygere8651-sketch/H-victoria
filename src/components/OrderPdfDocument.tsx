@@ -1,6 +1,7 @@
 import React from 'react';
 import { OrderBatch } from '../types';
 import { Logo } from './Logo';
+import * as storageService from '../services/storageService';
 
 interface OrderPdfDocumentProps {
   order: OrderBatch;
@@ -8,6 +9,8 @@ interface OrderPdfDocumentProps {
 }
 
 export const OrderPdfDocument: React.FC<OrderPdfDocumentProps> = ({ order, preview = false }) => {
+  const businessName = storageService.activeWorkspaceName || 'MI NEGOCIO';
+  
   // Dimensiones A4 en píxeles a 96 DPI: 794px ancho x 1123px alto.
   const A4_WIDTH = '794px';
   const A4_HEIGHT = '1120px'; 
@@ -54,7 +57,7 @@ export const OrderPdfDocument: React.FC<OrderPdfDocumentProps> = ({ order, previ
           <div className="flex items-center gap-4">
             <Logo size={preview ? "md" : "lg"} simple />
             <div>
-              <h1 className="text-3xl font-black uppercase tracking-tighter text-black leading-none">Hub</h1>
+              <h1 className="text-3xl font-black uppercase tracking-tighter text-black leading-none">{businessName}</h1>
               <p className="text-red-600 font-bold uppercase tracking-[0.3em] text-[10px] mt-1">
                 {order.departmentName === 'Ingreso de Mercancía' ? 'Albarán de Ingreso' : 
                  (order.departmentId === 'INGRESO' || order.departmentName === 'Ingreso de Proveedor' ? 'Albarán de Entrega' : 'Pedido Interno')}
@@ -132,7 +135,7 @@ export const OrderPdfDocument: React.FC<OrderPdfDocumentProps> = ({ order, previ
               <p>Este documento sirve como comprobante oficial de movimiento de materiales internos.</p>
             </div>
             <div className="text-right">
-               <p className="text-[8px] font-black text-gray-300 uppercase tracking-[0.2em]">Hub Ecosystem v1.0</p>
+               <p className="text-[8px] font-black text-gray-400 uppercase tracking-[0.2em]">© {businessName} • Management Hub</p>
             </div>
           </div>
       </div>

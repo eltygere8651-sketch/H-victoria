@@ -181,10 +181,10 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser, notificationVolume =
     } catch (e) { console.error(e); }
   };
 
-  const isDeveloper = storageService.auth.currentUser?.email === storageService.SUPER_ADMIN_EMAIL || !!currentUser.isSuperAdmin;
+  const isAdmin = currentUser.role === UserRole.ADMIN || !!currentUser.isSuperAdmin;
 
   const handleSaveProduct = async () => {
-    if (!isDeveloper && !editProductForm.id) {
+    if (!isAdmin) {
       setShowDeveloperRestrictedModal(true);
       return;
     }
@@ -218,7 +218,7 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser, notificationVolume =
   };
 
   const handleSaveDepartment = async () => {
-    if (!isDeveloper) {
+    if (!isAdmin) {
       setShowDeveloperRestrictedModal(true);
       return;
     }
@@ -230,7 +230,7 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser, notificationVolume =
 
   const handleDeleteDepartment = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!isDeveloper) {
+    if (!isAdmin) {
       setShowDeveloperRestrictedModal(true);
       return;
     }
@@ -238,7 +238,7 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser, notificationVolume =
   };
 
   const confirmDeleteDepartment = async () => {
-    if (!isDeveloper) {
+    if (!isAdmin) {
       setShowDeveloperRestrictedModal(true);
       return;
     }
@@ -357,7 +357,7 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser, notificationVolume =
                 </button>
                 <button 
                   onClick={() => { 
-                    if (!isDeveloper) { setShowDeveloperRestrictedModal(true); return; }
+                    if (!isAdmin) { setShowDeveloperRestrictedModal(true); return; }
                     setEditProductForm({}); setShowEditProductModal(true); 
                   }}
                   className="flex-1 min-w-[100px] bg-red-600 text-white px-3 py-3 rounded-xl flex items-center justify-center gap-1.5 shadow-lg shadow-red-600/20 active:scale-95 text-[10px] font-black uppercase tracking-tighter whitespace-nowrap"
@@ -385,7 +385,7 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser, notificationVolume =
                 </button>
                 <button 
                   onClick={() => { 
-                    if (!isDeveloper) { setShowDeveloperRestrictedModal(true); return; }
+                    if (!isAdmin) { setShowDeveloperRestrictedModal(true); return; }
                     setEditProductForm({}); setShowEditProductModal(true); 
                   }}
                   className="bg-red-600 text-white px-5 py-2.5 rounded-2xl flex items-center gap-2 shadow-lg shadow-red-600/20 transition-all font-black text-xs uppercase tracking-widest hover:scale-105 active:scale-95"
@@ -474,7 +474,7 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser, notificationVolume =
               <button onClick={() => { setEditProductForm(product); setShowEditProductModal(true); }} className="p-3 text-red-600 bg-red-50 dark:bg-red-900/20 rounded-xl active:scale-90"><Edit2 size={18} /></button>
               <button 
                 onClick={() => { 
-                  if (!isDeveloper) {
+                  if (!isAdmin) {
                     setShowDeveloperRestrictedModal(true);
                     return;
                   }
@@ -590,9 +590,10 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser, notificationVolume =
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Almacén Actual</label>
                 <input 
                   type="number" 
-                  className="w-full p-3 border-2 rounded-xl bg-slate-100 dark:bg-slate-800 font-bold opacity-60 text-sm" 
+                  className={`w-full p-3 border-2 rounded-xl font-bold text-sm ${editProductForm.id ? 'bg-slate-100 dark:bg-slate-800 opacity-60' : 'bg-slate-50 dark:bg-slate-950 focus:border-red-500'}`}
                   value={editProductForm.quantity || 0} 
-                  disabled
+                  onChange={e => !editProductForm.id && setEditProductForm({...editProductForm, quantity: Number(e.target.value)})}
+                  disabled={!!editProductForm.id}
                 />
               </div>
               <div>
@@ -634,7 +635,7 @@ const Inventory: React.FC<InventoryProps> = ({ currentUser, notificationVolume =
             <div className="flex gap-3">
               <button onClick={() => setProductToDelete(null)} className="flex-1 py-2.5 font-bold bg-slate-100 dark:bg-slate-800 rounded-lg text-slate-600 dark:text-slate-400 text-xs">Cancelar</button>
               <button onClick={() => { 
-                if (!isDeveloper) {
+                if (!isAdmin) {
                   setShowDeveloperRestrictedModal(true);
                   setProductToDelete(null);
                   return;

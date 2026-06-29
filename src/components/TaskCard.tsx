@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Task, User, TaskStatus, TaskPriority, TaskChecklistItem, UserRole, TaskRecurrence, TaskType } from '../types';
-import { AlertTriangle, Edit2, Trash2, Share2, FileText, MessagesSquare, Check, Clock, Calendar, RotateCcw, Camera, Play, Video, Megaphone, Info, ConciergeBell, Users, Hash, Phone, Sparkles, MapPin, Utensils, X } from 'lucide-react';
+import { AlertTriangle, Edit2, Trash2, Share2, FileText, MessagesSquare, Check, Clock, Calendar, RotateCcw, Camera, Play, Video, Megaphone, Info, ConciergeBell, Users, Hash, Phone, Sparkles, MapPin, Utensils, X, Briefcase } from 'lucide-react';
 import { PremiumVideoPlayer } from './PremiumVideoPlayer';
 import { DeletionTimer } from './DeletionTimer';
 import { DailyResetTimer } from './DailyResetTimer';
@@ -249,9 +249,15 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
                </div>
                
                <div className="flex flex-col min-w-0 flex-1 justify-center">
-                  <h3 className="text-lg md:text-2xl font-black text-[#042F2E] leading-none tracking-tighter uppercase mb-1 truncate drop-shadow-sm group-hover:text-emerald-700 transition-colors">
+                  <h3 className="text-lg md:text-2xl font-black text-[#042F2E] leading-none tracking-tighter uppercase mb-0.5 truncate drop-shadow-sm group-hover:text-emerald-700 transition-colors">
                     {task.title}
                   </h3>
+                  {task.clientBusinessName && (
+                    <div className="flex items-center gap-1 text-[#064E3B]/70 mb-1.5">
+                      <Briefcase size={10} />
+                      <span className="text-[10px] md:text-xs font-bold uppercase tracking-wider truncate">{task.clientBusinessName}</span>
+                    </div>
+                  )}
                   <div className="flex items-center gap-2 text-[#064E3B]/80 flex-wrap">
                      <span className="text-[11px] md:text-xs font-black tracking-[0.2em] bg-emerald-100/50 px-1.5 py-0.5 rounded-md border border-emerald-200/30">{task.guests} PAX</span>
                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-500/20" />
@@ -332,6 +338,14 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({
                    <h3 className="text-2xl md:text-4xl font-black text-[#042F2E] leading-[0.85] tracking-tighter uppercase mb-1 drop-shadow-sm group-hover:text-emerald-700 transition-colors">
                      {task.title}
                    </h3>
+                   {task.clientBusinessName && (
+                     <div className="flex items-center gap-1.5 text-[#064E3B]/80 mt-1 mb-1">
+                        <div className="w-4 h-4 rounded-full border border-[#064E3B]/20 flex items-center justify-center bg-white/50">
+                           <Briefcase size={8} className="text-[#064E3B]" />
+                        </div>
+                        <span className="text-xs md:text-sm font-black uppercase tracking-widest">{task.clientBusinessName}</span>
+                     </div>
+                   )}
                    {task.clientPhone && (
                      <div className="flex items-center gap-1.5 text-[#064E3B]/70 mt-1">
                         <div className="w-4 h-4 rounded-full border border-[#064E3B]/20 flex items-center justify-center">

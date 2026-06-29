@@ -1,4 +1,4 @@
-import { Product, User, ReplenishmentRequest, UserRole, Department, CartItem, AppNotification, NotificationType, NotificationPayload, OrderBatch, Task, TaskStatus, TaskPriority, TaskType, TaskComment, Document, TaskRecurrence } from '../types';
+import { Product, User, ReplenishmentRequest, UserRole, Department, CartItem, AppNotification, NotificationType, NotificationPayload, OrderBatch, Task, TaskStatus, TaskPriority, TaskType, TaskComment, Document, TaskRecurrence, AppLocation } from '../types';
 import { db, auth, storage } from '../firebaseConfig';
 export { auth, db, storage };
 import firebase from 'firebase/compat/app';
@@ -16,18 +16,107 @@ export const sanitizeData = (data: any) => {
   return sanitized;
 };
 
-const KEYS = {
-  USERS: 'hotel_victoria_users',
-  PRODUCTS: 'hotel_victoria_products',
-  DEPARTMENTS: 'hotel_victoria_departments',
-  REQUESTS: 'hotel_victoria_requests',
-  CURRENT_SESSION: 'hotel_victoria_session',
-  DRAFT_CART: 'hotel_victoria_draft_cart',
-  LAST_VIEW: 'hotel_victoria_last_view',
-  NOTIFICATIONS: 'hotel_victoria_notifications',
-  TASKS: 'hotel_victoria_tasks',
-  DOCUMENTS: 'hotel_victoria_documents',
-  SYSTEM: 'hotel_victoria_system',
+const BASE_KEYS = {
+  USERS: 'users',
+  PRODUCTS: 'products',
+  DEPARTMENTS: 'departments',
+  REQUESTS: 'requests',
+  CURRENT_SESSION: 'session',
+  DRAFT_CART: 'draft_cart',
+  LAST_VIEW: 'last_view',
+  NOTIFICATIONS: 'notifications',
+  TASKS: 'tasks',
+  LOCATIONS: 'locations',
+  DOCUMENTS: 'documents',
+  SYSTEM: 'system',
+};
+
+export let activeWorkspaceId = localStorage.getItem('hub_workspace_id') || '';
+export let activeWorkspaceName = localStorage.getItem('hub_workspace_name') || 'MI NEGOCIO';
+
+export const setActiveWorkspaceId = (id: string, name?: string) => {
+  activeWorkspaceId = id;
+  if (id) {
+    localStorage.setItem('hub_workspace_id', id);
+    if (name) {
+      activeWorkspaceName = name;
+      localStorage.setItem('hub_workspace_name', name);
+    }
+  } else {
+    localStorage.removeItem('hub_workspace_id');
+    localStorage.removeItem('hub_workspace_name');
+    activeWorkspaceName = 'MI NEGOCIO';
+  }
+};
+
+export const KEYS = new Proxy(BASE_KEYS, {
+  get(target, prop: keyof typeof BASE_KEYS) {
+    if (prop === 'CURRENT_SESSION' || prop === 'LAST_VIEW' || prop === 'DRAFT_CART') {
+      return target[prop] + (activeWorkspaceId ? `_${activeWorkspaceId}` : '');
+    }
+    if (!activeWorkspaceId) {
+      return target[prop];
+    }
+    return `workspaces/${activeWorkspaceId}/${target[prop]}`;
+  }
+}) as typeof BASE_KEYS;
+
+export interface Workspace {
+  id: string;
+  name: string;
+  ownerEmail: string;
+  createdAt: number;
+  plan: 'free' | 'pro';
+  status?: 'PENDING' | 'ACTIVE' | 'EXPIRED' | 'TRIAL';
+  subscriptionEndsAt?: number;
+}
+
+export const getOwnerWorkspaces = async (email: string): Promise<Workspace[]> => {
+  // If Super Admin, return ALL workspaces
+  if (email.toLowerCase() === 'eltygere8651@gmail.com') {
+    const snapshot = await db.collection('workspaces').get();
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Workspace));
+  }
+  
+  const snapshot = await db.collection('workspaces').where('ownerEmail', '==', email.toLowerCase()).get();
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Workspace));
+};
+
+export const createWorkspace = async (workspaceId: string, name: string, ownerEmail: string): Promise<Workspace> => {
+  const isSuperAdmin = ownerEmail.toLowerCase() === 'eltygere8651@gmail.com';
+  const ws: Workspace = { 
+    id: workspaceId, 
+    name, 
+    ownerEmail: ownerEmail.toLowerCase(), 
+    createdAt: Date.now(), 
+    plan: 'free',
+    status: isSuperAdmin ? 'ACTIVE' : 'PENDING'
+  };
+  await db.collection('workspaces').doc(workspaceId).set(ws);
+  return ws;
+};
+
+export const updateWorkspace = async (workspaceId: string, name: string): Promise<void> => {
+  await db.collection('workspaces').doc(workspaceId).update({ name });
+};
+
+export const updateWorkspaceSubscription = async (workspaceId: string, updates: Partial<Workspace>): Promise<void> => {
+  await db.collection('workspaces').doc(workspaceId).update(updates);
+};
+
+export const deleteWorkspace = async (workspaceId: string): Promise<void> => {
+  await db.collection('workspaces').doc(workspaceId).delete();
+};
+
+export const checkWorkspaceExists = async (workspaceId: string): Promise<boolean> => {
+  const doc = await db.collection('workspaces').doc(workspaceId).get();
+  return doc.exists;
+};
+
+export const getWorkspace = async (workspaceId: string): Promise<Workspace | null> => {
+  if (!workspaceId) return null;
+  const doc = await db.collection('workspaces').doc(workspaceId).get();
+  return doc.exists ? ({ id: doc.id, ...doc.data() } as Workspace) : null;
 };
 
 const INITIAL_USERS: User[] = [
@@ -120,6 +209,7 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
 
 // CRITICAL: Connection test for boot verification
 export const testConnection = async () => {
+  if (!activeWorkspaceId) return;
   try {
     const { doc, getDocFromCache, getDocFromServer } = await import('firebase/firestore');
     // Using compat db but let's try to verify connection
@@ -135,10 +225,10 @@ export const testConnection = async () => {
 
 export const getCurrentUser = () => auth.currentUser;
 
-async function initFirestoreWithInitialData() {
+export async function initFirestoreWithInitialData() {
   console.log("Comprobando estado de inicialización...");
 
-  try {
+  const performInit = async () => {
     const initRef = db.collection(KEYS.SYSTEM).doc('initialization');
     const initDoc = await initRef.get();
 
@@ -193,6 +283,10 @@ async function initFirestoreWithInitialData() {
     // Marcar como inicializado para no volver a ejecutar esto
     await initRef.set({ isInitialized: true, timestamp: Date.now() });
     console.log("Sincronización inicial completada y marcada como inicializada.");
+  };
+
+  try {
+    await retry(performInit, 3, 2000);
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, KEYS.SYSTEM);
   }
@@ -299,17 +393,17 @@ export const ensureAnonymousAuth = async () => {
         try {
             await auth.signInAnonymously();
             console.log("Sesión anónima iniciada para seguridad de Firestore.");
-        } catch (e) {
-            console.error("Error al iniciar sesión anónima:", e);
+        } catch (e: any) {
+            console.warn("No se pudo iniciar sesión anónima (puede estar deshabilitado):", e.message);
         }
     }
-    await initFirestoreWithInitialData();
 };
 
 export const saveSession = (user: User) => localStorage.setItem(KEYS.CURRENT_SESSION, safeStringify(user));
 export const getSession = (): User | null => JSON.parse(localStorage.getItem(KEYS.CURRENT_SESSION) || 'null');
 export const clearSession = async () => {
     localStorage.removeItem(KEYS.CURRENT_SESSION);
+    setActiveWorkspaceId('');
     try {
         await auth.signOut();
     } catch (e) {
@@ -342,6 +436,29 @@ export const ensureAdminSession = async (user: User) => {
       }
     }
   }
+};
+
+export const signInWithEmail = async (email: string, pass: string) => {
+    try {
+        const result = await auth.signInWithEmailAndPassword(email, pass);
+        return result.user;
+    } catch (error) {
+        console.error("Error signing in with Email", error);
+        throw error;
+    }
+};
+
+export const signUpWithEmail = async (email: string, pass: string, name: string) => {
+    try {
+        const result = await auth.createUserWithEmailAndPassword(email, pass);
+        if (result.user) {
+            await result.user.updateProfile({ displayName: name });
+        }
+        return result.user;
+    } catch (error) {
+        console.error("Error signing up with Email", error);
+        throw error;
+    }
 };
 
 export const signInWithGoogle = async () => {
@@ -433,6 +550,32 @@ export const deleteDepartment = async (id: string) => {
     await db.collection(KEYS.DEPARTMENTS).doc(id).delete();
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, KEYS.DEPARTMENTS);
+  }
+};
+
+// --- LOCATIONS ---
+export const subscribeToLocations = (callback: (data: AppLocation[]) => void) => {
+    return db.collection(KEYS.LOCATIONS).orderBy('name').onSnapshot(snapshot => {
+        const locations = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as AppLocation));
+        callback(locations);
+    }, error => handleFirestoreError(error, OperationType.GET, KEYS.LOCATIONS));
+};
+
+export const saveLocation = async (location: Partial<AppLocation>) => {
+  try {
+    const docRef = location.id ? db.collection(KEYS.LOCATIONS).doc(location.id) : db.collection(KEYS.LOCATIONS).doc();
+    console.log(`Guardando salon: ${docRef.id}... Role: ${getSession()?.role}`);
+    await docRef.set(sanitizeData({ ...location, id: docRef.id }), { merge: true });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, KEYS.LOCATIONS);
+  }
+};
+
+export const deleteLocation = async (id: string) => {
+  try {
+    await db.collection(KEYS.LOCATIONS).doc(id).delete();
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, KEYS.LOCATIONS);
   }
 };
 
@@ -679,7 +822,7 @@ export const addUser = async (user: Omit<User, 'id'>) => {
   try {
     // Asegurar que estamos autenticados para tener permisos de escritura (reglas de seguridad)
     if (!auth.currentUser) {
-      await auth.signInAnonymously();
+      await ensureAnonymousAuth();
     }
 
     const userId = user.name.toLowerCase().trim();

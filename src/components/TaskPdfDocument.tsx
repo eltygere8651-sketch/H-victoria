@@ -3,6 +3,7 @@ import { Task, TaskPriority, TaskStatus, TaskType } from '../types';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Logo } from './Logo';
+import * as storageService from '../services/storageService';
 
 interface TaskPdfDocumentProps {
   task: Task;
@@ -10,6 +11,8 @@ interface TaskPdfDocumentProps {
 }
 
 export const TaskPdfDocument: React.FC<TaskPdfDocumentProps> = ({ task, preview = false }) => {
+  const businessName = storageService.activeWorkspaceName || 'MI NEGOCIO';
+  
   const getPriorityText = (priority: TaskPriority) => {
     switch (priority) {
       case TaskPriority.HIGH: return 'ALTA / URGENTE';
@@ -129,7 +132,7 @@ export const TaskPdfDocument: React.FC<TaskPdfDocumentProps> = ({ task, preview 
 
         {/* Footer */}
         <div className="mt-12 pt-6 border-t border-slate-100 flex justify-between items-center text-slate-300">
-          <p className="text-[9px] font-bold uppercase tracking-widest">© Hotel Victoria • Reservations Desk</p>
+          <p className="text-[9px] font-bold uppercase tracking-widest">© {businessName} • Reservas</p>
           <p className="text-[9px] font-bold uppercase tracking-widest italic tracking-[0.2em]">Copia de Seguridad</p>
         </div>
       </div>
@@ -261,7 +264,7 @@ export const TaskPdfDocument: React.FC<TaskPdfDocumentProps> = ({ task, preview 
 
       {/* Footer */}
       <div className="mt-12 pt-6 border-t border-slate-100 flex justify-between items-center text-slate-300">
-        <p className="text-[9px] font-bold uppercase tracking-widest">© Hotel Victoria • Hub Management</p>
+        <p className="text-[9px] font-bold uppercase tracking-widest">© {businessName} • Management Hub</p>
         <p className="text-[9px] font-bold uppercase tracking-widest italic tracking-[0.2em]">Confidencial</p>
       </div>
     </div>

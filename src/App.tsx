@@ -13,6 +13,7 @@ import { initializePushNotifications } from './services/pushNotificationService'
 import { ShareModal } from './components/ShareModal';
 import { GuideModal } from './components/GuideModal';
 import { MainLayout } from './components/MainLayout';
+import { AlertCircle } from 'lucide-react';
 
 import ProviderDelivery from './pages/ProviderDelivery';
 
@@ -92,6 +93,8 @@ const App: React.FC = () => {
   const displayedToastIds = useRef<Set<string>>(new Set());
   const cleanupPerformed = useRef(false);
 
+  const [globalBlockedMessage, setGlobalBlockedMessage] = useState<string | null>(null);
+
   useEffect(() => {
     const initializeApp = async () => {
       try {
@@ -99,6 +102,37 @@ const App: React.FC = () => {
         const shareId = searchParams.get('shareId');
         const publicMode = searchParams.get('public');
         const providerMode = searchParams.get('provider');
+        const wsParam = searchParams.get('ws');
+        
+        if (wsParam) {
+          storageService.setActiveWorkspaceId(wsParam);
+        }
+
+        const currentSession = storageService.getSession();
+        if (currentSession) {
+          // Check workspace status
+          const isSuperAdmin = currentSession.email?.toLowerCase() === 'eltygere8651@gmail.com';
+          const wsId = storageService.activeWorkspaceId;
+          if (wsId && !isSuperAdmin) {
+            const ws = await storageService.getWorkspace(wsId);
+            if (ws) {
+              if (ws.status === 'PENDING') {
+                setGlobalBlockedMessage('Este salón está pendiente de aprobación. Por favor, espera a que el administrador revise la solicitud de prueba gratuita.');
+                storageService.clearSession();
+              } else if (ws.status === 'EXPIRED' || (ws.subscriptionEndsAt && ws.subscriptionEndsAt < Date.now())) {
+                setGlobalBlockedMessage('La suscripción de este salón ha expirado. Por favor, contacta al administrador para renovarla.');
+                storageService.clearSession();
+              } else {
+                setUser(currentSession);
+              }
+            } else {
+              setUser(currentSession);
+            }
+          } else {
+            setUser(currentSession);
+          }
+        }
+
         // Artificial delay for splash screen visibility
         const minSplashTime = new Promise(resolve => setTimeout(resolve, 800));
 
@@ -434,6 +468,8 @@ const App: React.FC = () => {
   const handleSharePublicAccess = () => {
     const url = new URL(window.location.origin);
     url.searchParams.set('public', 'true');
+    const ws = storageService.activeWorkspaceId;
+    if (ws) url.searchParams.set('ws', ws);
     setShareData({ url: url.toString(), title: 'Acceso Público Hub' });
     setShowShareModal(true);
   };
@@ -496,6 +532,31 @@ const App: React.FC = () => {
               Cargando
             </p>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (globalBlockedMessage) {
+    return (
+      <div className="min-h-[100dvh] bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900 flex flex-col items-center justify-center p-4 font-sans relative overflow-hidden transition-colors duration-700">
+        <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-red-400/20 rounded-full blur-[120px] pointer-events-none animate-pulse"></div>
+        <div className="absolute bottom-[-10%] right-[-10%] w-[80%] h-[80%] bg-blue-400/20 rounded-full blur-[120px] pointer-events-none animate-pulse" style={{ animationDelay: '2s' }}></div>
+
+        <div className="w-full max-w-md bg-slate-900/90 backdrop-blur-xl rounded-3xl shadow-2xl overflow-hidden border border-slate-700 transition-all duration-500 animate-pop-in relative z-10 text-center p-8">
+          <div className="w-20 h-20 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+            <AlertCircle className="text-red-500" size={32} />
+          </div>
+          <h2 className="text-2xl font-black text-white mb-4">Acceso Restringido</h2>
+          <p className="text-slate-300 font-medium mb-8 leading-relaxed">
+            {globalBlockedMessage}
+          </p>
+          <button 
+            onClick={() => { setGlobalBlockedMessage(null); handleLogout(); }}
+            className="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-4 rounded-xl transition-all border border-slate-700"
+          >
+            Volver al inicio
+          </button>
         </div>
       </div>
     );

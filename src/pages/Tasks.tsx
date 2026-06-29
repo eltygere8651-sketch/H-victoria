@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
-import { Task, User, Department, TaskStatus, TaskPriority, UserRole, TaskType, TaskComment, TaskChecklistItem, TaskRecurrence } from '../types';
+import { Task, User, Department, TaskStatus, TaskPriority, UserRole, TaskType, TaskComment, TaskChecklistItem, TaskRecurrence, AppLocation } from '../types';
 import * as storageService from '../services/storageService';
-import { ClipboardCheck, Plus, X, Save, Loader2, Edit2, Trash2, ChevronDown, MessagesSquare, Check, Camera, AlertTriangle, Share2, Send, Image, Info, Flame, Bold, Calendar, Clock, List, FileText, ConciergeBell, Users, Phone, Hash, ChevronRight, User as UserIcon, Video, Megaphone, LayoutDashboard, Search, Sparkles } from 'lucide-react';
+import { ClipboardCheck, Plus, X, Save, Loader2, Edit2, Trash2, ChevronDown, MessagesSquare, Check, Camera, AlertTriangle, Share2, Send, Image, Info, Flame, Bold, Calendar, Clock, List, FileText, ConciergeBell, Users, Phone, Hash, ChevronRight, User as UserIcon, Video, Megaphone, LayoutDashboard, Search, Sparkles, Briefcase } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { compressImage } from '../utils/imageCompressor';
 import { ImageViewer } from '../components/ImageViewer';
@@ -34,7 +34,8 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId, initialTab })
       setActiveTab(initialTab);
     }
   }, [initialTab, initialTaskId]);
-  const [activeLocation, setActiveLocation] = useState<string>('restaurante');
+  const [locations, setLocations] = useState<AppLocation[]>([]);
+  const [activeLocation, setActiveLocation] = useState<string>('sala_principal');
   const [reservationSearchTerm, setReservationSearchTerm] = useState('');
   
   const [showTaskModal, setShowTaskModal] = useState(false);
@@ -124,9 +125,43 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId, initialTab })
   // Derived state for the task currently being commented on
   const activeTaskForComments = allTasks.find(t => t.id === activeCommentTaskId);
 
-  // Permission Check
+  const DEFAULT_LOCATIONS = [
+    { id: 'sala_principal', name: 'Sala Principal', color: 'bg-emerald-500', activeClass: 'bg-[#064E3B] border-[#064E3B]' },
+    { id: 'terraza', name: 'Terraza', color: 'bg-blue-500', activeClass: 'bg-blue-900 border-blue-900' },
+    { id: 'barra', name: 'Barra', color: 'bg-rose-500', activeClass: 'bg-rose-900 border-rose-900' },
+    { id: 'salon_privado', name: 'Salón Privado', color: 'bg-purple-500', activeClass: 'bg-purple-900 border-purple-900' },
+    { id: 'eventos', name: 'Eventos', color: 'bg-amber-500', activeClass: 'bg-amber-900 border-amber-900' },
+    { id: 'cafeteria', name: 'Cafetería', color: 'bg-orange-500', activeClass: 'bg-orange-900 border-orange-900' }
+  ];
+  
+  const displayLocations = locations.length > 0 ? locations : DEFAULT_LOCATIONS;
+
   const canManageTasks = currentUser.role === UserRole.ADMIN || 
                          (currentUser.role === UserRole.STAFF && currentUser.permissions?.includes('CAN_MANAGE_TASKS'));
+
+  // Auto-seed locations if empty and user is admin
+  useEffect(() => {
+    if (locations.length === 0 && canManageTasks) {
+      // Small delay to ensure we've actually loaded from Firebase and it's truly empty
+      const timer = setTimeout(() => {
+        if (locations.length === 0) {
+          DEFAULT_LOCATIONS.forEach(loc => {
+            storageService.saveLocation(loc);
+          });
+        }
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [locations.length, canManageTasks]);
+
+  const activeLocationName = displayLocations.find(l => l.id === activeLocation)?.name || activeLocation;
+
+  // Sync activeLocation if the current one gets deleted
+  useEffect(() => {
+    if (displayLocations.length > 0 && !displayLocations.some(l => l.id === activeLocation)) {
+      setActiveLocation(displayLocations[0].id);
+    }
+  }, [displayLocations, activeLocation]);
 
   useEffect(() => {
     const unsubscribeTasks = storageService.subscribeToTasks((tasks) => {
@@ -134,10 +169,12 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId, initialTab })
       setLoading(false);
     });
     const unsubscribeDepartments = storageService.subscribeToDepartments(setDepartments);
+    const unsubscribeLocations = storageService.subscribeToLocations(setLocations);
 
     return () => {
       unsubscribeTasks();
       unsubscribeDepartments();
+      unsubscribeLocations();
     };
   }, []);
 
@@ -165,9 +202,9 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId, initialTab })
       const taskData: Partial<Task> = {
         ...editingTask,
         type: editingTask.type || TaskType.TASK,
-        location: isSpecialType ? (editingTask.location || 'restaurante') : undefined,
-        departmentName: isSpecialType ? `Salón: ${editingTask.location || 'restaurante'}` : (department?.name || 'General'),
-        departmentId: isSpecialType ? `salon-${editingTask.location || 'restaurante'}` : (editingTask.departmentId || 'general'),
+        location: isSpecialType ? (editingTask.location || (displayLocations[0]?.id || '')) : undefined,
+        departmentName: isSpecialType ? `Salón: ${editingTask.location || (displayLocations[0]?.id || '')}` : (department?.name || 'General'),
+        departmentId: isSpecialType ? `salon-${editingTask.location || (displayLocations[0]?.id || '')}` : (editingTask.departmentId || 'general'),
         reservationDate: isReservation && !editingTask.reservationDate 
           ? new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' })
           : editingTask.reservationDate,
@@ -223,7 +260,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId, initialTab })
     const todayStr = new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
     return allTasks.filter(t => 
       t.type === TaskType.RESERVATION && 
-      (t.location || 'restaurante') === location && 
+      (t.location || (displayLocations[0]?.id || '')) === location && 
       t.reservationDate === todayStr &&
       !t.clientArrived
     ).length;
@@ -446,6 +483,8 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId, initialTab })
       url.search = ''; 
       url.hash = '';
       url.searchParams.set('shareId', task.id);
+      const ws = storageService.activeWorkspaceId;
+      if (ws) url.searchParams.set('ws', ws);
       const shareUrl = url.toString();
 
       setShareData({ url: shareUrl, title: task.title });
@@ -558,7 +597,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId, initialTab })
       
       // Tab filtering
       if (activeTab === 'RESERVATIONS') {
-        const itemLocation = task.location || 'restaurante';
+        const itemLocation = task.location || (displayLocations[0]?.id || '');
         const todayStr = new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
         
         // Helper to normalize dates for comparison (DD/MM/YYYY)
@@ -575,7 +614,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId, initialTab })
       }
 
       if (activeTab === 'ALL_RESERVATIONS') {
-        const itemLocation = task.location || 'restaurante';
+        const itemLocation = task.location || (displayLocations[0]?.id || '');
         const locationMatch = reservationSearchTerm ? true : itemLocation === activeLocation;
         // EXCLUSIVE: Do not show if already arrived in the general search tab
         if (task.type !== TaskType.RESERVATION || !locationMatch || task.clientArrived) return false;
@@ -593,7 +632,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId, initialTab })
       }
 
       if (activeTab === 'ARRIVED') {
-        const itemLocation = task.location || 'restaurante';
+        const itemLocation = task.location || (displayLocations[0]?.id || '');
         const todayStr = new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
         const locationMatch = reservationSearchTerm ? true : itemLocation === activeLocation;
         
@@ -610,7 +649,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId, initialTab })
       }
 
       if (activeTab === 'ANNOUNCEMENTS') {
-        const itemLocation = task.location || 'restaurante';
+        const itemLocation = task.location || (displayLocations[0]?.id || '');
         return task.type === TaskType.ANNOUNCEMENT && itemLocation === activeLocation;
       }
 
@@ -922,7 +961,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId, initialTab })
                     setPreviews([]);
                     setShowTaskModal(true);
                   }}
-                  className="flex items-center gap-2 px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl transition-all active:scale-95 shadow-md"
+                  className="flex items-center gap-2 px-5 py-2.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-200 text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl transition-all active:scale-95 shadow-md"
                 >
                   <Plus size={16} strokeWidth={3} />
                   <span>{activeTab === 'ANNOUNCEMENTS' ? 'Publicar' : (activeTab === 'RESERVATIONS' || activeTab === 'ALL_RESERVATIONS') ? 'Nueva Reserva' : 'Nueva Tarea'}</span>
@@ -941,7 +980,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId, initialTab })
                     }}
                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all active:scale-95 border ${
                       showClearServiceConfirm 
-                        ? 'bg-red-600 text-white border-red-700 shadow-lg' 
+                        ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-lg' 
                         : 'bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-900/20 dark:hover:bg-red-900/30 dark:text-red-400 border-red-200 dark:border-red-800/30'
                     } text-[10px] font-black uppercase tracking-wider`}
                   >
@@ -1039,50 +1078,50 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId, initialTab })
 
         {/* Sticky Location Tabs for Reservations & Announcements */}
         {(activeTab === 'RESERVATIONS' || activeTab === 'ARRIVED' || activeTab === 'ALL_RESERVATIONS' || activeTab === 'ANNOUNCEMENTS') && (
-          <div className="flex overflow-x-auto no-scrollbar gap-3 pt-2 pb-3 px-1 scroll-smooth">
-            {[
-              { id: 'restaurante', label: 'Restaurante', color: 'bg-emerald-500', activeClass: 'bg-[#064E3B] border-[#064E3B]' },
-              { id: 'gastro_bar', label: 'Gastro Bar', color: 'bg-rose-500', activeClass: 'bg-rose-900 border-rose-900' },
-              { id: 'cafeteria', label: 'Cafetería', color: 'bg-orange-500', activeClass: 'bg-orange-900 border-orange-900' },
-              { id: 'salon_c', label: 'Salón C', color: 'bg-purple-500', activeClass: 'bg-purple-900 border-purple-900' },
-              { id: 'terraza', label: 'Terraza', color: 'bg-blue-500', activeClass: 'bg-blue-900 border-blue-900' },
-              { id: 'eventos', label: 'Eventos', color: 'bg-amber-500', activeClass: 'bg-amber-900 border-amber-900' },
-              { id: 'piscina', label: 'Piscina', color: 'bg-cyan-500', activeClass: 'bg-cyan-900 border-cyan-900' }
-            ].map((loc) => {
-              const count = getReservationCount(loc.id);
-              const isActive = activeLocation === loc.id;
-              
-              const hasShowcase = activeTab === 'ANNOUNCEMENTS' && allTasks.some(t => 
-                t.type === TaskType.ANNOUNCEMENT && 
-                t.location === loc.id &&
-                ((t.videoUrls && t.videoUrls.length > 0) || (t.imageUrls && t.imageUrls.length > 0))
-              );
-              
-              return (
-                <button
-                  key={loc.id}
-                  onClick={() => setActiveLocation(loc.id)}
-                  className={`flex items-center gap-3 px-6 py-3 rounded-2xl text-[11px] font-black uppercase tracking-[0.1em] transition-all whitespace-nowrap border-2 relative shadow-lg ${
-                    isActive
-                      ? `${loc.activeClass} text-white shadow-[0_10px_20px_rgba(0,0,0,0.15)] scale-[1.03] z-10 border-white/20`
-                      : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-red-500 hover:text-red-600 transition-colors'
-                  }`}
-                >
-                  {hasShowcase && (
-                    <div className="absolute -top-1 -left-1 bg-gradient-to-br from-red-600 to-red-800 text-white p-1.5 rounded-full border border-white dark:border-slate-800 shadow-[0_4px_12px_rgba(220,38,38,0.5)] animate-bounce" title="Showcase publicado">
-                      <Sparkles size={10} className="fill-white" />
-                    </div>
-                  )}
-                  {count > 0 && (activeTab === 'RESERVATIONS' || activeTab === 'ARRIVED' || activeTab === 'ALL_RESERVATIONS') && (
-                    <span className="absolute -top-2 -right-2 min-w-[20px] h-[20px] bg-red-600 text-white text-[10px] font-black rounded-full flex items-center justify-center px-1 border-2 border-white dark:border-slate-800 shadow-[0_4px_12px_rgba(220,38,38,0.4)] animate-pulse">
-                      {count}
-                    </span>
-                  )}
-                  <div className={`w-2.5 h-2.5 rounded-full ${isActive ? 'bg-white shadow-[0_0_10px_rgba(255,255,255,0.8)]' : loc.color}`}></div>
-                  {loc.label}
-                </button>
-              );
-            })}
+          <div className="mt-4">
+            <div className="flex items-center justify-between mb-3 px-2">
+              <div className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-red-600 animate-pulse"></span>
+                <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">Gestor de Salones</h2>
+              </div>
+            </div>
+            <div className="flex overflow-x-auto no-scrollbar gap-3 pb-3 px-1 scroll-smooth">
+              {displayLocations.map((loc) => {
+                const count = getReservationCount(loc.id);
+                const isActive = activeLocation === loc.id;
+                
+                const hasShowcase = activeTab === 'ANNOUNCEMENTS' && allTasks.some(t => 
+                  t.type === TaskType.ANNOUNCEMENT && 
+                  t.location === loc.id &&
+                  ((t.videoUrls && t.videoUrls.length > 0) || (t.imageUrls && t.imageUrls.length > 0))
+                );
+                
+                return (
+                  <button
+                    key={loc.id}
+                    onClick={() => setActiveLocation(loc.id)}
+                    className={`flex items-center gap-3 px-6 py-3 rounded-2xl text-[11px] font-black uppercase tracking-[0.1em] transition-all whitespace-nowrap border-2 relative ${
+                      isActive
+                        ? `bg-slate-900 dark:bg-white text-white dark:text-slate-900 border-slate-900 dark:border-white shadow-[0_10px_20px_rgba(0,0,0,0.1)] scale-[1.02] z-10`
+                        : 'bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:text-slate-900 dark:hover:text-white shadow-sm'
+                    }`}
+                  >
+                    {hasShowcase && (
+                      <div className="absolute -top-1 -left-1 bg-gradient-to-br from-red-600 to-red-800 text-white p-1.5 rounded-full border border-white dark:border-slate-800 shadow-md animate-bounce" title="Showcase publicado">
+                        <Sparkles size={10} className="fill-white" />
+                      </div>
+                    )}
+                    {count > 0 && (activeTab === 'RESERVATIONS' || activeTab === 'ARRIVED' || activeTab === 'ALL_RESERVATIONS') && (
+                      <span className="absolute -top-2 -right-2 min-w-[20px] h-[20px] bg-red-600 text-white text-[10px] font-black rounded-full flex items-center justify-center px-1 border-2 border-white dark:border-slate-800 shadow-md animate-pulse">
+                        {count}
+                      </span>
+                    )}
+                    <div className={`w-2 h-2 rounded-full ${isActive ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)]' : (loc.color || 'bg-slate-300 dark:bg-slate-700')}`}></div>
+                    {loc.name}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         )}
       </div>
@@ -1104,7 +1143,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId, initialTab })
                   <ConciergeBell size={24} className="text-white drop-shadow-md" />
                 </div>
                 <div>
-                  <h3 className="text-xl md:text-2xl font-black uppercase tracking-tighter leading-none mb-1 shadow-sm">Agenda {activeLocation}</h3>
+                  <h3 className="text-xl md:text-2xl font-black uppercase tracking-tighter leading-none mb-1 shadow-sm">Agenda {activeLocationName}</h3>
                   <div className="flex items-center gap-2">
                     <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span>
                     <p className="text-[11px] text-white/80 font-black uppercase tracking-[0.25em]">Reservas & Clientes Premier</p>
@@ -1161,20 +1200,20 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId, initialTab })
                    activeTab === 'ARRIVED' ? 'Nadie ha llegado todavía' : 
                    activeTab === 'RESERVATIONS' ? 'Agenda de hoy completada' :
                    activeTab === 'ALL_RESERVATIONS' ? 'No hay reservas' :
-                   `Sin Publicaciones en ${activeLocation}`}
+                   `Sin Publicaciones en ${activeLocationName}`}
                 </p>
                 <p className="text-gray-400 dark:text-slate-500 font-medium mt-2">
                   {activeTab === 'ACTIVE' ? '¡Todo al día en esta semana!' : 
                    activeTab === 'DAILY' ? 'No hay rutinas diarias configuradas.' : 
                    activeTab === 'ARRIVED' ? 'Las reservas marcadas como "Llegó" aparecerán aquí.' : 
-                   activeTab === 'RESERVATIONS' ? `No hay reservas próximas para ${activeLocation}.` :
+                   activeTab === 'RESERVATIONS' ? `No hay reservas próximas para ${activeLocationName}.` :
                    activeTab === 'ALL_RESERVATIONS' ? 'Intenta usar el buscador integrado.' :
                    'Aquí aparecerán los anuncios importantes.'}
                 </p>
                 {(statusFilter !== 'ALL' || departmentFilter !== 'ALL') && (
                   <button 
                     onClick={() => { setStatusFilter('ALL'); setDepartmentFilter('ALL'); }}
-                    className="mt-6 px-6 py-2 bg-red-600 text-white rounded-full font-bold uppercase text-xs tracking-widest hover:bg-red-700 transition-colors shadow-lg shadow-red-600/20"
+                    className="mt-6 px-6 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-full font-bold uppercase text-xs tracking-widest hover:bg-slate-800 dark:hover:bg-slate-200 transition-colors shadow-lg"
                   >
                     Limpiar Filtros
                   </button>
@@ -1335,37 +1374,13 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId, initialTab })
                      value={editingTask?.title || ''}
                      onChange={e => setEditingTask({ ...editingTask, title: e.target.value })}
                      className="w-full px-5 py-4 text-xl font-black bg-gray-50 dark:bg-slate-800/50 border-2 border-gray-200 dark:border-slate-700 rounded-2xl focus:border-red-500 focus:bg-white dark:focus:bg-slate-900 outline-none transition-all dark:text-white placeholder-gray-400"
-                     placeholder={editingTask?.type === TaskType.RESERVATION ? "EJ. FAMILIA GARCÍA" : "¿QUÉ HAY QUE HACER?"}
+                     placeholder={editingTask?.type === TaskType.RESERVATION ? "NOMBRE DEL CLIENTE (EJ. FAMILIA GARCÍA)" : "¿QUÉ HAY QUE HACER?"}
                      autoFocus
                    />
                 </div>
 
-                {/* Type Switcher for Gestor de Salones Tab */}
-                {activeTab === 'ANNOUNCEMENTS' && (
-                  <div>
-                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Categoría de Registro (Gestor)</label>
-                    <div className="flex bg-gray-50 dark:bg-slate-800/50 border-2 border-gray-200 dark:border-slate-700 rounded-2xl p-1.5 gap-1 shadow-sm">
-                      {[
-                        { val: TaskType.ANNOUNCEMENT, label: 'Showcase / Montaje', icon: Megaphone }
-                      ].map((t) => (
-                        <button
-                          key={t.val}
-                          type="button"
-                          onClick={() => setEditingTask({ ...editingTask, type: t.val })}
-                          className={`flex-1 py-3 px-1 rounded-xl transition-all flex flex-col items-center gap-1 ${
-                            (editingTask?.type || TaskType.ANNOUNCEMENT) === t.val 
-                              ? 'bg-indigo-600 shadow-lg shadow-indigo-600/30 text-white scale-105 z-10' 
-                              : 'text-gray-400 dark:text-gray-500 hover:bg-white/20'
-                          }`}
-                        >
-                          <t.icon size={16} />
-                          <span className="text-[10px] font-black uppercase tracking-widest">{t.label}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
+                {/* Type Switcher for Gestor de Salones Tab is removed because it's redundant (only 1 option) */}
+                
                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">
@@ -1375,20 +1390,12 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId, initialTab })
                          <div className="relative">
                            <select 
                              disabled={!canManageTasks}
-                             value={editingTask?.location || 'restaurante'}
+                             value={editingTask?.location || (displayLocations.length > 0 ? displayLocations[0].id : '')}
                              onChange={e => setEditingTask({ ...editingTask as any, location: e.target.value })}
                              className="w-full pl-4 pr-10 py-4 font-bold bg-gray-50 dark:bg-slate-800/50 border-2 border-gray-200 dark:border-slate-700 rounded-2xl focus:border-red-500 outline-none appearance-none dark:text-white text-sm uppercase tracking-wider"
                            >
-                             {[
-                               { id: 'restaurante', label: 'Restaurante' },
-                               { id: 'gastro_bar', label: 'Gastro Bar' },
-                               { id: 'cafeteria', label: 'Cafetería' },
-                               { id: 'salon_c', label: 'Salón C' },
-                               { id: 'terraza', label: 'Terraza' },
-                               { id: 'eventos', label: 'Eventos' },
-                               { id: 'piscina', label: 'Piscina' }
-                             ].map((loc) => (
-                               <option key={loc.id} value={loc.id}>{loc.label}</option>
+                             {displayLocations.map((loc) => (
+                               <option key={loc.id} value={loc.id}>{loc.name}</option>
                              ))}
                            </select>
                            <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={18} />
@@ -1454,7 +1461,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId, initialTab })
                            onClick={() => setEditingTask({ ...editingTask, recurrence: r.val })}
                            className={`flex-1 py-3 px-1 rounded-xl transition-all flex flex-col items-center ${
                              (editingTask?.recurrence || TaskRecurrence.NONE) === r.val 
-                               ? 'bg-red-600 shadow-lg shadow-red-600/30 text-white scale-105 z-10' 
+                               ? 'bg-slate-900 dark:bg-white shadow-lg text-white dark:text-slate-900 scale-105 z-10' 
                                : 'text-gray-400 dark:text-gray-500 hover:bg-white/30'
                            }`}
                          >
@@ -1470,15 +1477,15 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId, initialTab })
                 {editingTask?.type === TaskType.RESERVATION && (
                   <div className="grid grid-cols-2 gap-2 p-3 bg-indigo-50/20 dark:bg-indigo-900/10 rounded-2xl border border-indigo-100/50 dark:border-indigo-900/30">
                     <div className="col-span-2">
-                      <label className="block text-[8px] font-black text-indigo-400 dark:text-indigo-500 uppercase tracking-[0.2em] mb-1 ml-1">Cliente</label>
+                      <label className="block text-[8px] font-black text-indigo-400 dark:text-indigo-500 uppercase tracking-[0.2em] mb-1 ml-1">Nombre del Negocio (Opcional)</label>
                       <div className="relative">
-                        <Users className="absolute left-2.5 top-1/2 -translate-y-1/2 text-indigo-400" size={12} />
+                        <Briefcase className="absolute left-2.5 top-1/2 -translate-y-1/2 text-indigo-400" size={12} />
                         <input 
                           type="text"
-                          value={editingTask?.title || ''}
-                          onChange={e => setEditingTask({ ...editingTask as any, title: e.target.value })}
+                          value={editingTask?.clientBusinessName || ''}
+                          onChange={e => setEditingTask({ ...editingTask as any, clientBusinessName: e.target.value })}
                           className="w-full pl-8 pr-3 py-2 font-bold text-xs bg-white dark:bg-slate-800 border border-indigo-100 dark:border-indigo-900 focus:border-indigo-500 outline-none rounded-lg dark:text-white"
-                          placeholder="Nombre completo"
+                          placeholder="Ej. Empresa SA"
                         />
                       </div>
                     </div>
@@ -1855,7 +1862,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId, initialTab })
                   <button 
                     onClick={handleSaveTask} 
                     disabled={isSaving || isCompressing}
-                    className="flex-[2] py-4 bg-red-600 hover:bg-red-700 text-white font-black uppercase tracking-wider rounded-2xl shadow-xl shadow-button-red active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:scale-100"
+                    className="flex-[2] py-4 bg-slate-900 dark:bg-white hover:bg-slate-800 dark:hover:bg-slate-200 text-white dark:text-slate-900 font-black uppercase tracking-widest rounded-2xl shadow-xl active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:scale-100"
                   >
                     {isSaving || isCompressing ? <Loader2 className="animate-spin" strokeWidth={3} /> : <Save size={22} strokeWidth={3} />}
                     {isSaving ? 'Guardando...' : isCompressing ? 'Procesando...' : editingTask?.type === TaskType.ANNOUNCEMENT ? 'PUBLICAR ANUNCIO' : editingTask?.type === TaskType.RESERVATION ? 'PUBLICAR RESERVA' : 'PUBLICAR TAREA'}
@@ -1894,7 +1901,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId, initialTab })
               <button onClick={() => { setTaskToDelete(null); setDeletePassword(''); }} className="flex-1 py-4 font-bold text-gray-600 dark:text-slate-400 bg-gray-100 dark:bg-slate-700 rounded-2xl hover:bg-gray-200 transition-colors">Cancelar</button>
               <button 
                 onClick={handleDeleteTask} 
-                className="flex-1 py-4 font-bold text-white bg-red-600 rounded-2xl hover:bg-red-700 shadow-lg shadow-button-red transition-all disabled:opacity-50"
+                className="flex-1 py-4 font-bold text-white bg-slate-900 dark:bg-white dark:text-slate-900 rounded-2xl hover:bg-slate-800 dark:hover:bg-slate-200 shadow-lg transition-all disabled:opacity-50"
                 disabled={taskToDelete.type === TaskType.ANNOUNCEMENT && !deletePassword}
               >
                 ELIMINAR
@@ -1920,7 +1927,7 @@ const Tasks: React.FC<TasksProps> = ({ currentUser, initialTaskId, initialTab })
               <button onClick={() => setShowClearConfirm(false)} className="flex-1 py-4 font-bold text-gray-600 dark:text-slate-400 bg-gray-100 dark:bg-slate-700 rounded-2xl hover:bg-gray-200 transition-colors">CANCELAR</button>
               <button 
                 onClick={handleClearAllReservations} 
-                className="flex-1 py-4 font-bold text-white bg-red-600 rounded-2xl hover:bg-red-700 shadow-lg shadow-red-600/20 transition-all flex items-center justify-center gap-2"
+                className="flex-1 py-4 font-bold text-white bg-slate-900 dark:bg-white dark:text-slate-900 rounded-2xl hover:bg-slate-800 dark:hover:bg-slate-200 shadow-lg transition-all flex items-center justify-center gap-2"
               >
                 {loading ? <Loader2 size={18} className="animate-spin" /> : 'LIMPIAR'}
               </button>

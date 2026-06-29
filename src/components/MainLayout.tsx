@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Logo } from './Logo';
 import { Download, Share2, Sun, Moon, LogOut, ClipboardCheck, ClipboardList, LayoutGrid, ShieldCheck, ShoppingCart, X, Volume2, VolumeX, Pause, Play, Sparkles, Bell, ChevronDown, ConciergeBell, LayoutDashboard } from 'lucide-react';
 import { User, UserRole, CartItem } from '../types';
+import * as storageService from '../services/storageService';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface MainLayoutProps {
@@ -45,30 +46,28 @@ const NavButton = React.memo(({ icon: Icon, label, isActive, onClick, hasAlert =
     className={`
       relative flex flex-col items-center justify-center rounded-2xl transition-all duration-200 ease-out overflow-hidden
       outline-none select-none touch-manipulation active:scale-[0.95] group
-      border border-white/10
-      flex-1 px-1 py-2 gap-0.5
-      text-white shadow-[0_4px_12px_-2px_rgba(220,38,38,0.3),inset_0_1px_0_rgba(255,255,255,0.2)] bg-gradient-to-br from-[#dc2626] to-[#b91c1c] ring-1 ring-white/20
-      ${isActive ? 'opacity-100' : 'opacity-85'}
+      flex-1 px-1 py-2 gap-1
+      ${isActive 
+        ? 'text-amber-500 shadow-[0_4px_12px_-2px_rgba(245,158,11,0.3)] bg-slate-900 dark:bg-slate-800 ring-1 ring-amber-500/50' 
+        : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 bg-transparent'}
     `}
     style={{ WebkitTapHighlightColor: 'transparent' }}
   >
-    <div className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent pointer-events-none opacity-50" />
-    
     <div className="relative z-10 flex-shrink-0 flex items-center justify-center">
       <Icon 
-        size={20} 
+        size={isActive ? 22 : 20} 
         strokeWidth={isActive ? 2.5 : 2} 
-        className={`transition-all duration-200 ${isActive ? 'scale-110' : 'scale-100 group-hover:scale-110'}`}
+        className={`transition-all duration-200 ${isActive ? 'scale-110 drop-shadow-[0_2px_4px_rgba(245,158,11,0.4)]' : 'scale-100 group-hover:scale-110'}`}
       />
       {hasAlert && !isActive && (
-         <span className="absolute -top-0.5 -right-0.5 flex h-3 w-3 z-20">
-           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-300 opacity-75"></span>
-           <span className="relative inline-flex rounded-full h-3 w-3 bg-yellow-400 ring-1 ring-red-900 shadow-[0_0_5px_rgba(255,255,0,0.8)]"></span>
+         <span className="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5 z-20">
+           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+           <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500 shadow-[0_0_5px_rgba(239,68,68,0.8)]"></span>
          </span>
       )}
     </div>
     
-    <span className={`text-[9px] font-bold leading-tight whitespace-nowrap uppercase tracking-tight text-white drop-shadow-[0_2px_2px_rgba(0,0,0,0.6)] transition-all duration-200 ${isActive ? 'opacity-100' : 'opacity-100'}`}>
+    <span className={`text-[9px] font-bold leading-tight whitespace-nowrap tracking-wider uppercase transition-all duration-200 ${isActive ? 'opacity-100' : 'opacity-80'}`}>
         {label}
     </span>
   </button>
@@ -111,6 +110,29 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
   const hasCartItems = cart.length > 0;
   const [showVolumeMenu, setShowVolumeMenu] = useState(false);
   const volumeMenuRef = useRef<HTMLDivElement>(null);
+  const [businessName, setBusinessName] = useState<string>(storageService.activeWorkspaceName || 'MI NEGOCIO');
+
+  useEffect(() => {
+    const loadWorkspaceName = async () => {
+      const wsId = storageService.activeWorkspaceId;
+      if (wsId) {
+        // Fallback to fetching in case activeWorkspaceName isn't accurate (should be fine, but just in case)
+        const ws = await storageService.getWorkspace(wsId);
+        if (ws && ws.name) {
+          setBusinessName(ws.name);
+          storageService.setActiveWorkspaceId(wsId, ws.name);
+        }
+      }
+    };
+    loadWorkspaceName();
+
+    const handleWorkspaceNameChanged = (e: CustomEvent) => {
+      setBusinessName(e.detail);
+    };
+
+    window.addEventListener('workspaceNameChanged', handleWorkspaceNameChanged as EventListener);
+    return () => window.removeEventListener('workspaceNameChanged', handleWorkspaceNameChanged as EventListener);
+  }, []);
 
   // Close volume menu when clicking outside
   useEffect(() => {
@@ -139,41 +161,15 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
             <div className="relative group-hover:scale-105 transition-transform active:scale-95">
               <Logo size="sm" />
             </div>
-            <div className="flex flex-col select-none px-1 sm:px-6 overflow-visible">
-              <motion.div 
-                className="relative select-none py-1 sm:py-2"
-                initial={{ rotateY: 0, rotateX: 0 }}
-                animate={{ 
-                  rotateY: [-15, 15, -15],
-                  rotateX: [5, -5, 5],
-                }}
-                transition={{ 
-                  rotateY: { duration: 12, repeat: Infinity, ease: "easeInOut" },
-                  rotateX: { duration: 8, repeat: Infinity, ease: "easeInOut" }
-                }}
-                style={{ 
-                  transformStyle: 'preserve-3d',
-                  perspective: '1000px'
-                }}
-              >
-                <span className="relative block font-black text-xl sm:text-4xl uppercase tracking-tighter italic leading-none
-                  text-transparent bg-clip-text bg-[linear-gradient(110deg,#dc2626,45%,#d4af37,55%,#dc2626)] bg-[length:200%_100%]
-                  animate-shine drop-shadow-[0_1px_0_#991b1b] drop-shadow-[0_2px_0_#7f1d1d] drop-shadow-[0_4px_0_#450a0a] 
-                  drop-shadow-[0_15px_30px_rgba(220,38,38,0.3)]
-                  dark:bg-[linear-gradient(110deg,#ef4444,45%,#fbbf24,55%,#ef4444)] dark:bg-[length:200%_100%]
-                  dark:drop-shadow-[0_1px_0_#7f1d1d] dark:drop-shadow-[0_2px_0_#450a0a] dark:drop-shadow-[0_5px_20px_rgba(220,38,38,0.2)]
-                "
-                style={{ 
-                  fontFamily: '"Outfit", sans-serif',
-                  transform: 'translateZ(60px)',
-                  paddingRight: '6px'
-                }}>
-                  Hub
-                </span>
-              </motion.div>
-              <span className="text-[7px] sm:text-[9px] font-black text-red-600/80 dark:text-red-400/80 uppercase tracking-[0.1em] sm:tracking-[0.35em] leading-none mt-0 font-mono flex items-center gap-0.5 sm:gap-1">
-                <span className="w-0.5 h-0.5 sm:w-1 sm:h-1 rounded-full bg-red-600 animate-ping"></span>
-                Ecosystem
+            <div className="flex flex-col select-none px-2 sm:px-4">
+              <span className="font-sans font-black text-lg sm:text-2xl tracking-tighter text-slate-900 dark:text-white leading-none uppercase">
+                {businessName.split(' ')[0]}
+                {businessName.split(' ').length > 1 && (
+                  <span className="text-amber-500 font-light ml-1">{businessName.substring(businessName.indexOf(' ') + 1)}</span>
+                )}
+              </span>
+              <span className="text-[9px] font-medium text-slate-500 uppercase tracking-[0.2em] mt-0.5">
+                Staff Hub
               </span>
             </div>
           </div>
@@ -277,13 +273,13 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
             {user.role === UserRole.ADMIN && (
               <button 
                 onClick={() => setView('admin')}
-                className={`relative flex items-center justify-center h-9 w-9 sm:h-10 sm:w-10 rounded-xl sm:rounded-2xl transition-all duration-300 border bg-white/80 dark:bg-slate-800/40 border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 shadow-sm overflow-visible ${view === 'admin' ? 'ring-2 ring-red-500/50' : ''}`}
+                className={`relative flex items-center justify-center h-9 w-9 sm:h-10 sm:w-10 rounded-xl sm:rounded-2xl transition-all duration-300 border bg-white/80 dark:bg-slate-800/40 border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 shadow-sm overflow-visible ${view === 'admin' ? 'ring-2 ring-amber-500/50' : ''}`}
               >
-                <Bell size={16} className={`sm:w-[18px] sm:h-[18px] ${unreadAdminNotificationsCount > 0 ? 'text-red-500 animate-logo-breathe' : ''}`} />
+                <Bell size={16} className={`sm:w-[18px] sm:h-[18px] transition-colors ${unreadAdminNotificationsCount > 0 ? 'text-amber-500 animate-logo-breathe' : 'hover:text-amber-500'}`} />
                 {unreadAdminNotificationsCount > 0 && (
                   <span className="absolute -top-1 -right-1 flex h-4 w-4 sm:h-5 sm:w-5 z-20">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-300 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-4 w-4 sm:h-5 sm:w-5 bg-yellow-400 text-[8px] sm:text-[9px] font-black text-red-900 flex items-center justify-center ring-1 sm:ring-2 ring-red-900 shadow-[0_0_8px_rgba(255,255,0,0.8)]">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-4 w-4 sm:h-5 sm:w-5 bg-amber-500 text-[8px] sm:text-[9px] font-black text-white flex items-center justify-center ring-1 sm:ring-2 ring-white dark:ring-slate-900 shadow-[0_0_8px_rgba(245,158,11,0.5)]">
                       {unreadAdminNotificationsCount}
                     </span>
                   </span>
@@ -293,14 +289,14 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
 
             <button 
               onClick={() => setDarkMode(!darkMode)} 
-              className="btn-header-action h-9 w-9 sm:h-10 sm:w-10 text-red-500 dark:text-red-400 border-none shadow-none active:scale-90"
+              className="btn-header-action h-9 w-9 sm:h-10 sm:w-10 text-slate-500 dark:text-slate-400 hover:text-amber-500 dark:hover:text-amber-400 border-none shadow-none active:scale-90 transition-colors"
               title={darkMode ? "Modo Claro" : "Modo Oscuro"}
             >
               {darkMode ? <Sun size={16} className="sm:w-[18px] sm:h-[18px]" /> : <Moon size={16} className="sm:w-[18px] sm:h-[18px]" />}
             </button>
             <button 
               onClick={handleLogout} 
-              className="btn-header-action h-9 w-9 sm:h-10 sm:w-10 text-red-500 dark:text-red-400 border-none shadow-none active:scale-90"
+              className="btn-header-action h-9 w-9 sm:h-10 sm:w-10 text-slate-500 dark:text-slate-400 hover:text-amber-500 dark:hover:text-amber-400 border-none shadow-none active:scale-90 transition-colors"
               title="Cerrar Sesión"
             >
               <LogOut size={16} className="sm:w-[18px] sm:h-[18px]" />

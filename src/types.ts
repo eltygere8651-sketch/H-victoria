@@ -25,6 +25,13 @@ export interface Department {
   name: string;
 }
 
+export interface AppLocation {
+  id: string;
+  name: string;
+  color?: string;
+  activeClass?: string;
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -147,6 +154,7 @@ export interface Task {
   reservationDate?: string;
   clientNote?: string;
   clientPhone?: string;
+  clientBusinessName?: string;
   eventType?: string; 
   tableNumber?: string;
   takenBy?: string;

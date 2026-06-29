@@ -12,12 +12,12 @@
  * ====================================================================================
  */
 export const firebaseConfig = {
-  apiKey: "AIzaSyD_rwoYEzfFo8b4b_KQCNQs3OwwlScPNls",
-  authDomain: "bm-contigo-a8ca6.firebaseapp.com",
-  projectId: "bm-contigo-a8ca6",
-  storageBucket: "bm-contigo-a8ca6.appspot.com",
-  messagingSenderId: "865361841368",
-  appId: "1:865361841368:web:f74b2f3070b75b7230dbad"
+  apiKey: "AIzaSyC_307oqtFzOMggDIzv0o0loFvLc-Xhg8A",
+  authDomain: "flux-player-82c1c.firebaseapp.com",
+  projectId: "flux-player-82c1c",
+  storageBucket: "flux-player-82c1c.firebasestorage.app",
+  messagingSenderId: "707903273084",
+  appId: "1:707903273084:web:494c1262291b024b45b1f9"
 };
 
 
