@@ -13,6 +13,7 @@ import { initializePushNotifications } from './services/pushNotificationService'
 import { ShareModal } from './components/ShareModal';
 import { GuideModal } from './components/GuideModal';
 import { MainLayout } from './components/MainLayout';
+import { PWAInstallPrompt } from './components/PWAInstallPrompt';
 import { AlertCircle } from 'lucide-react';
 
 import ProviderDelivery from './pages/ProviderDelivery';
@@ -75,6 +76,7 @@ const App: React.FC = () => {
   const [isIOS, setIsIOS] = useState(false);
   const [isAndroid, setIsAndroid] = useState(false);
   const [showIOSPrompt, setShowIOSPrompt] = useState(false);
+  const [showGlobalInstallPrompt, setShowGlobalInstallPrompt] = useState(false);
   const [toasts, setToasts] = useState<AppNotification[]>([]);
   const [unreadAdminNotifications, setUnreadAdminNotifications] = useState<AppNotification[]>([]);
   const [initialAdminTab, setInitialAdminTab] = useState<'requests' | 'users' | 'reports'>('requests');
@@ -353,8 +355,21 @@ const App: React.FC = () => {
   };
 
   useEffect(() => {
-    const beforeInstallHandler = (e: Event) => { e.preventDefault(); setDeferredPrompt(e); };
-    const appInstalledHandler = () => { setIsInstalled(true); setDeferredPrompt(null); };
+    // Catch if event fired before React mounted
+    if ((window as any).deferredPrompt) {
+      setDeferredPrompt((window as any).deferredPrompt);
+    }
+
+    const beforeInstallHandler = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      (window as any).deferredPrompt = e;
+    };
+    const appInstalledHandler = () => {
+      setIsInstalled(true);
+      setDeferredPrompt(null);
+      (window as any).deferredPrompt = null;
+    };
     window.addEventListener('beforeinstallprompt', beforeInstallHandler);
     window.addEventListener('appinstalled', appInstalledHandler);
     if (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true) setIsInstalled(true);
@@ -475,8 +490,7 @@ const App: React.FC = () => {
     } else if (isIOS) {
       setShowIOSPrompt(true);
     } else {
-      // In PC/Android without deferredPrompt, we could alert or instruct to use the browser menu
-      alert("Para instalar la aplicación, haz clic en el ícono de instalación en la barra de direcciones o usa el menú de tu navegador.");
+      setShowGlobalInstallPrompt(true);
     }
   };
 
@@ -598,6 +612,10 @@ const App: React.FC = () => {
       <GuideModal 
         isOpen={showGuideModal} 
         onClose={() => setShowGuideModal(false)} 
+      />
+      <PWAInstallPrompt 
+        isOpen={showGlobalInstallPrompt} 
+        onClose={() => setShowGlobalInstallPrompt(false)} 
       />
       <ShareModal isOpen={showShareModal} onClose={() => setShowShareModal(false)} url={shareData.url} title={shareData.title} />
 

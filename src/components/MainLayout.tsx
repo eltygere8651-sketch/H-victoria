@@ -171,6 +171,17 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
           </div>
 
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 ml-auto">
+            {!isInstalled && (
+              <button
+                onClick={onInstallClick}
+                className="hidden sm:flex items-center justify-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 bg-gradient-to-r from-amber-500 to-amber-600 text-slate-900 rounded-xl font-bold text-xs shadow-md hover:shadow-lg hover:scale-105 active:scale-95 transition-all"
+                title="Instalar Aplicación"
+              >
+                <Download size={14} className="text-slate-900" />
+                <span>Instalar App</span>
+              </button>
+            )}
+
             {user.role !== UserRole.GUEST && user.role !== UserRole.PROVIDER && (
               <div className={`cart-neon-container h-9 w-9 sm:h-10 sm:w-10 ${hasCartItems ? 'cart-neon-active' : 'cart-neon-empty'}`}>
                 <button
@@ -328,7 +339,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
             initial={{ opacity: 0, y: 50, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 50, scale: 0.9 }}
-            className={`fixed ${user.role !== UserRole.PROVIDER ? 'bottom-20 sm:bottom-24' : 'bottom-6'} right-4 sm:right-6 z-50 pointer-events-auto`}
+            className={`fixed ${user.role !== UserRole.PROVIDER ? 'bottom-20' : 'bottom-6'} right-4 sm:hidden z-50 pointer-events-auto`}
           >
             <button
               onClick={onInstallClick}

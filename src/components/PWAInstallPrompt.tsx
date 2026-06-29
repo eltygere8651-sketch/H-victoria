@@ -48,7 +48,17 @@ export const PWAInstallPrompt: React.FC<PWAInstallPromptProps> = ({ isOpen, onCl
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-3 text-left">
+          <div className="grid grid-cols-1 gap-3 text-left max-h-[30vh] overflow-y-auto pr-1">
+            <div className="flex items-start gap-3 p-4 bg-slate-50 dark:bg-slate-800/30 rounded-2xl border border-slate-100 dark:border-slate-700/50">
+              <div className="w-8 h-8 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center shrink-0">
+                <span className="text-red-600 dark:text-red-400 font-black text-[10px]">PC</span>
+              </div>
+              <div>
+                <p className="text-xs font-bold text-slate-900 dark:text-white">Escritorio / Chrome</p>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium leading-tight">Busca el ícono de "Instalar" en la barra de direcciones o usa el menú del navegador.</p>
+              </div>
+            </div>
+
             <div className="flex items-start gap-3 p-4 bg-slate-50 dark:bg-slate-800/30 rounded-2xl border border-slate-100 dark:border-slate-700/50">
               <div className="w-8 h-8 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center shrink-0">
                 <span className="text-red-600 dark:text-red-400 font-black text-xs">iOS</span>
