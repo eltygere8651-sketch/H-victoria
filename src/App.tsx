@@ -75,10 +75,6 @@ const App: React.FC = () => {
   const [isIOS, setIsIOS] = useState(false);
   const [isAndroid, setIsAndroid] = useState(false);
   const [showIOSPrompt, setShowIOSPrompt] = useState(false);
-  const [showAndroidPrompt, setShowAndroidPrompt] = useState(false);
-  const [hasSeenAndroidPrompt, setHasSeenAndroidPrompt] = useState(
-    localStorage.getItem('hasSeenAndroidPrompt') === 'true'
-  );
   const [toasts, setToasts] = useState<AppNotification[]>([]);
   const [unreadAdminNotifications, setUnreadAdminNotifications] = useState<AppNotification[]>([]);
   const [initialAdminTab, setInitialAdminTab] = useState<'requests' | 'users' | 'reports'>('requests');
@@ -381,16 +377,6 @@ const App: React.FC = () => {
     };
     document.addEventListener('keydown', handleGlobalKeyDown);
     
-    // Automatically show Android prompt if not installed and hasn't seen it
-    if (isAndroidDevice && !window.matchMedia('(display-mode: standalone)').matches && localStorage.getItem('hasSeenAndroidPrompt') !== 'true') {
-      // Small delay to not interrupt initial render
-      setTimeout(() => {
-        setShowAndroidPrompt(true);
-        localStorage.setItem('hasSeenAndroidPrompt', 'true');
-        setHasSeenAndroidPrompt(true);
-      }, 3000);
-    }
-
     return () => {
       window.removeEventListener('beforeinstallprompt', beforeInstallHandler);
       window.removeEventListener('appinstalled', appInstalledHandler);
@@ -483,14 +469,14 @@ const App: React.FC = () => {
           setIsInstalled(true);
         }
         setDeferredPrompt(null);
-        setShowAndroidPrompt(false);
       } catch (err) {
         console.error('Error prompting install:', err);
       }
     } else if (isIOS) {
       setShowIOSPrompt(true);
-    } else if (isAndroid) {
-      setShowAndroidPrompt(true);
+    } else {
+      // In PC/Android without deferredPrompt, we could alert or instruct to use the browser menu
+      alert("Para instalar la aplicación, haz clic en el ícono de instalación en la barra de direcciones o usa el menú de tu navegador.");
     }
   };
 
@@ -581,11 +567,11 @@ const App: React.FC = () => {
         handleSharePublicAccess={handleSharePublicAccess}
         setShowGuideModal={setShowGuideModal}
         setShowMobileCart={setShowMobileCart}
-        showIOSPrompt={showIOSPrompt} showAndroidPrompt={showAndroidPrompt}
+        showIOSPrompt={showIOSPrompt}
         deferredPrompt={deferredPrompt}
         onInstallClick={handleInstallClick}
         isInstalled={isInstalled} isIOS={isIOS} isAndroid={isAndroid}
-        setShowIOSPrompt={setShowIOSPrompt} setShowAndroidPrompt={setShowAndroidPrompt}
+        setShowIOSPrompt={setShowIOSPrompt}
         hasUnreadTasks={hasUnreadTasks}
         hasUnreadReservations={hasUnreadReservations}
         hasUnreadSalones={hasUnreadSalones}
