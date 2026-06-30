@@ -210,3 +210,16 @@ export interface Document {
   uploadedBy: string; // User's name
   createdAt: number; // Timestamp
 }
+
+export interface SupportMessage {
+  id?: string;
+  senderId: string;
+  senderName: string;
+  senderRole: string;
+  message: string;
+  timestamp: number;
+  workspaceId: string;
+  workspaceName: string;
+  readByAdmin: boolean;
+  readByUser: boolean;
+}

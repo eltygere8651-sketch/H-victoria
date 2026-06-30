@@ -1144,6 +1144,57 @@ export const resetDailyTask = async (taskId: string) => {
   await taskRef.update(updateData);
 };
 
+export const checkSubscriptionAndNotify = async (currentUser: User) => {
+  try {
+    if (!activeWorkspaceId) return;
+    
+    const wsDoc = await db.collection('workspaces').doc(activeWorkspaceId).get();
+    if (!wsDoc.exists) return;
+    
+    const ws = wsDoc.data() as Workspace;
+    if (!ws.subscriptionEndsAt) return;
+    
+    const now = Date.now();
+    const remainingMs = ws.subscriptionEndsAt - now;
+    const remainingDays = remainingMs / (1000 * 60 * 60 * 24);
+    
+    // We notify if there are 2 days or less remaining (e.g. <= 2.1 days)
+    if (remainingDays <= 2 && remainingDays > -1) {
+      // Check if we already created a notification for this workspace for this warning
+      const notifsSnapshot = await db.collection(KEYS.NOTIFICATIONS)
+        .where('type', '==', NotificationType.SYSTEM_ALERT)
+        .get();
+        
+      const alreadyNotified = notifsSnapshot.docs.some(doc => {
+        const d = doc.data();
+        return d.payload?.alertType === 'subscription_expiration' && d.payload?.workspaceId === activeWorkspaceId;
+      });
+      
+      if (!alreadyNotified) {
+        const roundedDays = Math.ceil(remainingDays);
+        const title = '⚠️ Su suscripción expira pronto';
+        const message = `¡Hola ${currentUser.name}! La suscripción para su salón "${ws.name}" expira en ${roundedDays === 1 ? '1 día' : `${roundedDays} días`}. Por favor, póngase en contacto con el administrador del sistema para renovarla y evitar interrupciones de servicio.`;
+        
+        await db.collection(KEYS.NOTIFICATIONS).add({
+          type: NotificationType.SYSTEM_ALERT,
+          title,
+          message,
+          icon: 'Key',
+          timestamp: now,
+          readStatus: false,
+          payload: {
+            alertType: 'subscription_expiration',
+            workspaceId: activeWorkspaceId,
+            remainingDays: roundedDays
+          }
+        });
+      }
+    }
+  } catch (error) {
+    console.error('Error al verificar la suscripción y notificar:', error);
+  }
+};
+
 export const checkPendingDailyTasksAndNotify = async () => {
   try {
     // 1. Check if we already sent an alert in the last 55 minutes using a metadata document
@@ -1368,3 +1419,148 @@ export const deleteDocument = async (doc: Document) => {
   try { await storage.refFromURL(doc.url).delete(); } catch(e) {}
   await db.collection(KEYS.DOCUMENTS).doc(doc.id).delete();
 };
+
+// --- NEW: SUPPORT CHAT & TELEGRAM NOTIFICATION SYSTEM ---
+import { SupportMessage } from '../types';
+
+export const saveSupportConfig = async (token: string, chatId: string) => {
+  await db.collection('system').doc('support_config').set({
+    token,
+    chatId,
+    updatedAt: Date.now()
+  });
+};
+
+export const getSupportConfig = async () => {
+  const doc = await db.collection('system').doc('support_config').get();
+  return doc.exists ? doc.data() : null;
+};
+
+export const sendTelegramMessage = async (text: string) => {
+  try {
+    const config = await getSupportConfig();
+    if (!config || !config.token || !config.chatId) {
+      console.warn('Telegram support configuration is missing or incomplete.');
+      return;
+    }
+    const url = `https://api.telegram.org/bot${config.token}/sendMessage`;
+    await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: config.chatId,
+        text,
+        parse_mode: 'Markdown'
+      })
+    });
+  } catch (error) {
+    console.error('Error sending Telegram message:', error);
+  }
+};
+
+export const sendSupportMessage = async (messageText: string, sender: User) => {
+  if (!activeWorkspaceId) return;
+  const now = Date.now();
+  
+  const msg: SupportMessage = {
+    senderId: sender.id,
+    senderName: sender.name,
+    senderRole: sender.role,
+    message: messageText,
+    timestamp: now,
+    workspaceId: activeWorkspaceId,
+    workspaceName: activeWorkspaceName,
+    readByAdmin: sender.isSuperAdmin || sender.email === SUPER_ADMIN_EMAIL,
+    readByUser: !(sender.isSuperAdmin || sender.email === SUPER_ADMIN_EMAIL)
+  };
+
+  const docRef = await db.collection('support_messages').add(sanitizeData(msg));
+  
+  // Send Telegram Notification to Super Admin if sent by a business user
+  if (!(sender.isSuperAdmin || sender.email === SUPER_ADMIN_EMAIL)) {
+    const telegramText = `💬 *Nuevo mensaje de soporte*\n\n*Salón:* ${activeWorkspaceName} (ID: \`${activeWorkspaceId}\`)\n*De:* ${sender.name} (${sender.role})\n\n*Mensaje:*\n"${messageText}"\n\n👉 Abre el panel para responder de inmediato.`;
+    await sendTelegramMessage(telegramText);
+  }
+  
+  return docRef.id;
+};
+
+// For Super Admin: Send a response to a specific workspace support chat
+export const sendSuperAdminSupportMessage = async (messageText: string, targetWorkspaceId: string, targetWorkspaceName: string, sender: User) => {
+  const now = Date.now();
+  const msg: SupportMessage = {
+    senderId: sender.id,
+    senderName: sender.name,
+    senderRole: 'SUPER_ADMIN',
+    message: messageText,
+    timestamp: now,
+    workspaceId: targetWorkspaceId,
+    workspaceName: targetWorkspaceName,
+    readByAdmin: true,
+    readByUser: false
+  };
+
+  const docRef = await db.collection('support_messages').add(sanitizeData(msg));
+  return docRef.id;
+};
+
+export const subscribeToSupportMessages = (workspaceId: string, callback: (msgs: SupportMessage[]) => void) => {
+  return db.collection('support_messages')
+    .where('workspaceId', '==', workspaceId)
+    .limit(100)
+    .onSnapshot(snapshot => {
+      const msgs = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as SupportMessage));
+      msgs.sort((a, b) => a.timestamp - b.timestamp);
+      callback(msgs);
+    }, error => console.error('Error loading support messages:', error));
+};
+
+export const subscribeToAllSupportChats = (callback: (chats: any[]) => void) => {
+  return db.collection('support_messages')
+    .orderBy('timestamp', 'desc')
+    .onSnapshot(snapshot => {
+      const messages = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as SupportMessage));
+      
+      // Group by workspaceId
+      const chatGroups: { [key: string]: { workspaceId: string, workspaceName: string, lastMessage: SupportMessage, unreadCount: number } } = {};
+      
+      messages.forEach(msg => {
+        if (!chatGroups[msg.workspaceId]) {
+          chatGroups[msg.workspaceId] = {
+            workspaceId: msg.workspaceId,
+            workspaceName: msg.workspaceName || msg.workspaceId,
+            lastMessage: msg,
+            unreadCount: 0
+          };
+        }
+        
+        // Count unread for admin
+        if (!msg.readByAdmin) {
+          chatGroups[msg.workspaceId].unreadCount += 1;
+        }
+      });
+      
+      callback(Object.values(chatGroups));
+    }, error => console.error('Error loading all support chats:', error));
+};
+
+export const markSupportMessagesAsRead = async (workspaceId: string, asAdmin: boolean) => {
+  try {
+    const q = db.collection('support_messages')
+      .where('workspaceId', '==', workspaceId)
+      .where(asAdmin ? 'readByAdmin' : 'readByUser', '==', false);
+      
+    const snapshot = await q.get();
+    if (snapshot.empty) return;
+    
+    const batch = db.batch();
+    snapshot.docs.forEach(doc => {
+      batch.update(doc.ref, asAdmin ? { readByAdmin: true } : { readByUser: true });
+    });
+    
+    await batch.commit();
+  } catch (error) {
+    console.error('Error marking support messages as read:', error);
+  }
+};
+

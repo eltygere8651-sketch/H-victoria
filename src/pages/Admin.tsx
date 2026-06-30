@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { UserRole, User, Product, AppNotification, OrderBatch, AppLocation } from '../types';
 import * as storageService from '../services/storageService';
-import { Download, Users, Package, Trash2, Edit2, X, Save, Eye, Loader2, BarChart as BarChartIcon, BellRing, CheckCircle2, Share2, Smartphone, Activity, TrendingUp, ShieldAlert, Zap, Search, Filter, Plus, Key } from 'lucide-react';
+import { Download, Users, Package, Trash2, Edit2, X, Save, Eye, EyeOff, Loader2, BarChart as BarChartIcon, BellRing, CheckCircle2, Share2, Smartphone, Activity, TrendingUp, ShieldAlert, Zap, Search, Filter, Plus, Key, Headset, Send, Settings, MessageSquare, Sparkles, Check, CheckCheck } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { NotificationIcon } from '../components/NotificationIcon';
 import { generatePdfFromReactComponent, sharePdfFromReactComponent } from '../utils/pdfGenerator';
@@ -63,6 +63,25 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
   // Location (Salones) state
   const [locations, setLocations] = useState<AppLocation[]>([]);
 
+  // Support Chat State (Super Admin)
+  const [supportChats, setSupportChats] = useState<any[]>([]);
+  const [selectedChatWorkspaceId, setSelectedChatWorkspaceId] = useState<string>('');
+  const [selectedChatWorkspaceName, setSelectedChatWorkspaceName] = useState<string>('');
+  const [chatMessages, setChatMessages] = useState<any[]>([]);
+  const [adminReplyText, setAdminReplyText] = useState('');
+  const [telegramToken, setTelegramToken] = useState('');
+  const [telegramChatId, setTelegramChatId] = useState('');
+  const [isSavingTelegram, setIsSavingTelegram] = useState(false);
+  const [showTelegramGuide, setShowTelegramGuide] = useState(false);
+  const [showToken, setShowToken] = useState(false);
+  const [showChatId, setShowChatId] = useState(false);
+  const [isTestingTelegram, setIsTestingTelegram] = useState(false);
+  const [isTelegramCollapsed, setIsTelegramCollapsed] = useState(true);
+
+  const isSuperAdmin = storageService.auth.currentUser?.email === storageService.SUPER_ADMIN_EMAIL;
+  const isAdmin = currentUser.role === UserRole.ADMIN || !!currentUser.isSuperAdmin || isSuperAdmin;
+  const isOwner = !!currentUser.isSuperAdmin || isSuperAdmin;
+
   const loadSystemWorkspaces = async () => {
     if (isSuperAdmin) {
       const data = await storageService.getOwnerWorkspaces(currentUser.email!);
@@ -94,15 +113,46 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
       loadSystemWorkspaces();
     }
   }, [activeTab]);
+
+  // Load Telegram Config and subscribe to all chats
+  useEffect(() => {
+    if (activeTab === 'super_admin' && (isSuperAdmin || currentUser.email === storageService.SUPER_ADMIN_EMAIL)) {
+      // Load Telegram Config
+      const loadTelegram = async () => {
+        const config = await storageService.getSupportConfig();
+        if (config) {
+          setTelegramToken(config.token || '');
+          setTelegramChatId(config.chatId || '');
+        }
+      };
+      loadTelegram();
+
+      // Subscribe to support chats
+      const unsub = storageService.subscribeToAllSupportChats((chats) => {
+        setSupportChats(chats);
+      });
+      return () => unsub();
+    }
+  }, [activeTab, isSuperAdmin, currentUser]);
+
+  // Subscribe to selected chat messages
+  useEffect(() => {
+    if (selectedChatWorkspaceId && (isSuperAdmin || currentUser.email === storageService.SUPER_ADMIN_EMAIL)) {
+      const unsub = storageService.subscribeToSupportMessages(selectedChatWorkspaceId, (msgs) => {
+        setChatMessages(msgs);
+      });
+      
+      // Mark as read
+      storageService.markSupportMessagesAsRead(selectedChatWorkspaceId, true);
+      
+      return () => unsub();
+    }
+  }, [selectedChatWorkspaceId, isSuperAdmin, currentUser]);
   const [editingLocation, setEditingLocation] = useState<AppLocation | null>(null);
   const [locationToDelete, setLocationToDelete] = useState<AppLocation | null>(null);
   const [showCreateLocationModal, setShowCreateLocationModal] = useState(false);
   const [newLocationName, setNewLocationName] = useState('');
   const [isSavingLocation, setIsSavingLocation] = useState(false);
-
-  const isSuperAdmin = storageService.auth.currentUser?.email === storageService.SUPER_ADMIN_EMAIL;
-  const isAdmin = currentUser.role === UserRole.ADMIN || !!currentUser.isSuperAdmin || isSuperAdmin;
-  const isOwner = !!currentUser.isSuperAdmin || isSuperAdmin;
 
   const loadWorkspaces = async () => {
     if (isOwner && storageService.auth.currentUser?.email) {
@@ -413,6 +463,75 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
       alert(error.message || 'Error al personalizar el código del salón');
     } finally {
       setIsSavingCustomCode(false);
+    }
+  };
+
+  const handleSaveTelegramConfig = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSavingTelegram(true);
+    try {
+      await storageService.saveSupportConfig(telegramToken.trim(), telegramChatId.trim());
+      alert('Configuración de Telegram guardada con éxito.');
+    } catch (error) {
+      console.error(error);
+      alert('Error al guardar la configuración de Telegram.');
+    } finally {
+      setIsSavingTelegram(false);
+    }
+  };
+
+  const handleTestTelegramConfig = async () => {
+    if (!telegramToken.trim() || !telegramChatId.trim()) {
+      alert('Por favor, ingresa el Token y el ID de Chat de Telegram antes de realizar la prueba.');
+      return;
+    }
+    setIsTestingTelegram(true);
+    try {
+      // Temporarily save first
+      await storageService.saveSupportConfig(telegramToken.trim(), telegramChatId.trim());
+      
+      const testText = `🔔 *Prueba de Soporte - Hotel Victoria PWA*\n\n¡Felicidades! Tu bot está vinculado al sistema de soporte en vivo de manera exitosa.\n\nHora local: _${new Date().toLocaleTimeString()}_`;
+      const url = `https://api.telegram.org/bot${telegramToken.trim()}/sendMessage`;
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: telegramChatId.trim(),
+          text: testText,
+          parse_mode: 'Markdown'
+        })
+      });
+      
+      if (response.ok) {
+        alert('🎉 ¡Mensaje de prueba enviado con éxito! Revisa tu chat de Telegram.');
+      } else {
+        const errData = await response.json();
+        alert(`❌ Error al enviar mensaje: ${errData.description || 'Verifica el token o ID'}`);
+      }
+    } catch (error) {
+      console.error(error);
+      alert('❌ Error de conexión al realizar la prueba.');
+    } finally {
+      setIsTestingTelegram(false);
+    }
+  };
+
+  const handleSendAdminReply = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!adminReplyText.trim() || !selectedChatWorkspaceId) return;
+    
+    try {
+      const text = adminReplyText.trim();
+      setAdminReplyText('');
+      await storageService.sendSuperAdminSupportMessage(
+        text,
+        selectedChatWorkspaceId,
+        selectedChatWorkspaceName,
+        currentUser
+      );
+    } catch (error) {
+      console.error(error);
+      alert('Error al enviar respuesta de soporte.');
     }
   };
 
@@ -865,6 +984,104 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
                 </div>
               </form>
             </div>
+
+            {/* Sección de Estado de Suscripción */}
+            <div className="bg-white dark:bg-slate-900 rounded-[2rem] p-6 sm:p-8 shadow-sm border border-gray-100 dark:border-slate-800 mt-6 animate-fade-in">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="p-3 bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400 rounded-2xl">
+                  <Activity size={24} />
+                </div>
+                <div>
+                  <h3 className="font-black text-lg text-slate-900 dark:text-white leading-none">Mi Suscripción</h3>
+                  <p className="text-xs text-slate-400 mt-1 font-medium">Información sobre tu plan activo y tiempo de validez</p>
+                </div>
+              </div>
+
+              {currentWorkspace ? (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {/* Tarjeta del Plan */}
+                  <div className="bg-slate-50 dark:bg-slate-800/50 p-6 rounded-2xl border-2 border-slate-100 dark:border-slate-700/30 flex flex-col justify-between">
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-1">Plan Actual</span>
+                      <span className="text-xl font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-wider block">
+                        {currentWorkspace.plan === 'pro' ? '💎 PREMIUM PRO' : '⚡ BÁSICO / DEMO'}
+                      </span>
+                    </div>
+                    <div className="mt-3">
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/30">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                        {currentWorkspace.status || 'ACTIVO'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Tarjeta de Expiración */}
+                  <div className="bg-slate-50 dark:bg-slate-800/50 p-6 rounded-2xl border-2 border-slate-100 dark:border-slate-700/30">
+                    <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-1">Fecha de Expiración</span>
+                    <span className="text-lg font-black text-slate-800 dark:text-slate-200 block">
+                      {currentWorkspace.subscriptionEndsAt 
+                        ? new Date(currentWorkspace.subscriptionEndsAt).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })
+                        : 'No Configurada'}
+                    </span>
+                    <p className="text-[11px] text-slate-400 mt-2 font-medium leading-relaxed">
+                      {currentWorkspace.subscriptionEndsAt ? 'La suscripción requiere renovación antes de esta fecha para evitar la suspensión temporal del servicio.' : 'Suscripción gratuita ilimitada para pruebas o uso general.'}
+                    </p>
+                  </div>
+
+                  {/* Tarjeta de Tiempo Restante */}
+                  <div className="bg-slate-50 dark:bg-slate-800/50 p-6 rounded-2xl border-2 border-slate-100 dark:border-slate-700/30 flex flex-col justify-between">
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-1">Tiempo Restante</span>
+                      {currentWorkspace.subscriptionEndsAt ? (
+                        (() => {
+                          const remainingMs = currentWorkspace.subscriptionEndsAt - Date.now();
+                          const remainingDays = Math.ceil(remainingMs / (1000 * 60 * 60 * 24));
+                          if (remainingDays <= 0) {
+                            return <span className="text-xl font-black text-red-600 dark:text-red-400 block">Expirado</span>;
+                          } else if (remainingDays <= 2) {
+                            return (
+                              <span className="text-xl font-black text-amber-500 block animate-pulse">
+                                {remainingDays} {remainingDays === 1 ? 'Día' : 'Días'} (Por caducar) ⚠️
+                              </span>
+                            );
+                          } else {
+                            return (
+                              <span className="text-xl font-black text-emerald-600 dark:text-emerald-400 block">
+                                {remainingDays} {remainingDays === 1 ? 'Día' : 'Días'} activos
+                              </span>
+                            );
+                          }
+                        })()
+                      ) : (
+                        <span className="text-xl font-black text-slate-500 block">Ilimitado / Gratis</span>
+                      )}
+                    </div>
+                    {currentWorkspace.subscriptionEndsAt && (
+                      <div className="mt-3">
+                        {(() => {
+                          const remainingMs = currentWorkspace.subscriptionEndsAt - Date.now();
+                          const remainingDays = Math.ceil(remainingMs / (1000 * 60 * 60 * 24));
+                          const percentage = Math.min(100, Math.max(0, (remainingDays / 30) * 100)); // assume 30 days visualization base
+                          return (
+                            <div className="w-full bg-gray-200 dark:bg-slate-700 rounded-full h-2">
+                              <div 
+                                className={`h-2 rounded-full transition-all duration-500 ${remainingDays <= 2 ? 'bg-red-500 animate-pulse' : remainingDays <= 7 ? 'bg-amber-500' : 'bg-emerald-500'}`}
+                                style={{ width: `${percentage}%` }}
+                              />
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-center p-8 bg-slate-50 dark:bg-slate-800/20 rounded-2xl">
+                  <Loader2 className="animate-spin text-slate-400" size={24} />
+                  <span className="ml-2 font-bold text-xs text-slate-500">Cargando información de suscripción...</span>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -1087,6 +1304,265 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
               {systemWorkspaces.length === 0 && (
                 <div className="col-span-full py-12 text-center flex flex-col items-center justify-center bg-gray-50/50 dark:bg-slate-900/20 rounded-3xl border-2 border-dashed border-gray-200 dark:border-slate-800">
                   <p className="text-sm font-bold text-gray-500">No hay negocios registrados en el sistema.</p>
+                </div>
+              )}
+            </div>
+
+            {/* Chat Support Center (Wide Panel, Second) */}
+            <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-gray-100 dark:border-slate-800 shadow-sm flex flex-col gap-4 mt-8">
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-purple-50 dark:bg-purple-950/30 text-purple-600 dark:text-purple-400 rounded-2xl">
+                  <Headset size={20} />
+                </div>
+                <div>
+                  <h3 className="font-black text-sm text-slate-900 dark:text-white uppercase tracking-wider leading-none">Centro de Soporte en Directo</h3>
+                  <p className="text-[10px] text-slate-400 mt-1 font-medium">Responde a las dudas de tus clientes administradores</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 border border-slate-100 dark:border-slate-800/50 rounded-2xl overflow-hidden bg-slate-50 dark:bg-slate-950/20 h-[400px]">
+                {/* Chat List (Left pane) */}
+                <div className="border-r border-slate-100 dark:border-slate-800/50 flex flex-col bg-white dark:bg-slate-900 overflow-y-auto">
+                  <span className="p-3 text-[9px] font-black uppercase tracking-wider text-slate-400 border-b border-slate-100 dark:border-slate-800/50 block">Chats Activos</span>
+                  <div className="flex-1 divide-y divide-slate-100 dark:divide-slate-800/30">
+                    {supportChats.length === 0 ? (
+                      <div className="p-6 text-center text-[11px] text-slate-400 font-bold">
+                        No hay conversaciones de soporte aún.
+                      </div>
+                    ) : (
+                      supportChats.map(chat => {
+                        const isSelected = selectedChatWorkspaceId === chat.workspaceId;
+                        return (
+                          <button
+                            key={chat.workspaceId}
+                            onClick={() => {
+                              setSelectedChatWorkspaceId(chat.workspaceId);
+                              setSelectedChatWorkspaceName(chat.workspaceName);
+                            }}
+                            className={`w-full p-3 text-left flex items-start gap-2 transition-all hover:bg-slate-50 dark:hover:bg-slate-800/30 ${isSelected ? 'bg-purple-50/50 dark:bg-purple-950/10 border-l-4 border-purple-500' : ''}`}
+                          >
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between">
+                                <span className="font-black text-xs text-slate-800 dark:text-slate-200 truncate block">{chat.workspaceName}</span>
+                                {chat.unreadCount > 0 && (
+                                  <span className="px-1.5 py-0.5 bg-red-500 text-white text-[9px] font-black rounded-full animate-pulse">
+                                    {chat.unreadCount}
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-[10px] text-slate-400 truncate mt-0.5 font-medium">
+                                {chat.lastMessage.message}
+                              </p>
+                            </div>
+                          </button>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+
+                {/* Conversation Window (Right pane) */}
+                <div className="md:col-span-2 flex flex-col h-full overflow-hidden bg-slate-50 dark:bg-slate-950/10">
+                  {selectedChatWorkspaceId ? (
+                    <div className="flex-1 flex flex-col overflow-hidden h-full">
+                      {/* Selected Chat Header */}
+                      <div className="p-3 bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                        <span className="font-black text-xs text-slate-800 dark:text-slate-200 uppercase tracking-wide">
+                          {selectedChatWorkspaceName}
+                        </span>
+                        <span className="text-[9px] font-bold text-emerald-500 flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Soporte Activo
+                        </span>
+                      </div>
+
+                      {/* Message Feed */}
+                      <div className="flex-1 overflow-y-auto p-4 space-y-3 scrollbar-thin">
+                        {chatMessages.map((msg, idx) => {
+                          const isMe = msg.senderRole === 'SUPER_ADMIN';
+                          return (
+                            <div key={msg.id || idx} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
+                              <div className={`max-w-[80%] flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
+                                {!isMe && (
+                                  <span className="text-[8px] font-black text-purple-500 mb-0.5">
+                                    {msg.senderName} ({msg.senderRole})
+                                  </span>
+                                )}
+                                <div className={`p-2.5 rounded-2xl text-[11px] leading-relaxed shadow-sm font-medium ${
+                                  isMe 
+                                    ? 'bg-purple-600 text-white rounded-br-none' 
+                                    : 'bg-white dark:bg-slate-800 text-gray-800 dark:text-slate-100 border border-gray-100 dark:border-slate-700/30 rounded-bl-none'
+                                }`}>
+                                  {msg.message}
+                                </div>
+                                <span className="text-[8px] text-slate-400 mt-0.5 block px-1">
+                                  {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Reply Form */}
+                      <form onSubmit={handleSendAdminReply} className="p-2.5 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex gap-2">
+                        <input
+                          type="text"
+                          placeholder={`Responder a ${selectedChatWorkspaceName}...`}
+                          value={adminReplyText}
+                          onChange={e => setAdminReplyText(e.target.value)}
+                          className="flex-1 bg-slate-50 dark:bg-slate-800/50 dark:text-white px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700/50 outline-none text-xs focus:border-purple-500 font-medium transition-all"
+                          required
+                        />
+                        <button
+                          type="submit"
+                          disabled={!adminReplyText.trim()}
+                          className="px-4 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1.5"
+                        >
+                          <Send size={12} /> Responder
+                        </button>
+                      </form>
+                    </div>
+                  ) : (
+                    <div className="flex-1 flex flex-col items-center justify-center text-center p-6 space-y-2">
+                      <div className="w-12 h-12 bg-purple-50 dark:bg-purple-950/20 text-purple-500 rounded-full flex items-center justify-center">
+                        <MessageSquare size={22} />
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-xs text-slate-700 dark:text-slate-300">Mensajería de Soporte</h4>
+                        <p className="text-[10px] text-slate-400 mt-1 max-w-[200px] leading-relaxed">
+                          Selecciona una conversación del panel izquierdo para comenzar a chatear en directo.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Telegram Configuration (Collapsible at the Bottom) */}
+            <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-gray-100 dark:border-slate-800 shadow-sm flex flex-col gap-4 mt-8">
+              <button
+                type="button"
+                onClick={() => setIsTelegramCollapsed(!isTelegramCollapsed)}
+                className="flex items-center justify-between w-full text-left focus:outline-none"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-3 bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 rounded-2xl">
+                    <Settings size={20} />
+                  </div>
+                  <div>
+                    <h3 className="font-black text-sm text-slate-900 dark:text-white uppercase tracking-wider leading-none">Notificaciones Telegram</h3>
+                    <p className="text-[10px] text-slate-400 mt-1 font-medium">Recibe alertas en directo cuando te escriban</p>
+                  </div>
+                </div>
+                <div className="px-4 py-2 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl text-xs font-black uppercase tracking-wider text-slate-600 dark:text-slate-300 transition-all">
+                  {isTelegramCollapsed ? 'Configurar / Editar' : 'Minimizar Ajustes'}
+                </div>
+              </button>
+
+              {!isTelegramCollapsed && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-slate-100 dark:border-slate-800/50 animate-fade-in">
+                  <div className="space-y-4">
+                    <form onSubmit={handleSaveTelegramConfig} className="space-y-4">
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Token del Bot</label>
+                        <div className="relative">
+                          <input
+                            type={showToken ? 'text' : 'password'}
+                            placeholder="123456789:ABCdefGhI..."
+                            value={telegramToken}
+                            onChange={e => setTelegramToken(e.target.value)}
+                            className="w-full p-3 pr-10 border-2 border-slate-200 dark:border-slate-700/50 rounded-xl bg-slate-50 dark:bg-slate-800/60 dark:text-white text-xs outline-none focus:border-blue-500 font-bold"
+                            required
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowToken(!showToken)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors"
+                          >
+                            {showToken ? <EyeOff size={16} /> : <Eye size={16} />}
+                          </button>
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">ID de Chat de Telegram</label>
+                        <div className="relative">
+                          <input
+                            type={showChatId ? 'text' : 'password'}
+                            placeholder="-100123456789 o 987654321"
+                            value={telegramChatId}
+                            onChange={e => setTelegramChatId(e.target.value)}
+                            className="w-full p-3 pr-10 border-2 border-slate-200 dark:border-slate-700/50 rounded-xl bg-slate-50 dark:bg-slate-800/60 dark:text-white text-xs outline-none focus:border-blue-500 font-bold"
+                            required
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowChatId(!showChatId)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors"
+                          >
+                            {showChatId ? <EyeOff size={16} /> : <Eye size={16} />}
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3 mt-2">
+                        <button
+                          type="submit"
+                          disabled={isSavingTelegram}
+                          className="py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 active:scale-[0.98] disabled:opacity-50"
+                        >
+                          {isSavingTelegram ? (
+                            <>
+                              <Loader2 className="animate-spin" size={14} /> Guardando
+                            </>
+                          ) : (
+                            'Guardar'
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleTestTelegramConfig}
+                          disabled={isTestingTelegram || !telegramToken.trim() || !telegramChatId.trim()}
+                          className="py-3 border-2 border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/20 text-blue-600 dark:text-blue-400 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 active:scale-[0.98] disabled:opacity-30"
+                        >
+                          {isTestingTelegram ? (
+                            <>
+                              <Loader2 className="animate-spin" size={14} /> Probando
+                            </>
+                          ) : (
+                            'Probar'
+                          )}
+                        </button>
+                      </div>
+                    </form>
+
+                    <button
+                      type="button"
+                      onClick={() => setShowTelegramGuide(!showTelegramGuide)}
+                      className="text-center text-[10px] text-blue-500 font-bold hover:underline block w-full mt-2"
+                    >
+                      {showTelegramGuide ? 'Ocultar guía de ayuda' : '¿Cómo obtener mi Token e ID?'}
+                    </button>
+                  </div>
+
+                  <div className="flex flex-col justify-center">
+                    {showTelegramGuide ? (
+                      <div className="bg-slate-50 dark:bg-slate-800/30 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-400 space-y-3 leading-relaxed">
+                        <p className="font-bold text-slate-800 dark:text-white text-sm">Guía de Configuración Rápida:</p>
+                        <p><strong>1. Crear el Bot:</strong> Abre Telegram, busca al usuario <a href="https://t.me/BotFather" target="_blank" rel="noreferrer" className="text-blue-500 underline font-bold">@BotFather</a> y envíale el comando <code>/newbot</code>. Sigue los pasos para nombrarlo y recibirás el <strong>Token API</strong>.</p>
+                        <p><strong>2. Obtener tu ID de Chat:</strong> Inicia un chat con tu bot recién creado presionando "Iniciar" o enviando un mensaje. Luego, busca al bot <a href="https://t.me/userinfobot" target="_blank" rel="noreferrer" className="text-blue-500 underline font-bold">@userinfobot</a> en Telegram y envíale un mensaje para que te devuelva tu <strong>ID de Chat</strong> (un número de 9-10 dígitos).</p>
+                        <p><strong>3. Guardar y Probar:</strong> Pega los campos aquí y haz clic en <strong>Probar</strong> para enviar un mensaje instantáneo de confirmación a tu celular.</p>
+                      </div>
+                    ) : (
+                      <div className="bg-blue-50/50 dark:bg-blue-950/10 p-5 rounded-2xl border border-blue-100/50 dark:border-blue-900/30 text-xs text-slate-600 dark:text-slate-400 space-y-3 leading-relaxed text-center flex flex-col items-center">
+                        <Sparkles className="text-blue-500 animate-pulse" size={24} />
+                        <p className="font-bold text-slate-800 dark:text-white">Alertas en Tiempo Real</p>
+                        <p className="max-w-[320px]">
+                          Vincular tu Telegram te permite estar al tanto de cualquier mensaje de soporte enviado por tus clientes, garantizando una atención premium sin necesidad de tener el app abierta todo el día.
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>

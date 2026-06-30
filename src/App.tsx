@@ -14,6 +14,7 @@ import { ShareModal } from './components/ShareModal';
 import { GuideModal } from './components/GuideModal';
 import { MainLayout } from './components/MainLayout';
 import { AlertCircle } from 'lucide-react';
+import { SupportWidget } from './components/SupportWidget';
 
 import ProviderDelivery from './pages/ProviderDelivery';
 
@@ -454,6 +455,9 @@ const App: React.FC = () => {
         storageService.checkPendingDailyTasksAndNotify();
         storageService.cleanupCompletedTasks();
       }
+      if (user.role === UserRole.ADMIN) {
+        storageService.checkSubscriptionAndNotify(user);
+      }
     };
 
     checkDailyTasksAndCleanup(); // Initial check
@@ -630,6 +634,8 @@ const App: React.FC = () => {
           <NotificationToast key={toast.id} notification={toast} onDismiss={handleToastDismiss} onReadAndNavigate={() => handleToastNavigation(toast)} />
         ))}
       </div>
+
+      {user && <SupportWidget currentUser={user} />}
     </>
   );
 };
