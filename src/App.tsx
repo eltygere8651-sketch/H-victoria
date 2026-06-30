@@ -490,7 +490,17 @@ const App: React.FC = () => {
     } else if (isIOS) {
       setShowIOSPrompt(true);
     } else {
-      alert("Haz clic en 'Instalar aplicación' en el menú de opciones de tu navegador (los 3 puntos arriba a la derecha).");
+      const newToast: AppNotification = {
+        id: `sys-install-${Date.now()}`,
+        type: NotificationType.SYSTEM_ALERT,
+        title: "Instalación manual",
+        message: "Tu navegador no inició la instalación automática. Puedes instalar la app abriendo el menú del navegador (tres puntos) y seleccionando 'Instalar aplicación'.",
+        icon: 'Download',
+        timestamp: Date.now(),
+        readStatus: true,
+        payload: {}
+      };
+      setToasts(prev => [...prev, newToast]);
     }
   };
 
