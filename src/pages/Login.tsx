@@ -4,7 +4,6 @@ import * as storageService from '../services/storageService';
 import { User, UserRole } from '../types';
 import { Loader2, ArrowRight, ShieldCheck, AlertCircle, Plus, Building, Lock, Mail } from 'lucide-react';
 import { GuideModal } from '../components/GuideModal';
-import { PWAInstallPrompt } from '../components/PWAInstallPrompt';
 
 interface LoginProps {
   onLogin: (user: User) => void;
@@ -17,7 +16,6 @@ const Login: React.FC<LoginProps> = ({ onLogin, setShowGuideModal }) => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [showInstallPrompt, setShowInstallPrompt] = useState(false);
   
   // Owner Flow State
   const [ownerEmail, setOwnerEmail] = useState<string | null>(null);
@@ -524,8 +522,6 @@ const Login: React.FC<LoginProps> = ({ onLogin, setShowGuideModal }) => {
           </div>
         </div>
       </div>
-
-      <PWAInstallPrompt isOpen={showInstallPrompt} onClose={() => setShowInstallPrompt(false)} />
     </div>
   );
 };

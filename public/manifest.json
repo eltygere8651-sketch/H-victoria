@@ -17,21 +17,15 @@
       "purpose": "any"
     },
     {
-      "src": "/android-chrome-192x192.png?v=9",
+      "src": "/android-chrome-192x192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/android-chrome-512x512.png?v=9",
+      "src": "/android-chrome-512x512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/logo_app.svg?v=9",
-      "sizes": "512x512",
-      "type": "image/svg+xml",
       "purpose": "any"
     }
   ]

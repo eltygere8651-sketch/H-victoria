@@ -6,7 +6,6 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { NotificationIcon } from '../components/NotificationIcon';
 import { generatePdfFromReactComponent, sharePdfFromReactComponent } from '../utils/pdfGenerator';
 import { OrderPdfDocument } from '../components/OrderPdfDocument';
-import { PWAInstallPrompt } from '../components/PWAInstallPrompt';
 import { motion } from 'motion/react';
 
 interface AdminProps {
@@ -17,7 +16,6 @@ interface AdminProps {
 
 const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, initialTab = 'requests' }) => {
   const [activeTab, setActiveTab] = useState<'requests' | 'users' | 'reports' | 'workspaces' | 'locations' | 'my_business' | 'super_admin'>(initialTab);
-  const [showInstallPrompt, setShowInstallPrompt] = useState(false);
   
   const [orders, setOrders] = useState<OrderBatch[]>([]);
   const [users, setUsers] = useState<User[]>([]);
@@ -1385,7 +1383,6 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
         </div>
       )}
       
-      <PWAInstallPrompt isOpen={showInstallPrompt} onClose={() => setShowInstallPrompt(false)} />
     </div>
   );
 };

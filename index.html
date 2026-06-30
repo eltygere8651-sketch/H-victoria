@@ -11,12 +11,12 @@
     <meta name="apple-mobile-web-app-title" content="Hub" />
     <meta name="format-detection" content="telephone=no">
     
-    <link rel="manifest" href="/manifest.json?refresh=2" />
+    <link rel="manifest" href="/manifest.json" />
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
-    <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png?v=2">
-    <link rel="icon" type="image/svg+xml" href="/logo_app.svg?v=2">
-    <link rel="apple-touch-icon" sizes="180x180" href="/apple-icon-180x180.png?v=2">
-    <link rel="apple-touch-icon-precomposed" sizes="180x180" href="/apple-icon-180x180.png?v=2">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png">
+    <link rel="icon" type="image/svg+xml" href="/logo_app.svg">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-icon-180x180.png">
+    <link rel="apple-touch-icon-precomposed" sizes="180x180" href="/apple-icon-180x180.png">
     <title>Hub</title>
     
     <script>
@@ -28,7 +28,7 @@
 
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js').catch(error => {
+          navigator.serviceWorker.register('/sw.js?v=' + new Date().getTime()).catch(error => {
             console.error('ServiceWorker registration failed: ', error);
           });
         });

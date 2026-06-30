@@ -13,7 +13,6 @@ import { initializePushNotifications } from './services/pushNotificationService'
 import { ShareModal } from './components/ShareModal';
 import { GuideModal } from './components/GuideModal';
 import { MainLayout } from './components/MainLayout';
-import { PWAInstallPrompt } from './components/PWAInstallPrompt';
 import { AlertCircle } from 'lucide-react';
 
 import ProviderDelivery from './pages/ProviderDelivery';
@@ -76,7 +75,6 @@ const App: React.FC = () => {
   const [isIOS, setIsIOS] = useState(false);
   const [isAndroid, setIsAndroid] = useState(false);
   const [showIOSPrompt, setShowIOSPrompt] = useState(false);
-  const [showGlobalInstallPrompt, setShowGlobalInstallPrompt] = useState(false);
   const [toasts, setToasts] = useState<AppNotification[]>([]);
   const [unreadAdminNotifications, setUnreadAdminNotifications] = useState<AppNotification[]>([]);
   const [initialAdminTab, setInitialAdminTab] = useState<'requests' | 'users' | 'reports'>('requests');
@@ -476,21 +474,23 @@ const App: React.FC = () => {
   };
 
   const handleInstallClick = async () => {
-    if (deferredPrompt) {
+    const promptObj = deferredPrompt || (window as any).deferredPrompt;
+    if (promptObj) {
       try {
-        await deferredPrompt.prompt();
-        const { outcome } = await deferredPrompt.userChoice;
+        await promptObj.prompt();
+        const { outcome } = await promptObj.userChoice;
         if (outcome === 'accepted') {
           setIsInstalled(true);
         }
         setDeferredPrompt(null);
+        (window as any).deferredPrompt = null;
       } catch (err) {
         console.error('Error prompting install:', err);
       }
     } else if (isIOS) {
       setShowIOSPrompt(true);
     } else {
-      setShowGlobalInstallPrompt(true);
+      alert("Haz clic en 'Instalar aplicación' en el menú de opciones de tu navegador (los 3 puntos arriba a la derecha).");
     }
   };
 
@@ -612,10 +612,6 @@ const App: React.FC = () => {
       <GuideModal 
         isOpen={showGuideModal} 
         onClose={() => setShowGuideModal(false)} 
-      />
-      <PWAInstallPrompt 
-        isOpen={showGlobalInstallPrompt} 
-        onClose={() => setShowGlobalInstallPrompt(false)} 
       />
       <ShareModal isOpen={showShareModal} onClose={() => setShowShareModal(false)} url={shareData.url} title={shareData.title} />
 
