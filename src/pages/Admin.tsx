@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { UserRole, User, Product, AppNotification, OrderBatch, AppLocation } from '../types';
 import * as storageService from '../services/storageService';
-import { Download, Users, Package, Trash2, Edit2, X, Save, Eye, Loader2, BarChart as BarChartIcon, BellRing, CheckCircle2, Share2, Smartphone, Activity, TrendingUp, ShieldAlert, Zap, Search, Filter, Plus } from 'lucide-react';
+import { Download, Users, Package, Trash2, Edit2, X, Save, Eye, Loader2, BarChart as BarChartIcon, BellRing, CheckCircle2, Share2, Smartphone, Activity, TrendingUp, ShieldAlert, Zap, Search, Filter, Plus, Key } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { NotificationIcon } from '../components/NotificationIcon';
 import { generatePdfFromReactComponent, sharePdfFromReactComponent } from '../utils/pdfGenerator';
@@ -25,6 +25,7 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
 
   // My Business state
   const [myBusinessName, setMyBusinessName] = useState('');
+  const [currentWorkspace, setCurrentWorkspace] = useState<storageService.Workspace | null>(null);
   const [isSavingMyBusiness, setIsSavingMyBusiness] = useState(false);
   
   const [newUser, setNewUser] = useState({ name: '', role: UserRole.STAFF, contraseña: '', permissions: [] as ('CAN_MANAGE_TASKS')[] });
@@ -49,6 +50,11 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
   const [newWorkspaceName, setNewWorkspaceName] = useState('');
   const [newWorkspaceId, setNewWorkspaceId] = useState('');
   const [isCreatingWorkspace, setIsCreatingWorkspace] = useState(false);
+
+  // Workspace code customization state
+  const [customizingWorkspace, setCustomizingWorkspace] = useState<storageService.Workspace | null>(null);
+  const [newCustomCode, setNewCustomCode] = useState('');
+  const [isSavingCustomCode, setIsSavingCustomCode] = useState(false);
 
   // Super Admin state
   const [systemWorkspaces, setSystemWorkspaces] = useState<storageService.Workspace[]>([]);
@@ -117,8 +123,11 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
         const wsId = storageService.activeWorkspaceId;
         if (wsId) {
           const ws = await storageService.getWorkspace(wsId);
-          if (ws && ws.name) {
-            setMyBusinessName(ws.name);
+          if (ws) {
+            setCurrentWorkspace(ws);
+            if (ws.name) {
+              setMyBusinessName(ws.name);
+            }
           }
         }
       }
@@ -371,6 +380,39 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
     } catch (error) {
       console.error(error);
       alert('Error al actualizar salón');
+    }
+  };
+
+  const handleCustomizeWorkspaceCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!customizingWorkspace || !newCustomCode.trim()) return;
+    const cleanCode = newCustomCode.trim().toLowerCase().replace(/[^a-z0-9\-]/g, '');
+    if (!cleanCode) {
+      alert('El código solo puede contener letras minúsculas, números y guiones.');
+      return;
+    }
+    
+    setIsSavingCustomCode(true);
+    try {
+      const oldId = customizingWorkspace.id;
+      const isCurrentActive = oldId === storageService.activeWorkspaceId;
+      
+      await storageService.customizeWorkspaceId(oldId, cleanCode);
+      
+      if (isCurrentActive) {
+        alert('Código de salón actualizado con éxito. La aplicación se recargará para aplicar los cambios.');
+        window.location.reload();
+      } else {
+        alert('Código de salón actualizado con éxito.');
+        setCustomizingWorkspace(null);
+        setNewCustomCode('');
+        await loadWorkspaces();
+      }
+    } catch (error: any) {
+      console.error(error);
+      alert(error.message || 'Error al personalizar el código del salón');
+    } finally {
+      setIsSavingCustomCode(false);
     }
   };
 
@@ -770,11 +812,26 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
             <div className="bg-white dark:bg-slate-900 rounded-[2rem] p-6 sm:p-8 shadow-sm border border-gray-100 dark:border-slate-800">
               <div className="max-w-xl mb-8 pb-8 border-b border-gray-100 dark:border-slate-800">
                 <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-2 ml-1">Código de Salón (Para Personal)</label>
-                <div className="flex items-center gap-3 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border-2 border-slate-200 dark:border-slate-700/50">
-                  <code className="text-lg font-black text-red-600 dark:text-red-400 select-all">{storageService.activeWorkspaceId}</code>
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                  <div className="flex-1 flex items-center gap-3 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border-2 border-slate-200 dark:border-slate-700/50">
+                    <code className="text-lg font-black text-red-600 dark:text-red-400 select-all">{storageService.activeWorkspaceId}</code>
+                  </div>
+                  {currentWorkspace && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCustomizingWorkspace(currentWorkspace);
+                        setNewCustomCode(currentWorkspace.id);
+                      }}
+                      className="px-6 py-4 bg-purple-600 hover:bg-purple-700 text-white font-black rounded-2xl shadow-md hover:shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2 whitespace-nowrap text-xs uppercase tracking-wider"
+                    >
+                      <Key size={16} />
+                      Personalizar Código
+                    </button>
+                  )}
                 </div>
                 <p className="text-xs text-slate-400 mt-2 ml-1 font-medium">
-                  Comparte este código con tu personal para que puedan iniciar sesión en este negocio.
+                  Comparte este código con tu personal para que puedan iniciar sesión en este negocio. ¡Puedes personalizar este código con un clic para que coincida con el nombre de tu marca!
                 </p>
               </div>
 
@@ -851,6 +908,16 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
                       className="flex-1 py-2 bg-blue-50 text-blue-600 rounded-xl text-xs font-bold hover:bg-blue-100 transition-colors flex justify-center items-center gap-1"
                     >
                       <Edit2 size={14} /> Editar
+                    </button>
+                    <button 
+                      onClick={() => {
+                        setCustomizingWorkspace(ws);
+                        setNewCustomCode(ws.id);
+                      }}
+                      className="flex-1 py-2 bg-purple-50 text-purple-600 rounded-xl text-xs font-bold hover:bg-purple-100 transition-colors flex justify-center items-center gap-1"
+                      title="Personalizar Código de Salón"
+                    >
+                      <Key size={14} /> Código
                     </button>
                     {ws.id !== storageService.activeWorkspaceId && (
                       <button 
@@ -1225,6 +1292,76 @@ const Admin: React.FC<AdminProps> = ({ currentUser, unreadNotificationsCount, in
               <div className="flex gap-4 mt-6">
                 <button type="button" onClick={() => setEditingWorkspace(null)} className="flex-1 py-3 bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-300 rounded-xl font-bold active:scale-95 transition-colors">Cancelar</button>
                 <button type="submit" className="flex-1 py-3 bg-red-600 text-white rounded-xl font-bold shadow-lg shadow-button-red active:scale-95 transition-all">Guardar Cambios</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {customizingWorkspace && (
+        <div className="fixed inset-0 bg-black/60 z-[120] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-md p-6 shadow-pop-in animate-pop-in border border-gray-100 dark:border-slate-700/50">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="font-bold text-xl text-gray-900 dark:text-white flex items-center gap-2">
+                <Key className="text-purple-600 dark:text-purple-400" size={20} /> 
+                Personalizar Código
+              </h3>
+              <button onClick={() => setCustomizingWorkspace(null)} className="text-gray-400 hover:text-gray-600 dark:hover:text-slate-300">
+                <X />
+              </button>
+            </div>
+            
+            <form onSubmit={handleCustomizeWorkspaceCode} className="space-y-4">
+              <div className="bg-purple-50 dark:bg-purple-900/10 p-4 rounded-xl border border-purple-100 dark:border-purple-900/30 text-xs text-purple-800 dark:text-purple-300">
+                <p className="font-bold mb-1">⚠️ ATENCIÓN IMPORTANTE:</p>
+                <p>
+                  Cambiar el código del salón migrará de forma segura todo su contenido (inventario, empleados, tareas, mesas, etc.). 
+                  Si este es el salón activo, tendrás que volver a iniciar sesión con el nuevo código personalizado.
+                </p>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Código de Salón Actual</label>
+                <input 
+                  type="text" 
+                  value={customizingWorkspace.id} 
+                  disabled 
+                  className="w-full p-3 border border-slate-200 dark:border-slate-700/50 rounded-xl bg-slate-100 dark:bg-slate-800/20 text-slate-500 dark:text-slate-400 font-mono font-bold text-xs" 
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Nuevo Código Personalizado</label>
+                <input 
+                  type="text" 
+                  placeholder="ej. mi-salon-lujo"
+                  value={newCustomCode} 
+                  onChange={e => setNewCustomCode(e.target.value.toLowerCase().replace(/[^a-z0-9\-]/g, ''))} 
+                  className="w-full p-3 border-2 border-slate-200 dark:border-slate-700/50 rounded-xl bg-slate-50 dark:bg-slate-800/60 dark:text-white outline-none focus:border-purple-600 focus:ring-4 focus:ring-purple-600/10 shadow-sm font-mono font-bold text-xs" 
+                  required 
+                  disabled={isSavingCustomCode}
+                />
+                <p className="text-[10px] text-slate-400 mt-1 px-1">
+                  Solo se permiten letras minúsculas, números y guiones.
+                </p>
+              </div>
+
+              <div className="flex gap-4 mt-6">
+                <button 
+                  type="button" 
+                  onClick={() => setCustomizingWorkspace(null)} 
+                  disabled={isSavingCustomCode}
+                  className="flex-1 py-3 bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-300 rounded-xl font-bold active:scale-95 transition-colors disabled:opacity-50"
+                >
+                  Cancelar
+                </button>
+                <button 
+                  type="submit" 
+                  disabled={isSavingCustomCode || !newCustomCode.trim() || newCustomCode.trim() === customizingWorkspace.id}
+                  className="flex-1 py-3 bg-purple-600 text-white rounded-xl font-bold shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {isSavingCustomCode ? <Loader2 className="animate-spin" size={18} /> : 'Guardar y Migrar'}
+                </button>
               </div>
             </form>
           </div>

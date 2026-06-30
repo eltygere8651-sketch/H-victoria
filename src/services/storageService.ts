@@ -100,6 +100,85 @@ export const updateWorkspace = async (workspaceId: string, name: string): Promis
   await db.collection('workspaces').doc(workspaceId).update({ name });
 };
 
+export const customizeWorkspaceId = async (oldId: string, newId: string): Promise<void> => {
+  if (!oldId || !newId) throw new Error('Códigos inválidos');
+  if (oldId === newId) return;
+
+  // 1. Check if the new ID is already in use
+  const exists = await checkWorkspaceExists(newId);
+  if (exists) {
+    throw new Error('El nuevo código de salón ya está registrado por otro negocio.');
+  }
+
+  // 2. Fetch the old workspace document
+  const oldWsDoc = await db.collection('workspaces').doc(oldId).get();
+  if (!oldWsDoc.exists) {
+    throw new Error('El salón de origen no existe.');
+  }
+
+  const oldData = oldWsDoc.data() as Workspace;
+  
+  // 3. Create the new workspace document with the new ID
+  const newWsData: Workspace = {
+    ...oldData,
+    id: newId
+  };
+  await db.collection('workspaces').doc(newId).set(newWsData);
+
+  // 4. Migrate sub-collections
+  const subCollections = [
+    'users',
+    'products',
+    'departments',
+    'requests',
+    'notifications',
+    'tasks',
+    'locations',
+    'documents',
+    'system'
+  ];
+
+  for (const collectionName of subCollections) {
+    const oldPath = `workspaces/${oldId}/${collectionName}`;
+    const newPath = `workspaces/${newId}/${collectionName}`;
+    
+    const snapshot = await db.collection(oldPath).get();
+    
+    const promises = snapshot.docs.map(async (doc) => {
+      const docData = doc.data();
+      // Write to new path
+      await db.collection(newPath).doc(doc.id).set(docData);
+      // Delete old path
+      await db.collection(oldPath).doc(doc.id).delete();
+    });
+    
+    await Promise.all(promises);
+  }
+
+  // 5. Migrate root-suffixed collections if they exist
+  const rootSuffixed = ['session', 'draft_cart', 'last_view'];
+  for (const suffixBase of rootSuffixed) {
+    const oldRootPath = `${suffixBase}_${oldId}`;
+    const newRootPath = `${suffixBase}_${newId}`;
+    
+    const snapshot = await db.collection(oldRootPath).get();
+    const promises = snapshot.docs.map(async (doc) => {
+      const docData = doc.data();
+      await db.collection(newRootPath).doc(doc.id).set(docData);
+      await db.collection(oldRootPath).doc(doc.id).delete();
+    });
+    await Promise.all(promises);
+  }
+
+  // 6. Delete old workspace main document
+  await db.collection('workspaces').doc(oldId).delete();
+
+  // 7. If active, update local storage and state
+  if (activeWorkspaceId === oldId) {
+    setActiveWorkspaceId(newId, newWsData.name);
+  }
+};
+
 export const updateWorkspaceSubscription = async (workspaceId: string, updates: Partial<Workspace>): Promise<void> => {
   await db.collection('workspaces').doc(workspaceId).update(updates);
 };
